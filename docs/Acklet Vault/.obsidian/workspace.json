@@ -1,0 +1,212 @@
+{
+  "main": {
+    "id": "583dc43f99b6a28d",
+    "type": "split",
+    "children": [
+      {
+        "id": "6fdbc4e486c3a337",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "5c80cb62a63e2be0",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "cc2449710bdf39f5",
+    "type": "split",
+    "children": [
+      {
+        "id": "83d4b6945c024723",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "fe610e571edf2c5f",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "623661d8b174688d",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "bec4d8b6f20b5862",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "c57d2ff02b93695d",
+    "type": "split",
+    "children": [
+      {
+        "id": "75c195c1366ec09c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "cf506531bde89439",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Kafka.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for Kafka"
+            }
+          },
+          {
+            "id": "fff7b5a06ba5bd9d",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Kafka.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from Kafka"
+            }
+          },
+          {
+            "id": "feec370922637491",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "5ebb57fcab3f7e21",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "b6e552057c863bc1",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Kafka.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of Kafka"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "5c80cb62a63e2be0",
+  "lastOpenFiles": [
+    "Kafka.md",
+    "Acklet Analytics & KPIs.md",
+    "Acklet Go-To-Market Strategy.md",
+    "Acklet/strategy/Acklet Growth Strategy.md",
+    "Acklet/strategy/Acklet Product Roadmap.md",
+    "Acklet/product/Acklet Product Requirements.md",
+    "Acklet/product/Acklet Feature Catalog.md",
+    "Acklet/product/Acklet MVP Strategy.md",
+    "Acklet/strategy/Acklet Information Architecture.md",
+    "Acklet/strategy/Acklet Brand Philosophy.md",
+    "Acklet/design",
+    "Acklet/product",
+    "Acklet/strategy",
+    "Acklet/strategy/Acklet User Experience.md",
+    "Acklet/strategy/Acklet Business Strategy.md",
+    "Acklet/strategy/Acklet Engineering Principles.md",
+    "Acklet/strategy/Acklet Design System Strategy.md",
+    "Acklet/strategy/Acklet Product Strategy.md",
+    "Acklet/strategy/Acklet User Philosophy.md",
+    "Acklet/strategy/Acklet Product Vision.md",
+    "Acklet/strategy/Acklet Product Constitution.md",
+    "00-product-constitution.md",
+    "Acklet design System Strategy.md",
+    "07-design-system-strategy.md",
+    "01-product-vision.md",
+    "Acklet.md",
+    "Acklet"
+  ]
+}
