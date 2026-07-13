@@ -1,0 +1,618 @@
+@import "tailwindcss";
+
+/* ============================================================
+   GOOGLE FONTS
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Aboreto&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&family=Philosopher:ital,wght@0,400;0,700;1,400;1,700&family=Sorts+Mill+Goudy:ital@0;1&display=swap');
+
+/* ============================================================
+   NATIVE CSS VARIABLES (Guarantees runtime resolution in all browsers)
+   ============================================================ */
+:root {
+  /* --- Brand Colors (Navy/Charcoal) --- */
+  --color-brand-50: #f8fafc;
+  --color-brand-100: #f1f5f9;
+  --color-brand-200: #e2e8f0;
+  --color-brand-300: #cbd5e1;
+  --color-brand-400: #94a3b8;
+  --color-brand-500: #64748b;
+  --color-brand-600: #475569;
+  --color-brand-700: #334155;
+  --color-brand-800: #1e293b;
+  --color-brand-900: #0f172a;
+  --color-brand-950: #020617;
+
+  /* --- Accent Colors (Cyan/Electric) --- */
+  --color-accent-50: #ecfeff;
+  --color-accent-100: #cffafe;
+  --color-accent-200: #a5f3fc;
+  --color-accent-300: #67e8f9;
+  --color-accent-400: #22d3ee;
+  --color-accent-500: #06b6d4;
+  --color-accent-600: #0891b2;
+  --color-accent-700: #0e7490;
+  --color-accent-800: #155e75;
+  --color-accent-900: #164e63;
+
+  /* --- Surface Colors (Premium Light Mode) --- */
+  --color-surface-950: #ffffff;
+  --color-surface-900: #f8f9fa;
+  --color-surface-800: #f1f3f5;
+  --color-surface-700: #e9ecef;
+  --color-surface-600: #dee2e6;
+  --color-surface-500: #adb5bd;
+
+  /* --- Neutrals (Clean Slate) --- */
+  --color-neutral-50: #09090b;
+  --color-neutral-100: #18181b;
+  --color-neutral-200: #27272a;
+  --color-neutral-300: #3f3f46;
+  --color-neutral-400: #71717a;
+  --color-neutral-500: #a1a1aa;
+  --color-neutral-600: #d4d4d8;
+  --color-neutral-700: #e4e4e7;
+  --color-neutral-800: #f4f4f5;
+  --color-neutral-900: #fafafa;
+  --color-neutral-950: #ffffff;
+
+  /* --- Typography --- */
+  --font-sans: 'Instrument Sans', sans-serif;
+  --font-display: 'Philosopher', sans-serif;
+  --font-serif: 'Sorts Mill Goudy', serif;
+  --font-decorative: 'Aboreto', system-ui;
+  --font-hero: 'Sorts Mill Goudy', serif;
+  --font-display-primary: 'Philosopher', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* --- Border Radius (Soft & Pill) --- */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-3xl: 2.5rem;
+  --radius-full: 9999px;
+
+  /* --- Shadows & Glows (Soft) --- */
+  --shadow-glow-brand: 0 0 50px -10px rgba(15, 23, 42, 0.1);
+  --shadow-glow-accent: 0 0 50px -10px rgba(6, 182, 212, 0.1);
+  --shadow-glow-combined: 0 0 60px -8px rgba(15, 23, 42, 0.08);
+  --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 20px 40px rgba(0, 0, 0, 0.08);
+
+  /* --- Navbar adaptive tokens --- */
+  --color-navbar-bg: rgba(255, 255, 255, 0.85);
+  --color-navbar-border: rgba(0, 0, 0, 0.06);
+  --color-nav-hover-bg: rgba(0, 0, 0, 0.03);
+  --color-nav-active-bg: rgba(0, 0, 0, 0.05);
+}
+
+/* ============================================================
+   TAILWIND V4 THEME BINDINGS
+   ============================================================ */
+@theme {
+  --color-brand-50: var(--color-brand-50);
+  --color-brand-100: var(--color-brand-100);
+  --color-brand-200: var(--color-brand-200);
+  --color-brand-300: var(--color-brand-300);
+  --color-brand-400: var(--color-brand-400);
+  --color-brand-500: var(--color-brand-500);
+  --color-brand-600: var(--color-brand-600);
+  --color-brand-700: var(--color-brand-700);
+  --color-brand-800: var(--color-brand-800);
+  --color-brand-900: var(--color-brand-900);
+  --color-brand-950: var(--color-brand-950);
+
+  --color-accent-50: var(--color-accent-50);
+  --color-accent-100: var(--color-accent-100);
+  --color-accent-200: var(--color-accent-200);
+  --color-accent-300: var(--color-accent-300);
+  --color-accent-400: var(--color-accent-400);
+  --color-accent-500: var(--color-accent-500);
+  --color-accent-600: var(--color-accent-600);
+  --color-accent-700: var(--color-accent-700);
+  --color-accent-800: var(--color-accent-800);
+  --color-accent-900: var(--color-accent-900);
+
+  --color-surface-950: var(--color-surface-950);
+  --color-surface-900: var(--color-surface-900);
+  --color-surface-800: var(--color-surface-800);
+  --color-surface-700: var(--color-surface-700);
+  --color-surface-600: var(--color-surface-600);
+  --color-surface-500: var(--color-surface-500);
+
+  --color-neutral-50: var(--color-neutral-50);
+  --color-neutral-100: var(--color-neutral-100);
+  --color-neutral-200: var(--color-neutral-200);
+  --color-neutral-300: var(--color-neutral-300);
+  --color-neutral-400: var(--color-neutral-400);
+  --color-neutral-500: var(--color-neutral-500);
+  --color-neutral-600: var(--color-neutral-600);
+  --color-neutral-700: var(--color-neutral-700);
+  --color-neutral-800: var(--color-neutral-800);
+  --color-neutral-900: var(--color-neutral-900);
+  --color-neutral-950: var(--color-neutral-950);
+
+
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-serif: var(--font-serif);
+  --font-decorative: var(--font-decorative);
+  --font-hero: var(--font-hero);
+  --font-display-primary: var(--font-display-primary);
+  --font-mono: var(--font-mono);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --radius-3xl: var(--radius-3xl);
+  --radius-full: var(--radius-full);
+
+  --shadow-glow-brand: var(--shadow-glow-brand);
+  --shadow-glow-accent: var(--shadow-glow-accent);
+  --shadow-glow-combined: var(--shadow-glow-combined);
+  --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
+
+  --color-navbar-bg: var(--color-navbar-bg);
+  --color-navbar-border: var(--color-navbar-border);
+  --color-nav-hover-bg: var(--color-nav-hover-bg);
+  --color-nav-active-bg: var(--color-nav-active-bg);
+}
+
+/* ============================================================
+   BASE CUSTOM STYLING (Pitch Black, Grid Lines, Font Pairing)
+   ============================================================ */
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-surface-950);
+  color: var(--color-neutral-200);
+  min-height: 100vh;
+  line-height: 1.625;
+  overflow-x: hidden;
+  position: relative;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  color: var(--color-neutral-100);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Premium Soft Blurred Gradient Background */
+.gradient-mesh {
+  position: relative;
+  overflow: hidden;
+}
+
+.gradient-mesh::before {
+  content: '';
+  position: absolute;
+  inset: -100px;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(255, 115, 0, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 85% 15%, rgba(67, 56, 202, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 50% 5%, rgba(6, 182, 212, 0.12) 0%, transparent 50%);
+  filter: blur(80px);
+  -webkit-filter: blur(80px);
+  pointer-events: none;
+}
+
+.gradient-mesh>* {
+  position: relative;
+  z-index: 1;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface-950);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-700);
+  border: 2px solid var(--color-surface-950);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand-600);
+}
+
+/* ============================================================
+   PREMIUM UTILITIES
+   ============================================================ */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Card hover animation */
+.card {
+  background: var(--color-surface-900);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius-xl);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card:hover {
+  background: var(--color-surface-800);
+  border-color: rgba(99, 102, 241, 0.25);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card-hover), var(--shadow-glow-brand);
+}
+/* Premium Gradient Text styles */
+.gradient-text {
+  background: linear-gradient(135deg, #09090b 30%, rgba(9, 9, 11, 0.6) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-brand {
+  background: linear-gradient(135deg, #4f46e5 0%, #0891b2 50%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Neon buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-full);
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--color-brand-800);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: var(--color-brand-900);
+  box-shadow: 0 4px 15px rgba(30, 41, 59, 0.2);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: rgba(0, 0, 0, 0.02);
+  color: var(--color-neutral-100);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.btn-secondary:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-neutral-400);
+}
+
+.btn-ghost:hover {
+  background: rgba(0, 0, 0, 0.02);
+  color: var(--color-neutral-100);
+}
+
+/* Status Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.625rem;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.badge-brand {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--color-brand-700);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+.badge-accent {
+  background: rgba(6, 182, 212, 0.1);
+  color: var(--color-accent-300);
+  border: 1px solid rgba(6, 182, 212, 0.15);
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.15);
+}
+
+.badge-neutral {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-neutral-300);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Glow drops orbs */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  -webkit-filter: blur(120px);
+  pointer-events: none;
+  opacity: 0.12;
+  mix-blend-mode: multiply;
+}
+
+.orb-brand {
+  background: radial-gradient(circle, var(--color-brand-300) 0%, transparent 70%);
+}
+
+.orb-accent {
+  background: radial-gradient(circle, var(--color-accent-300) 0%, transparent 70%);
+}
+
+.orb-purple {
+  background: radial-gradient(circle, #d8b4fe 0%, transparent 70%);
+}
+
+/* ============================================================
+   ANIMATIONS & KEYFRAMES
+   ============================================================ */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(99, 102, 241, 0.5);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Animation tokens */
+:root {
+  --animate-fade-up: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-float: float 6s ease-in-out infinite;
+}
+
+/* Page transition */
+.page-enter {
+  animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Animate spin utility */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ============================================================
+   LAYOUT SYSTEM
+   ============================================================ */
+.container-main {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+@media (max-width: 768px) {
+  .container-main {
+    padding: 0 1.25rem;
+  }
+}
+
+.section {
+  padding: 6rem 0;
+}
+
+.hide-mobile {
+  display: flex;
+}
+
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .section {
+    padding: 4rem 0;
+  }
+}
+
+/* ============================================================
+   BUTTON SIZES
+   ============================================================ */
+.btn-sm {
+  padding: 0.4rem 0.875rem;
+  font-size: 0.8rem;
+}
+
+.btn-lg {
+  padding: 0.825rem 1.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: var(--radius-xl);
+}
+
+/* ============================================================
+   FORM INPUT GLOBAL STYLES
+   ============================================================ */
+.input {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-lg);
+  color: var(--color-neutral-100);
+  font-size: 0.875rem;
+  font-family: inherit;
+  padding: 0.625rem 0.875rem;
+  outline: none;
+  transition: border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.input:focus {
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.input::placeholder {
+  color: var(--color-neutral-400);
+}
+
+select.input {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  background-size: 1.2em;
+  padding-right: 2.5rem;
+}
+
+select.input option {
+  background: #ffffff;
+  color: var(--color-neutral-100);
+}
+
+/* ============================================================
+   SUCCESS / WARNING / ERROR COLORS
+   ============================================================ */
+.text-success-400 {
+  color: #34d399;
+}
+
+.text-success-500 {
+  color: #10b981;
+}
+
+.text-warning-500 {
+  color: #f59e0b;
+}
+
+.fill-warning-500 {
+  fill: #f59e0b;
+}
+
+/* ============================================================
+   FOOTER UTILITIES
+   ============================================================ */
+a {
+  text-decoration: none;
+}
+
+/* ============================================================
+   SECTION HEADER UTILITIES
+   ============================================================ */
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-brand-400);
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+/* ============================================================
+   PAGE LANDING HERO HEADINGS OVERRIDES
+   ============================================================ */
+.hero-section h1,
+.cats-hero h1,
+.tools-hero h2.sh-title,
+.about-hero h1,
+.contact-hero h1,
+.td-hero h1 {
+  font-family: var(--font-serif) !important;
+  font-weight: 400 !important;
+  font-style: normal !important;
+}
+
+/* Ensure emphasis/gradient span elements inside landing titles use Sorts Mill Goudy Italic */
+.hero-section h1 span,
+.cats-hero h1 span,
+.tools-hero h2.sh-title span,
+.about-hero h1 span,
+.contact-hero h1 span,
+.td-hero h1 span {
+  font-style: italic !important;
+  font-family: var(--font-serif) !important;
+}
