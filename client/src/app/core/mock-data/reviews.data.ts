@@ -1,0 +1,111 @@
+// src/app/core/mock-data/reviews.data.ts
+
+import { Review, Testimonial } from '../models/review.model';
+
+export const MOCK_REVIEWS: Review[] = [
+  {
+    id: 'rev-1', toolId: 'tool-1', userId: 'u-1',
+    userName: 'Alex Chen', userAvatar: '', userInitials: 'AC',
+    rating: 5, title: 'Best JWT tool available',
+    comment: 'Finally a clean, fast JWT inspector that works entirely in the browser. No more worrying about token leaks. The claim table view is incredibly useful.',
+    date: '2026-05-12', helpful: 48, verified: true,
+  },
+  {
+    id: 'rev-2', toolId: 'tool-1', userId: 'u-2',
+    userName: 'Sarah Mitchell', userAvatar: '', userInitials: 'SM',
+    rating: 5, title: 'Saved me hours of debugging',
+    comment: 'I debug JWTs daily at work. This tool has become a core part of my workflow. The expiry check is a lifesaver.',
+    date: '2026-04-28', helpful: 31, verified: true,
+  },
+  {
+    id: 'rev-3', toolId: 'tool-1', userId: 'u-3',
+    userName: 'Marco Rossi', userAvatar: '', userInitials: 'MR',
+    rating: 4, title: 'Great but needs signature verification UI',
+    comment: 'Excellent decoder with a beautiful UI. Would love a more prominent way to add the secret for signature verification.',
+    date: '2026-03-15', helpful: 19, verified: false,
+  },
+  {
+    id: 'rev-4', toolId: 'tool-4', userId: 'u-4',
+    userName: 'Priya Sharma', userAvatar: '', userInitials: 'PS',
+    rating: 5, title: 'Got me a 40% more interviews',
+    comment: 'After following the Resume Analyzer suggestions, I went from 5% interview rate to 22% within a month. The keyword gap analysis is pure gold.',
+    date: '2026-05-20', helpful: 102, verified: true,
+  },
+  {
+    id: 'rev-5', toolId: 'tool-5', userId: 'u-5',
+    userName: 'Jordan Blake', userAvatar: '', userInitials: 'JB',
+    rating: 5, title: 'Transformed my AI workflows',
+    comment: 'My Claude outputs improved dramatically after using the prompt optimizer. The chain-of-thought enhancement feature alone is worth it.',
+    date: '2026-06-01', helpful: 67, verified: true,
+  },
+  {
+    id: 'rev-6', toolId: 'tool-19', userId: 'u-6',
+    userName: 'Lucia Fernandez', userAvatar: '', userInitials: 'LF',
+    rating: 5, title: 'Designer\'s best friend',
+    comment: 'The color palette generator is stunning. I exported my entire design system tokens in one click. The Tailwind config export saved me two hours.',
+    date: '2026-06-15', helpful: 84, verified: true,
+  },
+];
+
+export const MOCK_TESTIMONIALS: Testimonial[] = [
+  {
+    id: 'test-1',
+    name: 'Alex Chen',
+    role: 'Senior Backend Engineer',
+    company: 'Stripe',
+    avatar: '',
+    initials: 'AC',
+    quote: 'Ads-Vault has replaced five separate bookmarked tools for me. JWT Inspector alone saves me 20 minutes a day. The quality and speed of these tools is unmatched.',
+    rating: 5,
+  },
+  {
+    id: 'test-2',
+    name: 'Priya Sharma',
+    role: 'Product Manager',
+    company: 'Notion',
+    avatar: '',
+    initials: 'PS',
+    quote: 'The Resume Analyzer got me interviews at three FAANG companies. Incredibly actionable feedback that generic resume checkers completely miss.',
+    rating: 5,
+  },
+  {
+    id: 'test-3',
+    name: 'Jordan Blake',
+    role: 'AI Researcher',
+    company: 'Anthropic',
+    avatar: '',
+    initials: 'JB',
+    quote: 'Prompt Optimizer is the secret weapon I share with every PM on my team. The chain-of-thought enhancement feature genuinely improves output quality.',
+    rating: 5,
+  },
+  {
+    id: 'test-4',
+    name: 'Lucia Fernandez',
+    role: 'Lead Product Designer',
+    company: 'Linear',
+    avatar: '',
+    initials: 'LF',
+    quote: 'Beautiful design, beautiful tools. The color palette generator is the best I\'ve used. The Tailwind export feature is a genuine time saver.',
+    rating: 5,
+  },
+  {
+    id: 'test-5',
+    name: 'Marcus Webb',
+    role: 'Staff DevOps Engineer',
+    company: 'Vercel',
+    avatar: '',
+    initials: 'MW',
+    quote: 'YAML Validator and Cron Parser are now permanent tabs in my browser. Clean, fast, no noise — exactly what a professional tool should be.',
+    rating: 5,
+  },
+  {
+    id: 'test-6',
+    name: 'Dr. Aisha Rahman',
+    role: 'Clinical Informatics Lead',
+    company: 'Johns Hopkins',
+    avatar: '',
+    initials: 'AR',
+    quote: 'The FHIR Validator is the only browser-based tool I trust for clinical data validation. Accurate, comprehensive, and privacy-respecting.',
+    rating: 5,
+  },
+];
