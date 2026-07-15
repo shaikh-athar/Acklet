@@ -1,6 +1,7 @@
 // src/app/layout/main-layout/main-layout.ts
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { RouterOutlet, Router } from '@angular/router';
+import { CommonModule } from '@angular/common';
 import { NavbarComponent } from '../../shared/components/navbar/navbar';
 import { FooterComponent } from '../../shared/components/footer/footer';
 import { ToastComponent } from '../../shared/components/toast/toast';
@@ -8,14 +9,16 @@ import { ToastComponent } from '../../shared/components/toast/toast';
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, FooterComponent, ToastComponent],
+  imports: [RouterOutlet, CommonModule, NavbarComponent, FooterComponent, ToastComponent],
   template: `
     <div class="layout-root">
       <app-navbar />
       <main class="layout-main">
         <router-outlet />
       </main>
-      <app-footer />
+      @if (showFooter()) {
+        <app-footer />
+      }
       <app-toast />
     </div>
   `,
@@ -24,4 +27,10 @@ import { ToastComponent } from '../../shared/components/toast/toast';
     .layout-main { flex: 1; }
   `],
 })
-export class MainLayoutComponent { }
+export class MainLayoutComponent {
+  private readonly router = inject(Router);
+
+  showFooter(): boolean {
+    return !this.router.url.includes('/auth/');
+  }
+}

@@ -1,26 +1,40 @@
-// src/app/core/services/theme.service.ts
-
 import { Injectable, signal, effect } from '@angular/core';
 
 export type Theme = 'dark' | 'light';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
-  readonly theme = signal<Theme>('light');
+  readonly theme = signal<Theme>('dark');
 
   constructor() {
-    document.documentElement.setAttribute('data-theme', 'light');
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('acklet-theme') as Theme;
+      if (stored === 'light' || stored === 'dark') {
+        this.theme.set(stored);
+      }
+    }
+
+    effect(() => {
+      const activeTheme = this.theme();
+      if (typeof window !== 'undefined') {
+        document.documentElement.setAttribute('data-theme', activeTheme);
+      }
+    });
   }
 
   toggle(): void {
-    // Disabled for light mode only
+    const next = this.theme() === 'dark' ? 'light' : 'dark';
+    this.setTheme(next);
   }
 
   setTheme(t: Theme): void {
-    // Disabled for light mode only
+    this.theme.set(t);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('acklet-theme', t);
+    }
   }
 
   get isDark(): boolean {
-    return false;
+    return this.theme() === 'dark';
   }
 }
