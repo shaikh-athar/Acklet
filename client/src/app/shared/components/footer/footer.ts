@@ -167,7 +167,7 @@ export class FooterComponent {
       const letters = hugeBrand.querySelectorAll('.smoke-letter');
       gsap.set(hugeBrand, { opacity: 1 });
       gsap.fromTo(letters,
-        { 
+        {
           opacity: 0,
           filter: 'blur(16px)',
           scale: 1.8,
@@ -175,7 +175,7 @@ export class FooterComponent {
           y: () => gsap.utils.random(-50, 50),
           rotation: () => gsap.utils.random(-15, 15)
         },
-        { 
+        {
           opacity: 1,
           filter: 'blur(0px)',
           scale: 1,
@@ -198,7 +198,7 @@ export class FooterComponent {
       const letters = smallBrand.querySelectorAll('.smoke-letter');
       gsap.set(smallBrand, { opacity: 1 });
       gsap.fromTo(letters,
-        { 
+        {
           opacity: 0,
           filter: 'blur(12px)',
           scale: 1.6,
@@ -206,7 +206,7 @@ export class FooterComponent {
           y: () => gsap.utils.random(-20, 20),
           rotation: () => gsap.utils.random(-15, 15)
         },
-        { 
+        {
           opacity: 1,
           filter: 'blur(0px)',
           scale: 1,
@@ -227,15 +227,15 @@ export class FooterComponent {
 
 function splitElement(el: HTMLElement | ChildNode): void {
   const childNodes = Array.from(el.childNodes);
-  
+
   for (const child of childNodes) {
     if (child.nodeType === Node.TEXT_NODE) {
       const text = child.nodeValue || '';
       if (!text.trim()) continue;
-      
+
       const fragment = document.createDocumentFragment();
       const words = text.split(/(\s+)/);
-      
+
       for (const word of words) {
         if (word.trim() === '') {
           fragment.appendChild(document.createTextNode(word));
@@ -243,7 +243,7 @@ function splitElement(el: HTMLElement | ChildNode): void {
           const wordSpan = document.createElement('span');
           wordSpan.style.display = 'inline-block';
           wordSpan.style.whiteSpace = 'nowrap';
-          
+
           for (const char of word) {
             const charSpan = document.createElement('span');
             charSpan.className = 'smoke-letter';

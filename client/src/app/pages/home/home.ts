@@ -58,23 +58,7 @@ import { gsap } from 'gsap';
         </div>
       </section>
 
-      <!-- ══ TRUST SIGNALS ══════════════════════════════════════ -->
-      <!-- Replaces fabricated statistics — all claims are factual and defensible -->
-      <section class="trust-section" appViewport viewportId="trust" (enter)="playTrust()">
-        <div class="container-main trust-grid">
-          @for (t of trustSignals; track t.label) {
-            <div class="trust-item">
-              <div class="trust-icon-wrap" [style.background]="t.iconBg">
-                <app-icon [name]="t.icon" class="size-4" [style.color]="t.color" />
-              </div>
-              <div>
-                <div class="trust-label">{{ t.label }}</div>
-                <div class="trust-desc">{{ t.desc }}</div>
-              </div>
-            </div>
-          }
-        </div>
-      </section>
+
 
       <!-- ══ CATEGORIES ════════════════════════════════════════ -->
       <section class="section popular-categories-sec" appViewport viewportId="categories" (enter)="playCategories()">
@@ -777,7 +761,7 @@ export class HomeComponent {
       
       // Reset animation guards
       this.heroTimelinePlayed = false;
-      this.trustTimelinePlayed = false;
+
       this.categoriesTimelinePlayed = false;
       this.philosophyTimelinePlayed = false;
       this.recentlyAddedTimelinePlayed = false;
@@ -788,7 +772,7 @@ export class HomeComponent {
       setTimeout(() => {
         const sections = [
           { selector: '.hero-section', play: () => this.playHero() },
-          { selector: '.trust-section', play: () => this.playTrust() },
+
           { selector: '.popular-categories-sec', play: () => this.playCategories() },
           { selector: '.why-section', play: () => this.playPhilosophy() },
           { selector: '.recently-added-sec', play: () => this.playRecentlyAdded() },
@@ -817,7 +801,7 @@ export class HomeComponent {
   }
 
   private heroTimelinePlayed = false;
-  private trustTimelinePlayed = false;
+
   private categoriesTimelinePlayed = false;
   private philosophyTimelinePlayed = false;
   private recentlyAddedTimelinePlayed = false;
@@ -915,28 +899,6 @@ export class HomeComponent {
     }
   }
 
-  // Trust Animation
-  playTrust(): void {
-    if (this.trustTimelinePlayed) return;
-    this.trustTimelinePlayed = true;
-
-    const trustSec = this.el.nativeElement.querySelector('.trust-section');
-    if (trustSec) {
-      const items = trustSec.querySelectorAll('.trust-item');
-      if (items.length > 0) {
-        gsap.fromTo(items,
-          { opacity: 0, y: 15 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.8,
-            stagger: 0.08,
-            ease: 'power2.out'
-          }
-        );
-      }
-    }
-  }
 
   // Categories Animation
   playCategories(): void {
@@ -1065,41 +1027,6 @@ export class HomeComponent {
     }
   }
 
-  /**
-   * Trust signals — factual, defensible claims only.
-   * No fabricated user counts or execution statistics.
-   * Source: Brand Philosophy — "Trust is our greatest competitive advantage"
-   */
-  readonly trustSignals = [
-    {
-      icon: 'shield-check',
-      label: 'Browser-based processing',
-      desc: 'Your data never leaves your device',
-      color: '#10b981',
-      iconBg: 'rgba(16, 185, 129, 0.08)',
-    },
-    {
-      icon: 'user-x',
-      label: 'No account required',
-      desc: 'Use everything without signing up',
-      color: '#6366f1',
-      iconBg: 'rgba(99, 102, 241, 0.08)',
-    },
-    {
-      icon: 'ban',
-      label: 'Zero advertisements',
-      desc: 'No banners, no trackers, no noise',
-      color: '#f59e0b',
-      iconBg: 'rgba(245, 158, 11, 0.08)',
-    },
-    {
-      icon: 'heart',
-      label: 'Always free',
-      desc: 'Core solutions stay free, forever',
-      color: '#ec4899',
-      iconBg: 'rgba(236, 72, 153, 0.08)',
-    },
-  ];
 
   readonly reviews = [
     { quote: "Acklet has completely changed my daily workflow. Having all these offline utilities in one clean, fast interface without ads is a dream come true.", author: "Sarah Jenkins", role: "Frontend Engineer", avatarInitials: "SJ", rating: 5 },

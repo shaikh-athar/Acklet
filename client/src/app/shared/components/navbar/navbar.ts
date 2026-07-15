@@ -192,7 +192,7 @@ interface NavLink {
       background: none; border: none; cursor: pointer; transition: all 0.2s ease;
       font-family: inherit; outline: none;
     }
-    .nav-dropdown-trigger:hover { color: var(--color-brand-900); background: rgba(15, 23, 42, 0.03); }
+    .nav-dropdown-trigger:hover { color: var(--color-brand-100); background: rgba(244, 244, 244, 0.03); }
     
     .dropdown-pane {
       position: absolute; top: calc(100% + 0.5rem); left: 50%; transform: translateX(-50%) translateY(8px);
