@@ -19,7 +19,7 @@ import { IconComponent } from '../../../shared/components/icon/icon';
           <div class="logo-icon">
             <app-icon name="key-round" class="size-5 text-white" />
           </div>
-          <span class="logo-text">Ads<span class="logo-accent">Vault</span></span>
+          <span class="logo-text">ACKLET</span>
         </a>
 
         <div class="text-center mb-6">
@@ -39,7 +39,7 @@ import { IconComponent } from '../../../shared/components/icon/icon';
         </form>
 
         <div class="auth-footer mt-6 text-center">
-          <a routerLink="/login" class="auth-link text-xs font-semibold flex items-center justify-center gap-1">
+          <a routerLink="/auth/login" class="auth-link text-xs font-semibold flex items-center justify-center gap-1">
             <app-icon name="arrow-left" class="size-3.5" />
             Back to sign in
           </a>

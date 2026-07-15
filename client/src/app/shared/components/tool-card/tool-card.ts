@@ -9,7 +9,7 @@ import { IconComponent } from '../icon/icon';
   standalone: true,
   imports: [RouterLink, IconComponent],
   template: `
-    <a [routerLink]="['/tools', tool().slug]" class="tool-card-root" [style.--tool-color]="tool().color">
+    <a [routerLink]="['/tools', tool().slug]" class="tool-card-root">
       <!-- Top badges -->
       <div class="card-badges">
         @if (tool().isNew) { <span class="badge badge-accent">New</span> }
@@ -24,13 +24,13 @@ import { IconComponent } from '../icon/icon';
 
       <!-- Content -->
       <div class="card-content">
-        <div class="card-category" [style.color]="tool().color">{{ tool().categoryName }}</div>
+        <div class="card-category">{{ tool().categoryName }}</div>
         <h3 class="card-title">{{ tool().name }}</h3>
         <p class="card-desc">{{ tool().shortDescription }}</p>
       </div>
 
       <!-- Hover arrow -->
-      <div class="card-arrow" [style.color]="tool().color">
+      <div class="card-arrow">
         <app-icon name="arrow-up-right" class="size-4" />
       </div>
     </a>
@@ -39,45 +39,44 @@ import { IconComponent } from '../icon/icon';
     .tool-card-root {
       display: flex; flex-direction: column; gap: 0.875rem;
       padding: 1.5rem; border-radius: var(--radius-xl); text-decoration: none;
-      background: #ffffff;
-      border: 1px solid rgba(0, 0, 0, 0.04);
-      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      background: var(--color-surface-900);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
       position: relative; overflow: hidden; cursor: pointer;
     }
-    .tool-card-root::before {
-      content: ''; position: absolute; inset: 0;
-      background: radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--tool-color, #6366f1) 3%, transparent), transparent 70%);
-      opacity: 0; transition: opacity 0.3s;
-      pointer-events: none;
-    }
+    
     .tool-card-root:hover {
-      border-color: rgba(0, 0, 0, 0.08);
+      background: var(--color-surface-800);
+      border-color: rgba(0, 0, 0, 0.12);
       transform: translateY(-4px);
       box-shadow: var(--shadow-card-hover);
     }
-    .tool-card-root:hover::before { opacity: 1; }
     .tool-card-root:hover .card-arrow { opacity: 1; transform: translate(0,0); }
 
     .card-badges { display: flex; gap: 0.375rem; flex-wrap: wrap; min-height: 20px; }
+    
     .card-icon-wrap {
       width: 44px; height: 44px; border-radius: var(--radius-lg);
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
-      background: color-mix(in srgb, var(--tool-color, #6366f1) 5%, rgba(0,0,0,0.02));
-      border: 1px solid color-mix(in srgb, var(--tool-color, #6366f1) 10%, rgba(0,0,0,0.04));
+      background: rgba(0, 0, 0, 0.02);
+      border: 1px solid rgba(0, 0, 0, 0.05);
       transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .tool-card-root:hover .card-icon-wrap {
-      background: color-mix(in srgb, var(--tool-color, #6366f1) 10%, transparent) !important;
-      border-color: color-mix(in srgb, var(--tool-color, #6366f1) 20%, transparent) !important;
+      background: rgba(0, 0, 0, 0.04) !important;
+      border-color: rgba(0, 0, 0, 0.08) !important;
     }
     .card-icon {
-      color: var(--tool-color, #818cf8);
+      color: var(--color-neutral-400);
       transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .tool-card-root:hover .card-icon {
+      color: var(--color-neutral-100);
     }
 
     .card-content { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
-    .card-category { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; transition: color 0.3s; }
+    .card-category { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-neutral-500); transition: color 0.3s; }
     .card-title { font-size: 1rem; font-weight: 600; color: var(--color-neutral-100); line-height: 1.35; }
     .card-desc { font-size: 0.8rem; color: var(--color-neutral-400); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
@@ -85,13 +84,15 @@ import { IconComponent } from '../icon/icon';
       position: absolute; top: 1.25rem; right: 1.25rem;
       width: 26px; height: 26px; border-radius: var(--radius-md);
       display: flex; align-items: center; justify-content: center;
-      background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.06);
+      background: rgba(0, 0, 0, 0.02); border: 1px solid rgba(0, 0, 0, 0.06);
+      color: var(--color-neutral-400);
       opacity: 0; transform: translate(4px, -4px);
       transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .tool-card-root:hover .card-arrow {
-      background: color-mix(in srgb, var(--tool-color, #6366f1) 12%, transparent);
-      border-color: color-mix(in srgb, var(--tool-color, #6366f1) 30%, transparent);
+      background: rgba(0, 0, 0, 0.04);
+      border-color: rgba(0, 0, 0, 0.1);
+      color: var(--color-neutral-100);
     }
   `],
 })

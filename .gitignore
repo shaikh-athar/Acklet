@@ -1,0 +1,8 @@
+# AI Skills (local only, not committed)
+.agents/skills/
+
+# OS
+.DS_Store
+
+# IDE
+.gemini/

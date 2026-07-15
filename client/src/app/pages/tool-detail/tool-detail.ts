@@ -229,7 +229,7 @@ import { Tool } from '../../core/models/tool.model';
   `,
   styles: [`
     .tool-detail-page { min-height: 100vh; }
-    .td-hero { padding: 8.5rem 0 3.5rem; border-bottom: 1px solid rgba(0,0,0,0.06); position: relative; overflow: hidden; }
+    .td-hero { padding: 8.5rem 0 3.5rem; border-bottom: 1px solid var(--border-soft); position: relative; overflow: hidden; }
     .td-hero-inner { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 1.75rem; }
     .breadcrumb { display: flex; align-items: center; font-size: 0.78rem; color: var(--color-neutral-400); }
     .breadcrumb a { color: var(--color-neutral-400); text-decoration: none; transition: color 0.2s; }
@@ -240,8 +240,8 @@ import { Tool } from '../../core/models/tool.model';
       width: 64px; height: 64px; border-radius: var(--radius-xl);
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
-      background: color-mix(in srgb, var(--tool-color, #6366f1) 8%, rgba(0,0,0,0.02));
-      border: 1px solid color-mix(in srgb, var(--tool-color, #6366f1) 20%, rgba(0,0,0,0.06));
+      background: color-mix(in srgb, var(--tool-color, #6366f1) 8%, var(--surface-hover));
+      border: 1px solid color-mix(in srgb, var(--tool-color, #6366f1) 20%, var(--border-soft));
       box-shadow: 0 8px 32px rgba(0,0,0,0.05);
       transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
@@ -259,27 +259,27 @@ import { Tool } from '../../core/models/tool.model';
     }
     .td-hero-text { flex: 1; display: flex; flex-direction: column; gap: 0.625rem; }
     .td-meta { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .td-title { font-size: clamp(2rem, 4vw, 3.5rem); font-family: var(--font-hero); font-weight: 600; color: var(--color-brand-900); letter-spacing: -0.02em; }
+    .td-title { font-size: clamp(2rem, 4vw, 3.5rem); font-family: var(--font-hero); font-weight: 600; color: var(--color-neutral-50); letter-spacing: -0.02em; }
     .td-subtitle { font-size: 1rem; color: var(--color-neutral-400); max-width: 650px; }
     .td-stats-row { display: flex; align-items: center; gap: 0.75rem; }
-    .td-divider { color: rgba(0,0,0,0.1); }
+    .td-divider { color: var(--border-medium); }
     .td-usage-stat { font-size: 0.8rem; color: var(--color-neutral-400); display: inline-flex; align-items: center; }
     .td-tag-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-    .tag-pill { padding: 0.2rem 0.625rem; border-radius: var(--radius-sm); font-size: 0.72rem; background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.06); color: var(--color-neutral-400); }
+    .tag-pill { padding: 0.2rem 0.625rem; border-radius: var(--radius-sm); font-size: 0.72rem; background: var(--surface-hover); border: 1px solid var(--border-soft); color: var(--color-neutral-400); }
     .td-hero-cta { display: flex; gap: 0.75rem; flex-wrap: wrap; }
     .favorited { color: #f87171 !important; border-color: rgba(248,113,113,0.3) !important; background: rgba(248,113,113,0.05) !important; }
  
     .td-body { display: grid; grid-template-columns: 1fr 300px; gap: 3rem; padding-top: 3.5rem; padding-bottom: 6rem; align-items: start; }
     .td-section { margin-bottom: 3.5rem; }
-    .td-section-title { font-size: 1.5rem; font-weight: 500; color: var(--color-brand-900); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid rgba(0,0,0,0.04); }
+    .td-section-title { font-size: 1.5rem; font-weight: 500; color: var(--color-neutral-100); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-soft); }
     .td-desc { font-size: 0.9rem; color: var(--color-neutral-300); line-height: 1.8; }
     .features-list { display: flex; flex-direction: column; gap: 0.75rem; }
     .feature-item { display: flex; align-items: flex-start; font-size: 0.875rem; color: var(--color-neutral-300); }
     .feature-check { flex-shrink: 0; margin-top: 0.15rem; }
     .screenshots-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; }
-    .screenshot-placeholder { border-radius: var(--radius-xl); overflow: hidden; border: 1px solid rgba(0,0,0,0.06); background: var(--color-surface-900); }
+    .screenshot-placeholder { border-radius: var(--radius-xl); overflow: hidden; border: 1px solid var(--border-soft); background: var(--color-surface-900); }
     .ss-inner { display: flex; flex-direction: column; }
-    .ss-bar { display: flex; gap: 0.375rem; padding: 0.625rem 1rem; background: var(--color-surface-800); border-bottom: 1px solid rgba(0,0,0,0.05); }
+    .ss-bar { display: flex; gap: 0.375rem; padding: 0.625rem 1rem; background: var(--color-surface-800); border-bottom: 1px solid var(--border-soft); }
     .ss-dot { width: 8px; height: 8px; border-radius: 50%; }
     .ss-dot.red { background: #ef4444; } .ss-dot.yellow { background: #f59e0b; } .ss-dot.green { background: #22c55e; }
     .ss-content { padding: 2.5rem 1.5rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
@@ -293,8 +293,8 @@ import { Tool } from '../../core/models/tool.model';
     .step-desc { font-size: 0.825rem; color: var(--color-neutral-400); line-height: 1.6; }
     
     .faq-list { display: flex; flex-direction: column; gap: 0.625rem; }
-    .faq-item { border: 1px solid rgba(0,0,0,0.04); border-radius: var(--radius-lg); overflow: hidden; cursor: pointer; transition: all 0.25s ease; background: #ffffff; }
-    .faq-item:hover, .faq-item.open { border-color: rgba(0,0,0,0.1); box-shadow: var(--shadow-card); }
+    .faq-item { border: 1px solid var(--border-soft); border-radius: var(--radius-lg); overflow: hidden; cursor: pointer; transition: all 0.25s ease; background: var(--color-surface-900); }
+    .faq-item:hover, .faq-item.open { border-color: var(--border-medium); box-shadow: var(--shadow-card); }
     .faq-q { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; font-size: 0.875rem; font-weight: 600; color: var(--color-neutral-100); }
     .faq-q app-icon { flex-shrink: 0; transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
     .faq-q app-icon.rotated { transform: rotate(180deg); color: #818cf8; }
