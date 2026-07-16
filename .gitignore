@@ -26,3 +26,9 @@
 *.local
 .env
 .env.*
+
+# Git
+.gitignore
+**/.gitignore
+
+
