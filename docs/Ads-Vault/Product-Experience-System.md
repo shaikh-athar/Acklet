@@ -132,22 +132,16 @@ Every component (Buttons, Inputs, Cards, Badges) must support its entire lifecyc
 
 ## 4. Scalability Architecture
 
-To ensure the design scales cleanly as the platform grows, layouts are built on three primary modules:
+To ensure the design scales cleanly as the platform grows, the interface is split into two primary layout components:
 
-### Layout Modules
-```
-┌─────────────────────────────────────────────────────────┐
-│                    GLOBAL NAVBAR                        │
-├───────────────┬─────────────────────────┬───────────────┤
-│               │                         │               │
-│               │      WORKSPACE          │  AI COMPANION │
-│  INTEGRATIONS │                         │   (POPOVER /  │
-│   (LEFT NAV)  │    (PRIMARY CANVAS)     │    SIDE PANEL)│
-│               │                         │               │
-│               │                         │               │
-└───────────────┴─────────────────────────┴───────────────┘
-```
+### 1. Public Content Architecture ([MainLayoutComponent](file:///Users/ayaz/Acklet/client/src/app/layout/main-layout/main-layout.ts))
+This component hosts all unauthenticated, discoverable pages (Home, About, Contact, Blog, Community).
+*   **Global Navigation**: Header links focus on discovery (Tools catalog, Categories, Blog, Community threads).
+*   **Content Canvas**: Flexible column formatting which centers copy for article details or maps to multi-column grids for tools and categories.
+*   **Global Footer**: Handles site-wide copyright, policy references, and visual typography highlights. Suppressed on auth routes to minimize distraction.
 
-1.  **Integrations & Tool Navigation**: Configured as an optional left-side sidebar (expandable) rather than crowded global headers.
-2.  **Core Workspace Canvas**: Center content adjusts fluidly, supporting multiple tabs or split panels.
-3.  **AI Assistant Side Panel**: Slide drawer integrated from the right edge, sliding the main canvas dynamically.
+### 2. Workspace Sidebar Architecture ([ShellLayoutComponent](file:///Users/ayaz/Acklet/client/src/app/layout/shell/shell.ts))
+This layout handles all logged-in operations, providing a dense, application-like dashboard interface.
+*   **Sticky Sidebar**: Left-hand navigation containing all cockpit routes (Dashboard, Favorites, History, Collections, Notifications, Settings). Dynamically collapses to a compact icon strip on viewport sizes below `768px` to preserve screen real estate.
+*   **Core Workspace Canvas**: Maximizes horizontal and vertical space, aligning components to standard padding margins for data density.
+*   **Expansion Ready**: Designed to support future layout elements (like a floating AI Companion or right-side inspection drawer) without disrupting core navigation workflows.

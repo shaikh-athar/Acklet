@@ -16,19 +16,17 @@
 *   **Secondary CTA**: "Explore Categories" (Links to `/categories`)
 *   **Section Hierarchy**:
     1.  Hero Section & Instant Omni-Search
-    2.  Trust Indicators (Factual security & performance signals)
-    3.  Featured Solutions (Top 3 daily tools)
-    4.  Categories Grid
-    5.  Product Philosophy & Non-Marketing Guarantees
-    6.  Trending Tools
-    7.  Footer Action
+    2.  Categories Grid
+    3.  Product Philosophy & Non-Marketing Guarantees
+    4.  Recently Added / Featured Solutions
+    5.  User Reviews & Testimonials
 *   **Content Priority**: Omni-search must dominate the view above the fold. Search is the main entry vector.
 *   **Expected Interactions**:
     *   Keyboard shortcut `/` highlights search.
     *   Dynamic dropdown displays results instantly below search bar.
     *   Hovering over categories shifts ambient backlights.
 *   **Animation Opportunities**:
-    *   GSAP scroll reveal for trust grid and cards.
+    *   Staggered grid reveal animations for categories and tool cards.
     *   Ambient background mesh drift.
     *   Smooth expansion of search dropdown preview.
 
@@ -172,16 +170,62 @@
 
 ---
 
-### J. Workspace Dashboard (Authenticated Core)
-*   **Goal**: Provide a highly personalized cockpit for daily tasks.
-*   **User Problem**: "I format JSON and encode Base64 every hour; I want them pinned and ready."
-*   **Primary CTA**: Launch Pinned Tool.
-*   **Secondary CTA**: Create custom tool Collection.
-*   **Section Hierarchy**:
-    1.  Layout Shell: Sidebar navigation + quick actions omnibar.
-    2.  Pinned / Favorite Tools grid.
-    3.  Recent History checklist (one-click rerun).
-    4.  Notifications & Alert stack.
-*   **Expected Interactions**: Drag-and-drop tool cards to reorder, sidebar collapse/expand.
-*   **Animation Opportunities**: GSAP Flip grid layout adjustments, sidebar slide transitions.
+### J. Layout & Shell Systems
+To support a high-fidelity desktop experience, Acklet utilizes two shell layouts:
+
+#### 1. Public Layout ([MainLayoutComponent](file:///Users/ayaz/Acklet/client/src/app/layout/main-layout/main-layout.ts))
+*   **Purpose**: Manages the visual structure for public facing pages.
+*   **Key Components**:
+    *   **Navbar** ([NavbarComponent](file:///Users/ayaz/Acklet/client/src/app/shared/components/navbar/navbar.ts)): Floating navigation bar with glassmorphic styling, responsive triggers, custom dropdowns, and theme toggling.
+    *   **Main Container**: Stretches vertically to push footer to the bottom.
+    *   **Footer** ([FooterComponent](file:///Users/ayaz/Acklet/client/src/app/shared/components/footer/footer.ts)): Split typography visual branding with GSAP "smoke letter" entrance animations. Only rendered outside of `/auth/` routes.
+    *   **Toast Portal** ([ToastComponent](file:///Users/ayaz/Acklet/client/src/app/shared/components/toast/toast.ts)): Global event message layer.
+
+#### 2. Workspace Shell Layout ([ShellLayoutComponent](file:///Users/ayaz/Acklet/client/src/app/layout/shell/shell.ts))
+*   **Purpose**: Hosts the dashboard workspace.
+*   **Key Components**:
+    *   **Sticky Sidebar**: Left-hand navigation panel housing the system logo, active route list, profile badge, and logout action. Auto-collapses to an icon-only menu on screens smaller than `768px`.
+    *   **Main Workspace Canvas**: Auto-scrollable inner content container centered horizontally for maximum focus.
+    *   **Toast Portal**: Global action callback notification area.
+
+---
+
+### K. Authenticated Workspace Sub-Pages
+The workspace is subdivided into dedicated view panes:
+
+#### 1. Dashboard ([WorkspaceDashboardComponent](file:///Users/ayaz/Acklet/client/src/app/pages/workspace/dashboard/dashboard.ts))
+*   **Goal**: Quick cockpit overview.
+*   **Hierarchy**:
+    *   Overview statistics cards.
+    *   Grid of favorite/pinned tools.
+    *   List of recent history items with direct re-run trigger.
+    *   Recent alert notifications.
+
+#### 2. Favorites ([WorkspaceFavoritesComponent](file:///Users/ayaz/Acklet/client/src/app/pages/workspace/favorites/favorites.ts))
+*   **Goal**: Direct access to pinned utility tools.
+*   **Hierarchy**: Grid of tool cards matching user-pinned lists.
+
+#### 3. History ([WorkspaceHistoryComponent](file:///Users/ayaz/Acklet/client/src/app/pages/workspace/history/history.ts))
+*   **Goal**: View past calculations and inputs. Includes a local query search and direct action to copy parameters or re-run the tool.
+
+#### 4. Collections ([WorkspaceCollectionsComponent](file:///Users/ayaz/Acklet/client/src/app/pages/workspace/collections/collections.ts))
+*   **Goal**: Manage custom groups/lists of tools curated by the user for specific project context.
+
+#### 5. Notifications ([WorkspaceNotificationsComponent](file:///Users/ayaz/Acklet/client/src/app/pages/workspace/notifications/notifications.ts))
+*   **Goal**: Display system updates, service logs, or custom account action reminders.
+
+#### 6. Settings ([WorkspaceSettingsComponent](file:///Users/ayaz/Acklet/client/src/app/pages/workspace/settings/settings.ts))
+*   **Goal**: Manage workspace preferences, visual adjustments (theme locking), default keybindings, and account security.
+
+#### 7. Profile ([WorkspaceProfileComponent](file:///Users/ayaz/Acklet/client/src/app/pages/workspace/profile/profile.ts))
+*   **Goal**: Manage personal user details, developer level badge, and subscription states.
+
+---
+
+### L. Auxiliary Tools Directory Views
+To help explore the large tool index, public `/tools` includes helper views:
+*   **Explore** ([ToolsComponent](file:///Users/ayaz/Acklet/client/src/app/pages/tools/tools.ts)): Standard tool index directory with category filters.
+*   **Trending** ([ToolsTrendingComponent](file:///Users/ayaz/Acklet/client/src/app/pages/tools/trending/trending.ts)): Shows highest-rated and most run developer utilities.
+*   **New Releases** ([ToolsNewReleasesComponent](file:///Users/ayaz/Acklet/client/src/app/pages/tools/new-releases/new-releases.ts)): Chronological listing of new helper deployments.
+*   **Search Results** ([ToolsSearchResultsComponent](file:///Users/ayaz/Acklet/client/src/app/pages/tools/search-results/search-results.ts)): Multi-column grid containing results matched against title, desc, and tag queries.
 

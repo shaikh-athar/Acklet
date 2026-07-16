@@ -192,7 +192,12 @@ interface NavLink {
       background: none; border: none; cursor: pointer; transition: all 0.2s ease;
       font-family: inherit; outline: none;
     }
-    .nav-dropdown-trigger:hover { color: var(--color-brand-100); background: rgba(244, 244, 244, 0.03); }
+    .nav-dropdown-trigger:hover,
+    .nav-item-dropdown:hover .nav-dropdown-trigger,
+    .nav-item-dropdown.open .nav-dropdown-trigger {
+      color: var(--color-neutral-50);
+      background: var(--color-nav-hover-bg);
+    }
     
     .dropdown-pane {
       position: absolute; top: calc(100% + 0.5rem); left: 50%; transform: translateX(-50%) translateY(8px);
@@ -202,7 +207,17 @@ interface NavLink {
       opacity: 0; pointer-events: none; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       z-index: 150; box-shadow: 0 20px 40px rgba(0,0,0,0.1);
     }
-    .nav-item-dropdown.open .dropdown-pane {
+    .dropdown-pane::before {
+      content: '';
+      position: absolute;
+      top: -0.6rem;
+      left: 0;
+      right: 0;
+      height: 0.6rem;
+      background: transparent;
+    }
+    .nav-item-dropdown.open .dropdown-pane,
+    .nav-item-dropdown:hover .dropdown-pane {
       opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0);
     }
     
