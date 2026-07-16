@@ -112,34 +112,32 @@ export const routeAnimations = trigger('routeAnimations', [
 ]);
 ```
 
-### B. Scroll-Driven Storytelling (GSAP & ScrollTrigger)
-Acklet utilizes GSAP `ScrollTrigger` to create layouts that reveal content based on scroll depth.
+### B. Performance-Optimized Viewport Detection System
+Rather than relying on continuous window scroll event listeners (which trigger layout thrashing), Acklet uses an Angular-native viewport framework built on `IntersectionObserver`.
 
-```javascript
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+#### 1. The `appViewport` Directive ([ViewportDirective](file:///Users/ayaz/Acklet/client/src/app/shared/viewport/viewport.directive.ts))
+This directive is attached to sections or cards (`[appViewport]`) to monitor their visibility.
+*   **GPU Layer Promotion**: To guarantee a buttery-smooth 60fps scrolling experience, the directive automatically promotes observed DOM elements to the GPU rendering thread upon setup to prevent repaint jank:
+    ```css
+    will-change: transform, opacity;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+    ```
+*   **State Lifecycle**: Observed elements transition through a lifecycle represented by the `ViewportState` enum:
+    *   `sleeping`: 0% visible. Removed from active layout cycles.
+    *   `preparing`: >= 15% visible. Prepares assets or setups timelines.
+    *   `entering`: >= 30% visible. Triggers entrance transition.
+    *   `active`: >= 60% visible. Full interactive state.
+    *   `leaving`: <= 30% visible (when previously active).
+    *   `paused`: <= 15% visible (when previously active).
 
-gsap.registerPlugin(ScrollTrigger);
+#### 2. Viewport Infrastructure Services
+*   **Viewport Service** ([ViewportService](file:///Users/ayaz/Acklet/client/src/app/shared/viewport/viewport.service.ts)): Instantiates an isolated `IntersectionObserver` mapped to the configured thresholds (`[0.15, 0.30, 0.60]`).
+*   **Viewport Registry** ([ViewportRegistryService](file:///Users/ayaz/Acklet/client/src/app/shared/viewport/viewport-registry.service.ts)): A global singleton that tracks all viewport boundaries across routes, allowing global systems to audit kinetic nodes.
 
-// Setup scroll tracking for premium section reveal
-export function initScrollReveal(element: HTMLElement) {
-  gsap.fromTo(element.querySelectorAll('.scroll-reveal-item'),
-    { opacity: 0, y: 30 },
-    {
-      opacity: 1,
-      y: 0,
-      duration: 0.8,
-      stagger: 0.15,
-      ease: 'power3.out',
-      scrollTrigger: {
-        trigger: element,
-        start: 'top 80%',
-        toggleActions: 'play none none reverse'
-      }
-    }
-  );
-}
-```
+#### 3. Kinetic Control Services
+*   **Animation Controller** ([AnimationControllerService](file:///Users/ayaz/Acklet/client/src/app/shared/viewport/animation-controller.service.ts)): Controls GSAP timeline play states, video playback, and custom frame loops (`createFrameLoop` using `requestAnimationFrame`). It automatically monitors the OS `prefers-reduced-motion` settings. When reduced motion is enabled, timelines are immediately snapped to progress 1, completely preventing unnecessary rendering cycles.
+*   **Motion Controller** ([MotionControllerService](file:///Users/ayaz/Acklet/client/src/app/shared/viewport/motion-controller.service.ts)): Wraps mouse event binding for the magnetic pull (`appMagnetic` directive) and spotlight coordinates (`appSpotlight` directive). Event handlers are attached with `{ passive: true }` to maintain scroll thread performance.
 
 ### C. Success & Feedback Transitions
 To confirm actions (e.g. copying a token, completing a format), we trigger a localized micro-animation:

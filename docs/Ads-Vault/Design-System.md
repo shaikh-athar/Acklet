@@ -18,39 +18,97 @@ Acklet is a premium digital workspace. It is designed to feel like a high-fideli
 Design tokens are the visual atoms of our interface. No raw values or magic numbers should be hardcoded in the codebase. All variables are implemented as native CSS variables under `:root` in [styles.css](file:///Users/ayaz/Acklet/client/src/styles.css) and exposed through Tailwind CSS v4 `@theme`.
 
 ### A. Color Tokens (Semantic & Adaptive)
-Acklet uses a premium, dark-dominant palette. Primary surfaces are deep, while interactive layers utilize dynamic elevations and clean accent borders.
+Acklet uses a theme-adaptive, highly polished color system. The default theme is premium light mode, and dark mode is activated via `html[data-theme="dark"]`. No raw color values are hardcoded in components.
 
 ```css
 :root {
-  /* --- Primary Surfaces (Pitch & Midnight) --- */
-  --color-surface-base: #030303;      /* Deepest canvas */
-  --color-surface-panel: #0a0a0c;     /* Card/sidebar default */
-  --color-surface-elevated: #111115;  /* Hovered cards, menus */
-  --color-surface-popover: #16161c;   /* Modals, tooltips, toasts */
-  --color-surface-input: #0e0e12;     /* Text field backgrounds */
-  
-  /* --- Brand & Accent Colors (Cyan & Indigo Electric) --- */
-  --color-brand-indigo: #4f46e5;      /* Core branding */
-  --color-brand-cyan: #06b6d4;        /* Primary accent action */
-  --color-brand-cyan-muted: rgba(6, 182, 212, 0.15);
-  
-  /* --- Neutrals (Slate Core) --- */
-  --color-neutral-primary: #f8fafc;   /* Headings, main text */
-  --color-neutral-secondary: #94a3b8; /* Secondary copy, descriptions */
-  --color-neutral-muted: #475569;     /* Borders, disabled states */
-  --color-neutral-dark: #1e293b;      /* Dividers, inactive icons */
+  /* --- Brand Colors (Navy/Charcoal Core) --- */
+  --color-brand-50: #f8fafc;
+  --color-brand-100: #f1f5f9;
+  --color-brand-200: #e2e8f0;
+  --color-brand-300: #cbd5e1;
+  --color-brand-400: #94a3b8;
+  --color-brand-500: #64748b;
+  --color-brand-600: #475569;
+  --color-brand-700: #334155;
+  --color-brand-800: #1e293b;
+  --color-brand-900: #0f172a;
+  --color-brand-950: #020617;
 
-  /* --- Feedback Colors --- */
-  --color-feedback-success: #10b981;
-  --color-feedback-success-muted: rgba(16, 185, 129, 0.1);
-  --color-feedback-warning: #f59e0b;
-  --color-feedback-warning-muted: rgba(245, 158, 11, 0.1);
-  --color-feedback-error: #ef4444;
-  --color-feedback-error-muted: rgba(239, 68, 68, 0.1);
+  /* --- Accent Colors (Cyan/Electric) --- */
+  --color-accent-50: #ecfeff;
+  --color-accent-100: #cffafe;
+  --color-accent-200: #a5f3fc;
+  --color-accent-300: #67e8f9;
+  --color-accent-400: #22d3ee;
+  --color-accent-500: #06b6d4; /* Core Accent Action */
+  --color-accent-600: #0891b2;
+  --color-accent-700: #0e7490;
+  --color-accent-800: #155e75;
+  --color-accent-900: #164e63;
 
-  /* --- Specialty Colors --- */
-  --color-glass-bg: rgba(10, 10, 12, 0.7);
-  --color-glass-border: rgba(255, 255, 255, 0.05);
+  /* --- Surface Colors (Light Mode Default) --- */
+  --color-surface-950: #ffffff; /* Page Background */
+  --color-surface-900: #f8f9fa; /* Section/Card Background */
+  --color-surface-800: #f1f3f5; /* Hover states, inner wells */
+  --color-surface-700: #e9ecef;
+  --color-surface-600: #dee2e6;
+  --color-surface-500: #adb5bd;
+
+  /* --- Neutrals (Clean Slate for Light Mode) --- */
+  --color-neutral-50: #09090b;  /* Inverted text */
+  --color-neutral-100: #18181b; /* Main Headings */
+  --color-neutral-200: #27272a; /* Body text */
+  --color-neutral-300: #3f3f46;
+  --color-neutral-400: #71717a; /* Secondary text */
+  --color-neutral-500: #a1a1aa;
+  --color-neutral-600: #d4d4d8;
+  --color-neutral-700: #e4e4e7;
+  --color-neutral-800: #f4f4f5;
+  --color-neutral-900: #fafafa;
+  --color-neutral-950: #ffffff;
+
+  /* --- Adaptive Navbar & Borders (Light Mode) --- */
+  --color-navbar-bg: rgba(255, 255, 255, 0.85);
+  --color-navbar-border: rgba(0, 0, 0, 0.06);
+  --color-nav-hover-bg: rgba(0, 0, 0, 0.03);
+  --color-nav-active-bg: rgba(0, 0, 0, 0.05);
+  --border-soft: rgba(0, 0, 0, 0.06);
+  --border-medium: rgba(0, 0, 0, 0.1);
+  --surface-hover: rgba(0, 0, 0, 0.03);
+}
+
+/* --- Dark Mode Overrides --- */
+html[data-theme="dark"] {
+  /* --- Surface Colors (Dark Mode) --- */
+  --color-surface-950: #09090b; /* Page Background */
+  --color-surface-900: #18181b; /* Section/Card Background */
+  --color-surface-800: #27272a; /* Hover states, inner wells */
+  --color-surface-700: #3f3f46;
+  --color-surface-600: #52525b;
+  --color-surface-500: #71717a;
+
+  /* --- Neutrals (Inverted for Dark Mode) --- */
+  --color-neutral-50: #ffffff;  /* Inverted text */
+  --color-neutral-100: #fafafa; /* Main Headings */
+  --color-neutral-200: #f4f4f5; /* Body text */
+  --color-neutral-300: #e4e4e7;
+  --color-neutral-400: #d4d4d8; /* Secondary text */
+  --color-neutral-500: #a1a1aa;
+  --color-neutral-600: #71717a;
+  --color-neutral-700: #52525b;
+  --color-neutral-800: #3f3f46;
+  --color-neutral-900: #27272a;
+  --color-neutral-950: #09090b;
+
+  /* --- Adaptive Navbar & Borders (Dark Mode) --- */
+  --color-navbar-bg: rgba(9, 9, 11, 0.85);
+  --color-navbar-border: rgba(255, 255, 255, 0.08);
+  --color-nav-hover-bg: rgba(255, 255, 255, 0.04);
+  --color-nav-active-bg: rgba(255, 255, 255, 0.06);
+  --border-soft: rgba(255, 255, 255, 0.07);
+  --border-medium: rgba(255, 255, 255, 0.12);
+  --surface-hover: rgba(255, 255, 255, 0.04);
 }
 ```
 

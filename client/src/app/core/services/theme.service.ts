@@ -4,7 +4,7 @@ export type Theme = 'dark' | 'light';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
-  readonly theme = signal<Theme>('dark');
+  readonly theme = signal<Theme>('light');
 
   constructor() {
     if (typeof window !== 'undefined') {
