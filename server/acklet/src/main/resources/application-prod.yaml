@@ -1,0 +1,31 @@
+spring:
+  # Database configuration using Railway environment variables
+  datasource:
+    url: jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}
+    username: ${PGUSER}
+    password: ${PGPASSWORD}
+
+  # JPA & Hibernate configuration for production
+  jpa:
+    show-sql: false
+
+  # Redis configuration using Railway environment variables
+  data:
+    redis:
+      host: ${REDISHOST}
+      port: ${REDISPORT}
+      username: ${REDISUSER}
+      password: ${REDISPASSWORD}
+
+# Logging configuration for production (less verbose)
+logging:
+  level:
+    com.code.acklet: INFO
+
+# Enforced production security (must be supplied via env vars, no default fallbacks)
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+    encryption:
+      key: ${APP_ENCRYPTION_KEY}
