@@ -1,0 +1,3 @@
+com\code\acklet\shared\security\CryptoUtilsTest.class
+com\code\acklet\shared\security\JwtTokenProviderTest.class
+com\code\acklet\AckletApplicationTests.class

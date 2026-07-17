@@ -1,14 +1,15 @@
-// client/src/app/shared/components/footer/footer.ts
-import { Component } from '@angular/core';
+import { Component, ElementRef, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IconComponent } from '../icon/icon';
+import { ViewportDirective } from '../../viewport/viewport.directive';
+import { gsap } from 'gsap';
 
 @Component({
   selector: 'app-footer',
   standalone: true,
-  imports: [RouterLink, IconComponent],
+  imports: [RouterLink, IconComponent, ViewportDirective],
   template: `
-    <footer class="footer-root">
+    <footer class="footer-root" appViewport viewportId="footer" (enter)="playFooter()">
       <div class="container-main footer-inner">
         <!-- Centered Brand column -->
         <div class="footer-brand-centered">
@@ -34,10 +35,15 @@ import { IconComponent } from '../icon/icon';
         <!-- Horizontal navigation links row -->
         <div class="footer-nav-row">
           <a routerLink="/">Home</a>
-          <a routerLink="/tools">Solutions</a>
-          <a routerLink="/categories">Categories</a>
+          <a routerLink="/tools/explore">Explore Tools</a>
+          <a routerLink="/tools/categories">Categories</a>
+          <a routerLink="/tools/trending">Trending</a>
+          <a routerLink="/tools/new">New Releases</a>
+          <a routerLink="/community/discussions">Community</a>
+          <a routerLink="/blog">Blog</a>
           <a routerLink="/about">About</a>
           <a routerLink="/contact">Contact</a>
+          <a routerLink="/auth/login">Sign In</a>
         </div>
 
         <!-- Giant full-width brand name with gradient shine on hover -->
@@ -55,7 +61,7 @@ import { IconComponent } from '../icon/icon';
     </footer>
   `,
   styles: [`
-    .footer-root { background: #ffffff; margin-top: 6rem; border-top: 1px solid rgba(0, 0, 0, 0.04); position: relative; }
+    .footer-root { background: var(--color-surface-950); margin-top: 6rem; border-top: 1px solid var(--color-surface-700); position: relative; transition: background-color 0.3s ease, border-color 0.3s ease; }
     .footer-inner {
       display: flex;
       flex-direction: column;
@@ -72,39 +78,30 @@ import { IconComponent } from '../icon/icon';
       letter-spacing: 0.08em;
       cursor: pointer;
       user-select: none;
-      background: linear-gradient(
-        120deg,
-        var(--color-brand-800) 25%,
-        var(--color-accent-500) 50%,
-        var(--color-brand-800) 75%
-      );
-      background-size: 200% auto;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      transition: background-position 0.6s ease, transform 0.4s ease;
+      color: var(--color-neutral-50);
       display: inline-block;
+      opacity: 0;
+      transition: color 0.3s ease;
     }
     .logo-wrap:hover .logo-text-shining-small {
-      background-position: right center;
-      transform: scale(1.03);
+      color: var(--color-neutral-200);
     }
     .brand-desc { font-size: 0.85rem; color: var(--color-neutral-400); line-height: 1.6; max-width: 360px; }
     .social-links { display: flex; gap: 0.75rem; }
     .social-btn {
       width: 34px; height: 34px; border-radius: var(--radius-full);
       display: flex; align-items: center; justify-content: center;
-      background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.04);
+      background: var(--color-surface-900); border: 1px solid var(--color-surface-700);
       color: var(--color-neutral-500); text-decoration: none; transition: all 0.25s ease;
     }
-    .social-btn:hover { color: var(--color-brand-800); border-color: rgba(0,0,0,0.1); background: rgba(0,0,0,0.04); }
+    .social-btn:hover { color: var(--color-neutral-100); border-color: var(--color-neutral-400); background: var(--color-surface-800); }
 
     .footer-nav-row {
       display: flex;
       justify-content: center;
       flex-wrap: wrap;
       gap: 3rem;
-      border-top: 1px solid rgba(0, 0, 0, 0.03);
+      border-top: 1px solid var(--color-surface-700);
       width: 100%;
       padding-top: 2rem;
     }
@@ -117,7 +114,7 @@ import { IconComponent } from '../icon/icon';
       letter-spacing: 0.02em;
     }
     .footer-nav-row a:hover {
-      color: var(--color-brand-800);
+      color: var(--color-neutral-100);
     }
 
     .footer-huge-brand {
@@ -134,27 +131,132 @@ import { IconComponent } from '../icon/icon';
       line-height: 0.8;
       cursor: pointer;
       user-select: none;
-      background: linear-gradient(
-        120deg,
-        var(--color-brand-800) 25%,
-        var(--color-accent-500) 50%,
-        var(--color-brand-800) 75%
-      );
-      background-size: 200% auto;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      transition: background-position 0.6s ease, transform 0.4s ease;
+      color: var(--color-surface-500);
       display: inline-block;
+      opacity: 0;
+      transition: color 0.3s ease;
+    }
+    
+    .smoke-letter {
+      display: inline-block;
+      will-change: transform, filter;
+      transform-style: preserve-3d;
+      backface-visibility: hidden;
     }
     .huge-brand-text:hover {
-      background-position: right center;
-      transform: scale(1.03);
+      color: var(--color-neutral-100);
     }
 
-    .footer-bottom { border-top: 1px solid rgba(0,0,0,0.04); padding: 1.5rem 0; width: 100%; }
+    .footer-bottom { border-top: 1px solid var(--color-surface-700); padding: 1.5rem 0; width: 100%; }
     .footer-bottom-inner { display: flex; align-items: center; justify-content: center; text-align: center; }
     .copyright { font-size: 0.75rem; color: var(--color-neutral-500); }
   `],
 })
-export class FooterComponent {}
+export class FooterComponent {
+  private readonly el = inject(ElementRef);
+
+  private footerTimelinePlayed = false;
+
+  playFooter(): void {
+    if (this.footerTimelinePlayed) return;
+    this.footerTimelinePlayed = true;
+
+    const hugeBrand = this.el.nativeElement.querySelector('.huge-brand-text');
+    if (hugeBrand) {
+      splitElement(hugeBrand);
+      const letters = hugeBrand.querySelectorAll('.smoke-letter');
+      gsap.set(hugeBrand, { opacity: 1 });
+      gsap.fromTo(letters,
+        {
+          opacity: 0,
+          filter: 'blur(16px)',
+          scale: 1.8,
+          x: () => gsap.utils.random(-60, 60),
+          y: () => gsap.utils.random(-50, 50),
+          rotation: () => gsap.utils.random(-15, 15)
+        },
+        {
+          opacity: 1,
+          filter: 'blur(0px)',
+          scale: 1,
+          x: 0,
+          y: 0,
+          rotation: 0,
+          duration: 1.8,
+          stagger: {
+            each: 0.04,
+            from: 'random'
+          },
+          ease: 'power3.out'
+        }
+      );
+    }
+
+    const smallBrand = this.el.nativeElement.querySelector('.logo-text-shining-small');
+    if (smallBrand) {
+      splitElement(smallBrand);
+      const letters = smallBrand.querySelectorAll('.smoke-letter');
+      gsap.set(smallBrand, { opacity: 1 });
+      gsap.fromTo(letters,
+        {
+          opacity: 0,
+          filter: 'blur(12px)',
+          scale: 1.6,
+          x: () => gsap.utils.random(-25, 25),
+          y: () => gsap.utils.random(-20, 20),
+          rotation: () => gsap.utils.random(-15, 15)
+        },
+        {
+          opacity: 1,
+          filter: 'blur(0px)',
+          scale: 1,
+          x: 0,
+          y: 0,
+          rotation: 0,
+          duration: 1.5,
+          stagger: {
+            each: 0.03,
+            from: 'random'
+          },
+          ease: 'power3.out'
+        }
+      );
+    }
+  }
+}
+
+function splitElement(el: HTMLElement | ChildNode): void {
+  const childNodes = Array.from(el.childNodes);
+
+  for (const child of childNodes) {
+    if (child.nodeType === Node.TEXT_NODE) {
+      const text = child.nodeValue || '';
+      if (!text.trim()) continue;
+
+      const fragment = document.createDocumentFragment();
+      const words = text.split(/(\s+)/);
+
+      for (const word of words) {
+        if (word.trim() === '') {
+          fragment.appendChild(document.createTextNode(word));
+        } else {
+          const wordSpan = document.createElement('span');
+          wordSpan.style.display = 'inline-block';
+          wordSpan.style.whiteSpace = 'nowrap';
+
+          for (const char of word) {
+            const charSpan = document.createElement('span');
+            charSpan.className = 'smoke-letter';
+            charSpan.style.display = 'inline-block';
+            charSpan.textContent = char;
+            wordSpan.appendChild(charSpan);
+          }
+          fragment.appendChild(wordSpan);
+        }
+      }
+      el.replaceChild(fragment, child);
+    } else if (child.nodeType === Node.ELEMENT_NODE) {
+      splitElement(child as HTMLElement);
+    }
+  }
+}

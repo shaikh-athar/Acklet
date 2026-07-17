@@ -1,17 +1,18 @@
-// client/src/app/pages/contact/contact.ts
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../../shared/components/icon/icon';
+import { ViewportDirective } from '../../shared/viewport/viewport.directive';
+import { gsap } from 'gsap';
 
 @Component({
   selector: 'app-contact',
   standalone: true,
-  imports: [CommonModule, IconComponent],
+  imports: [CommonModule, IconComponent, ViewportDirective],
   template: `
     <div class="contact-root page-enter">
 
       <!-- ══ HERO ══════════════════════════════════════════════ -->
-      <section class="contact-hero gradient-mesh">
+      <section class="contact-hero gradient-mesh" appViewport viewportId="contactHero" (enter)="playHero()">
         <div class="orb orb-brand" style="width:600px;height:600px;top:-200px;left:-100px;"></div>
         <div class="orb orb-accent" style="width:400px;height:400px;bottom:-100px;right:-50px;"></div>
         <div class="container-main contact-hero-inner">
@@ -27,7 +28,7 @@ import { IconComponent } from '../../shared/components/icon/icon';
       </section>
 
       <!-- ══ MAIN CONTENT ═══════════════════════════════════════ -->
-      <div class="container-main contact-layout">
+      <div class="container-main contact-layout" appViewport viewportId="contactLayout" (enter)="playLayout()">
 
         <!-- Contact form -->
         <div class="contact-form-col">
@@ -206,6 +207,15 @@ import { IconComponent } from '../../shared/components/icon/icon';
     .rb-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-neutral-500); }
     .rb-val { font-size: 0.9rem; font-weight: 700; color: var(--color-brand-400); margin-top: 0.125rem; }
 
+    .contact-hero .badge,
+    .contact-card,
+    .contact-success,
+    .contact-channels,
+    .contact-faq,
+    .response-badge {
+      opacity: 0;
+    }
+
     @media (max-width: 1024px) {
       .contact-layout { grid-template-columns: 1fr; }
       .contact-info-col { grid-row: 1; }
@@ -220,6 +230,41 @@ export class ContactComponent {
   readonly submitting = signal(false);
   readonly submitted = signal(false);
   readonly openFaq = signal<string | null>(null);
+
+  private heroTimelinePlayed = false;
+  private layoutTimelinePlayed = false;
+
+  playHero(): void {
+    if (this.heroTimelinePlayed) return;
+    this.heroTimelinePlayed = true;
+
+    const title = document.querySelector('.contact-hero-title');
+    const sub = document.querySelector('.contact-hero-sub');
+    const badge = document.querySelector('.contact-hero .badge');
+
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+    if (badge) tl.fromTo(badge, { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.5 });
+    if (title) tl.fromTo(title, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7 }, '-=0.3');
+    if (sub) tl.fromTo(sub, { opacity: 0, filter: 'blur(8px)', y: 15 }, { opacity: 1, filter: 'blur(0px)', y: 0, duration: 0.6 }, '-=0.4');
+  }
+
+  playLayout(): void {
+    if (this.layoutTimelinePlayed) return;
+    this.layoutTimelinePlayed = true;
+
+    const formCard = document.querySelector('.contact-card');
+    const successCard = document.querySelector('.contact-success');
+    const channels = document.querySelector('.contact-channels');
+    const faq = document.querySelector('.contact-faq');
+    const responseBadge = document.querySelector('.response-badge');
+
+    const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
+    if (formCard) tl.fromTo(formCard, { opacity: 0, scale: 0.96, y: 25 }, { opacity: 1, scale: 1, y: 0, duration: 0.7 });
+    if (successCard) tl.fromTo(successCard, { opacity: 0, scale: 0.96, y: 25 }, { opacity: 1, scale: 1, y: 0, duration: 0.7 });
+    if (channels) tl.fromTo(channels, { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.5 }, '-=0.5');
+    if (faq) tl.fromTo(faq, { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.5 }, '-=0.4');
+    if (responseBadge) tl.fromTo(responseBadge, { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, duration: 0.4 }, '-=0.3');
+  }
 
   readonly channels = [
     { label: 'Email', value: 'hello@acklet.io', icon: 'mail', href: 'mailto:hello@acklet.io', bg: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },

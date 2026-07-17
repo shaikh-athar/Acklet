@@ -23,3 +23,5 @@ Rules:
 - No boilerplate nobody asked for.
 - Deletion over addition. Boring over clever. Fewest files possible.
 - Shortest working diff wins, but only once you understand the problem. The smallest change in the right place is better than a rewrite.
+- Secure scanning: Ensure that any directory or file scan excludes sensitive files using the designated SecurityUtils filters (see [security.md](file:///a:/Acklet/Acklet/.agents/rules/security.md)).
+

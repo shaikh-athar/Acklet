@@ -1,25 +1,26 @@
-// client/src/app/pages/auth/signup/signup.ts
-import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../../../shared/components/icon/icon';
+import { ViewportDirective } from '../../../shared/viewport/viewport.directive';
+import { gsap } from 'gsap';
 
 @Component({
   selector: 'app-signup',
   standalone: true,
-  imports: [RouterLink, CommonModule, IconComponent],
+  imports: [RouterLink, CommonModule, IconComponent, ViewportDirective],
   template: `
     <div class="auth-page-root gradient-mesh">
       <div class="orb orb-brand auth-orb-1"></div>
       <div class="orb orb-accent auth-orb-2"></div>
 
-      <div class="auth-card glass-strong">
+      <div class="auth-card glass-strong" appViewport viewportId="signupCard" (enter)="playEntrance()">
         <!-- Logo -->
         <a routerLink="/" class="logo-wrap mb-6 justify-center">
           <div class="logo-icon">
             <app-icon name="key-round" class="size-5 text-white" />
           </div>
-          <span class="logo-text">Ads<span class="logo-accent">Vault</span></span>
+          <span class="logo-text">ACKLET</span>
         </a>
 
         <div class="text-center mb-6">
@@ -76,6 +77,7 @@ import { IconComponent } from '../../../shared/components/icon/icon';
       border-radius: var(--radius-2xl);
       z-index: 2;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+      opacity: 0;
     }
     
     /* Logo override */
@@ -108,8 +110,23 @@ import { IconComponent } from '../../../shared/components/icon/icon';
   `],
 })
 export class SignupComponent {
+  private readonly router = inject(Router);
+
+  private entrancePlayed = false;
+  playEntrance(): void {
+    if (this.entrancePlayed) return;
+    this.entrancePlayed = true;
+    const card = document.querySelector('.auth-card');
+    if (card) {
+      gsap.fromTo(card,
+        { scale: 0.96, opacity: 0, y: 30 },
+        { scale: 1, opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }
+      );
+    }
+  }
+
   onSubmit(event: Event): void {
     event.preventDefault();
-    alert('Authentication integration coming soon.');
+    this.router.navigate(['/auth/welcome']);
   }
 }

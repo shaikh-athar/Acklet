@@ -1,0 +1,93 @@
+package com.code.acklet.notification.service;
+
+import com.code.acklet.auth.event.EmailVerifiedEvent;
+import com.code.acklet.auth.event.UserRegisteredEvent;
+import com.code.acklet.notification.entity.Notification;
+import com.code.acklet.notification.repository.NotificationRepository;
+import com.code.acklet.shared.exception.ForbiddenException;
+import com.code.acklet.shared.exception.ResourceNotFoundException;
+import com.code.acklet.user.entity.User;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class NotificationService {
+
+    private final NotificationRepository notificationRepository;
+
+    public List<Notification> getNotificationsForUser(UUID userId) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
+    public long getUnreadCount(UUID userId) {
+        return notificationRepository.countByUserIdAndIsReadFalse(userId);
+    }
+
+    @Transactional
+    public void markAsRead(User user, UUID notificationId) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
+
+        if (!notification.getUser().getId().equals(user.getId())) {
+            throw new ForbiddenException("You cannot access this notification");
+        }
+
+        if (!notification.isRead()) {
+            notification.setRead(true);
+            notification.setReadAt(Instant.now());
+            notificationRepository.save(notification);
+        }
+    }
+
+    @Transactional
+    public void markAllAsRead(UUID userId) {
+        List<Notification> unread = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .filter(n -> !n.isRead())
+                .toList();
+        unread.forEach(n -> {
+            n.setRead(true);
+            n.setReadAt(Instant.now());
+        });
+        notificationRepository.saveAll(unread);
+    }
+
+    @EventListener
+    @Transactional
+    public void handleUserRegistered(UserRegisteredEvent event) {
+        log.info("📧 [EMAIL SERVICE] Sending registration OTP code {} to email {}", event.getOtpCode(), event.getUser().getEmail());
+        
+        Notification notification = Notification.builder()
+                .user(event.getUser())
+                .title("Verify your email address")
+                .content("Welcome to Acklet! Please verify your email using the following code: " + event.getOtpCode())
+                .type(Notification.NotificationType.SECURITY)
+                .build();
+        
+        notificationRepository.save(notification);
+    }
+
+    @EventListener
+    @Transactional
+    public void handleEmailVerified(EmailVerifiedEvent event) {
+        log.info("🎉 User email verified: {}", event.getUser().getEmail());
+
+        Notification notification = Notification.builder()
+                .user(event.getUser())
+                .title("Welcome to Acklet!")
+                .content("Your email has been verified successfully. Start exploring developer sandbox tools in your workspace.")
+                .type(Notification.NotificationType.SYSTEM)
+                .build();
+
+        notificationRepository.save(notification);
+    }
+}
