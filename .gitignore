@@ -11,6 +11,7 @@
 
 # Build outputs
 **/build/
+**/target/
 **/out/
 **/dist/
 
