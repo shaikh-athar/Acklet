@@ -1,5 +1,0 @@
-# Created at 2026-07-16T20:03:54.239
-Boot Manifest-JAR contains absolute paths in classpath 'A:\Acklet\server\acklet\target\test-classes'
-Hint: <argLine>-Djdk.net.URLClassPath.disableClassPathURLCheck=true</argLine>
-'other' has different root
-

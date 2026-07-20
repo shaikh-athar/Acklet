@@ -1,0 +1,16 @@
+spring:
+  # Database configuration
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:acklet}
+    username: ${DB_USER:acklet}
+    password: ${DB_PASSWORD:acklet_secret_password}
+
+  # JPA & Hibernate configuration
+  jpa:
+    show-sql: true
+
+  # Redis configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}

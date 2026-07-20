@@ -127,6 +127,6 @@ export class SignupComponent {
 
   onSubmit(event: Event): void {
     event.preventDefault();
-    this.router.navigate(['/auth/welcome']);
+    this.router.navigate(['/auth/onboarding']);
   }
 }

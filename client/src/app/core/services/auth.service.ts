@@ -2,6 +2,7 @@ import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
+import { SyncService } from './sync.service';
 
 export interface UserProfile {
   id: string;
@@ -33,6 +34,7 @@ export interface LoginResponse {
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly syncSvc = inject(SyncService);
 
   private readonly baseUrl = 'http://localhost:8080/api/v1';
 
@@ -107,11 +109,15 @@ export class AuthService {
     localStorage.setItem('acklet_access_token', authData.accessToken);
     localStorage.setItem('acklet_refresh_token', authData.refreshToken);
     this._currentUser.set(authData.profile);
+    // Trigger lazy background sync after login
+    this.syncSvc.onLogin();
   }
 
   private clearSession(): void {
     localStorage.removeItem('acklet_access_token');
     localStorage.removeItem('acklet_refresh_token');
     this._currentUser.set(null);
+    // Reset sync metadata on logout
+    this.syncSvc.onLogout();
   }
 }
