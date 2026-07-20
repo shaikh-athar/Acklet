@@ -1,40 +1,27 @@
-import { Injectable, signal, effect } from '@angular/core';
+import { Injectable, inject, effect } from '@angular/core';
+import { PreferenceService } from './preference.service';
 
 export type Theme = 'dark' | 'light';
 
+/**
+ * Thin adapter over PreferenceService for backward compatibility.
+ * All existing call sites (toggle(), setTheme(), isDark) continue to work.
+ */
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
-  readonly theme = signal<Theme>('light');
+  private readonly prefsSvc = inject(PreferenceService);
 
-  constructor() {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('acklet-theme') as Theme;
-      if (stored === 'light' || stored === 'dark') {
-        this.theme.set(stored);
-      }
-    }
-
-    effect(() => {
-      const activeTheme = this.theme();
-      if (typeof window !== 'undefined') {
-        document.documentElement.setAttribute('data-theme', activeTheme);
-      }
-    });
-  }
+  readonly theme = this.prefsSvc.theme;
 
   toggle(): void {
-    const next = this.theme() === 'dark' ? 'light' : 'dark';
-    this.setTheme(next);
+    this.prefsSvc.toggleTheme();
   }
 
   setTheme(t: Theme): void {
-    this.theme.set(t);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('acklet-theme', t);
-    }
+    this.prefsSvc.setTheme(t);
   }
 
   get isDark(): boolean {
-    return this.theme() === 'dark';
+    return this.prefsSvc.theme() === 'dark';
   }
 }

@@ -4,6 +4,7 @@ import com.code.acklet.tool.entity.Tool;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -13,7 +14,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface ToolRepository extends JpaRepository<Tool, UUID> {
+public interface ToolRepository extends JpaRepository<Tool, UUID>, JpaSpecificationExecutor<Tool> {
     Optional<Tool> findBySlug(String slug);
     List<Tool> findByIsFeaturedTrue();
     List<Tool> findByIsTrendingTrue();
@@ -24,4 +25,7 @@ public interface ToolRepository extends JpaRepository<Tool, UUID> {
 
     @Query("SELECT t FROM Tool t ORDER BY t.createdAt DESC")
     List<Tool> findNewReleases(Pageable pageable);
+
+    @Query("SELECT t.name FROM Tool t WHERE LOWER(t.name) LIKE LOWER(CONCAT(:prefix, '%')) ORDER BY t.usageCount DESC")
+    List<String> findAutocompleteNames(@Param("prefix") String prefix, Pageable pageable);
 }

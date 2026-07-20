@@ -45,6 +45,7 @@ export const routes: Routes = [
       { path: 'auth/reset-password', loadComponent: () => import('./pages/auth/reset-password/reset-password').then(m => m.ResetPasswordComponent), title: 'Reset Password — Acklet' },
       { path: 'auth/verify-email', loadComponent: () => import('./pages/auth/verify-email/verify-email').then(m => m.VerifyEmailComponent), title: 'Verify Email — Acklet' },
       { path: 'auth/otp', loadComponent: () => import('./pages/auth/otp/otp').then(m => m.OtpVerificationComponent), title: 'OTP Verification — Acklet' },
+      { path: 'auth/onboarding', loadComponent: () => import('./pages/auth/onboarding/onboarding').then(m => m.OnboardingComponent), title: 'Personalize Your Workspace — Acklet' },
       { path: 'auth/welcome', loadComponent: () => import('./pages/auth/welcome/welcome').then(m => m.WelcomeComponent), title: 'Welcome to Acklet' },
     ],
   },
