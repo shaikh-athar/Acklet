@@ -34,6 +34,18 @@
   --color-accent-800: #155e75;
   --color-accent-900: #164e63;
 
+  /* --- Violet/Purple Colors --- */
+  --color-violet-50: #f5f3ff;
+  --color-violet-100: #ede9fe;
+  --color-violet-200: #ddd6fe;
+  --color-violet-300: #c4b5fd;
+  --color-violet-400: #a78bfa;
+  --color-violet-500: #8b5cf6;
+  --color-violet-600: #7c3aed;
+  --color-violet-700: #6d28d9;
+  --color-violet-800: #5b21b6;
+  --color-violet-900: #4c1d95;
+
   /* --- Surface Colors (Premium Light Mode) --- */
   --color-surface-950: #ffffff;
   --color-surface-900: #f8f9fa;
@@ -195,6 +207,17 @@ html[data-theme="dark"] {
   --color-accent-700: var(--color-accent-700);
   --color-accent-800: var(--color-accent-800);
   --color-accent-900: var(--color-accent-900);
+
+  --color-violet-50: var(--color-violet-50);
+  --color-violet-100: var(--color-violet-100);
+  --color-violet-200: var(--color-violet-200);
+  --color-violet-300: var(--color-violet-300);
+  --color-violet-400: var(--color-violet-400);
+  --color-violet-500: var(--color-violet-500);
+  --color-violet-600: var(--color-violet-600);
+  --color-violet-700: var(--color-violet-700);
+  --color-violet-800: var(--color-violet-800);
+  --color-violet-900: var(--color-violet-900);
 
   --color-surface-950: var(--color-surface-950);
   --color-surface-900: var(--color-surface-900);
@@ -467,14 +490,14 @@ html[data-theme="dark"] .premium-glass {
 }
 
 .btn-primary {
-  background: var(--color-brand-800);
+  background: var(--color-violet-600);
   color: #ffffff;
   font-weight: 600;
 }
 
 .btn-primary:hover {
-  background: var(--color-brand-900);
-  box-shadow: 0 4px 15px rgba(30, 41, 59, 0.2);
+  background: var(--color-violet-700);
+  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.25);
   transform: translateY(-1px);
 }
 
@@ -798,13 +821,4 @@ html.lenis, html.lenis body {
   pointer-events: none;
 }
 
-/* ============================================================
-   BLACK & WHITE (GRAYSCALE) THEME ON LOAD
-   ============================================================ */
-/* This converts the entire application to grayscale on page load.
-   If you want to restore color on hover of specific cards or buttons later,
-   you can apply this grayscale filter to the components themselves (e.g. .card, .btn)
-   instead of the root body, allowing a transition: filter 0.3s. */
-.layout-main, app-footer {
-  filter: grayscale(100%);
-}
+/* Grayscale theme on load removed to allow color display */
