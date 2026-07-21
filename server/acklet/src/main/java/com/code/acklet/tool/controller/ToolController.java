@@ -1,5 +1,7 @@
 package com.code.acklet.tool.controller;
 
+import com.code.acklet.discovery.service.HybridSearchService;
+import com.code.acklet.discovery.service.HybridSearchService.SearchMode;
 import com.code.acklet.shared.dto.ApiResponse;
 import com.code.acklet.tool.dto.CategoryResponse;
 import com.code.acklet.tool.dto.ToolResponse;
@@ -24,8 +26,9 @@ import java.util.UUID;
 @Tag(name = "Tools Catalog", description = "Endpoints for browsing categories and developer tools")
 public class ToolController {
 
-    private final ToolService toolService;
-    private final ToolMapper toolMapper;
+    private final ToolService        toolService;
+    private final HybridSearchService hybridSearchService;
+    private final ToolMapper         toolMapper;
 
     @GetMapping("/categories")
     @Operation(summary = "List all tool categories", description = "Retrieves all categories configured in the system")
@@ -61,6 +64,31 @@ public class ToolController {
         Page<ToolResponse> tools = toolService.searchTools(query, pageable)
                 .map(toolMapper::toToolResponse);
         return ResponseEntity.ok(ApiResponse.success(tools, "Tools retrieved successfully"));
+    }
+
+    @GetMapping("/tools/search")
+    @Operation(summary = "Hybrid Search (Keyword + Vector Semantic)", description = "Search tools using Hybrid (RRF), Keyword, or Semantic vector modes")
+    public ResponseEntity<ApiResponse<Page<ToolResponse>>> searchHybrid(
+            @RequestParam(value = "q", required = false, defaultValue = "") String query,
+            @RequestParam(value = "category", required = false) String categorySlug,
+            @RequestParam(value = "mode", required = false, defaultValue = "HYBRID") SearchMode mode,
+            Pageable pageable
+    ) {
+        Page<ToolResponse> tools = hybridSearchService.search(query, categorySlug, mode, pageable)
+                .map(toolMapper::toToolResponse);
+        return ResponseEntity.ok(ApiResponse.success(tools, "Search results retrieved (" + mode + " mode)"));
+    }
+
+    @GetMapping("/tools/search/semantic")
+    @Operation(summary = "Semantic Vector Search", description = "Performs pgvector cosine similarity search using dense embeddings")
+    public ResponseEntity<ApiResponse<Page<ToolResponse>>> searchSemantic(
+            @RequestParam(value = "q", required = false, defaultValue = "") String query,
+            @RequestParam(value = "category", required = false) String categorySlug,
+            Pageable pageable
+    ) {
+        Page<ToolResponse> tools = hybridSearchService.search(query, categorySlug, SearchMode.SEMANTIC, pageable)
+                .map(toolMapper::toToolResponse);
+        return ResponseEntity.ok(ApiResponse.success(tools, "Semantic search results retrieved"));
     }
 
     @GetMapping("/tools/{slug}")

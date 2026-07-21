@@ -77,8 +77,9 @@ public class User extends Auditable implements UserDetails {
 
     public enum Role {
         USER,
-        ADMIN,
-        MODERATOR
+        PUBLISHER,
+        MODERATOR,
+        ADMIN
     }
 
     public enum UserStatus {

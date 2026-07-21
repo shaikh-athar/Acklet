@@ -47,7 +47,7 @@ import { FavoritesService } from '../../../core/services/favorites.service';
                 @for (tool of recentTools(); track tool.id) {
                   <a [routerLink]="['/tools', tool.slug]" class="resume-card glass-strong" appSpotlight>
                     <div class="resume-icon-box" [style.color]="tool.color">
-                      <app-icon [name]="tool.icon" class="size-6" />
+                      <app-icon [name]="tool.icon || 'code'" class="size-6" />
                     </div>
                     <div class="resume-info">
                       <div class="resume-name">{{ tool.name }}</div>
@@ -68,7 +68,7 @@ import { FavoritesService } from '../../../core/services/favorites.service';
                 <a [routerLink]="['/tools', tool.slug]" class="rec-card glass-strong" appSpotlight>
                   <div class="rec-header">
                     <div class="rec-icon-box" [style.color]="tool.color">
-                      <app-icon [name]="tool.icon" class="size-5" />
+                      <app-icon [name]="tool.icon || 'code'" class="size-5" />
                     </div>
                     <span class="rec-badge">Matches your interests</span>
                   </div>
@@ -211,7 +211,7 @@ export class WorkspaceDashboardComponent {
     return allTools
       .map(t => {
         let score = 0;
-        if (t.tags.some(tag => userInterests.includes(tag))) score += 2;
+        if ((t.tags || []).some(tag => userInterests.includes(tag))) score += 2;
         if (t.isTrending) score += 1;
         return { tool: t, score };
       })

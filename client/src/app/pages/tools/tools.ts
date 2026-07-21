@@ -7,13 +7,14 @@ import { ToolsService } from '../../core/services/tools.service';
 import { ToolCardComponent } from '../../shared/components/tool-card/tool-card';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header';
 import { LoadingSkeletonComponent } from '../../shared/components/loading-skeleton/loading-skeleton';
+import { FallbackStateComponent } from '../../shared/components/fallback-state/fallback-state';
 import { IconComponent } from '../../shared/components/icon/icon';
 import { Tool } from '../../core/models/tool.model';
 
 @Component({
   selector: 'app-tools',
   standalone: true,
-  imports: [CommonModule, FormsModule, ToolCardComponent, SectionHeaderComponent, LoadingSkeletonComponent, IconComponent],
+  imports: [CommonModule, FormsModule, ToolCardComponent, SectionHeaderComponent, LoadingSkeletonComponent, FallbackStateComponent, IconComponent],
   template: `
     <div class="tools-page page-enter">
       <!-- Page header -->
@@ -25,7 +26,7 @@ import { Tool } from '../../core/models/tool.model';
           <!-- Search -->
           <div class="tools-search-wrap">
             <app-icon name="search" class="size-4.5 text-neutral-400" />
-            <input class="tools-search" type="text" placeholder="Search tools by name, category, or tag..." [(ngModel)]="searchQuery" (ngModelChange)="applyFilters()" />
+            <input class="tools-search" type="text" placeholder="Search tools by name, category, or tag..." [(ngModel)]="searchQuery" (ngModelChange)="onSearchChange()" />
             @if (searchQuery) { 
               <button class="clear-btn" (click)="clearSearch()">
                 <app-icon name="x" class="size-3.5" />
@@ -51,7 +52,7 @@ import { Tool } from '../../core/models/tool.model';
               @for (cat of toolsSvc.categories(); track cat.id) {
                 <button class="cat-filter-btn" [class.active]="activeCategoryId() === cat.id" (click)="setCategory(cat.id)">
                   <span class="flex items-center gap-2">
-                    <app-icon [name]="cat.icon" class="size-4" />
+                    <app-icon [name]="cat.icon || 'code'" class="size-4" />
                     {{ cat.name }}
                   </span>
                   <span class="filter-count">{{ toolsSvc.getToolsByCategory(cat.id).length }}</span>
@@ -78,7 +79,7 @@ import { Tool } from '../../core/models/tool.model';
         <main class="tools-main">
           <!-- Results bar -->
           <div class="results-bar">
-            <span class="results-count">{{ filteredTools().length }} tools matching</span>
+            <span class="results-count">{{ totalElements() }} tools matching</span>
             <div class="sort-row">
               <select class="sort-select" [(ngModel)]="sortBy" (ngModelChange)="applyFilters()">
                 <option value="popular">Most Popular</option>
@@ -92,17 +93,17 @@ import { Tool } from '../../core/models/tool.model';
           @if (isLoading()) {
             <app-loading-skeleton [count]="6" [cols]="3" />
           } @else if (filteredTools().length === 0) {
-            <div class="empty-state glass">
-              <div class="empty-icon-wrap">
-                <app-icon name="search" class="size-8 text-neutral-500" />
-              </div>
-              <h3 class="empty-title">No tools found</h3>
-              <p class="empty-desc">No utility matches your current selection parameters.</p>
-              <button class="btn btn-secondary" (click)="clearAll()">Reset all filters</button>
-            </div>
+            <app-fallback-state
+              type="NO_RESULTS"
+              title="No Matching Tools Found"
+              message="We could not find any tools matching your query or active category filters."
+              [showRetry]="true"
+              retryText="Reset All Filters"
+              (onRetry)="clearAll()"
+            ></app-fallback-state>
           } @else {
             <div class="tools-grid-main">
-              @for (tool of paginatedTools(); track tool.id) {
+              @for (tool of filteredTools(); track tool.id) {
                 <app-tool-card [tool]="tool" />
               }
             </div>
@@ -159,12 +160,6 @@ import { Tool } from '../../core/models/tool.model';
     .sort-select:focus { border-color: rgba(99,102,241,0.3); }
     .tools-grid-main { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
 
-    /* Empty state */
-    .empty-state { text-align: center; padding: 5rem 2rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; border-radius: var(--radius-xl); }
-    .empty-icon-wrap { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); }
-    .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--color-neutral-100); }
-    .empty-desc { color: var(--color-neutral-400); font-size: 0.825rem; max-width: 250px; line-height: 1.5; }
-
     /* Pagination */
     .pagination { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 3.5rem; }
     .page-btn { padding: 0.5rem 0.875rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.06); background: var(--color-surface-900); color: var(--color-neutral-400); font-size: 0.8rem; cursor: pointer; font-family: inherit; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; }
@@ -190,6 +185,8 @@ export class ToolsComponent implements OnInit {
   readonly activeQuickFilter = signal<string | null>(null);
   readonly isLoading = signal(true);
   readonly currentPage = signal(1);
+  readonly totalPages = signal(1);
+  readonly totalElements = signal(0);
   readonly pageSize = 9;
 
   readonly filteredTools = signal<Tool[]>([]);
@@ -201,15 +198,9 @@ export class ToolsComponent implements OnInit {
     { key: 'popular', label: 'Popular' },
   ];
 
-  readonly totalPages = computed(() => Math.ceil(this.filteredTools().length / this.pageSize));
-  readonly paginatedTools = computed(() => {
-    const start = (this.currentPage() - 1) * this.pageSize;
-    return this.filteredTools().slice(start, start + this.pageSize);
-  });
   readonly pageNumbers = computed(() => Array.from({ length: this.totalPages() }, (_, i) => i + 1));
 
   ngOnInit(): void {
-    this.isLoading.set(false);
     this.route.queryParams.subscribe(params => {
       if (params['category']) {
         const cat = this.toolsSvc.getCategoryBySlug(params['category']);
@@ -218,37 +209,46 @@ export class ToolsComponent implements OnInit {
       if (params['filter']) this.activeQuickFilter.set(params['filter']);
       this.applyFilters();
     });
+  }
+
+  onSearchChange(): void {
+    this.currentPage.set(1);
     this.applyFilters();
   }
 
   applyFilters(): void {
-    let tools = this.toolsSvc.tools();
-    if (this.activeCategoryId()) tools = tools.filter(t => t.categoryId === this.activeCategoryId());
-    const qf = this.activeQuickFilter();
-    if (qf === 'featured') tools = tools.filter(t => t.isFeatured);
-    else if (qf === 'trending') tools = tools.filter(t => t.isTrending);
-    else if (qf === 'new') tools = tools.filter(t => t.isNew);
-    else if (qf === 'popular') tools = tools.filter(t => t.isPopular);
-    if (this.searchQuery) {
-      const q = this.searchQuery.toLowerCase();
-      tools = tools.filter(t => t.name.toLowerCase().includes(q) || t.tags.some(tag => tag.toLowerCase().includes(q)) || t.categoryName.toLowerCase().includes(q));
-    }
-    if (this.sortBy === 'rating') tools = [...tools].sort((a, b) => b.rating - a.rating);
-    else if (this.sortBy === 'newest') tools = [...tools].sort((a, b) => new Date(b.addedDate).getTime() - new Date(a.addedDate).getTime());
-    else if (this.sortBy === 'name') tools = [...tools].sort((a, b) => a.name.localeCompare(b.name));
-    else tools = [...tools].sort((a, b) => b.usageCount - a.usageCount);
-    this.filteredTools.set(tools);
-    this.currentPage.set(1);
+    this.isLoading.set(true);
+    const categorySlug = this.activeCategoryId() || undefined;
+
+    this.toolsSvc.getToolsApi(this.searchQuery, categorySlug, 'HYBRID', this.currentPage() - 1, this.pageSize).subscribe({
+      next: pageData => {
+        let tools = pageData.content;
+        const qf = this.activeQuickFilter();
+        if (qf === 'featured') tools = tools.filter(t => t.isFeatured);
+        else if (qf === 'trending') tools = tools.filter(t => t.isTrending);
+        else if (qf === 'new') tools = tools.filter(t => t.isNew);
+        else if (qf === 'popular') tools = tools.filter(t => t.isPopular || (t.usageCount && t.usageCount > 50));
+
+        this.filteredTools.set(tools);
+        this.totalElements.set(pageData.totalElements);
+        this.totalPages.set(pageData.totalPages || 1);
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.isLoading.set(false);
+      }
+    });
   }
 
-  setCategory(id: string | null): void { this.activeCategoryId.set(id); this.applyFilters(); }
+  setCategory(id: string | null): void { this.activeCategoryId.set(id); this.currentPage.set(1); this.applyFilters(); }
   setQuickFilter(key: string): void {
     this.activeQuickFilter.set(this.activeQuickFilter() === key ? null : key);
+    this.currentPage.set(1);
     this.applyFilters();
   }
-  clearSearch(): void { this.searchQuery = ''; this.applyFilters(); }
-  clearAll(): void { this.searchQuery = ''; this.activeCategoryId.set(null); this.activeQuickFilter.set(null); this.applyFilters(); }
-  prevPage(): void { if (this.currentPage() > 1) this.currentPage.update(p => p - 1); }
-  nextPage(): void { if (this.currentPage() < this.totalPages()) this.currentPage.update(p => p + 1); }
-  goToPage(p: number): void { this.currentPage.set(p); }
+  clearSearch(): void { this.searchQuery = ''; this.currentPage.set(1); this.applyFilters(); }
+  clearAll(): void { this.searchQuery = ''; this.activeCategoryId.set(null); this.activeQuickFilter.set(null); this.currentPage.set(1); this.applyFilters(); }
+  prevPage(): void { if (this.currentPage() > 1) { this.currentPage.update(p => p - 1); this.applyFilters(); } }
+  nextPage(): void { if (this.currentPage() < this.totalPages()) { this.currentPage.update(p => p + 1); this.applyFilters(); } }
+  goToPage(p: number): void { this.currentPage.set(p); this.applyFilters(); }
 }

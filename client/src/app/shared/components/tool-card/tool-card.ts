@@ -19,7 +19,7 @@ import { IconComponent } from '../icon/icon';
 
       <!-- Icon -->
       <div class="card-icon-wrap">
-        <app-icon [name]="tool().icon" class="card-icon size-5" />
+        <app-icon [name]="tool().icon || 'code'" class="card-icon size-5" />
       </div>
 
       <!-- Content -->

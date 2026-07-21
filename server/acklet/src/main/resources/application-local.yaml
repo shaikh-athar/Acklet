@@ -7,7 +7,7 @@ spring:
 
   # JPA & Hibernate configuration
   jpa:
-    show-sql: true
+    show-sql: false
 
   # Redis configuration
   data:

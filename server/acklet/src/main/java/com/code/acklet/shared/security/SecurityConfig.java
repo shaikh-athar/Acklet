@@ -51,6 +51,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/community/**").permitAll()
                 // Public blog posts
                 .requestMatchers(HttpMethod.GET, "/api/v1/blog/**").permitAll()
+                // Public reviews
+                .requestMatchers(HttpMethod.GET, "/api/v1/tools/*/reviews").permitAll()
+                // Public GitHub webhooks
+                .requestMatchers("/api/v1/github/webhooks").permitAll()
                 // Fallback: any other request requires authentication
                 .anyRequest().authenticated()
             )

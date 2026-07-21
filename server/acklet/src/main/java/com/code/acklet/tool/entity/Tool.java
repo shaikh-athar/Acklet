@@ -4,6 +4,8 @@ import com.code.acklet.shared.entity.Auditable;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -51,4 +53,56 @@ public class Tool extends Auditable {
     @Column(name = "is_trending")
     @Builder.Default
     private boolean isTrending = false;
+
+    // ── Publisher fields ──────────────────────────────────────────────────────
+    @Column(name = "publisher_id")
+    private UUID publisherId;
+
+    @Column(name = "tagline")
+    private String tagline;
+
+    @Column(name = "website_url")
+    private String websiteUrl;
+
+    @Column(name = "github_url")
+    private String githubUrl;
+
+    @Column(name = "logo_url")
+    private String logoUrl;
+
+    @Column(name = "cover_url")
+    private String coverUrl;
+
+    @Column(name = "pricing_type")
+    @Builder.Default
+    private String pricingType = "FREE";
+
+    @Column(name = "is_open_source")
+    @Builder.Default
+    private boolean isOpenSource = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    @Builder.Default
+    private ToolStatus status = ToolStatus.ACTIVE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "verification_status")
+    @Builder.Default
+    private VerificationStatus verificationStatus = VerificationStatus.UNVERIFIED;
+
+    @Column(name = "upvote_count")
+    @Builder.Default
+    private long upvoteCount = 0;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    public enum ToolStatus {
+        DRAFT, PENDING, ACTIVE, ARCHIVED, REJECTED
+    }
+
+    public enum VerificationStatus {
+        UNVERIFIED, COMMUNITY, VERIFIED, OFFICIAL
+    }
 }

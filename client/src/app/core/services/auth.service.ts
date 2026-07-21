@@ -105,6 +105,12 @@ export class AuthService {
     );
   }
 
+  /** Called by auth interceptor on 401 — clears state without triggering a logout API call. */
+  handleExpiredSession(): void {
+    this.clearSession();
+    this.router.navigate(['/auth/login']);
+  }
+
   private setSession(authData: LoginResponse): void {
     localStorage.setItem('acklet_access_token', authData.accessToken);
     localStorage.setItem('acklet_refresh_token', authData.refreshToken);
