@@ -12,6 +12,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ToolResponse {
+    // Existing fields
     private UUID id;
     private UUID categoryId;
     private String categoryName;
@@ -25,4 +26,17 @@ public class ToolResponse {
     private long usageCount;
     private boolean isFeatured;
     private boolean isTrending;
+
+    // Publisher fields
+    private UUID publisherId;
+    private String tagline;
+    private String websiteUrl;
+    private String githubUrl;
+    private String logoUrl;
+    private String coverUrl;
+    private String pricingType;
+    private boolean isOpenSource;
+    private String status;
+    private String verificationStatus;
+    private long upvoteCount;
 }

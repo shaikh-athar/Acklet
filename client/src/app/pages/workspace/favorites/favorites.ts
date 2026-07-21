@@ -22,7 +22,7 @@ import { Tool } from '../../../core/models/tool.model';
         @for (tool of favorites(); track tool.id) {
           <div class="fav-card card-spotlight" appSpotlight [style.--tool-color]="tool.color">
             <div class="fav-icon-wrap" [style.background-color]="tool.color + '15'">
-              <app-icon [name]="tool.icon" class="size-5" [style.color]="tool.color" />
+              <app-icon [name]="tool.icon || 'code'" class="size-5" [style.color]="tool.color" />
             </div>
             <div class="fav-meta">
               <h3 class="fav-name">{{ tool.name }}</h3>

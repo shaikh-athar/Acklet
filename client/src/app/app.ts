@@ -4,14 +4,18 @@ import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import Lenis from 'lenis';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { ToastComponent } from './shared/components/toast/toast';
 
 gsap.registerPlugin(ScrollTrigger);
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet],
-  template: `<router-outlet />`,
+  imports: [RouterOutlet, ToastComponent],
+  template: `
+    <router-outlet />
+    <app-toast />
+  `,
   styles: [],
 })
 export class App implements OnInit {

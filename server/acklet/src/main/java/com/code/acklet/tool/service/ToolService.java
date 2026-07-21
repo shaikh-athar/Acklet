@@ -12,6 +12,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -22,10 +25,12 @@ public class ToolService {
     private final ToolRepository toolRepository;
     private final CategoryRepository categoryRepository;
 
+    @Cacheable(value = "categories")
     public List<Category> getAllCategories() {
         return categoryRepository.findAll();
     }
 
+    @Cacheable(value = "categories", key = "#slug")
     public Category getCategoryBySlug(String slug) {
         return categoryRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with slug: " + slug));
@@ -35,15 +40,18 @@ public class ToolService {
         return toolRepository.findByCategoryId(categoryId, pageable);
     }
 
+    @Cacheable(value = "tools_detail", key = "#slug")
     public Tool getToolBySlug(String slug) {
         return toolRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Tool not found with slug: " + slug));
     }
 
+    @Cacheable(value = "tools_featured")
     public List<Tool> getFeaturedTools() {
         return toolRepository.findByIsFeaturedTrue();
     }
 
+    @Cacheable(value = "tools_trending")
     public List<Tool> getTrendingTools() {
         return toolRepository.findByIsTrendingTrue();
     }
@@ -57,6 +65,7 @@ public class ToolService {
     }
 
     @Transactional
+    @CacheEvict(value = {"tools_detail", "tools_trending", "tools_featured"}, allEntries = true)
     public void incrementUsage(UUID toolId) {
         Tool tool = toolRepository.findById(toolId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tool not found with id: " + toolId));

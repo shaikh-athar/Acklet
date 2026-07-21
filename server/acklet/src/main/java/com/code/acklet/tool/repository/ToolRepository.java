@@ -28,4 +28,8 @@ public interface ToolRepository extends JpaRepository<Tool, UUID>, JpaSpecificat
 
     @Query("SELECT t.name FROM Tool t WHERE LOWER(t.name) LIKE LOWER(CONCAT(:prefix, '%')) ORDER BY t.usageCount DESC")
     List<String> findAutocompleteNames(@Param("prefix") String prefix, Pageable pageable);
+
+    // Publisher queries
+    Page<Tool> findByPublisherIdAndDeletedAtIsNull(UUID publisherId, Pageable pageable);
+    long countByPublisherId(UUID publisherId);
 }

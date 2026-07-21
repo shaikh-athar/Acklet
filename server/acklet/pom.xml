@@ -22,6 +22,7 @@
 		<jjwt.version>0.12.6</jjwt.version>
 		<springdoc.version>2.8.1</springdoc.version>
 		<testcontainers.version>1.20.4</testcontainers.version>
+		<langchain4j.version>0.36.2</langchain4j.version>
 	</properties>
 
 	<dependencies>
@@ -41,6 +42,37 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-redis</artifactId>
+		</dependency>
+
+		<!-- RabbitMQ Event Bus -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-amqp</artifactId>
+		</dependency>
+
+		<!-- Async support -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-aop</artifactId>
+		</dependency>
+
+		<!-- LangChain4j — AI abstraction layer -->
+		<dependency>
+			<groupId>dev.langchain4j</groupId>
+			<artifactId>langchain4j</artifactId>
+			<version>${langchain4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>dev.langchain4j</groupId>
+			<artifactId>langchain4j-mistral-ai</artifactId>
+			<version>${langchain4j.version}</version>
+		</dependency>
+		<!-- Gemini fallback — optional; omit API key to disable -->
+		<dependency>
+			<groupId>dev.langchain4j</groupId>
+			<artifactId>langchain4j-google-ai-gemini</artifactId>
+			<version>${langchain4j.version}</version>
+			<optional>true</optional>
 		</dependency>
 
 		<!-- Database -->
