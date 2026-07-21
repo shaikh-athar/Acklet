@@ -48,8 +48,9 @@ import { IconComponent } from '../icon/icon';
     .tool-card-root:hover {
       background: var(--color-surface-800);
       border-color: rgba(0, 0, 0, 0.12);
-      transform: translateY(-4px);
+      transform: translateY(-4px) scale(1.1) translateX(1px);
       box-shadow: var(--shadow-card-hover);
+      z-index: 1;
     }
     .tool-card-root:hover .card-arrow { opacity: 1; transform: translate(0,0); }
 
@@ -72,7 +73,7 @@ import { IconComponent } from '../icon/icon';
       transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .tool-card-root:hover .card-icon {
-      color: var(--color-neutral-100);
+      color: var(--color-violet-600);
     }
 
     .card-content { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
@@ -92,7 +93,7 @@ import { IconComponent } from '../icon/icon';
     .tool-card-root:hover .card-arrow {
       background: rgba(0, 0, 0, 0.04);
       border-color: rgba(0, 0, 0, 0.1);
-      color: var(--color-neutral-100);
+      color: var(--color-accent-500);
     }
   `],
 })

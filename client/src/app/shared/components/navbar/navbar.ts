@@ -257,16 +257,6 @@ interface NavLink {
       letter-spacing: 0.01em;
       display: inline-flex !important;
     }
-    /* Dark theme: white bg + dark text for Start Solving */
-    :host-context(html[data-theme="dark"]) .nav-workspace-btn {
-      background: #ffffff !important;
-      color: #0f172a !important;
-    }
-    :host-context(html[data-theme="dark"]) .nav-workspace-btn:hover {
-      background: #f1f5f9 !important;
-      color: #0f172a !important;
-      box-shadow: 0 4px 15px rgba(255, 255, 255, 0.15);
-    }
     .mobile-menu-btn { display: none; }
     
     /* Mobile Drawer */
