@@ -23,6 +23,27 @@ import java.util.UUID;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final com.code.acklet.user.repository.UserRepository userRepository;
+
+    @Transactional
+    public Notification createNotification(UUID userId, String title, String content, String typeStr) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+
+        Notification.NotificationType type = Notification.NotificationType.SYSTEM;
+        try {
+            if (typeStr != null) type = Notification.NotificationType.valueOf(typeStr.toUpperCase());
+        } catch (Exception ignored) {}
+
+        Notification notification = Notification.builder()
+                .user(user)
+                .title(title)
+                .content(content)
+                .type(type)
+                .build();
+
+        return notificationRepository.save(notification);
+    }
 
     public List<Notification> getNotificationsForUser(UUID userId) {
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);

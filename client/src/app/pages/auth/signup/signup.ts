@@ -1,14 +1,18 @@
-import { Component, inject } from '@angular/core';
+// client/src/app/pages/auth/signup/signup.ts
+import { Component, inject, signal } from '@angular/core';
 import { RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { IconComponent } from '../../../shared/components/icon/icon';
 import { ViewportDirective } from '../../../shared/viewport/viewport.directive';
+import { AuthService } from '../../../core/services/auth.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { gsap } from 'gsap';
 
 @Component({
   selector: 'app-signup',
   standalone: true,
-  imports: [RouterLink, CommonModule, IconComponent, ViewportDirective],
+  imports: [RouterLink, CommonModule, FormsModule, IconComponent, ViewportDirective],
   template: `
     <div class="auth-page-root gradient-mesh">
       <div class="orb orb-brand auth-orb-1"></div>
@@ -20,7 +24,7 @@ import { gsap } from 'gsap';
           <div class="logo-icon">
             <app-icon name="key-round" class="size-5 text-white" />
           </div>
-          <span class="logo-text">ACKLET</span>
+          <span class="logo-text">ACKLET<span class="logo-accent">.</span></span>
         </a>
 
         <div class="text-center mb-6">
@@ -28,30 +32,90 @@ import { gsap } from 'gsap';
           <p class="auth-subtitle">Start organizing your developer workspace today</p>
         </div>
 
-        <form (submit)="onSubmit($event)" class="auth-form">
+        <form (submit)="onSubmit($event)" class="auth-form" novalidate>
+          <!-- Full Name -->
           <div class="form-group">
             <label class="form-label" for="name">Full name</label>
-            <input type="text" id="name" class="input" placeholder="John Doe" required />
+            <input 
+              type="text" 
+              id="name" 
+              name="displayName"
+              class="input" 
+              [class.input-error]="nameError()"
+              placeholder="John Doe" 
+              [(ngModel)]="displayName"
+              (ngModelChange)="validateName()"
+              required 
+            />
+            @if (nameError()) {
+              <div class="field-error-msg flex items-center gap-1 mt-1">
+                <app-icon name="alert-circle" class="size-3.5 text-red-500" />
+                <span>{{ nameError() }}</span>
+              </div>
+            }
           </div>
 
+          <!-- Email Address -->
           <div class="form-group">
             <label class="form-label" for="email">Email address</label>
-            <input type="email" id="email" class="input" placeholder="you@example.com" required />
+            <input 
+              type="email" 
+              id="email" 
+              name="email"
+              class="input" 
+              [class.input-error]="emailError()"
+              placeholder="you@example.com" 
+              [(ngModel)]="email"
+              (ngModelChange)="validateEmail()"
+              required 
+            />
+            @if (emailError()) {
+              <div class="field-error-msg flex items-center gap-1 mt-1">
+                <app-icon name="alert-circle" class="size-3.5 text-red-500" />
+                <span>{{ emailError() }}</span>
+              </div>
+            }
           </div>
 
+          <!-- Password -->
           <div class="form-group">
             <label class="form-label" for="password">Password</label>
-            <input type="password" id="password" class="input" placeholder="••••••••" required />
+            <input 
+              type="password" 
+              id="password" 
+              name="password"
+              class="input" 
+              [class.input-error]="passwordError()"
+              placeholder="••••••••" 
+              [(ngModel)]="password"
+              (ngModelChange)="validatePassword()"
+              required 
+            />
+            @if (passwordError()) {
+              <div class="field-error-msg flex items-center gap-1 mt-1">
+                <app-icon name="alert-circle" class="size-3.5 text-red-500" />
+                <span>{{ passwordError() }}</span>
+              </div>
+            }
           </div>
 
-          <button type="submit" class="btn btn-primary w-full mt-2">
-            Create Account
+          <button 
+            type="submit" 
+            class="btn btn-primary w-full mt-2 flex items-center justify-center gap-2"
+            [disabled]="isSubmitting()"
+          >
+            @if (isSubmitting()) {
+              <app-icon name="loader-2" class="size-4 animate-spin" />
+              Creating Account...
+            } @else {
+              Create Account
+            }
           </button>
         </form>
 
         <div class="auth-footer mt-6 text-center">
           <span class="text-neutral-500 text-xs">Already have an account? </span>
-          <a routerLink="/login" class="auth-link text-xs font-semibold">Sign in</a>
+          <a routerLink="/auth/login" class="auth-link text-xs font-semibold">Sign in</a>
         </div>
       </div>
     </div>
@@ -76,7 +140,9 @@ import { gsap } from 'gsap';
       padding: 2.5rem;
       border-radius: var(--radius-2xl);
       z-index: 2;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+      background: var(--color-surface-900);
+      border: 1px solid var(--border-soft);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
       opacity: 0;
     }
     
@@ -91,17 +157,42 @@ import { gsap } from 'gsap';
     .logo-accent { color: #818cf8; }
 
     .auth-title { font-size: 1.5rem; font-weight: 800; color: var(--color-neutral-50); letter-spacing: -0.025em; }
-    .auth-subtitle { font-size: 0.8rem; color: var(--color-neutral-400); margin-top: 0.25rem; }
+    .auth-subtitle { font-size: 0.825rem; color: var(--color-neutral-400); margin-top: 0.25rem; }
     
     .auth-form { display: flex; flex-direction: column; gap: 1.25rem; }
     .form-group { display: flex; flex-direction: column; gap: 0.375rem; }
-    .form-label { font-size: 0.75rem; font-weight: 600; color: var(--color-neutral-400); }
+    .form-label { font-size: 0.75rem; font-weight: 700; color: var(--color-neutral-200); }
     
-    .auth-link { color: var(--color-brand-500); text-decoration: none; transition: color 0.2s; }
-    .auth-link:hover { color: var(--color-brand-600); }
+    .input {
+      background: var(--color-surface-950);
+      border: 1px solid var(--border-soft);
+      color: var(--color-neutral-50);
+      font-size: 0.875rem;
+      padding: 0.65rem 0.875rem;
+      border-radius: var(--radius-lg);
+      transition: all 0.2s;
+    }
+    .input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+    .input-error {
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+    }
+    
+    .field-error-msg {
+      font-size: 0.725rem;
+      color: #ef4444;
+      font-weight: 500;
+    }
+
+    .auth-link { color: #6366f1; text-decoration: none; transition: color 0.2s; }
+    .auth-link:hover { color: #4f46e5; text-decoration: underline; }
     
     .w-full { width: 100%; }
     .mb-6 { margin-bottom: 1.5rem; }
+    .mt-1 { margin-top: 0.25rem; }
     .mt-2 { margin-top: 0.5rem; }
     .mt-6 { margin-top: 1.5rem; }
     .justify-center { justify-content: center; }
@@ -110,7 +201,18 @@ import { gsap } from 'gsap';
   `],
 })
 export class SignupComponent {
+  private readonly authSvc = inject(AuthService);
+  private readonly toastSvc = inject(ToastService);
   private readonly router = inject(Router);
+
+  displayName = '';
+  email = '';
+  password = '';
+  
+  readonly nameError = signal<string | null>(null);
+  readonly emailError = signal<string | null>(null);
+  readonly passwordError = signal<string | null>(null);
+  readonly isSubmitting = signal(false);
 
   private entrancePlayed = false;
   playEntrance(): void {
@@ -125,8 +227,62 @@ export class SignupComponent {
     }
   }
 
+  validateName(): boolean {
+    if (!this.displayName || this.displayName.trim().length < 2) {
+      this.nameError.set('Full name must be at least 2 characters.');
+      return false;
+    }
+    this.nameError.set(null);
+    return true;
+  }
+
+  validateEmail(): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!this.email || !emailRegex.test(this.email)) {
+      this.emailError.set('Please enter a valid email address.');
+      return false;
+    }
+    this.emailError.set(null);
+    return true;
+  }
+
+  validatePassword(): boolean {
+    if (!this.password || this.password.length < 6) {
+      this.passwordError.set('Password must be at least 6 characters.');
+      return false;
+    }
+    this.passwordError.set(null);
+    return true;
+  }
+
   onSubmit(event: Event): void {
     event.preventDefault();
-    this.router.navigate(['/auth/onboarding']);
+
+    const isNameValid = this.validateName();
+    const isEmailValid = this.validateEmail();
+    const isPasswordValid = this.validatePassword();
+
+    if (!isNameValid || !isEmailValid || !isPasswordValid) {
+      this.toastSvc.warning('Validation Error', 'Please correct the highlighted fields in the form.');
+      return;
+    }
+
+    this.isSubmitting.set(true);
+    this.authSvc.register(this.email, this.password, this.displayName).subscribe({
+      next: res => {
+        this.isSubmitting.set(false);
+        if (res.success) {
+          this.toastSvc.success('Account Created!', 'Please check your email for verification.');
+          this.router.navigate(['/auth/verify-email'], { queryParams: { email: this.email } });
+        } else {
+          this.toastSvc.error('Registration Failed', res.message || 'Could not create account');
+        }
+      },
+      error: err => {
+        this.isSubmitting.set(false);
+        const errorMsg = err?.error?.message || 'Email may already be registered or validation failed.';
+        this.toastSvc.error('Registration Failed', errorMsg);
+      }
+    });
   }
 }

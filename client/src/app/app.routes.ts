@@ -1,8 +1,9 @@
 // src/app/app.routes.ts
 import { Routes } from '@angular/router';
+import { authGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
-  // --- Public Pages under main header layout ---
+  // --- Public Pages under main header/navbar layout ---
   {
     path: '',
     loadComponent: () => import('./layout/main-layout/main-layout').then(m => m.MainLayoutComponent),
@@ -37,23 +38,27 @@ export const routes: Routes = [
       // Blog
       { path: 'blog', loadComponent: () => import('./pages/blog/articles/articles').then(m => m.BlogArticlesComponent), title: 'Blog — Acklet' },
       { path: 'blog/:slug', loadComponent: () => import('./pages/blog/article-details/article-details').then(m => m.BlogArticleDetailsComponent) },
-
-      // Authentication
-      { path: 'auth/login', loadComponent: () => import('./pages/auth/login/login').then(m => m.LoginComponent), title: 'Log In — Acklet' },
-      { path: 'auth/register', loadComponent: () => import('./pages/auth/signup/signup').then(m => m.SignupComponent), title: 'Sign Up — Acklet' },
-      { path: 'auth/forgot-password', loadComponent: () => import('./pages/auth/forgot-password/forgot-password').then(m => m.ForgotPasswordComponent), title: 'Forgot Password — Acklet' },
-      { path: 'auth/reset-password', loadComponent: () => import('./pages/auth/reset-password/reset-password').then(m => m.ResetPasswordComponent), title: 'Reset Password — Acklet' },
-      { path: 'auth/verify-email', loadComponent: () => import('./pages/auth/verify-email/verify-email').then(m => m.VerifyEmailComponent), title: 'Verify Email — Acklet' },
-      { path: 'auth/otp', loadComponent: () => import('./pages/auth/otp/otp').then(m => m.OtpVerificationComponent), title: 'OTP Verification — Acklet' },
-      { path: 'auth/onboarding', loadComponent: () => import('./pages/auth/onboarding/onboarding').then(m => m.OnboardingComponent), title: 'Personalize Your Workspace — Acklet' },
-      { path: 'auth/welcome', loadComponent: () => import('./pages/auth/welcome/welcome').then(m => m.WelcomeComponent), title: 'Welcome to Acklet' },
     ],
   },
+
+  // --- Standalone Auth Pages (No Navbar / No Main Footer) ---
+  { path: 'login', redirectTo: 'auth/login', pathMatch: 'full' },
+  { path: 'signup', redirectTo: 'auth/register', pathMatch: 'full' },
+  { path: 'register', redirectTo: 'auth/register', pathMatch: 'full' },
+  { path: 'auth/login', loadComponent: () => import('./pages/auth/login/login').then(m => m.LoginComponent), title: 'Log In — Acklet' },
+  { path: 'auth/register', loadComponent: () => import('./pages/auth/signup/signup').then(m => m.SignupComponent), title: 'Sign Up — Acklet' },
+  { path: 'auth/forgot-password', loadComponent: () => import('./pages/auth/forgot-password/forgot-password').then(m => m.ForgotPasswordComponent), title: 'Forgot Password — Acklet' },
+  { path: 'auth/reset-password', loadComponent: () => import('./pages/auth/reset-password/reset-password').then(m => m.ResetPasswordComponent), title: 'Reset Password — Acklet' },
+  { path: 'auth/verify-email', loadComponent: () => import('./pages/auth/verify-email/verify-email').then(m => m.VerifyEmailComponent), title: 'Verify Email — Acklet' },
+  { path: 'auth/otp', loadComponent: () => import('./pages/auth/otp/otp').then(m => m.OtpVerificationComponent), title: 'OTP Verification — Acklet' },
+  { path: 'auth/onboarding', loadComponent: () => import('./pages/auth/onboarding/onboarding').then(m => m.OnboardingComponent), title: 'Personalize Your Workspace — Acklet' },
+  { path: 'auth/welcome', loadComponent: () => import('./pages/auth/welcome/welcome').then(m => m.WelcomeComponent), title: 'Welcome to Acklet' },
 
   // --- Authenticated Workspace Pages under sidebar layout shell ---
   {
     path: 'workspace',
     loadComponent: () => import('./layout/shell/shell').then(m => m.ShellLayoutComponent),
+    canActivate: [authGuard],
     children: [
       { path: '', loadComponent: () => import('./pages/workspace/dashboard/dashboard').then(m => m.WorkspaceDashboardComponent), title: 'Dashboard — Acklet' },
       { path: 'favorites', loadComponent: () => import('./pages/workspace/favorites/favorites').then(m => m.WorkspaceFavoritesComponent), title: 'Favorites — Acklet' },

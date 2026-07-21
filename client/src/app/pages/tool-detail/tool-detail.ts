@@ -583,24 +583,28 @@ export class ToolDetailComponent implements OnInit {
 
   ngOnInit(): void {
     this.route.params.subscribe(params => {
-      const t = this.toolsSvc.getToolBySlug(params['id']);
-      this.tool.set(t);
-      if (t) {
-        // 1. Fetch DTO Recommendations
-        this.discoverySvc.getToolRecommendations(t.id, 'ALTERNATIVE').subscribe(recs => {
-          if (recs && recs.length > 0) {
-            this.relatedTools.set(recs);
-          } else {
-            this.relatedTools.set(this.toolsSvc.getRelatedTools(t.relatedToolIds));
-          }
-        });
+      const slug = params['id'];
+      if (!slug) return;
+      
+      this.toolsSvc.getToolBySlug(slug).subscribe(t => {
+        this.tool.set(t);
+        if (t) {
+          // 1. Fetch DTO Recommendations
+          this.discoverySvc.getToolRecommendations(t.id, 'ALTERNATIVE').subscribe(recs => {
+            if (recs && recs.length > 0) {
+              this.relatedTools.set(recs);
+            } else {
+              this.relatedTools.set(this.toolsSvc.getRelatedTools(t.relatedToolIds || []));
+            }
+          });
 
-        // 2. Fetch Tool Knowledge audit profiles
-        this.knowledgeSvc.getToolKnowledge(t.id).subscribe(hub => {
-          this.knowledge.set(hub);
-          this.seoSvc.setToolKnowledgeSeo(hub, t.name, t.categoryName);
-        });
-      }
+          // 2. Fetch Tool Knowledge audit profiles
+          this.knowledgeSvc.getToolKnowledge(t.id).subscribe(hub => {
+            this.knowledge.set(hub);
+            this.seoSvc.setToolKnowledgeSeo(hub, t.name, t.categoryName || 'Developer Tools');
+          });
+        }
+      });
     });
   }
 
@@ -646,9 +650,10 @@ export class ToolDetailComponent implements OnInit {
     return Object.entries(priv).map(([k, v]) => ({ key: k, value: String(v) }));
   }
 
-  formatCount(n: number): string {
-    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-    if (n >= 1_000) return (n / 1_000).toFixed(0) + 'K';
-    return n.toString();
+  formatCount(n?: number): string {
+    const val = n || 0;
+    if (val >= 1_000_000) return (val / 1_000_000).toFixed(1) + 'M';
+    if (val >= 1_000) return (val / 1_000).toFixed(0) + 'K';
+    return val.toString();
   }
 }
