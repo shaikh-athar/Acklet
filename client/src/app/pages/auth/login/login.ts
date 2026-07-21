@@ -37,9 +37,10 @@ import { gsap } from 'gsap';
           <div class="form-group">
             <div class="flex justify-between items-center mb-1">
               <label class="form-label mb-0" for="password">Password</label>
-              <a routerLink="/forgot-password" class="auth-link text-xs">Forgot password?</a>
             </div>
             <input type="password" id="password" class="input" placeholder="••••••••" required />
+              <a routerLink="/auth/forgot-password" class="auth-link text-xs">Forgot password?</a>
+          
           </div>
 
           <button type="submit" class="btn btn-primary w-full mt-2">
@@ -49,7 +50,7 @@ import { gsap } from 'gsap';
 
         <div class="auth-footer mt-6 text-center">
           <span class="text-neutral-500 text-xs">Don't have an account? </span>
-          <a routerLink="/signup" class="auth-link text-xs font-semibold">Sign up</a>
+          <a routerLink="/auth/register" class="auth-link text-xs font-semibold">Sign up</a>
         </div>
       </div>
     </div>
