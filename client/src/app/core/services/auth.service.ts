@@ -15,6 +15,11 @@ export interface UserProfile {
   notificationSettings: Record<string, any>;
 }
 
+export interface TokenRefreshResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   message: string;
@@ -24,11 +29,20 @@ export interface ApiResponse<T> {
   traceId: string;
 }
 
+export interface OAuthPkceState {
+  authUrl: string;
+  state: string;
+  codeVerifier: string;
+  codeChallenge: string;
+}
+
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
+  isNewUser?: boolean;
   profile: UserProfile;
 }
+
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -52,11 +66,18 @@ export class AuthService {
     }
   }
 
-  register(email: string, password: string, displayName: string): Observable<ApiResponse<LoginResponse>> {
-    return this.http.post<ApiResponse<LoginResponse>>(`${this.baseUrl}/auth/register`, {
-      email,
-      password,
-      displayName
+  /** Gets PKCE state and Google OAuth 2.0 authorization URL from backend */
+  getGoogleAuthUrl(redirectUri?: string): Observable<ApiResponse<OAuthPkceState>> {
+    const params = redirectUri ? `?redirectUri=${encodeURIComponent(redirectUri)}` : '';
+    return this.http.get<ApiResponse<OAuthPkceState>>(`${this.baseUrl}/auth/google/authorize${params}`);
+  }
+
+  /** Exchanges PKCE authorization code + verifier for session JWT tokens */
+  exchangeGoogleCode(code: string, codeVerifier: string, redirectUri?: string): Observable<ApiResponse<LoginResponse>> {
+    return this.http.post<ApiResponse<LoginResponse>>(`${this.baseUrl}/auth/google/code`, {
+      code,
+      codeVerifier,
+      redirectUri
     }).pipe(
       tap(res => {
         if (res.success && res.data) {
@@ -66,10 +87,9 @@ export class AuthService {
     );
   }
 
-  login(email: string, password: string): Observable<ApiResponse<LoginResponse>> {
-    return this.http.post<ApiResponse<LoginResponse>>(`${this.baseUrl}/auth/login`, {
-      email,
-      password
+  loginWithGoogle(credential: string): Observable<ApiResponse<LoginResponse>> {
+    return this.http.post<ApiResponse<LoginResponse>>(`${this.baseUrl}/auth/google`, {
+      credential
     }).pipe(
       tap(res => {
         if (res.success && res.data) {
@@ -79,11 +99,22 @@ export class AuthService {
     );
   }
 
-  verifyEmail(email: string, code: string): Observable<ApiResponse<void>> {
-    return this.http.post<ApiResponse<void>>(`${this.baseUrl}/auth/verify-email`, {
-      email,
-      code
-    });
+  savePreferences(preferences: Record<string, any>): Observable<ApiResponse<any>> {
+    return this.http.put<ApiResponse<any>>(`${this.baseUrl}/users/me/preferences`, { preferences });
+  }
+
+
+  refreshToken(refreshToken: string): Observable<ApiResponse<TokenRefreshResponse>> {
+    return this.http.post<ApiResponse<TokenRefreshResponse>>(`${this.baseUrl}/auth/refresh`, {
+      refreshToken
+    }).pipe(
+      tap(res => {
+        if (res.success && res.data) {
+          localStorage.setItem('acklet_access_token', res.data.accessToken);
+          localStorage.setItem('acklet_refresh_token', res.data.refreshToken);
+        }
+      })
+    );
   }
 
   logout(): void {
@@ -92,7 +123,7 @@ export class AuthService {
       this.http.post(`${this.baseUrl}/auth/logout`, { refreshToken }).subscribe();
     }
     this.clearSession();
-    this.router.navigate(['/login']);
+    this.router.navigate(['/auth/login']);
   }
 
   private fetchCurrentUser(): Observable<ApiResponse<UserProfile>> {

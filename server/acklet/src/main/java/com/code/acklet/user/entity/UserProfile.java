@@ -31,6 +31,10 @@ public class UserProfile {
     @Column(name = "avatar_url")
     private String avatarUrl;
 
+    @Column(name = "onboarding_completed", nullable = false)
+    @Builder.Default
+    private boolean onboardingCompleted = false;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "preferences", columnDefinition = "jsonb")
     private Map<String, Object> preferences;
@@ -39,3 +43,4 @@ public class UserProfile {
     @Column(name = "notification_settings", columnDefinition = "jsonb")
     private Map<String, Object> notificationSettings;
 }
+

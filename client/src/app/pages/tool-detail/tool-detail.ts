@@ -80,18 +80,6 @@ import { ToolKnowledgeHub } from '../../core/models/tool-knowledge.model';
           </div>
         </div>
 
-        <!-- STICKY SUB-NAVIGATION -->
-        <div class="sticky-tabs-container">
-          <div class="container-main sticky-tabs-inner">
-            <a href="#overview" class="sticky-tab-link">Overview</a>
-            <a href="#technical" class="sticky-tab-link">Technical Specs</a>
-            <a href="#privacy" class="sticky-tab-link">Privacy & Security</a>
-            <a href="#pricing" class="sticky-tab-link">Pricing</a>
-            <a href="#compatibility" class="sticky-tab-link">Compatibility</a>
-            <a href="#versions" class="sticky-tab-link">Version Log</a>
-          </div>
-        </div>
-
         <!-- CONTENT LAYOUT -->
         <div class="container-main td-body">
           <div class="td-main">
@@ -346,32 +334,7 @@ import { ToolKnowledgeHub } from '../../core/models/tool-knowledge.model';
     .td-section-title { font-size: 1.5rem; font-weight: 500; color: var(--color-neutral-100); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-soft); }
     .td-desc { font-size: 0.9rem; color: var(--color-neutral-300); line-height: 1.8; }
 
-    /* Sticky Tabs styling */
-    .sticky-tabs-container {
-      position: sticky;
-      top: 60px;
-      z-index: 30;
-      background: rgba(2, 6, 23, 0.85);
-      border-bottom: 1px solid var(--border-soft);
-      backdrop-filter: blur(12px);
-      padding: 0.75rem 0;
-    }
-    .sticky-tabs-inner {
-      display: flex;
-      gap: 1.5rem;
-      overflow-x: auto;
-    }
-    .sticky-tab-link {
-      font-size: 0.825rem;
-      font-weight: 600;
-      color: var(--color-neutral-400);
-      text-decoration: none;
-      transition: color 0.2s;
-    }
-    .sticky-tab-link:hover {
-      color: var(--color-neutral-100);
-    }
-
+   
     /* Advantages and Limitations layout */
     .adv-lim-row {
       display: grid;

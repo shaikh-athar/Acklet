@@ -14,3 +14,9 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+
+app:
+  security:
+    google:
+      client-id: 520922697605-i1g6rcrmvmps6joiej93b4aa73jv2cf1.apps.googleusercontent.com
+      client-secret: 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

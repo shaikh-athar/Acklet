@@ -16,22 +16,30 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-@Tag(name = "Authentication Gateway", description = "Endpoints for registering, logging in, rotating tokens, and resetting passwords")
+@Tag(name = "Authentication Gateway", description = "Endpoints for Google OAuth logins, token rotation, and sign out")
 public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/register")
-    @Operation(summary = "Register a new user account", description = "Creates a new user record in PENDING state and sends a verification OTP code")
-    public ResponseEntity<ApiResponse<LoginResponse>> register(@Valid @RequestBody RegisterRequest request) {
-        LoginResponse response = authService.register(request);
-        return ResponseEntity.ok(ApiResponse.success(response, "Registration successful. Please verify your email."));
+    @org.springframework.web.bind.annotation.GetMapping("/google/authorize")
+    @Operation(summary = "Initiate PKCE Authorization Flow", description = "Generates a PKCE code_verifier, state, and Google OAuth 2.0 authorization URL")
+    public ResponseEntity<ApiResponse<OAuthPkceState>> getGoogleAuthUrl(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String redirectUri) {
+        OAuthPkceState response = authService.generatePkceAuthUrl(redirectUri);
+        return ResponseEntity.ok(ApiResponse.success(response, "PKCE Authorization state generated"));
     }
 
-    @PostMapping("/login")
-    @Operation(summary = "Authenticate user credentials", description = "Verifies email and password, returning JWT access and refresh tokens")
-    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
-        LoginResponse response = authService.login(request);
+    @PostMapping("/google/code")
+    @Operation(summary = "Exchange Google Authorization Code with PKCE", description = "Exchanges authorization code + code_verifier for ID token and issues application JWT session")
+    public ResponseEntity<ApiResponse<LoginResponse>> exchangeGoogleCode(@Valid @RequestBody GoogleCodeExchangeRequest request) {
+        LoginResponse response = authService.exchangeGoogleCode(request);
+        return ResponseEntity.ok(ApiResponse.success(response, "Code exchange successful"));
+    }
+
+    @PostMapping("/google")
+    @Operation(summary = "Authenticate via Google ID Token", description = "Verifies the Google ID token and issues local JWT access and refresh tokens")
+    public ResponseEntity<ApiResponse<LoginResponse>> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
+        LoginResponse response = authService.loginWithGoogle(request);
         return ResponseEntity.ok(ApiResponse.success(response, "Login successful"));
     }
 
@@ -40,34 +48,6 @@ public class AuthController {
     public ResponseEntity<ApiResponse<TokenRefreshResponse>> refresh(@Valid @RequestBody TokenRefreshRequest request) {
         TokenRefreshResponse response = authService.refreshToken(request);
         return ResponseEntity.ok(ApiResponse.success(response, "Tokens rotated successfully"));
-    }
-
-    @PostMapping("/verify-email")
-    @Operation(summary = "Verify account email with OTP", description = "Validates the registration OTP code to transition user status to ACTIVE")
-    public ResponseEntity<ApiResponse<Void>> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
-        authService.verifyEmail(request);
-        return ResponseEntity.ok(ApiResponse.success(null, "Email verified successfully"));
-    }
-
-    @PostMapping("/resend-otp")
-    @Operation(summary = "Resend registration verification OTP", description = "Regenerates and resends the verification code to user email")
-    public ResponseEntity<ApiResponse<Void>> resendOtp(@Valid @RequestBody ResendOtpRequest request) {
-        authService.resendOtp(request);
-        return ResponseEntity.ok(ApiResponse.success(null, "Verification code resent"));
-    }
-
-    @PostMapping("/forgot-password")
-    @Operation(summary = "Initiate password reset flow", description = "Generates and logs a password recovery code for the provided email")
-    public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
-        authService.forgotPassword(request);
-        return ResponseEntity.ok(ApiResponse.success(null, "Password reset email sent"));
-    }
-
-    @PostMapping("/reset-password")
-    @Operation(summary = "Complete password reset", description = "Validates recovery OTP code and overrides the user's password")
-    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
-        authService.resetPassword(request);
-        return ResponseEntity.ok(ApiResponse.success(null, "Password reset successfully"));
     }
 
     @PostMapping("/logout")

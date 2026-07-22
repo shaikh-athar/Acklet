@@ -270,10 +270,21 @@ html[data-theme="dark"] {
   --color-nav-active-bg: var(--color-nav-active-bg);
 }
 
-/* Keyboard Navigation focus indicators */
+/* Keyboard Navigation Focus Rings — Theme Harmonious */
 *:focus-visible {
-  outline: 2px solid var(--color-accent-500);
-  outline-offset: 4px;
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
+}
+
+/* Browser Autofill Theme Harmony Overrides */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: var(--color-neutral-50) !important;
+  transition: background-color 50000s ease-in-out 0s;
+  box-shadow: 0 0 0px 1000px var(--color-surface-950) inset !important;
 }
 
 /* Reduced Motion preferences support */
@@ -289,10 +300,15 @@ html[data-theme="dark"] {
 /* ============================================================
    BASE CUSTOM STYLING (Pitch Black, Grid Lines, Font Pairing)
    ============================================================ */
+html {
+  font-size: 17px;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: var(--color-surface-950);
   color: var(--color-neutral-200);
+  font-size: 1rem;
   min-height: 100vh;
   line-height: 1.625;
   overflow-x: hidden;
@@ -778,6 +794,30 @@ select.input option {
    ============================================================ */
 a {
   text-decoration: none;
+}
+
+/* ============================================================
+   AUTH LINK — theme-aware, readable in both dark & light
+   ============================================================ */
+:root {
+  --color-auth-link: #4f46e5;        /* indigo-600 — visible on light bg */
+}
+html[data-theme="dark"] {
+  --color-auth-link: #818cf8;        /* indigo-400 — visible on dark bg */
+}
+
+/* Global override wins over component-scoped .auth-link via !important
+   because Angular emulated encapsulation still renders the element in the
+   DOM with a global class, so a global !important rule takes precedence. */
+.auth-link {
+  color: var(--color-auth-link) !important;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.auth-link:hover {
+  color: var(--color-violet-500) !important;
+  text-decoration: underline;
 }
 
 /* ============================================================

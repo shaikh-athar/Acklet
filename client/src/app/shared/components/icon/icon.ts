@@ -63,7 +63,9 @@ import {
   LucideExternalLink,
   LucideMessageSquare,
   LucideFileText,
-  LucideSearchX
+  LucideSearchX,
+  LucideEye,
+  LucideEyeOff
 } from '@lucide/angular';
 
 @Component({
@@ -178,7 +180,9 @@ export class IconComponent {
     'external-link': LucideExternalLink,
     'message-square': LucideMessageSquare,
     'file-text': LucideFileText,
-    'search-x': LucideSearchX
+    'search-x': LucideSearchX,
+    'eye': LucideEye,
+    'eye-off': LucideEyeOff
   };
 
   readonly lucideIconComponent = computed(() => {
