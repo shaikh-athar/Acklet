@@ -260,9 +260,6 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Primary authentication handler: Starts Google OAuth 2.0 PKCE Code Flow.
-   */
-  /**
    * Primary authentication handler: Triggers Google OAuth 2.0 Code Flow via Popup.
    * This uses UX mode 'popup' so no redirect_uri registration error occurs in Google Console.
    */
@@ -375,6 +372,18 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
       auto_select: false,
       itp_support: true
     });
+
+    const buttonWrapper = document.getElementById('google-btn-container');
+    if (buttonWrapper) {
+      google.accounts.id.renderButton(buttonWrapper, {
+        theme: 'outline',
+        size: 'large',
+        width: 320,
+        shape: 'pill',
+        text: 'continue_with'
+      });
+      buttonWrapper.classList.remove('hidden');
+    }
   }
 
   private handleGoogleCredential(credential: string): void {
