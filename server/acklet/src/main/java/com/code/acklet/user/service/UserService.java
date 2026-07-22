@@ -60,6 +60,7 @@ public class UserService implements UserDetailsService {
             profile = UserProfile.builder().user(user).id(userId).build();
         }
         profile.setPreferences(preferences);
+        profile.setOnboardingCompleted(true); // Mark onboarding done once preferences are saved
         userProfileRepository.save(profile);
         user.setProfile(profile);
         return user;

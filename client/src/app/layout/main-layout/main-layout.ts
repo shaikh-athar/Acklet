@@ -24,7 +24,7 @@ import { ToastComponent } from '../../shared/components/toast/toast';
   `,
   styles: [`
     .layout-root { display: flex; flex-direction: column; min-height: 100vh; }
-    .layout-main { flex: 1; }
+    .layout-main { flex: 1;}
   `],
 })
 export class MainLayoutComponent {

@@ -6,7 +6,7 @@ import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { ToastService } from '../services/toast.service';
 
-const PUBLIC_PATTERNS = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/verify-email', '/auth/resend-otp', '/auth/forgot-password', '/auth/reset-password'];
+const PUBLIC_PATTERNS = ['/auth/login', '/auth/google', '/auth/refresh'];
 
 /**
  * Attaches the stored JWT to every outgoing request.
