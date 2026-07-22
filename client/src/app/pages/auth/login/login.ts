@@ -39,7 +39,7 @@ import { gsap } from 'gsap';
           @if (isVerifying()) {
             <div class="loading-state flex flex-col items-center justify-center gap-3">
               <app-icon name="loader-2" class="size-8 text-indigo-500 animate-spin" />
-              <span class="text-sm text-neutral-400 font-medium font-mono">Securing Google OAuth session...</span>
+              <span class="text-sm text-neutral-400 font-medium font-mono">Verifying with Google...</span>
             </div>
           } @else {
             <div class="flex flex-col items-center justify-center gap-4 w-full">
@@ -61,7 +61,6 @@ import { gsap } from 'gsap';
               </button>
 
               <!-- Optional GIS Button Container -->
-              <div id="google-btn-container" class="google-btn-wrapper hidden"></div>
             </div>
           }
         </div>
@@ -150,10 +149,10 @@ import { gsap } from 'gsap';
       transition: opacity 0.25s ease;
     }
     .google-pkce-btn:hover {
-      background: var(--color-surface-700);
+      background: var(--color-surface-200);
       color: var(--color-neutral-50);
-      border-color: var(--color-brand-500);
-      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.18), 0 0 0 1px var(--color-brand-500);
+      border-color: var(--color-violet-500);
+      box-shadow: 0 8px 24px rgba(251, 251, 251, 0.18), 0 0 0 1px var(--color-brand-500);
       transform: translateY(-2px) scale(1.01);
     }
     .google-pkce-btn:hover::before {
