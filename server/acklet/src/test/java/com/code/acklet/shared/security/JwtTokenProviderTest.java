@@ -25,7 +25,6 @@ class JwtTokenProviderTest {
 
         userDetails = User.builder()
                 .email("test@acklet.com")
-                .password("encoded_password")
                 .role(User.Role.USER)
                 .status(User.UserStatus.ACTIVE)
                 .build();

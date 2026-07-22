@@ -1,10 +1,10 @@
-import { Component, signal, HostListener, inject, ElementRef } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, signal, HostListener, inject, ElementRef, computed } from '@angular/core';
+import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../icon/icon';
-import { SpotlightDirective } from '../../directives/spotlight.directive';
 import { MagneticDirective } from '../../directives/magnetic.directive';
 import { ThemeService } from '../../../core/services/theme.service';
+import { AuthService } from '../../../core/services/auth.service';
 
 interface NavLink {
   label: string;
@@ -15,9 +15,9 @@ interface NavLink {
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, CommonModule, IconComponent, SpotlightDirective, MagneticDirective],
+  imports: [RouterLink, RouterLinkActive, CommonModule, IconComponent, MagneticDirective],
   template: `
-    <nav class="navbar-root card-spotlight" [class.scrolled]="isScrolled()" appSpotlight>
+    <nav class="navbar-root" [class.scrolled]="isScrolled()">
       <div class="container-main navbar-inner">
         <a routerLink="/" class="logo-wrap">
           <span class="logo-text-shining">ACKLET</span>
@@ -42,8 +42,8 @@ interface NavLink {
                           </div>
                         }
                         <div class="dropdown-item-info">
-                          <div class="dropdown-item-label">{{ child.label }}</div>
-                          <div class="dropdown-item-desc">{{ child.desc }}</div>
+                           <div class="dropdown-item-label">{{ child.label }}</div>
+                           <div class="dropdown-item-desc">{{ child.desc }}</div>
                         </div>
                       </a>
                     }
@@ -60,7 +60,7 @@ interface NavLink {
  
         <!-- Actions -->
         <div class="nav-actions">
-          <!-- Theme Toggle -->
+          <!-- Theme Toggle (always visible) -->
           <button class="theme-toggle-btn" (click)="themeSvc.toggle()" aria-label="Toggle theme">
             @if (themeSvc.theme() === 'dark') {
               <app-icon name="sun" class="size-4 text-neutral-300" />
@@ -69,14 +69,9 @@ interface NavLink {
             }
           </button>
 
-          <!-- Login CTA -->
-          <a routerLink="/auth/login" class="btn btn-ghost btn-sm hide-mobile">
-            Sign In
-          </a>
-
-          <!-- Start solving CTA -->
-          <a routerLink="/tools/explore" class="btn btn-primary btn-sm hide-mobile nav-workspace-btn" appMagnetic [appMagnetic]="0.2">
-            Start solving
+          <!-- CTA: Workspace if logged in, Launch if not -->
+          <a routerLink="/workspace" class="btn btn-primary btn-sm hide-mobile nav-workspace-btn" appMagnetic [appMagnetic]="0.45">
+            {{ currentUser() ? 'Your Workspace' : 'Launch App' }}
           </a>
 
           <!-- Mobile hamburger -->
@@ -108,6 +103,7 @@ interface NavLink {
               </a>
             }
           }
+
         </div>
       </div>
       @if (mobileMenuOpen()) {
@@ -285,6 +281,12 @@ interface NavLink {
       position: fixed; inset: 0; z-index: 98;
       background: rgba(0,0,0,0.25); top: 64px;
     }
+    .mobile-logout {
+      display: flex; align-items: center; gap: 0.5rem;
+      background: none; border: none; cursor: pointer; font-family: inherit;
+      color: #ef4444;
+    }
+    .mobile-logout:hover { background: rgba(239,68,68,0.08); }
     @media (max-width: 768px) {
       .mobile-menu-btn { display: flex !important; }
       .hide-mobile { display: none !important; }
@@ -307,18 +309,140 @@ interface NavLink {
       color: var(--color-neutral-50);
       background: var(--color-nav-hover-bg);
     }
+
+    /* ── User Pill ── */
+    .user-pill-wrap {
+      position: relative;
+    }
+    .user-pill {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.25rem 0.6rem 0.25rem 0.25rem;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--border-soft);
+      background: var(--color-surface-900);
+      cursor: pointer; transition: all 0.2s ease;
+      font-family: inherit; outline: none;
+    }
+    .user-pill:hover,
+    .user-pill-wrap.open .user-pill {
+      background: var(--color-surface-800);
+      border-color: var(--border-medium);
+    }
+    .user-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      object-fit: cover; flex-shrink: 0;
+    }
+    .user-avatar-fallback {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 700; color: white;
+    }
+    .user-name {
+      font-size: 0.8rem; font-weight: 600;
+      color: var(--color-neutral-200);
+      max-width: 110px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .chevron-icon {
+      transition: transform 0.2s ease;
+      flex-shrink: 0;
+    }
+    .user-pill-wrap.open .chevron-icon { transform: rotate(180deg); }
+
+    /* ── User Dropdown ── */
+    .user-dropdown {
+      position: absolute; top: calc(100% + 0.625rem); right: 0;
+      width: 240px; padding: 0.5rem;
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border-soft);
+      background: color-mix(in srgb, var(--color-surface-900) 96%, transparent);
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+      opacity: 0; pointer-events: none;
+      transform: translateY(6px);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 200;
+    }
+    .user-pill-wrap.open .user-dropdown {
+      opacity: 1; pointer-events: auto; transform: translateY(0);
+    }
+
+    .user-dropdown-header {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.75rem 0.5rem;
+    }
+    .user-avatar-lg {
+      width: 38px; height: 38px; border-radius: 50%;
+      object-fit: cover; flex-shrink: 0;
+    }
+    .user-avatar-fallback-lg {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; font-weight: 700; color: white;
+    }
+    .user-dropdown-info { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+    .user-dropdown-name {
+      font-size: 0.85rem; font-weight: 700;
+      color: var(--color-neutral-50);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .user-dropdown-email {
+      font-size: 0.7rem; color: var(--color-neutral-500);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .user-dropdown-divider {
+      height: 1px; background: var(--border-soft); margin: 0.25rem 0;
+    }
+    .user-dropdown-item {
+      display: flex; align-items: center; gap: 0.625rem;
+      padding: 0.55rem 0.625rem; border-radius: var(--radius-lg);
+      font-size: 0.825rem; font-weight: 500;
+      color: var(--color-neutral-300);
+      text-decoration: none; cursor: pointer;
+      transition: all 0.15s ease;
+      background: none; border: none; font-family: inherit; width: 100%;
+      text-align: left;
+    }
+    .user-dropdown-item:hover { background: var(--color-surface-800); color: var(--color-neutral-50); }
+    .theme-row { user-select: none; }
+    .theme-badge {
+      margin-left: auto; font-size: 0.65rem; font-weight: 700;
+      padding: 0.15rem 0.5rem; border-radius: 99px;
+      background: var(--color-surface-700); color: var(--color-neutral-400);
+    }
+    .theme-badge.dark { background: rgba(99,102,241,0.15); color: #818cf8; }
+    .logout-item { color: #ef4444; }
+    .logout-item:hover { background: rgba(239,68,68,0.08); color: #ef4444; }
   `],
 })
 export class NavbarComponent {
   readonly themeSvc = inject(ThemeService);
+  readonly authSvc = inject(AuthService);
+  private readonly router = inject(Router);
   readonly isScrolled = signal(false);
   readonly mobileMenuOpen = signal(false);
   readonly activeDropdown = signal<string | null>(null);
   readonly #elRef = inject(ElementRef);
 
+  readonly currentUser = this.authSvc.currentUser;
+  readonly userInitial = computed(() => {
+    const name = this.authSvc.currentUser()?.displayName ?? '';
+    return name.charAt(0).toUpperCase() || '?';
+  });
+
   toggleDropdown(label: string, event: MouseEvent): void {
     event.stopPropagation();
     this.activeDropdown.update(cur => cur === label ? null : label);
+  }
+
+  closeDropdown(): void {
+    this.activeDropdown.set(null);
+  }
+
+  logout(): void {
+    console.log('[Acklet Navbar] User clicked sign out. Clearing session...');
+    this.activeDropdown.set(null);
+    this.authSvc.logout();
   }
 
   @HostListener('document:click', ['$event'])

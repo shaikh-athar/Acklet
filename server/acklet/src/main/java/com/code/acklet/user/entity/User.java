@@ -29,13 +29,20 @@ public class User extends Auditable implements UserDetails {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
-    private String password;
+    @Column(name = "google_id", unique = true)
+    private String googleId;
+
+    @Column(name = "provider", length = 50)
+    @Builder.Default
+    private String provider = "GOOGLE";
+
+    @Column(name = "last_login_at")
+    private java.time.Instant lastLoginAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
-    private UserStatus status = UserStatus.PENDING;
+    private UserStatus status = UserStatus.ACTIVE;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -48,6 +55,11 @@ public class User extends Auditable implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+    }
+
+    @Override
+    public String getPassword() {
+        return null;
     }
 
     @Override

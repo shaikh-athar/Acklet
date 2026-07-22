@@ -1,12 +1,13 @@
-import { Component, inject, signal, computed, effect } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { gsap } from 'gsap';
 import { IconComponent } from '../../../shared/components/icon/icon';
 import { Theme } from '../../../core/services/theme.service';
 import { OnboardingPreferences } from '../../../core/models/preference.model';
 import { PreferenceService } from '../../../core/services/preference.service';
+import { AuthService } from '../../../core/services/auth.service';
 
 const ROLES = [
   { id: 'developer', name: 'Developer', desc: 'Build apps, APIs, cloud systems', icon: 'terminal' },
@@ -27,6 +28,8 @@ const INTERESTS = [
   'Automation', 'Regex', 'JSON', 'APIs'
 ];
 
+const TOTAL_STEPS = 6;
+
 @Component({
   selector: 'app-onboarding',
   standalone: true,
@@ -41,7 +44,9 @@ const INTERESTS = [
           <span class="logo-text">ACKLET</span>
         </div>
         <div class="header-actions">
-          <button class="btn btn-ghost" (click)="skip()">Skip</button>
+          @if (!isMandatory()) {
+            <button class="btn btn-ghost" (click)="skip()">Skip</button>
+          }
         </div>
       </header>
 
@@ -54,10 +59,75 @@ const INTERESTS = [
       <main class="onboarding-main">
         <div class="step-container" id="step-container">
           
+          <!-- STEP 0: Profile Setup -->
+          @if (step() === 0) {
+            <div class="step-content">
+              <span class="step-indicator">Step 1 of {{ TOTAL_STEPS }}</span>
+              <h1 class="step-title">Set up your profile</h1>
+              <p class="step-subtitle">How should we address you?</p>
+
+              <div class="profile-setup-layout mt-6">
+                <!-- Clickable Avatar Upload -->
+                <div class="avatar-upload-wrap">
+                  <!-- Hidden real file input -->
+                  <input
+                    #fileInput
+                    type="file"
+                    accept="image/*"
+                    class="avatar-file-input"
+                    (change)="onFileSelected($event)"
+                  />
+                  <button class="avatar-upload-btn" (click)="fileInput.click()" type="button" [attr.aria-label]="'Upload profile photo'">
+                    @if (photoUrl() && !photoError()) {
+                      <img [src]="photoUrl()" alt="Preview" class="avatar-img" (error)="photoError.set(true)" referrerpolicy="no-referrer" />
+                    } @else {
+                      <div class="avatar-initial">{{ displayNameInitial() }}</div>
+                    }
+                    <div class="avatar-upload-overlay">
+                      <app-icon name="camera" class="size-5" />
+                    </div>
+                  </button>
+                  <span class="avatar-upload-hint">Click to upload from device</span>
+                  @if (photoUrl() && photoUrl().startsWith('data:')) {
+                    <button class="avatar-remove-btn" (click)="clearPhoto()" type="button">Remove</button>
+                  }
+                </div>
+
+                <!-- Fields -->
+                <div class="profile-fields">
+                  <div class="field-group">
+                    <label class="field-label" for="display-name">Display name <span class="required">*</span></label>
+                    <input
+                      id="display-name"
+                      type="text"
+                      class="field-input"
+                      placeholder="How should we call you?"
+                      [value]="displayName()"
+                      (input)="displayName.set($any($event.target).value)"
+                      autocomplete="off"
+                    />
+                  </div>
+
+                  <div class="field-group">
+                    <label class="field-label">Using Google photo</label>
+                    <div class="google-photo-row">
+                      @if (googleAvatarUrl()) {
+                        <img [src]="googleAvatarUrl()" class="google-photo-thumb" referrerpolicy="no-referrer" alt="Google photo" />
+                        <span class="google-photo-label">Your Google account photo will be used unless you upload a custom one above.</span>
+                      } @else {
+                        <span class="google-photo-label">No Google photo. Upload one above.</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+
           <!-- STEP 1: Roles -->
           @if (step() === 1) {
             <div class="step-content">
-              <span class="step-indicator">Step 1 of 5</span>
+              <span class="step-indicator">Step 2 of {{ TOTAL_STEPS }}</span>
               <h1 class="step-title">What best describes you?</h1>
               <p class="step-subtitle">Select all that apply.</p>
               
@@ -87,7 +157,7 @@ const INTERESTS = [
           <!-- STEP 2: Interests -->
           @if (step() === 2) {
             <div class="step-content">
-              <span class="step-indicator">Step 2 of 5</span>
+              <span class="step-indicator">Step 3 of {{ TOTAL_STEPS }}</span>
               <h1 class="step-title">What do you want Acklet to help with?</h1>
               
               <div class="search-box mt-6 mb-6">
@@ -112,7 +182,7 @@ const INTERESTS = [
           <!-- STEP 3: Experience -->
           @if (step() === 3) {
             <div class="step-content">
-              <span class="step-indicator">Step 3 of 5</span>
+              <span class="step-indicator">Step 4 of {{ TOTAL_STEPS }}</span>
               <h1 class="step-title">How experienced are you?</h1>
               <p class="step-subtitle">Helps us recommend the right tools.</p>
               
@@ -144,7 +214,7 @@ const INTERESTS = [
           <!-- STEP 4: Appearance -->
           @if (step() === 4) {
             <div class="step-content">
-              <span class="step-indicator">Step 4 of 5</span>
+              <span class="step-indicator">Step 5 of {{ TOTAL_STEPS }}</span>
               <h1 class="step-title">Choose your aesthetic</h1>
               
               <div class="appearance-layout mt-8">
@@ -197,7 +267,7 @@ const INTERESTS = [
       @if (step() < 5) {
         <footer class="onboarding-footer">
           <div class="footer-inner">
-            <button class="btn btn-ghost" [disabled]="step() === 1" (click)="prevStep()">
+            <button class="btn btn-ghost" [disabled]="step() === 0" (click)="prevStep()">
               Back
             </button>
             <button class="btn btn-primary cta-next" [disabled]="!canProceed()" (click)="nextStep()">
@@ -213,9 +283,77 @@ const INTERESTS = [
 })
 export class OnboardingComponent {
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly prefsSvc = inject(PreferenceService);
+  private readonly authSvc = inject(AuthService);
 
-  readonly step = signal(1);
+  readonly isMandatory = signal(false);
+  readonly step = signal(0); // starts at 0 (profile setup)
+
+  readonly TOTAL_STEPS = TOTAL_STEPS;
+
+  constructor() {
+    console.log('[Acklet Onboarding] Initializing onboarding flow...');
+    this.route.queryParams.subscribe(params => {
+      this.isMandatory.set(params['mandatory'] === 'true');
+      console.log('[Acklet Onboarding] Mandatory mode:', params['mandatory'] === 'true');
+    });
+
+    // Pre-fill from Google profile
+    const user = this.authSvc.currentUser();
+    if (user?.displayName) {
+      this.displayName.set(user.displayName);
+      console.log('[Acklet Onboarding] Pre-filled display name from Google profile:', user.displayName);
+    }
+    if (user?.avatarUrl) {
+      this.photoUrl.set(user.avatarUrl);
+      this.googleAvatarUrl.set(user.avatarUrl);
+      console.log('[Acklet Onboarding] Pre-filled avatar URL from Google profile');
+    }
+  }
+
+  // Step 0: Profile
+  readonly displayName = signal('');
+  readonly photoUrl = signal('');
+  readonly photoError = signal(false);
+
+  readonly displayNameInitial = computed(() => {
+    const name = this.displayName().trim();
+    return name ? name.charAt(0).toUpperCase() : '?';
+  });
+
+  /** The original Google avatar URL (used as fallback display) */
+  readonly googleAvatarUrl = signal('');
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    console.log('[Acklet Onboarding] File selected for avatar upload:', file.name, file.type, file.size, 'bytes');
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      console.log('[Acklet Onboarding] FileReader finished. Data URL length:', dataUrl?.length);
+      this.photoError.set(false);
+      this.photoUrl.set(dataUrl);
+    };
+    reader.onerror = () => {
+      console.error('[Acklet Onboarding] FileReader error reading file.');
+    };
+    reader.readAsDataURL(file);
+    // Reset input so the same file can be re-selected
+    input.value = '';
+  }
+
+  clearPhoto(): void {
+    console.log('[Acklet Onboarding] Clearing custom photo, reverting to Google avatar.');
+    this.photoUrl.set(this.googleAvatarUrl());
+    this.photoError.set(false);
+  }
+
+  // Steps 1-4
   readonly roles = signal<string[]>([]);
   readonly interests = signal<string[]>([]);
   readonly interestQuery = signal('');
@@ -224,7 +362,8 @@ export class OnboardingComponent {
   // Directly bind theme to the PreferenceService so it live-updates the DOM
   readonly theme = this.prefsSvc.theme;
 
-  readonly progressPercent = computed(() => (this.step() / 5) * 100);
+  // step 0 counts as step 1 in progress bar (0 → 5 maps to 1/6 → 6/6)
+  readonly progressPercent = computed(() => ((this.step() + 1) / TOTAL_STEPS) * 100);
 
   readonly ROLES = ROLES;
   readonly ALL_INTERESTS = INTERESTS;
@@ -236,6 +375,7 @@ export class OnboardingComponent {
   });
 
   canProceed(): boolean {
+    if (this.step() === 0) return this.displayName().trim().length > 0;
     if (this.step() === 1) return this.roles().length > 0;
     if (this.step() === 2) return this.interests().length > 0;
     if (this.step() === 3) return this.expLevel() !== null;
@@ -250,7 +390,6 @@ export class OnboardingComponent {
       this.roles.set([...current, id]);
     }
     
-    // Add micro-interaction pulse
     const btn = event.currentTarget as HTMLElement;
     gsap.fromTo(btn, { scale: 0.96 }, { scale: 1, duration: 0.3, ease: 'back.out(1.5)' });
   }
@@ -266,7 +405,6 @@ export class OnboardingComponent {
 
   setExp(level: 'beginner' | 'intermediate' | 'advanced' | 'expert'): void {
     this.expLevel.set(level);
-    // Auto-advance after small delay on single-select
     setTimeout(() => this.nextStep(), 350);
   }
 
@@ -276,42 +414,44 @@ export class OnboardingComponent {
 
   nextStep(): void {
     if (this.step() >= 5) return;
+    console.log('[Acklet Onboarding] Advancing to step', this.step() + 1);
     this.animateTransition(() => this.step.set(this.step() + 1), 'forward');
   }
 
   prevStep(): void {
-    if (this.step() <= 1) return;
+    if (this.step() <= 0) return;
     this.animateTransition(() => this.step.set(this.step() - 1), 'backward');
   }
 
   skip(): void {
+    console.log('[Acklet Onboarding] User skipped onboarding.');
     this.savePrefs(true);
     this.router.navigate(['/workspace']);
   }
 
   complete(): void {
+    console.log('[Acklet Onboarding] User completed onboarding. Saving preferences...');
     this.savePrefs(false);
     this.router.navigate(['/workspace']);
   }
 
   private savePrefs(skipped: boolean): void {
-    const obPrefs: OnboardingPreferences = {
-      completed: true,
-      skipped,
-      completedAt: new Date().toISOString(),
+    const prefs = {
+      displayName: this.displayName().trim(),
+      photoUrl: this.photoUrl().trim(),
       roles: this.roles(),
       interests: this.interests(),
-      categoryPriority: [],
       experienceLevel: this.expLevel(),
-      accentColor: 'blue'
+      onboardingCompleted: true,
+      onboardingSkipped: skipped,
+      completedAt: new Date().toISOString(),
     };
-    
-    // Patch preference service
-    // Cast is needed because we can't easily spread deeply nested objects in the partial patch
-    const current = this.prefsSvc.prefs();
-    this.prefsSvc.setSearchPrefs({ ...current.search }); // trigger save
-    // In a real app we'd add an explicit setOnboarding method to PreferenceService
-    // For now, we'll navigate
+    console.log('[Acklet Onboarding] Saving preferences:', prefs);
+    // Persist to backend
+    this.authSvc.savePreferences(prefs).subscribe({
+      next: () => console.log('[Acklet Onboarding] Preferences saved to server successfully.'),
+      error: (err) => console.warn('[Acklet Onboarding] Could not persist preferences to server:', err.message)
+    });
   }
 
   private animateTransition(stateChangeFn: () => void, direction: 'forward' | 'backward'): void {
@@ -332,7 +472,6 @@ export class OnboardingComponent {
       onComplete: () => {
         stateChangeFn();
         
-        // Let Angular render the new step, then animate in
         setTimeout(() => {
           gsap.fromTo(container,
             { opacity: 0, x: xIn },

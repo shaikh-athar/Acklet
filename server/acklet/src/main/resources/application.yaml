@@ -5,6 +5,19 @@ spring:
   application:
     name: acklet
 
+  # Mail configuration
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:athar.qtech@gmail.com}
+    password: ${SPRING_MAIL_PASSWORD:jcep jewd sfxr smyv}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
   # Database configuration
   datasource:
     driver-class-name: org.postgresql.Driver
@@ -64,6 +77,9 @@ app:
       refresh-token-expiration-ms: 604800000 # 7 days
     encryption:
       key: ${APP_ENCRYPTION_KEY:MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=} # 256-bit AES key
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
 
   ai:
     mistral:
