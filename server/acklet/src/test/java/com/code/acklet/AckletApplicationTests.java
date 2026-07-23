@@ -10,7 +10,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 		"spring.datasource.password=",
 		"spring.jpa.hibernate.ddl-auto=create-drop",
 		"spring.flyway.enabled=false",
-		"spring.data.redis.repositories.enabled=false"
+		"spring.data.redis.repositories.enabled=false",
+		"app.security.jwt.secret=Mzg1OTM4OTVhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM9",
+		"app.security.encryption.key=MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI="
 })
 class AckletApplicationTests {
 

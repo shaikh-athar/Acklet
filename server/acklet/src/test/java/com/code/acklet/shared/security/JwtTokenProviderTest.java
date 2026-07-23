@@ -1,5 +1,6 @@
 package com.code.acklet.shared.security;
 
+import com.code.acklet.config.properties.AppProperties;
 import com.code.acklet.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,12 +17,11 @@ class JwtTokenProviderTest {
 
     @BeforeEach
     void setUp() {
-        // Initialize with default secret and short expiration times
-        jwtTokenProvider = new JwtTokenProvider(
-                "Mzg1OTM4OTVhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM=",
-                60000,  // 1 minute access token
-                3600000 // 1 hour refresh token
-        );
+        AppProperties appProperties = new AppProperties();
+        appProperties.getSecurity().getJwt().setSecret("Mzg1OTM4OTVhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM=");
+        appProperties.getSecurity().getJwt().setAccessTokenExpirationMs(60000);
+        appProperties.getSecurity().getJwt().setRefreshTokenExpirationMs(3600000);
+        jwtTokenProvider = new JwtTokenProvider(appProperties);
 
         userDetails = User.builder()
                 .email("test@acklet.com")

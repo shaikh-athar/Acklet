@@ -1,9 +1,9 @@
 package com.code.acklet.ai.provider;
 
+import com.code.acklet.config.properties.AppProperties;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.mistralai.MistralAiChatModelName;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -22,17 +22,24 @@ public class MistralProvider implements AiProvider {
     private final MistralAiChatModel model;
     private final AtomicBoolean available = new AtomicBoolean(true);
 
-    public MistralProvider(
-            @Value("${app.ai.mistral.api-key}") String apiKey,
-            @Value("${app.ai.mistral.model:mistral-small-latest}") String modelName) {
-        this.model = MistralAiChatModel.builder()
-                .apiKey(apiKey)
-                .modelName(MistralAiChatModelName.MISTRAL_SMALL_LATEST)
-                .temperature(0.3)
-                .maxTokens(2048)
-                .timeout(Duration.ofSeconds(60))
-                .build();
-        log.info("MistralProvider initialized with model: {}", modelName);
+    public MistralProvider(AppProperties appProperties) {
+        String apiKey = appProperties.getAi().getMistral().getApiKey();
+        String rawModel = appProperties.getAi().getMistral().getModel();
+        String selectedModel = (rawModel != null && !rawModel.isBlank()) ? rawModel : "mistral-small-latest";
+        if (apiKey == null || apiKey.isBlank()) {
+            this.model = null;
+            this.available.set(false);
+            log.info("MistralProvider initialized in disabled state (API key not configured).");
+        } else {
+            this.model = MistralAiChatModel.builder()
+                    .apiKey(apiKey)
+                    .modelName(selectedModel)
+                    .temperature(0.3)
+                    .maxTokens(2048)
+                    .timeout(Duration.ofSeconds(60))
+                    .build();
+            log.info("MistralProvider initialized with model: {}", selectedModel);
+        }
     }
 
     @Override
@@ -45,6 +52,9 @@ public class MistralProvider implements AiProvider {
 
     @Override
     public String complete(String prompt, AiTaskType task) {
+        if (model == null) {
+            throw new AiProviderException("Mistral AI call failed: API key not configured");
+        }
         try {
             String response = model.generate(prompt);
             available.set(true);
@@ -58,6 +68,6 @@ public class MistralProvider implements AiProvider {
 
     @Override
     public boolean isAvailable() {
-        return available.get();
+        return model != null && available.get();
     }
 }

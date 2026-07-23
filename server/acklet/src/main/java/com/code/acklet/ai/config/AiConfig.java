@@ -1,7 +1,7 @@
 package com.code.acklet.ai.config;
 
+import com.code.acklet.config.properties.AppProperties;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -19,10 +19,11 @@ import java.util.concurrent.Executor;
 public class AiConfig {
 
     @Bean(name = "aiExecutor")
-    public Executor aiExecutor(
-            @Value("${app.ai.executor.core-size:2}")    int coreSize,
-            @Value("${app.ai.executor.max-size:5}")     int maxSize,
-            @Value("${app.ai.executor.queue-capacity:50}") int queueCapacity) {
+    public Executor aiExecutor(AppProperties appProperties) {
+        AppProperties.ExecutorProperties executorProps = appProperties.getAi().getExecutor();
+        int coreSize = executorProps.getCoreSize();
+        int maxSize = executorProps.getMaxSize();
+        int queueCapacity = executorProps.getQueueCapacity();
 
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(coreSize);
