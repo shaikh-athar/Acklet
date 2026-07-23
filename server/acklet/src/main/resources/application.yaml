@@ -16,7 +16,7 @@ spring:
       ddl-auto: validate # Use Flyway for migrations
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
 
   # Flyway configuration
   flyway:

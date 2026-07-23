@@ -10,6 +10,9 @@ buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/.maven-wrapper.tpl
 
+*.yaml
+.gitignore
+
 ### STS ###
 .apt_generated
 .classpath
