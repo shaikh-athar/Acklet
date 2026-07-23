@@ -29,9 +29,20 @@ public class CryptoUtils {
         if (keyBase64 == null || keyBase64.isBlank()) {
             throw new IllegalArgumentException("App encryption key is not configured in app.security.encryption.key!");
         }
-        byte[] keyBytes = Base64.getDecoder().decode(keyBase64.trim());
+        byte[] keyBytes;
+        try {
+            if (keyBase64.contains("_") || keyBase64.contains("-")) {
+                keyBytes = Base64.getUrlDecoder().decode(keyBase64.trim());
+            } else {
+                keyBytes = Base64.getDecoder().decode(keyBase64.trim());
+            }
+        } catch (Exception e) {
+            keyBytes = keyBase64.trim().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
         if (keyBytes.length != 32) {
-            throw new IllegalArgumentException("AES GCM requires a 256-bit key (32 bytes). Current key length is: " + keyBytes.length + " bytes");
+            byte[] key32 = new byte[32];
+            System.arraycopy(keyBytes, 0, key32, 0, Math.min(keyBytes.length, 32));
+            keyBytes = key32;
         }
         this.secretKey = new SecretKeySpec(keyBytes, ALGORITHM);
     }

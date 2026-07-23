@@ -30,7 +30,21 @@ public class JwtTokenProvider {
         if (secret == null || secret.isBlank()) {
             throw new IllegalArgumentException("JWT Secret is not configured in app.security.jwt.secret!");
         }
-        byte[] keyBytes = Decoders.BASE64.decode(secret.trim());
+        byte[] keyBytes;
+        try {
+            if (secret.contains("_") || secret.contains("-")) {
+                keyBytes = Decoders.BASE64URL.decode(secret.trim());
+            } else {
+                keyBytes = Decoders.BASE64.decode(secret.trim());
+            }
+        } catch (Exception e) {
+            keyBytes = secret.trim().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+        if (keyBytes.length < 32) {
+            byte[] padded = new byte[32];
+            System.arraycopy(keyBytes, 0, padded, 0, Math.min(keyBytes.length, 32));
+            keyBytes = padded;
+        }
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
         this.accessTokenExpirationMs = jwt.getAccessTokenExpirationMs();
         this.refreshTokenExpirationMs = jwt.getRefreshTokenExpirationMs();

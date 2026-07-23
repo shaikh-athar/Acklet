@@ -23,15 +23,22 @@ import { Tool } from '../../core/models/tool.model';
         <div class="container-main tools-hero-inner">
           <app-section-header eyebrow="Catalog" title="All Solutions" subtitle="The complete catalog of Acklet solutions — organized by category, searchable by intent." />
           
-          <!-- Search -->
-          <div class="tools-search-wrap">
-            <app-icon name="search" class="size-4.5 text-neutral-400" />
-            <input class="tools-search" type="text" placeholder="Search tools by name, category, or tag..." [(ngModel)]="searchQuery" (ngModelChange)="onSearchChange()" />
-            @if (searchQuery) { 
-              <button class="clear-btn" (click)="clearSearch()">
-                <app-icon name="x" class="size-3.5" />
-              </button> 
-            }
+          <!-- Search & Mode Selector -->
+          <div class="tools-search-row">
+            <div class="tools-search-wrap">
+              <app-icon name="search" class="size-4.5 text-neutral-400" />
+              <input class="tools-search" type="text" placeholder="Search tools by intent, name, or capability..." [(ngModel)]="searchQuery" (ngModelChange)="onSearchChange()" />
+              @if (searchQuery) { 
+                <button class="clear-btn" (click)="clearSearch()">
+                  <app-icon name="x" class="size-3.5" />
+                </button> 
+              }
+            </div>
+            <div class="search-mode-toggle">
+              <button class="mode-btn" [class.active]="searchMode() === 'HYBRID'" (click)="setSearchMode('HYBRID')">Hybrid RRF</button>
+              <button class="mode-btn" [class.active]="searchMode() === 'KEYWORD'" (click)="setSearchMode('KEYWORD')">Keyword</button>
+              <button class="mode-btn" [class.active]="searchMode() === 'SEMANTIC'" (click)="setSearchMode('SEMANTIC')">AI Vector</button>
+            </div>
           </div>
         </div>
       </div>
@@ -130,11 +137,17 @@ import { Tool } from '../../core/models/tool.model';
     .tools-page { min-height: 100vh; }
     .tools-hero { padding: 11rem 0 3.5rem; position: relative; overflow: hidden; border-bottom: 1px solid rgba(255,255,255,0.04); }
     .tools-hero-inner { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 1.5rem; }
-    .tools-search-wrap { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.125rem; border-radius: var(--radius-xl); background: var(--color-surface-900); border: 1px solid rgba(255,255,255,0.06); max-width: 540px; box-shadow: var(--shadow-card); }
+    .tools-search-row { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; width: 100%; max-width: 720px; }
+    .tools-search-wrap { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.125rem; border-radius: var(--radius-xl); background: var(--color-surface-900); border: 1px solid rgba(255,255,255,0.06); flex: 1; min-width: 320px; box-shadow: var(--shadow-card); }
     .tools-search-wrap:focus-within { border-color: rgba(99,102,241,0.4); }
     .tools-search { flex: 1; background: none; border: none; outline: none; font-size: 0.875rem; color: var(--color-neutral-100); font-family: inherit; }
     .tools-search::placeholder { color: var(--color-neutral-600); }
     .clear-btn { background: none; border: none; color: var(--color-neutral-400); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+    .search-mode-toggle { display: flex; background: var(--color-surface-900); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-xl); padding: 3px; gap: 2px; }
+    .mode-btn { padding: 0.45rem 0.85rem; border-radius: var(--radius-lg); border: none; background: none; color: var(--color-neutral-400); font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+    .mode-btn:hover { color: var(--color-neutral-100); }
+    .mode-btn.active { background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.3); }
 
     .tools-body { display: grid; grid-template-columns: 240px 1fr; gap: 2.5rem; padding-top: 3.5rem; padding-bottom: 5rem; align-items: start; }
 
@@ -183,6 +196,7 @@ export class ToolsComponent implements OnInit {
   sortBy = 'popular';
   readonly activeCategoryId = signal<string | null>(null);
   readonly activeQuickFilter = signal<string | null>(null);
+  readonly searchMode = signal<'HYBRID' | 'KEYWORD' | 'SEMANTIC'>('HYBRID');
   readonly isLoading = signal(true);
   readonly currentPage = signal(1);
   readonly totalPages = signal(1);
@@ -216,11 +230,17 @@ export class ToolsComponent implements OnInit {
     this.applyFilters();
   }
 
+  setSearchMode(mode: 'HYBRID' | 'KEYWORD' | 'SEMANTIC'): void {
+    this.searchMode.set(mode);
+    this.currentPage.set(1);
+    this.applyFilters();
+  }
+
   applyFilters(): void {
     this.isLoading.set(true);
     const categorySlug = this.activeCategoryId() || undefined;
 
-    this.toolsSvc.getToolsApi(this.searchQuery, categorySlug, 'HYBRID', this.currentPage() - 1, this.pageSize).subscribe({
+    this.toolsSvc.getToolsApi(this.searchQuery, categorySlug, this.searchMode(), this.currentPage() - 1, this.pageSize).subscribe({
       next: pageData => {
         let tools = pageData.content;
         const qf = this.activeQuickFilter();
