@@ -1,5 +1,6 @@
 package com.code.acklet.auth.service;
 
+import com.code.acklet.config.properties.AppProperties;
 import com.code.acklet.auth.dto.GoogleCodeExchangeRequest;
 import com.code.acklet.auth.dto.GoogleLoginRequest;
 import com.code.acklet.auth.dto.LoginResponse;
@@ -17,7 +18,6 @@ import com.code.acklet.user.repository.UserProfileRepository;
 import com.code.acklet.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -47,12 +47,15 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserMapper userMapper;
+    private final AppProperties appProperties;
 
-    @Value("${app.security.google.client-id:520922697605-i1g6rcrmvmps6joiej93b4aa73jv2cf1.apps.googleusercontent.com}")
-    private String googleClientId;
+    private String getGoogleClientId() {
+        return appProperties.getSecurity().getGoogle().getClientId();
+    }
 
-    @Value("${app.security.google.client-secret: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}")
-    private String googleClientSecret;
+    private String getGoogleClientSecret() {
+        return appProperties.getSecurity().getGoogle().getClientSecret();
+    }
 
     /**
      * Generates a cryptographically secure PKCE pair (code_verifier + S256 code_challenge)
@@ -93,7 +96,7 @@ public class AuthService {
                 "code_challenge=%s&" +
                 "code_challenge_method=S256&" +
                 "prompt=select_account",
-                googleClientId,
+                getGoogleClientId(),
                 effectiveRedirectUri,
                 state,
                 codeChallenge
@@ -127,9 +130,9 @@ public class AuthService {
         if (request.getCodeVerifier() != null && !request.getCodeVerifier().isBlank()) {
             body.add("code_verifier", request.getCodeVerifier());
         }
-        body.add("client_id", googleClientId);
-        if (googleClientSecret != null && !googleClientSecret.isBlank()) {
-            body.add("client_secret", googleClientSecret);
+        body.add("client_id", getGoogleClientId());
+        if (getGoogleClientSecret() != null && !getGoogleClientSecret().isBlank()) {
+            body.add("client_secret", getGoogleClientSecret());
         }
         body.add("redirect_uri", effectiveRedirectUri);
         body.add("grant_type", "authorization_code");
@@ -188,8 +191,9 @@ public class AuthService {
         // Verify audience if configured
         String aud = (String) response.get("aud");
         log.info("[OAuth Server] Verifying token audience (aud): {}", aud);
-        if (googleClientId != null && !googleClientId.isBlank() && !googleClientId.equals(aud)) {
-            log.error("[OAuth Server] Audience mismatch. Configured: {}, Token: {}", googleClientId, aud);
+        String configuredClientId = getGoogleClientId();
+        if (configuredClientId != null && !configuredClientId.isBlank() && !configuredClientId.equals(aud)) {
+            log.error("[OAuth Server] Audience mismatch. Configured: {}, Token: {}", configuredClientId, aud);
             throw new UnauthorizedException("Audience mismatch on Google ID Token");
         }
 

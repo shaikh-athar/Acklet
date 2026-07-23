@@ -1,8 +1,8 @@
 package com.code.acklet.ai.provider;
 
+import com.code.acklet.config.properties.AppProperties;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -21,16 +21,22 @@ public class GeminiProvider implements AiProvider {
     private final GoogleAiGeminiChatModel model;
     private final AtomicBoolean available = new AtomicBoolean(true);
 
-    public GeminiProvider(
-            @Value("${app.ai.gemini.api-key}") String apiKey,
-            @Value("${app.ai.gemini.model:gemini-2.0-flash}") String modelName) {
-        this.model = GoogleAiGeminiChatModel.builder()
-                .apiKey(apiKey)
-                .modelName(modelName)
-                .temperature(0.3)
-                .maxOutputTokens(2048)
-                .build();
-        log.info("GeminiProvider initialized as fallback with model: {}", modelName);
+    public GeminiProvider(AppProperties appProperties) {
+        String apiKey = appProperties.getAi().getGemini().getApiKey();
+        String modelName = appProperties.getAi().getGemini().getModel();
+        if (apiKey == null || apiKey.isBlank()) {
+            this.model = null;
+            this.available.set(false);
+            log.info("GeminiProvider initialized in disabled state (API key not configured).");
+        } else {
+            this.model = GoogleAiGeminiChatModel.builder()
+                    .apiKey(apiKey)
+                    .modelName(modelName != null && !modelName.isBlank() ? modelName : "gemini-2.0-flash")
+                    .temperature(0.3)
+                    .maxOutputTokens(2048)
+                    .build();
+            log.info("GeminiProvider initialized as fallback with model: {}", modelName);
+        }
     }
 
     @Override
@@ -45,6 +51,9 @@ public class GeminiProvider implements AiProvider {
 
     @Override
     public String complete(String prompt, AiTaskType task) {
+        if (model == null) {
+            throw new AiProviderException("Gemini AI call failed: API key not configured");
+        }
         try {
             String response = model.generate(prompt);
             available.set(true);
@@ -58,6 +67,6 @@ public class GeminiProvider implements AiProvider {
 
     @Override
     public boolean isAvailable() {
-        return available.get();
+        return model != null && available.get();
     }
 }

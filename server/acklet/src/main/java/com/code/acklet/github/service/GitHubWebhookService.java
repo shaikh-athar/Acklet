@@ -1,12 +1,12 @@
 package com.code.acklet.github.service;
 
+import com.code.acklet.config.properties.AppProperties;
 import com.code.acklet.github.entity.GitHubIntegration;
 import com.code.acklet.github.repository.GitHubIntegrationRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Mac;
@@ -28,14 +28,13 @@ public class GitHubWebhookService {
     private final GitHubIntegrationRepository integrationRepository;
     private final GitHubSyncService        syncService;
     private final ObjectMapper             objectMapper;
-
-    @Value("${app.github.webhook-secret:}")
-    private String webhookSecret;
+    private final AppProperties            appProperties;
 
     /**
      * Validates signature header "sha256=..." against payload body using HMAC SHA-256.
      */
     public boolean verifySignature(String rawPayload, String signatureHeader) {
+        String webhookSecret = appProperties.getGithub().getWebhookSecret();
         if (webhookSecret == null || webhookSecret.isBlank()) {
             log.warn("GitHub webhook-secret is not configured. Skipping HMAC validation for local dev.");
             return true;
