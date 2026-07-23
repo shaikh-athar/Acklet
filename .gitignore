@@ -1,5 +1,6 @@
-# OS / IDE
+# OS & IDE
 .DS_Store
+Thumbs.db
 .idea/
 .vscode/
 *.suo
@@ -8,28 +9,50 @@
 *.sln
 *.sw?
 *.log
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+out/
 
-# Build outputs
+# Build & Output Artifacts
 **/build/
 **/target/
 **/out/
 **/dist/
+**/release.properties
+**/dependency-reduced-pom.xml
+**/buildNumber.properties
+**/.mvn/timing.properties
 
-# Cache directories
+# Cache Directories
 .gradle/
 **/.gradle/
 **/.angular/
+**/.cache/
 
-# Node dependencies
+# Node Dependencies
 **/node_modules/
 
-# Local configurations
-*.local
-.env
-.env.*
+# Local Configurations & Secrets
+**/application*.yaml
+**/application*.yml
+**/*.local
+**/.env
+**/.env.*
+!.env.example
 
-# Git
-.gitignore
-**/.gitignore
+# Docker & Infrastructure
+**/Dockerfile
+**/docker-compose.yml
+**/docker-compose.yaml
 
+# Postman Collections
+**/*.postman_collection.json
 
+# Build & Project configuration files to exclude
+**/pom.xml
