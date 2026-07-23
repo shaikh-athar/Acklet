@@ -1,12 +1,12 @@
 package com.code.acklet.shared.security;
 
+import com.code.acklet.config.properties.AppProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
@@ -20,23 +20,20 @@ import java.util.function.Function;
 @Component
 public class JwtTokenProvider {
 
-    // Default base64 secret (512-bit) for local testing if not externalized
-    private static final String DEFAULT_SECRET = "Mzg1OTM4OTVhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM= ";
-
     private final SecretKey secretKey;
     private final long accessTokenExpirationMs;
     private final long refreshTokenExpirationMs;
 
-    public JwtTokenProvider(
-            @Value("${app.security.jwt.secret:#{null}}") String secret,
-            @Value("${app.security.jwt.access-token-expiration-ms:900000}") long accessTokenExpirationMs, // 15 mins
-            @Value("${app.security.jwt.refresh-token-expiration-ms:604800000}") long refreshTokenExpirationMs // 7 days
-    ) {
-        String finalSecret = (secret != null && !secret.isBlank()) ? secret : DEFAULT_SECRET.trim();
-        byte[] keyBytes = Decoders.BASE64.decode(finalSecret);
+    public JwtTokenProvider(AppProperties appProperties) {
+        AppProperties.JwtProperties jwt = appProperties.getSecurity().getJwt();
+        String secret = jwt.getSecret();
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalArgumentException("JWT Secret is not configured in app.security.jwt.secret!");
+        }
+        byte[] keyBytes = Decoders.BASE64.decode(secret.trim());
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
-        this.accessTokenExpirationMs = accessTokenExpirationMs;
-        this.refreshTokenExpirationMs = refreshTokenExpirationMs;
+        this.accessTokenExpirationMs = jwt.getAccessTokenExpirationMs();
+        this.refreshTokenExpirationMs = jwt.getRefreshTokenExpirationMs();
     }
 
     public String generateAccessToken(UserDetails userDetails) {

@@ -1,11 +1,11 @@
 package com.code.acklet.github.service;
 
+import com.code.acklet.config.properties.AppProperties;
 import com.code.acklet.github.dto.GitHubRepoMetadata;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -24,18 +24,16 @@ import java.util.*;
 public class GitHubApiClient {
 
     private final ObjectMapper objectMapper;
+    private final AppProperties appProperties;
     private final RestTemplate restTemplate = new RestTemplate();
-
-    @Value("${app.github.client-id:}")
-    private String clientId;
-
-    @Value("${app.github.client-secret:}")
-    private String clientSecret;
 
     /**
      * Exchanges OAuth authorization code for a GitHub User Access Token.
      */
     public String exchangeCodeForToken(String code) {
+        String clientId = appProperties.getGithub().getClientId();
+        String clientSecret = appProperties.getGithub().getClientSecret();
+
         if (clientId == null || clientId.isBlank()) {
             log.warn("GitHub OAuth client-id is not configured. Returning dummy token for local dev.");
             return "gho_dummy_token_" + UUID.randomUUID().toString();
@@ -44,7 +42,7 @@ public class GitHubApiClient {
         String url = "https://github.com/login/oauth/access_token";
         Map<String, String> body = Map.of(
                 "client_id", clientId,
-                "client_secret", clientSecret,
+                "client_secret", clientSecret != null ? clientSecret : "",
                 "code", code
         );
 

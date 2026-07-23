@@ -1,12 +1,12 @@
 package com.code.acklet.ai.service;
 
+import com.code.acklet.config.properties.AppProperties;
 import com.code.acklet.ai.entity.AiJob.JobType;
 import com.code.acklet.tool.entity.Tool;
 import dev.langchain4j.model.mistralai.MistralAiEmbeddingModel;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,13 +30,12 @@ public class EmbeddingGenerationService {
 
     private final AiJobService  jobService;
     private final EntityManager entityManager;
-
-    @Value("${app.ai.mistral.api-key:}")
-    private String mistralApiKey;
+    private final AppProperties appProperties;
 
     private MistralAiEmbeddingModel mistralEmbeddingModel;
 
     private synchronized MistralAiEmbeddingModel getMistralEmbeddingModel() {
+        String mistralApiKey = appProperties.getAi().getMistral().getApiKey();
         if (mistralEmbeddingModel == null && mistralApiKey != null && !mistralApiKey.isBlank()) {
             try {
                 log.info("Initializing Mistral AI Embedding Model...");
@@ -120,6 +119,7 @@ public class EmbeddingGenerationService {
         UUID toolId = tool.getId();
         String textToEmbed = buildToolTextRepresentation(tool);
 
+        String mistralApiKey = appProperties.getAi().getMistral().getApiKey();
         var job = jobService.start(toolId, JobType.EMBEDDING, mistralApiKey != null && !mistralApiKey.isBlank() ? "mistral-embed" : "local-dense-384", textToEmbed);
         long start = System.currentTimeMillis();
 

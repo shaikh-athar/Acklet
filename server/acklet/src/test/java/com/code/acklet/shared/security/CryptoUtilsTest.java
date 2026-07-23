@@ -1,5 +1,6 @@
 package com.code.acklet.shared.security;
 
+import com.code.acklet.config.properties.AppProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -11,8 +12,9 @@ class CryptoUtilsTest {
 
     @BeforeEach
     void setUp() {
-        // Base64 encoded 256-bit AES key for testing
-        cryptoUtils = new CryptoUtils("MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=");
+        AppProperties appProperties = new AppProperties();
+        appProperties.getSecurity().getEncryption().setKey("MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=");
+        cryptoUtils = new CryptoUtils(appProperties);
     }
 
     @Test

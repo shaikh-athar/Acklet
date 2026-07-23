@@ -1,7 +1,7 @@
 package com.code.acklet.shared.security;
 
+import com.code.acklet.config.properties.AppProperties;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
@@ -21,17 +21,17 @@ public class CryptoUtils {
     private static final int GCM_IV_LENGTH = 12; // 12 bytes standard for GCM
     private static final int GCM_TAG_LENGTH = 128; // 128 bits standard authentication tag length
 
-    // Default 256-bit AES key (Base64 encoded) for local development if not configured
-    private static final String DEFAULT_KEY = "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=";
-
     private final SecretKey secretKey;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public CryptoUtils(@Value("${app.security.encryption.key:#{null}}") String keyBase64) {
-        String finalKey = (keyBase64 != null && !keyBase64.isBlank()) ? keyBase64 : DEFAULT_KEY.trim();
-        byte[] keyBytes = Base64.getDecoder().decode(finalKey);
+    public CryptoUtils(AppProperties appProperties) {
+        String keyBase64 = appProperties.getSecurity().getEncryption().getKey();
+        if (keyBase64 == null || keyBase64.isBlank()) {
+            throw new IllegalArgumentException("App encryption key is not configured in app.security.encryption.key!");
+        }
+        byte[] keyBytes = Base64.getDecoder().decode(keyBase64.trim());
         if (keyBytes.length != 32) {
-            throw new IllegalArgumentException("AES GCM requires a 256-bit key (32 bytes). Current key is: " + keyBytes.length + " bytes");
+            throw new IllegalArgumentException("AES GCM requires a 256-bit key (32 bytes). Current key length is: " + keyBytes.length + " bytes");
         }
         this.secretKey = new SecretKeySpec(keyBytes, ALGORITHM);
     }

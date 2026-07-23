@@ -38,3 +38,10 @@ out/
 ### VS Code ###
 .vscode/
 target/
+
+### Environment & Secrets ###
+.env
+.env.local
+.env.*
+!.env.example
+

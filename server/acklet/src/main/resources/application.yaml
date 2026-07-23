@@ -5,24 +5,11 @@ spring:
   application:
     name: acklet
 
-  # Mail configuration
-  mail:
-    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
-    port: ${SPRING_MAIL_PORT:587}
-    username: ${SPRING_MAIL_USERNAME:athar.qtech@gmail.com}
-    password: ${SPRING_MAIL_PASSWORD:jcep jewd sfxr smyv}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-
-  # Database configuration
+  # Database configuration driver
   datasource:
     driver-class-name: org.postgresql.Driver
 
-  # JPA & Hibernate configuration
+  # JPA & Hibernate base configuration
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
@@ -36,29 +23,10 @@ spring:
     enabled: true
     baseline-on-migrate: true
 
-  # RabbitMQ Configuration
-  rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USER:guest}
-    password: ${RABBITMQ_PASSWORD:guest}
-    listener:
-      simple:
-        retry:
-          enabled: true
-          initial-interval: 2000ms
-          max-attempts: 3
-          max-interval: 10000ms
-        auto-startup: true
-
-# Logging settings
+# Base Logging settings
 logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{correlationId}] %-5level %logger{36} - %msg%n"
-  level:
-    root: INFO
-    com.code.acklet: DEBUG
-    org.springframework.security: INFO
 
 # SpringDoc OpenAPI configuration
 springdoc:
@@ -67,38 +35,3 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     operationsSorter: alpha
-
-# Application configurations
-app:
-  security:
-    jwt:
-      secret: ${JWT_SECRET:Mzg1OTM4OTVhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM=}
-      access-token-expiration-ms: 900000 # 15 minutes
-      refresh-token-expiration-ms: 604800000 # 7 days
-    encryption:
-      key: ${APP_ENCRYPTION_KEY:MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=} # 256-bit AES key
-    google:
-      client-id: ${GOOGLE_CLIENT_ID:}
-      client-secret: ${GOOGLE_CLIENT_SECRET:}
-
-  ai:
-    mistral:
-      api-key: ${MISTRAL_API_KEY:bg5z9dLASwapYkfiBIL9yJGKdg6zKRy5}
-      model: ${MISTRAL_MODEL:mistral-small-latest}
-    gemini:
-      api-key: ${GEMINI_API_KEY:AQ.Ab8RN6IEjQb5BmfZ1WTaQbb8t-AAmtTJz8bEh0TW_HYIe-Q7Cw}
-      model: ${GEMINI_MODEL:gemini-2.0-flash}
-    executor:
-      core-size: ${AI_EXECUTOR_CORE:2}
-      max-size: ${AI_EXECUTOR_MAX:5}
-      queue-capacity: ${AI_EXECUTOR_QUEUE:50}
-
-  github:
-    client-id: ${GITHUB_CLIENT_ID:Iv23lie0QL4xEAaCKa2D}
-    client-secret: ${GITHUB_CLIENT_SECRET:a5dd21fc4a2eb30137eeafeef04d464613557051}
-    webhook-secret: ${GITHUB_WEBHOOK_SECRET:Acklet Local Webhook Secret}
-
-  # storage:
-  #   public-cdn-url: ${STORAGE_CDN_URL:https://cdn.acklet.dev}
-  #   r2-account-id: ${CLOUDFLARE_R2_ACCOUNT_ID:}
-  #   bucket-name: ${STORAGE_BUCKET:acklet-media}
