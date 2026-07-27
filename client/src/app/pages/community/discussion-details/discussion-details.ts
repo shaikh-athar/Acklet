@@ -1,22 +1,18 @@
-// client/src/app/pages/community/discussion-details/discussion-details.ts
 import { Component, signal, inject, OnInit } from '@angular/core';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { IconComponent } from '../../../shared/components/icon/icon';
-import { SpotlightDirective } from '../../../shared/directives/spotlight.directive';
-import { MOCK_DISCUSSIONS, DiscussionThread } from '../../../core/mock-data/community.data';
-
-interface Reply {
-  author: string;
-  avatar: string;
-  time: string;
-  body: string;
-}
+import { FallbackStateComponent } from '../../../shared/components/fallback-state/fallback-state';
+import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton';
+import { CommunityService, ReplyResponse } from '../../../core/services/community.service';
+import { ToastService } from '../../../core/services/toast.service';
+import { MOCK_DISCUSSIONS } from '../../../core/mock-data/community.data';
 
 @Component({
   selector: 'app-discussion-details',
   standalone: true,
-  imports: [RouterLink, CommonModule, IconComponent, SpotlightDirective],
+  imports: [RouterLink, CommonModule, FormsModule, IconComponent, FallbackStateComponent, LoadingSkeletonComponent],
   template: `
     <div class="thread-root page-enter">
       <div class="container-main pb-16 pt-24">
@@ -26,27 +22,31 @@ interface Reply {
           Back to Discussions
         </a>
 
-        @if (thread()) {
+        @if (loading()) {
+          <app-loading-skeleton type="card" [count]="2"></app-loading-skeleton>
+        } @else if (!thread()) {
+          <app-fallback-state type="NOT_FOUND" title="Thread Not Found" message="The requested discussion thread does not exist or has been removed." primaryActionLink="/community/discussions" primaryActionText="Return to Discussions"></app-fallback-state>
+        } @else {
           <!-- Topic Card -->
           <div class="topic-card p-6 mb-8">
             <div class="topic-header flex justify-between items-start mb-4">
               <div>
-                <span class="badge badge-brand text-xxs mb-2">{{ thread()!.category | uppercase }}</span>
+                <span class="badge badge-brand text-xxs mb-2">{{ (thread()!.category || 'General') | uppercase }}</span>
                 <h1 class="topic-title">{{ thread()!.title }}</h1>
               </div>
               <div class="topic-votes">
                 <button class="vote-btn" (click)="upvote()">
                   <app-icon name="arrow-up" class="size-4" />
-                  <span class="vote-count">{{ thread()!.votesCount }}</span>
+                  <span class="vote-count">{{ thread()!.votesCount || thread()!.upvotes || 0 }}</span>
                 </button>
               </div>
             </div>
-            <p class="topic-desc">{{ thread()!.summary }}</p>
+            <p class="topic-desc">{{ thread()!.summary || thread()!.content }}</p>
             <div class="topic-meta mt-6">
-              <span class="meta-avatar">{{ thread()!.authorAvatar }}</span>
-              <span class="meta-author">{{ thread()!.author }}</span>
+              <span class="meta-avatar">{{ (thread()!.authorName || thread()!.author || 'A')[0] }}</span>
+              <span class="meta-author">{{ thread()!.authorName || thread()!.author || 'Community Member' }}</span>
               <span class="meta-dot">•</span>
-              <span class="meta-time">{{ thread()!.createdAt }}</span>
+              <span class="meta-time">{{ thread()!.createdAt ? (thread()!.createdAt | date:'mediumDate') : 'Recently' }}</span>
             </div>
           </div>
 
@@ -55,22 +55,31 @@ interface Reply {
             <h2 class="replies-title mb-6">Replies ({{ replies().length }})</h2>
             
             <div class="replies-list">
-              @for (rep of replies(); track rep.time) {
+              @for (rep of replies(); track rep.id || rep.createdAt || rep.time) {
                 <div class="reply-card glass mb-4 p-4">
                   <div class="reply-header mb-2">
-                    <span class="reply-avatar">{{ rep.avatar }}</span>
-                    <span class="reply-author">{{ rep.author }}</span>
-                    <span class="reply-time">{{ rep.time }}</span>
+                    <span class="reply-avatar">{{ (rep.authorName || rep.author || 'R')[0] }}</span>
+                    <span class="reply-author">{{ rep.authorName || rep.author || 'User' }}</span>
+                    <span class="reply-time">{{ rep.createdAt ? (rep.createdAt | date:'shortTime') : rep.time }}</span>
                   </div>
-                  <p class="reply-body">{{ rep.body }}</p>
+                  <p class="reply-body">{{ rep.content || rep.body }}</p>
                 </div>
+              } @empty {
+                <p class="text-sm text-slate-400 mb-6">No replies yet. Start the conversation below!</p>
               }
             </div>
 
             <!-- Write reply -->
-            <form (submit)="postReply($event)" class="reply-form mt-8">
-              <textarea class="input text-area mb-4" placeholder="Write your response..." required></textarea>
-              <button type="submit" class="btn btn-primary">Post Reply</button>
+            <form (submit)="postReply($event)" class="reply-form mt-8 space-y-4">
+              <textarea [(ngModel)]="replyText" name="replyText" class="w-full px-4 py-3 text-sm rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 text-area" placeholder="Write your response..." required></textarea>
+              <button type="submit" [disabled]="submittingReply()" class="btn btn-primary px-5 py-2.5 text-sm font-medium rounded-xl flex items-center gap-2">
+                @if (submittingReply()) {
+                  <app-icon name="loader" size="16" class="animate-spin"></app-icon>
+                  Posting...
+                } @else {
+                  Post Reply
+                }
+              </button>
             </form>
           </div>
         }
@@ -96,7 +105,6 @@ interface Reply {
     .meta-author { font-weight: 600; color: var(--color-neutral-300); }
     .meta-dot { opacity: 0.5; }
 
-    /* Replies */
     .replies-block { max-width: 800px; }
     .replies-title { font-size: 1.15rem; font-weight: 700; color: var(--color-neutral-100); }
     
@@ -122,39 +130,94 @@ interface Reply {
 })
 export class CommunityDiscussionDetailsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
-  readonly thread = signal<DiscussionThread | null>(null);
+  private readonly communitySvc = inject(CommunityService);
+  private readonly toastSvc = inject(ToastService);
 
-  readonly replies = signal<Reply[]>([
-    { author: 'Jordan K.', avatar: 'JK', time: '1 hour ago', body: 'Yes, JWT Inspector works fully in-browser using pure JS libraries. You don\'t need JWKS validation if you copy the public key value directly into the secret verification field.' },
-    { author: 'Elena R.', avatar: 'ER', time: '45 mins ago', body: 'I tried it on a 2048-bit RSA token yesterday offline and signature verified instantly. Super convenient!' }
-  ]);
+  readonly thread = signal<any | null>(null);
+  readonly replies = signal<any[]>([]);
+  readonly loading = signal<boolean>(true);
+  readonly submittingReply = signal<boolean>(false);
+
+  replyText = '';
 
   ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id');
-    const match = MOCK_DISCUSSIONS.find(d => d.id === id);
-    if (match) {
-      this.thread.set(match);
+    const idOrSlug = this.route.snapshot.paramMap.get('id');
+    if (!idOrSlug) {
+      this.loading.set(false);
+      return;
     }
+
+    this.communitySvc.getDiscussionBySlug(idOrSlug).subscribe({
+      next: data => {
+        this.thread.set(data);
+        if (data.replies) {
+          this.replies.set(data.replies);
+        }
+        if (data.id) {
+          this.fetchReplies(data.id);
+        }
+        this.loading.set(false);
+      },
+      error: () => {
+        const mockMatch = MOCK_DISCUSSIONS.find(d => d.id === idOrSlug || d.slug === idOrSlug);
+        if (mockMatch) {
+          this.thread.set(mockMatch);
+          this.replies.set([
+            { id: '1', authorName: 'Jordan K.', authorAvatarUrl: 'JK', createdAt: new Date().toISOString(), content: 'JWT Inspector works fully in-browser using pure JS libraries. You don\'t need JWKS validation if you copy the public key value directly.' },
+            { id: '2', authorName: 'Elena R.', authorAvatarUrl: 'ER', createdAt: new Date().toISOString(), content: 'I tried it on a 2048-bit RSA token yesterday offline and signature verified instantly. Super convenient!' }
+          ]);
+        }
+        this.loading.set(false);
+      }
+    });
+  }
+
+  fetchReplies(discussionId: string): void {
+    this.communitySvc.getReplies(discussionId).subscribe({
+      next: list => {
+        if (list && list.length > 0) {
+          this.replies.set(list);
+        }
+      },
+      error: () => {}
+    });
   }
 
   upvote(): void {
     const current = this.thread();
     if (current) {
-      this.thread.set({ ...current, votesCount: current.votesCount + 1 });
+      this.thread.set({ ...current, votesCount: (current.votesCount || current.upvotes || 0) + 1, upvotes: (current.upvotes || 0) + 1 });
     }
   }
 
   postReply(e: Event): void {
     e.preventDefault();
-    const txt = (e.target as HTMLFormElement).querySelector('textarea') as HTMLTextAreaElement;
-    if (txt && txt.value) {
+    if (!this.replyText.trim()) return;
+
+    const currentThread = this.thread();
+    if (!currentThread?.id) {
       this.replies.update(list => [...list, {
-        author: 'User Account',
-        avatar: 'U',
-        time: 'Just now',
-        body: txt.value
+        authorName: 'User Account',
+        createdAt: new Date().toISOString(),
+        content: this.replyText
       }]);
-      txt.value = '';
+      this.replyText = '';
+      this.toastSvc.success('Reply posted');
+      return;
     }
+
+    this.submittingReply.set(true);
+    this.communitySvc.createReply(currentThread.id, { content: this.replyText }).subscribe({
+      next: created => {
+        this.submittingReply.set(false);
+        this.replies.update(list => [...list, created]);
+        this.replyText = '';
+        this.toastSvc.success('Reply posted successfully');
+      },
+      error: () => {
+        this.submittingReply.set(false);
+        this.toastSvc.error('Failed to post reply');
+      }
+    });
   }
 }

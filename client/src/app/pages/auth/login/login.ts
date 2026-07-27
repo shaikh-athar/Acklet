@@ -10,6 +10,8 @@ import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { gsap } from 'gsap';
 
+import { FeatureService } from '../../../core/services/feature.service';
+
 @Component({
   selector: 'app-login',
   standalone: true,
@@ -21,28 +23,72 @@ import { gsap } from 'gsap';
 
       <div class="auth-card glass-strong text-center" appViewport viewportId="loginCard" (enter)="playEntrance()">
         <!-- Logo -->
-        <div class="logo-wrap mb-6 justify-center">
+        <div class="logo-wrap mb-4 justify-center">
           <div class="logo-icon">
             <app-icon name="key-round" class="size-5 text-white" />
           </div>
           <span class="logo-text">ACKLET<span class="logo-accent">.</span></span>
         </div>
 
-        <div class="text-center mb-8">
-          <h1 class="auth-title mb-2">ACKLET</h1>
-          <p class="auth-subtitle">
-            Solve digital problems instantly. A frictionless developer workspace to run sandboxes, track command logs, and build collections.
-          </p>
+        <div class="text-center mb-6">
+          <p class="auth-subtitle">Instant Frictionless Developer Workspace</p>
         </div>
 
-        <div class="oauth-container mb-8" aria-live="polite">
+        <div class="oauth-container mb-6" aria-live="polite">
           @if (isVerifying()) {
-            <div class="loading-state flex flex-col items-center justify-center gap-3">
+            <div class="loading-state flex flex-col items-center justify-center gap-3 py-4">
               <app-icon name="loader-2" class="size-8 text-indigo-500 animate-spin" />
               <span class="text-sm text-neutral-400 font-medium font-mono">Verifying with Google...</span>
             </div>
           } @else {
-            <div class="flex flex-col items-center justify-center gap-4 w-full">
+            <div class="flex flex-col items-center justify-center gap-3 w-full">
+              @if (featureSvc.isEnabled('lastLoginAccountHint') && lastLoginEmail()) {
+                <div 
+                  class="returning-account-card"
+                  (click)="loginWithGooglePkce()"
+                  aria-label="Continue with returning account"
+                >
+                  <div class="account-left">
+                    @if (lastLoginAvatar()) {
+                      <img [src]="lastLoginAvatar()" alt="Avatar" class="account-avatar" />
+                    } @else {
+                      <div class="account-avatar-fallback">
+                        {{ (lastLoginName() || lastLoginEmail() || 'A')[0] | uppercase }}
+                      </div>
+                    }
+                    <div class="account-info">
+                      <div class="account-name">
+                        Continue as {{ lastLoginName() || (lastLoginEmail()?.split('@')?.[0]) }}
+                      </div>
+                      <div class="account-email">
+                        <span>{{ lastLoginEmail() }}</span>
+                        <app-icon name="chevron-down" class="size-3 opacity-60" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Platform Provider Icon -->
+                  <div class="provider-badge">
+                    @if (lastLoginProvider() === 'GitHub') {
+                      <app-icon name="github" class="size-4" />
+                    } @else {
+                      <svg class="size-4" viewBox="0 0 24 24" width="16" height="16">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                      </svg>
+                    }
+                  </div>
+                </div>
+
+                <div class="divider-wrap">
+                  <div class="divider-line"></div>
+                  <span class="divider-text">or sign in with</span>
+                  <div class="divider-line"></div>
+                </div>
+              }
+
               <!-- Enterprise Google OAuth PKCE Button -->
               <button 
                 class="google-pkce-btn w-full flex items-center justify-center gap-3 py-3 px-6 rounded-full font-semibold text-sm transition-all duration-200"
@@ -60,13 +106,29 @@ import { gsap } from 'gsap';
                 <span>Continue with Google</span>
               </button>
 
-              <!-- Optional GIS Button Container -->
+              <!-- Remember Me Custom Button -->
+              @if (featureSvc.isEnabled('rememberMe')) {
+                <button 
+                  type="button"
+                  class="remember-me-btn mt-2"
+                  [class.selected]="rememberMe"
+                  (click)="toggleRememberMe()"
+                  aria-label="Remember me for 7 days"
+                >
+                  <div class="remember-checkbox" [class.checked]="rememberMe">
+                    @if (rememberMe) {
+                      <app-icon name="check" class="size-3 text-white" />
+                    }
+                  </div>
+                  <span>Remember me</span>
+                </button>
+              }
             </div>
           }
         </div>
 
         <!-- Privacy Policy and Terms of Service -->
-        <div class="legal-footer mt-8 text-center text-xs">
+        <div class="legal-footer mt-6 text-center text-xs">
           <a href="#" class="legal-link" (click)="$event.preventDefault()">Privacy Policy</a>
           <span class="separator">&middot;</span>
           <a href="#" class="legal-link" (click)="$event.preventDefault()">Terms of Service</a>
@@ -95,7 +157,7 @@ import { gsap } from 'gsap';
     .auth-card {
       width: 100%;
       max-width: 440px;
-      padding: 3rem 2.5rem;
+      padding: 2.5rem 2.25rem;
       border-radius: var(--radius-2xl);
       z-index: 2;
       background: var(--color-surface-900);
@@ -113,8 +175,7 @@ import { gsap } from 'gsap';
     .logo-text { font-size: 1.1rem; font-weight: 700; color: var(--color-neutral-50); letter-spacing: -0.02em; }
     .logo-accent { color: #818cf8; }
 
-    .auth-title { font-size: 2rem; font-weight: 800; color: var(--color-neutral-50); letter-spacing: -0.025em; }
-    .auth-subtitle { font-size: 0.875rem; color: var(--color-neutral-400); line-height: 1.55; margin-top: 0.5rem; }
+    .auth-subtitle { font-size: 0.875rem; font-weight: 500; color: var(--color-neutral-400); line-height: 1.4; margin-top: 0.25rem; }
     
     .oauth-container {
       min-height: 80px;
@@ -122,6 +183,99 @@ import { gsap } from 'gsap';
       align-items: center;
       justify-content: center;
       flex-direction: column;
+    }
+
+    .returning-account-card {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border-soft);
+      background: var(--surface-hover);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .returning-account-card:hover {
+      border-color: #8b5cf6;
+      background: rgba(139, 92, 246, 0.08);
+      box-shadow: 0 4px 16px rgba(139, 92, 246, 0.15);
+    }
+    .account-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .account-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid var(--border-soft);
+      flex-shrink: 0;
+    }
+    .account-avatar-fallback {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: white;
+      font-weight: 700;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      flex-shrink: 0;
+    }
+    .account-info {
+      text-align: left;
+    }
+    .account-name {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--color-neutral-100);
+      line-height: 1.25;
+    }
+    .account-email {
+      font-size: 0.725rem;
+      color: var(--color-neutral-400);
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin-top: 0.15rem;
+    }
+    .provider-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--color-surface-800);
+      border: 1px solid var(--border-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .divider-wrap {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      margin: 0.25rem 0 0.5rem 0;
+    }
+    .divider-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border-soft);
+    }
+    .divider-text {
+      padding: 0 0.75rem;
+      font-size: 0.675rem;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-neutral-400);
     }
 
     .google-pkce-btn {
@@ -151,9 +305,51 @@ import { gsap } from 'gsap';
     .google-pkce-btn:hover {
       background: var(--color-surface-200);
       color: var(--color-neutral-50);
-      border-color: var(--color-violet-500);
-      box-shadow: 0 8px 24px rgba(251, 251, 251, 0.18), 0 0 0 1px var(--color-brand-500);
+      border-color: #8b5cf6;
+      box-shadow: 0 8px 24px rgba(139, 92, 246, 0.18), 0 0 0 1px #8b5cf6;
       transform: translateY(-2px) scale(1.01);
+    }
+
+    .remember-me-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.85rem;
+      border-radius: var(--radius-full);
+      background: transparent;
+      border: 1px solid var(--border-soft);
+      color: var(--color-neutral-300);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+    }
+    .remember-me-btn:hover {
+      border-color: #8b5cf6;
+      color: #a78bfa;
+      box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
+    }
+    .remember-me-btn.selected {
+      background: rgba(139, 92, 246, 0.15);
+      border-color: #8b5cf6;
+      color: #c4b5fd;
+      font-weight: 600;
+    }
+    .remember-checkbox {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      border: 1px solid var(--border-medium);
+      background: var(--color-surface-800);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .remember-checkbox.checked {
+      background: #8b5cf6;
+      border-color: #8b5cf6;
     }
     .google-pkce-btn:hover::before {
       opacity: 1;
@@ -223,11 +419,28 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly authSvc = inject(AuthService);
   private readonly toastSvc = inject(ToastService);
   private readonly router = inject(Router);
+  readonly featureSvc = inject(FeatureService);
 
   readonly isVerifying = signal(false);
+  readonly lastLoginEmail = signal<string | null>(null);
+  readonly lastLoginName = signal<string | null>(null);
+  readonly lastLoginAvatar = signal<string | null>(null);
+  readonly lastLoginProvider = signal<string | null>(null);
+  rememberMe = true;
   private entrancePlayed = false;
 
+  toggleRememberMe(): void {
+    this.rememberMe = !this.rememberMe;
+  }
+
   ngOnInit(): void {
+    const lastInfo = this.authSvc.getLastLoginInfo();
+    if (lastInfo.email) {
+      this.lastLoginEmail.set(lastInfo.email);
+      this.lastLoginName.set(lastInfo.name);
+      this.lastLoginAvatar.set(lastInfo.avatarUrl);
+      this.lastLoginProvider.set(lastInfo.provider || 'Google');
+    }
     console.log('[Acklet Auth] OnInit: Starting Google OAuth script initialization...');
     this.loadGoogleScript();
   }
@@ -275,7 +488,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
         callback: (response: any) => {
           if (response.code) {
             console.log('[Acklet Auth] Received OAuth code from Google popup. Sending to server for exchange...');
-            this.authSvc.exchangeGoogleCode(response.code, '').subscribe({
+            this.authSvc.exchangeGoogleCode(response.code, '', undefined, this.rememberMe).subscribe({
               next: res => {
                 this.isVerifying.set(false);
                 if (res.success && res.data) {

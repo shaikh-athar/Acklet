@@ -1,13 +1,14 @@
-// client/src/app/pages/workspace/settings/settings.ts
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../../../shared/components/icon/icon';
 import { ThemeService } from '../../../core/services/theme.service';
+import { FeatureService } from '../../../core/services/feature.service';
+import { SessionManagerComponent } from './session-manager';
 
 @Component({
   selector: 'app-workspace-settings',
   standalone: true,
-  imports: [CommonModule, IconComponent],
+  imports: [CommonModule, IconComponent, SessionManagerComponent],
   template: `
     <div class="settings-root page-enter">
       <header class="mb-8">
@@ -15,7 +16,7 @@ import { ThemeService } from '../../../core/services/theme.service';
         <p class="page-subtitle">Configure your default settings, keyboard bindings, and security settings.</p>
       </header>
 
-      <div class="settings-layout">
+      <div class="settings-layout space-y-8">
         <!-- Settings Panel -->
         <div class="settings-pane p-6">
           <form (submit)="onSubmit($event)" class="settings-form">
@@ -73,6 +74,13 @@ import { ThemeService } from '../../../core/services/theme.service';
             </div>
           </form>
         </div>
+
+        <!-- Enterprise Security & Active Sessions Section -->
+        @if (featureSvc.isEnabled('enterpriseSecurity')) {
+          <div class="mt-8">
+            <app-session-manager></app-session-manager>
+          </div>
+        }
       </div>
     </div>
   `,
@@ -111,6 +119,7 @@ import { ThemeService } from '../../../core/services/theme.service';
 })
 export class WorkspaceSettingsComponent {
   readonly themeSvc = inject(ThemeService);
+  readonly featureSvc = inject(FeatureService);
   readonly autoSave = signal(true);
   readonly notifications = signal(true);
 

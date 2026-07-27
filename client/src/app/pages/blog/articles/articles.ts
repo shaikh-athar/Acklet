@@ -1,15 +1,17 @@
-// client/src/app/pages/blog/articles/articles.ts
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../../../shared/components/icon/icon';
 import { SpotlightDirective } from '../../../shared/directives/spotlight.directive';
-import { MOCK_BLOG_ARTICLES, BlogArticle } from '../../../core/mock-data/blog.data';
+import { FallbackStateComponent } from '../../../shared/components/fallback-state/fallback-state';
+import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton';
+import { BlogService } from '../../../core/services/blog.service';
+import { MOCK_BLOG_ARTICLES } from '../../../core/mock-data/blog.data';
 
 @Component({
   selector: 'app-blog-articles',
   standalone: true,
-  imports: [RouterLink, CommonModule, IconComponent, SpotlightDirective],
+  imports: [RouterLink, CommonModule, FallbackStateComponent, LoadingSkeletonComponent],
   template: `
     <div class="blog-root page-enter">
       <!-- Hero -->
@@ -25,33 +27,39 @@ import { MOCK_BLOG_ARTICLES, BlogArticle } from '../../../core/mock-data/blog.da
       <!-- Articles Grid -->
       <section class="section">
         <div class="container-main">
-          <div class="articles-grid">
-            @for (art of articles(); track art.slug) {
-              <div class="article-card">
-                <div class="card-body">
-                  <div class="meta-row mb-2">
-                    <span class="badge badge-accent text-xxs">{{ art.category | uppercase }}</span>
-                    <span class="read-time">{{ art.readTime }}</span>
-                  </div>
-
-                  <a [routerLink]="['/blog', art.slug]" class="article-title">
-                    {{ art.title }}
-                  </a>
-                  
-                  <p class="article-summary">{{ art.summary }}</p>
-
-                  <div class="author-row mt-6">
-                    <div class="author-avatar">{{ art.author[0] }}</div>
-                    <div>
-                      <div class="author-name">{{ art.author }}</div>
-                      <div class="author-title">{{ art.authorTitle }}</div>
+          @if (loading()) {
+            <app-loading-skeleton type="card" [count]="4"></app-loading-skeleton>
+          } @else if (articles().length === 0) {
+            <app-fallback-state type="EMPTY" title="No Articles Published" message="Check back soon for engineering articles and platform updates."></app-fallback-state>
+          } @else {
+            <div class="articles-grid">
+              @for (art of articles(); track art.slug) {
+                <div class="article-card">
+                  <div class="card-body">
+                    <div class="meta-row mb-2">
+                      <span class="badge badge-accent text-xxs">{{ (art.category || 'Engineering') | uppercase }}</span>
+                      <span class="read-time">{{ art.readTimeMinutes || 5 }} min read</span>
                     </div>
-                    <span class="pub-date">{{ art.publishedDate }}</span>
+
+                    <a [routerLink]="['/blog', art.slug]" class="article-title">
+                      {{ art.title }}
+                    </a>
+                    
+                    <p class="article-summary">{{ art.excerpt || art.summary }}</p>
+
+                    <div class="author-row mt-6">
+                      <div class="author-avatar">{{ (art.authorName || art.author || 'A')[0] }}</div>
+                      <div>
+                        <div class="author-name">{{ art.authorName || art.author || 'Acklet Team' }}</div>
+                        <div class="author-title">{{ art.authorTitle || 'Engineering' }}</div>
+                      </div>
+                      <span class="pub-date">{{ art.publishedAt | date:'mediumDate' }}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            }
-          </div>
+              }
+            </div>
+          }
         </div>
       </section>
     </div>
@@ -86,6 +94,25 @@ import { MOCK_BLOG_ARTICLES, BlogArticle } from '../../../core/mock-data/blog.da
     }
   `],
 })
-export class BlogArticlesComponent {
-  readonly articles = signal<BlogArticle[]>(MOCK_BLOG_ARTICLES);
+export class BlogArticlesComponent implements OnInit {
+  private readonly blogSvc = inject(BlogService);
+  readonly articles = signal<any[]>([]);
+  readonly loading = signal<boolean>(true);
+
+  ngOnInit(): void {
+    this.blogSvc.getArticles(0, 20).subscribe({
+      next: page => {
+        if (page && page.content && page.content.length > 0) {
+          this.articles.set(page.content);
+        } else {
+          this.articles.set(MOCK_BLOG_ARTICLES);
+        }
+        this.loading.set(false);
+      },
+      error: () => {
+        this.articles.set(MOCK_BLOG_ARTICLES);
+        this.loading.set(false);
+      }
+    });
+  }
 }

@@ -1,6 +1,6 @@
 // src/app/app.routes.ts
 import { Routes } from '@angular/router';
-import { authGuard } from './core/auth/auth.guard';
+import { authGuard, publisherGuard, adminGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   // --- Public Pages under main header/navbar layout ---
@@ -60,6 +60,8 @@ export const routes: Routes = [
       { path: 'history', loadComponent: () => import('./pages/workspace/history/history').then(m => m.WorkspaceHistoryComponent), title: 'History — Acklet' },
       { path: 'collections', loadComponent: () => import('./pages/workspace/collections/collections').then(m => m.WorkspaceCollectionsComponent), title: 'Collections — Acklet' },
       { path: 'notifications', loadComponent: () => import('./pages/workspace/notifications/notifications').then(m => m.WorkspaceNotificationsComponent), title: 'Notifications — Acklet' },
+      { path: 'publisher', loadComponent: () => import('./pages/workspace/publisher/publisher').then(m => m.PublisherWorkspaceComponent), canActivate: [publisherGuard], title: 'Publisher Workspace — Acklet' },
+      { path: 'admin', loadComponent: () => import('./pages/workspace/admin/admin').then(m => m.AdminWorkspaceComponent), canActivate: [adminGuard], title: 'Admin Workspace — Acklet' },
       { path: 'settings', loadComponent: () => import('./pages/workspace/settings/settings').then(m => m.WorkspaceSettingsComponent), title: 'Settings — Acklet' },
       { path: 'profile', loadComponent: () => import('./pages/workspace/profile/profile').then(m => m.WorkspaceProfileComponent), title: 'Profile — Acklet' },
     ]

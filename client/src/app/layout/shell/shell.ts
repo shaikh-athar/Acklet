@@ -434,6 +434,8 @@ export class ShellLayoutComponent {
     { label: 'History', path: '/workspace/history', icon: 'clock' },
     { label: 'Collections', path: '/workspace/collections', icon: 'folder' },
     { label: 'Notifications', path: '/workspace/notifications', icon: 'bell' },
+    { label: 'Publisher Workspace', path: '/workspace/publisher', icon: 'box' },
+    { label: 'Admin Workspace', path: '/workspace/admin', icon: 'shield' },
     { label: 'Settings', path: '/workspace/settings', icon: 'settings' },
   ];
 }
