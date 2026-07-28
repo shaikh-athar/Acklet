@@ -45,7 +45,7 @@ import { FeatureService } from '../../../core/services/feature.service';
               @if (featureSvc.isEnabled('lastLoginAccountHint') && lastLoginEmail()) {
                 <div 
                   class="returning-account-card"
-                  (click)="loginWithGooglePkce()"
+                  (click)="loginWithReturningAccount()"
                   aria-label="Continue with returning account"
                 >
                   <div class="account-left">
@@ -333,7 +333,7 @@ import { FeatureService } from '../../../core/services/feature.service';
     .remember-me-btn.selected {
       background: rgba(139, 92, 246, 0.15);
       border-color: #8b5cf6;
-      color: #c4b5fd;
+      color: #2c2a33ff;
       font-weight: 600;
     }
     .remember-checkbox {
@@ -468,6 +468,38 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
         { scale: 0.96, opacity: 0, y: 30 },
         { scale: 1, opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }
       );
+    }
+  }
+
+  /**
+   * One-click direct authentication handler when clicking "Continue as <Email>".
+   * Performs silent token refresh / session check to skip Google Popup if valid session exists.
+   */
+  loginWithReturningAccount(): void {
+    const existingToken = this.authSvc.getAccessToken();
+    const refreshTokenStr = localStorage.getItem('acklet_refresh_token');
+
+    this.isVerifying.set(true);
+
+    if (existingToken || refreshTokenStr) {
+      this.authSvc.refreshToken().subscribe({
+        next: (res) => {
+          if (res.success && res.data) {
+            this.isVerifying.set(false);
+            this.toastSvc.success('Welcome Back!', `Logged in as ${this.lastLoginName() || this.lastLoginEmail()}`);
+            this.router.navigate(['/workspace']);
+          } else {
+            this.loginWithGooglePkce();
+          }
+        },
+        error: () => {
+          // Token expired or invalid -> Fallback to Google OAuth popup
+          this.loginWithGooglePkce();
+        }
+      });
+    } else {
+      // No stored token -> Trigger Google OAuth popup
+      this.loginWithGooglePkce();
     }
   }
 

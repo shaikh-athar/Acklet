@@ -47,6 +47,33 @@ public class AppProperties {
         @Valid
         @NestedConfigurationProperty
         private GoogleProperties google = new GoogleProperties();
+
+        @Valid
+        @NestedConfigurationProperty
+        private TurnstileProperties turnstile = new TurnstileProperties();
+
+        @Valid
+        @NestedConfigurationProperty
+        private SecurityFeatureProperties features = new SecurityFeatureProperties();
+    }
+
+    @Getter
+    @Setter
+    public static class TurnstileProperties {
+        private String siteKey;
+        private String secretKey;
+    }
+
+    @Getter
+    @Setter
+    public static class SecurityFeatureProperties {
+        private boolean enterpriseSecurity = true;
+        private boolean rateLimitingEnabled = true;
+        private boolean captchaEnabled = true;
+        private boolean rs256Jwt = true;
+        private boolean securityAuditLogging = true;
+        private boolean stepUpReauth = true;
+        private boolean redisTokenBlacklist = true;
     }
 
     @Getter

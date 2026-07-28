@@ -4,6 +4,8 @@ import com.code.acklet.config.properties.AppProperties;
 import com.code.acklet.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Date;
@@ -18,10 +20,15 @@ class JwtTokenProviderTest {
     @BeforeEach
     void setUp() {
         AppProperties appProperties = new AppProperties();
-        appProperties.getSecurity().getJwt().setSecret("Mzg1OTM4OTVhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM=");
+        appProperties.getSecurity().getJwt().setSecret("Mzg1OTM4OTVhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM5NDgzOTBhNzM=");
         appProperties.getSecurity().getJwt().setAccessTokenExpirationMs(60000);
         appProperties.getSecurity().getJwt().setRefreshTokenExpirationMs(3600000);
-        jwtTokenProvider = new JwtTokenProvider(appProperties);
+
+        RsaKeyProvider rsaKeyProvider = new RsaKeyProvider();
+        StringRedisTemplate redisTemplate = Mockito.mock(StringRedisTemplate.class);
+        TokenBlacklistService tokenBlacklistService = new TokenBlacklistService(redisTemplate);
+
+        jwtTokenProvider = new JwtTokenProvider(appProperties, rsaKeyProvider, tokenBlacklistService);
 
         userDetails = User.builder()
                 .email("test@acklet.com")

@@ -11,6 +11,7 @@ import com.code.acklet.auth.entity.RefreshToken;
 import com.code.acklet.auth.repository.RefreshTokenRepository;
 import com.code.acklet.shared.exception.UnauthorizedException;
 import com.code.acklet.shared.security.JwtTokenProvider;
+import com.code.acklet.shared.security.TokenBlacklistService;
 import com.code.acklet.user.entity.User;
 import com.code.acklet.user.entity.UserProfile;
 import com.code.acklet.user.mapper.UserMapper;
@@ -48,6 +49,8 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserMapper userMapper;
     private final AppProperties appProperties;
+    private final AuditLogService auditLogService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     private String getGoogleClientId() {
         return appProperties.getSecurity().getGoogle().getClientId();
@@ -283,10 +286,11 @@ public class AuthService {
     @Transactional
     public LoginResponse authenticateWithDevice(GoogleLoginRequest request, String userAgent, String ipAddress) {
         LoginResponse response = loginWithGoogle(request);
-        // Overwrite default session with parsed device metadata
         User user = userRepository.findByEmail(response.getProfile().getEmail()).orElseThrow();
         String newRefreshToken = createAndSaveRefreshToken(user, null, userAgent, ipAddress);
         response.setRefreshToken(newRefreshToken);
+
+        auditLogService.logEvent("LOGIN_SUCCESS", user.getId(), user.getEmail(), ipAddress, userAgent, null, "User authenticated via Google OAuth 2.0 PKCE");
         return response;
     }
 
@@ -310,6 +314,7 @@ public class AuthService {
         if (token.isRevoked()) {
             log.warn("[Security Alert] Refresh token reuse detected! Revoking family {}", token.getFamilyId());
             refreshTokenRepository.revokeFamily(token.getFamilyId());
+            auditLogService.logEvent("TOKEN_REUSE_ALERT", token.getUser().getId(), token.getUser().getEmail(), ipAddress, userAgent, null, "Refresh token reuse detected! Revoked token family: " + token.getFamilyId());
             throw new UnauthorizedException("Security Alert: Token reuse detected. All sessions in this family revoked.");
         }
 
@@ -327,6 +332,7 @@ public class AuthService {
         refreshTokenRepository.save(token);
 
         String newRefreshToken = createAndSaveRefreshToken(user, token.getFamilyId(), userAgent, ipAddress);
+        auditLogService.logEvent("TOKEN_REFRESH", user.getId(), user.getEmail(), ipAddress, userAgent, null, "Tokens rotated successfully");
 
         return TokenRefreshResponse.builder()
                 .accessToken(newAccessToken)
@@ -341,6 +347,7 @@ public class AuthService {
             refreshTokenRepository.findByTokenHash(hash).ifPresent(token -> {
                 token.setRevoked(true);
                 refreshTokenRepository.save(token);
+                auditLogService.logEvent("LOGOUT", token.getUser().getId(), token.getUser().getEmail(), token.getIpAddress(), token.getDeviceName(), null, "User session logged out");
             });
         }
     }

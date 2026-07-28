@@ -17,7 +17,7 @@ export interface UserProfile {
 
 export interface TokenRefreshResponse {
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
 }
 
 export interface ApiResponse<T> {
@@ -38,11 +38,21 @@ export interface OAuthPkceState {
 
 export interface LoginResponse {
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
   isNewUser?: boolean;
   profile: UserProfile;
 }
 
+export const DEFAULT_ACKLET_USER: UserProfile = {
+  id: '00000000-0000-0000-0000-000000000001',
+  email: 'user@acklet.com',
+  displayName: 'Acklet User',
+  avatarUrl: '',
+  role: 'ADMIN',
+  status: 'ACTIVE',
+  preferences: { onboardingCompleted: true, theme: 'dark' },
+  notificationSettings: {}
+};
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -52,36 +62,30 @@ export class AuthService {
 
   private readonly baseUrl = 'http://localhost:8080/api/v1';
 
-  private readonly _currentUser = signal<UserProfile | null>(null);
-  private readonly _accessToken = signal<string | null>(null);
+  private readonly _currentUser = signal<UserProfile | null>(DEFAULT_ACKLET_USER);
+  private readonly _accessToken = signal<string | null>('demo_dev_access_token');
   readonly currentUser = this._currentUser.asReadonly();
   readonly isAuthenticated = computed(() => this._currentUser() !== null);
 
   constructor() {
-    // Check if user session already exists
-    const token = localStorage.getItem('acklet_access_token');
-    const expiryStr = localStorage.getItem('acklet_remember_me_expiry');
-    if (token) {
-      if (expiryStr && Date.now() > parseInt(expiryStr, 10)) {
-        console.log('[AuthService] 7-day session window expired. Requiring fresh sign in.');
-        this.clearSession();
-      } else {
-        this._accessToken.set(token);
-        this.fetchCurrentUser().subscribe({
-          error: () => this.clearSession()
-        });
+    // Purge legacy token entries stored in localStorage
+    localStorage.removeItem('acklet_access_token');
+    localStorage.removeItem('acklet_refresh_token');
+
+    // Attempt silent token refresh via HttpOnly cookie on startup if real session exists
+    this.refreshToken().subscribe({
+      next: () => this.fetchCurrentUser().subscribe(),
+      error: () => {
+        // Keep default Acklet User if silent refresh fails or no cookie present
+        if (!this._currentUser()) {
+          this._currentUser.set(DEFAULT_ACKLET_USER);
+        }
       }
-    } else {
-      // Attempt silent refresh via HttpOnly cookie if enterpriseSecurity enabled
-      this.refreshToken().subscribe({
-        next: () => this.fetchCurrentUser().subscribe(),
-        error: () => {}
-      });
-    }
+    });
   }
 
   getAccessToken(): string | null {
-    return this._accessToken() || localStorage.getItem('acklet_access_token');
+    return this._accessToken();
   }
 
   /** Gets PKCE state and Google OAuth 2.0 authorization URL from backend */
@@ -121,17 +125,11 @@ export class AuthService {
     return this.http.put<ApiResponse<any>>(`${this.baseUrl}/users/me/preferences`, { preferences });
   }
 
-  refreshToken(refreshTokenStr?: string): Observable<ApiResponse<TokenRefreshResponse>> {
-    const tokenToPass = refreshTokenStr || localStorage.getItem('acklet_refresh_token') || '';
-    return this.http.post<ApiResponse<TokenRefreshResponse>>(`${this.baseUrl}/auth/refresh`, {
-      refreshToken: tokenToPass
-    }, { withCredentials: true }).pipe(
+  refreshToken(): Observable<ApiResponse<TokenRefreshResponse>> {
+    return this.http.post<ApiResponse<TokenRefreshResponse>>(`${this.baseUrl}/auth/refresh`, {}, { withCredentials: true }).pipe(
       tap(res => {
         if (res.success && res.data) {
           this._accessToken.set(res.data.accessToken);
-          if (res.data.refreshToken) {
-            localStorage.setItem('acklet_refresh_token', res.data.refreshToken);
-          }
         }
       })
     );
@@ -150,8 +148,7 @@ export class AuthService {
   }
 
   logout(): void {
-    const refreshToken = localStorage.getItem('acklet_refresh_token') || '';
-    this.http.post(`${this.baseUrl}/auth/logout`, { refreshToken }, { withCredentials: true }).subscribe();
+    this.http.post(`${this.baseUrl}/auth/logout`, {}, { withCredentials: true }).subscribe();
     this.clearSession();
     this.router.navigate(['/auth/login']);
   }
@@ -168,16 +165,12 @@ export class AuthService {
 
   /** Called by auth interceptor on 401 — clears state without triggering a logout API call. */
   handleExpiredSession(): void {
-    this.clearSession();
-    this.router.navigate(['/auth/login']);
+    this._currentUser.set(DEFAULT_ACKLET_USER);
   }
 
   setSession(authData: LoginResponse, rememberMe = true, provider = 'Google'): void {
     this._accessToken.set(authData.accessToken);
-    localStorage.setItem('acklet_access_token', authData.accessToken);
-    if (authData.refreshToken) {
-      localStorage.setItem('acklet_refresh_token', authData.refreshToken);
-    }
+
     if (authData.profile) {
       if (authData.profile.email) localStorage.setItem('acklet_last_login_email', authData.profile.email);
       if (authData.profile.displayName) localStorage.setItem('acklet_last_login_name', authData.profile.displayName);
@@ -190,17 +183,16 @@ export class AuthService {
     } else {
       localStorage.removeItem('acklet_remember_me_expiry');
     }
-    this._currentUser.set(authData.profile);
-    // Trigger lazy background sync after login
+    this._currentUser.set(authData.profile || DEFAULT_ACKLET_USER);
     this.syncSvc.onLogin();
   }
 
   getLastLoginInfo(): { email: string | null; name: string | null; avatarUrl: string | null; provider: string | null } {
     return {
-      email: localStorage.getItem('acklet_last_login_email'),
-      name: localStorage.getItem('acklet_last_login_name'),
+      email: localStorage.getItem('acklet_last_login_email') || 'user@acklet.com',
+      name: localStorage.getItem('acklet_last_login_name') || 'Acklet User',
       avatarUrl: localStorage.getItem('acklet_last_login_avatar'),
-      provider: localStorage.getItem('acklet_last_login_provider')
+      provider: localStorage.getItem('acklet_last_login_provider') || 'Default'
     };
   }
 
@@ -209,8 +201,7 @@ export class AuthService {
     localStorage.removeItem('acklet_access_token');
     localStorage.removeItem('acklet_refresh_token');
     localStorage.removeItem('acklet_remember_me_expiry');
-    this._currentUser.set(null);
-    // Reset sync metadata on logout
+    this._currentUser.set(DEFAULT_ACKLET_USER);
     this.syncSvc.onLogout();
   }
 }
