@@ -1,6 +1,5 @@
 package com.code.acklet.github.controller;
 
-import com.code.acklet.config.properties.AppProperties;
 import com.code.acklet.github.dto.GitHubIntegrationResponse;
 import com.code.acklet.github.dto.GitHubOAuthConnectRequest;
 import com.code.acklet.github.service.GitHubSyncService;
@@ -17,7 +16,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -28,16 +26,7 @@ public class GitHubIntegrationController {
 
     private final GitHubSyncService    syncService;
     private final GitHubWebhookService webhookService;
-    private final AppProperties        appProperties;
 
-    @GetMapping("/connect-url")
-    @Operation(summary = "Get GitHub OAuth authorize URL")
-    public ResponseEntity<ApiResponse<Map<String, String>>> getConnectUrl() {
-        String clientId = appProperties.getGithub().getClientId();
-        String scope = "repo,read:user";
-        String url = String.format("https://github.com/login/oauth/authorize?client_id=%s&scope=%s", clientId != null ? clientId : "", scope);
-        return ResponseEntity.ok(ApiResponse.success(Map.of("url", url), "OAuth connect URL generated"));
-    }
 
     @PostMapping("/connect")
     @Operation(summary = "Connect tool to GitHub repository")

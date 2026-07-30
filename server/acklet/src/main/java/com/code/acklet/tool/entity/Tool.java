@@ -98,6 +98,9 @@ public class Tool extends Auditable {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    @Column(name = "repository_id")
+    private UUID repositoryId;
+
     public enum ToolStatus {
         DRAFT, PENDING, ACTIVE, ARCHIVED, REJECTED
     }

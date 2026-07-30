@@ -48,6 +48,7 @@ export const routes: Routes = [
   { path: 'auth/login', loadComponent: () => import('./pages/auth/login/login').then(m => m.LoginComponent), title: 'Log In — Acklet' },
   { path: 'auth/callback', loadComponent: () => import('./pages/auth/callback/callback').then(m => m.AuthCallbackComponent), title: 'Authenticating — Acklet' },
   { path: 'auth/onboarding', loadComponent: () => import('./pages/auth/onboarding/onboarding').then(m => m.OnboardingComponent), title: 'Personalize Your Workspace — Acklet' },
+  { path: 'auth/github/callback', loadComponent: () => import('./pages/auth/github-callback/github-callback').then(m => m.GitHubCallbackComponent), title: 'Connecting GitHub — Acklet' },
 
   // --- Authenticated Workspace Pages under sidebar layout shell ---
   {
@@ -55,7 +56,18 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/shell/shell').then(m => m.ShellLayoutComponent),
     canActivate: [authGuard],
     children: [
-      { path: '', loadComponent: () => import('./pages/workspace/dashboard/dashboard').then(m => m.WorkspaceDashboardComponent), title: 'Dashboard — Acklet' },
+      { path: '', loadComponent: () => import('./pages/workspace/dashboard/dashboard').then(m => m.WorkspaceDashboardComponent), title: 'Overview — Acklet' },
+      { path: 'projects', redirectTo: 'repositories', pathMatch: 'full' },
+      { path: 'tools/import', loadComponent: () => import('./pages/workspace/projects/import/import').then(m => m.ProjectImportComponent), title: 'Import Repository — Acklet' },
+      { path: 'projects/import', redirectTo: 'tools/import', pathMatch: 'full' },
+      { path: 'projects/publish/:repoId', loadComponent: () => import('./pages/workspace/projects/publish-wizard/publish-wizard').then(m => m.PublishWizardComponent), title: 'Publish Tool — Acklet' },
+      { path: 'projects/review/:toolId', loadComponent: () => import('./pages/workspace/projects/publish-preview/publish-preview').then(m => m.PublishPreviewComponent), title: 'Review & Publish — Acklet' },
+      { path: 'repositories', loadComponent: () => import('./pages/workspace/repositories/repositories').then(m => m.WorkspaceRepositoriesComponent), title: 'Repositories — Acklet' },
+      { path: 'tools', loadComponent: () => import('./pages/workspace/tools/tools').then(m => m.WorkspaceToolsComponent), title: 'Tools — Acklet' },
+      { path: 'store', loadComponent: () => import('./pages/workspace/store/store').then(m => m.WorkspaceStoreComponent), title: 'Store — Acklet' },
+      { path: 'tools/manage/:id', loadComponent: () => import('./pages/workspace/tools/tool-manage/tool-manage').then(m => m.ToolManageComponent), title: 'Manage Tool — Acklet' },
+      { path: 'ai-jobs', loadComponent: () => import('./pages/workspace/ai-jobs/ai-jobs').then(m => m.AIJobsComponent), title: 'AI Jobs — Acklet' },
+      { path: 'analytics', loadComponent: () => import('./pages/workspace/analytics/analytics').then(m => m.WorkspaceAnalyticsComponent), title: 'Analytics — Acklet' },
       { path: 'favorites', loadComponent: () => import('./pages/workspace/favorites/favorites').then(m => m.WorkspaceFavoritesComponent), title: 'Favorites — Acklet' },
       { path: 'history', loadComponent: () => import('./pages/workspace/history/history').then(m => m.WorkspaceHistoryComponent), title: 'History — Acklet' },
       { path: 'collections', loadComponent: () => import('./pages/workspace/collections/collections').then(m => m.WorkspaceCollectionsComponent), title: 'Collections — Acklet' },

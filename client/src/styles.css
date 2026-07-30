@@ -1,9 +1,46 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Aboreto&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&family=Philosopher:ital,wght@0,400;0,700;1,400;1,700&family=Sorts+Mill+Goudy:ital@0;1&display=swap');
+@source "./app/**/*.ts";
+@source "./app/**/*.html";
 
 /* ============================================================
-   GOOGLE FONTS
+   TAILWIND UTILITY ENGINE OVERRIDES & CSS FALLBACKS
    ============================================================ */
-@import url('https://fonts.googleapis.com/css2?family=Aboreto&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&family=Philosopher:ital,wght@0,400;0,700;1,400;1,700&family=Sorts+Mill+Goudy:ital@0;1&display=swap');
+.flex { display: flex !important; }
+.flex-col { flex-direction: column !important; }
+.flex-1 { flex: 1 1 0% !important; }
+.flex-shrink-0 { flex-shrink: 0 !important; }
+.items-center { align-items: center !important; }
+.justify-between { justify-content: space-between !important; }
+.justify-center { justify-content: center !important; }
+.w-screen { width: 100vw !important; }
+.h-screen { height: 100vh !important; }
+.w-full { width: 100% !important; }
+.h-full { height: 100% !important; }
+.overflow-hidden { overflow: hidden !important; }
+.overflow-y-auto { overflow-y: auto !important; }
+.grid { display: grid !important; }
+.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
+.gap-2 { gap: 0.5rem !important; }
+.gap-3 { gap: 0.75rem !important; }
+.gap-4 { gap: 1rem !important; }
+.gap-6 { gap: 1.5rem !important; }
+.p-2 { padding: 0.5rem !important; }
+.p-3 { padding: 0.75rem !important; }
+.p-4 { padding: 1rem !important; }
+.p-5 { padding: 1.25rem !important; }
+.p-6 { padding: 1.5rem !important; }
+.p-8 { padding: 2rem !important; }
+.px-3 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+.px-6 { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+.py-1\.5 { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; }
+.h-14 { height: 3.5rem !important; }
+.w-60 { width: 15rem !important; }
+.w-14 { width: 3.5rem !important; }
+.max-w-7xl { max-width: 80rem !important; }
+.max-w-md { max-width: 28rem !important; }
+.max-w-lg { max-width: 32rem !important; }
+.mx-auto { margin-left: auto !important; margin-right: auto !important; }
 
 /* ============================================================
    NATIVE CSS VARIABLES (Guarantees runtime resolution in all browsers)
@@ -269,6 +306,65 @@ html[data-theme="dark"] {
   --color-nav-hover-bg: var(--color-nav-hover-bg);
   --color-nav-active-bg: var(--color-nav-active-bg);
 }
+
+/* ============================================================
+   VERCEL / DEVELOPER PLATFORM DESIGN SYSTEM TOKENS
+   ============================================================ */
+:root {
+  --vercel-bg: #ffffff;
+  --vercel-subtle-bg: #fafafa;
+  --vercel-card-bg: #ffffff;
+  --vercel-border: #e5e5e5;
+  --vercel-border-subtle: #f0f0f0;
+  --vercel-text-primary: #171717;
+  --vercel-text-secondary: #666666;
+  --vercel-text-muted: #888888;
+  --vercel-accent-blue: #0070f3;
+  --vercel-accent-cyan: #50e3c2;
+  --vercel-accent-purple: #7928ca;
+  --vercel-status-success: #10b981;
+  --vercel-status-warning: #f59e0b;
+  --vercel-status-error: #ef4444;
+}
+
+html[data-theme="dark"] {
+  --vercel-bg: #000000;
+  --vercel-subtle-bg: #0a0a0a;
+  --vercel-card-bg: #111111;
+  --vercel-border: #222222;
+  --vercel-border-subtle: #1a1a1a;
+  --vercel-text-primary: #ededed;
+  --vercel-text-secondary: #a1a1a1;
+  --vercel-text-muted: #707070;
+  --vercel-accent-blue: #0070f3;
+  --vercel-accent-cyan: #50e3c2;
+  --vercel-accent-purple: #7928ca;
+}
+
+/* Monospaced badge & Keyboard shortcuts */
+kbd, .kbd {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  background: var(--color-surface-800);
+  border: 1px solid var(--border-medium);
+  color: var(--color-neutral-300);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* Status Indicator Dots */
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.status-dot-active { background-color: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+.status-dot-warning { background-color: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
+.status-dot-error { background-color: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+.status-dot-idle { background-color: #6b7280; }
 
 /* Keyboard Navigation Focus Rings — Theme Harmonious */
 *:focus-visible {

@@ -40,11 +40,18 @@ public class RabbitMqConfig {
     public static final String NOTIFICATIONS_QUEUE   = "acklet.notifications.queue";
     public static final String DEAD_LETTER_QUEUE      = "acklet.dlq";
 
+    public static final String IMPORT_EXCHANGE        = "acklet.import.exchange";
+    public static final String IMPORT_METADATA_QUEUE  = "acklet.import.metadata.queue";
+    public static final String IMPORT_TREE_QUEUE      = "acklet.import.tree.queue";
+
     public static final String ROUTING_KEY_TOOL_PUBLISHED   = "tool.published";
     public static final String ROUTING_KEY_TOOL_UPDATED     = "tool.updated";
     public static final String ROUTING_KEY_TOOL_REVIEWED    = "tool.reviewed";
     public static final String ROUTING_KEY_AI_ENRICHMENT    = "ai.enrichment.requested";
     public static final String ROUTING_KEY_NOTIFICATION     = "notification.create";
+
+    public static final String ROUTING_KEY_IMPORT_QUEUED            = "import.queued";
+    public static final String ROUTING_KEY_IMPORT_METADATA_FETCHED  = "import.metadata.fetched";
 
     // ── Exchanges ────────────────────────────────────────────────────────────
 
@@ -61,6 +68,11 @@ public class RabbitMqConfig {
     @Bean
     public TopicExchange notificationsExchange() {
         return new TopicExchange(NOTIFICATIONS_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public TopicExchange importExchange() {
+        return new TopicExchange(IMPORT_EXCHANGE, true, false);
     }
 
     @Bean
@@ -111,6 +123,22 @@ public class RabbitMqConfig {
     }
 
     @Bean
+    public Queue importMetadataQueue() {
+        return QueueBuilder.durable(IMPORT_METADATA_QUEUE)
+                .withArgument("x-dead-letter-exchange", DEAD_LETTER_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", "dead-letter")
+                .build();
+    }
+
+    @Bean
+    public Queue importTreeQueue() {
+        return QueueBuilder.durable(IMPORT_TREE_QUEUE)
+                .withArgument("x-dead-letter-exchange", DEAD_LETTER_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", "dead-letter")
+                .build();
+    }
+
+    @Bean
     public Queue deadLetterQueue() {
         return QueueBuilder.durable(DEAD_LETTER_QUEUE).build();
     }
@@ -140,6 +168,16 @@ public class RabbitMqConfig {
     @Bean
     public Binding notificationsBinding() {
         return BindingBuilder.bind(notificationsQueue()).to(notificationsExchange()).with(ROUTING_KEY_NOTIFICATION);
+    }
+
+    @Bean
+    public Binding importMetadataBinding() {
+        return BindingBuilder.bind(importMetadataQueue()).to(importExchange()).with(ROUTING_KEY_IMPORT_QUEUED);
+    }
+
+    @Bean
+    public Binding importTreeBinding() {
+        return BindingBuilder.bind(importTreeQueue()).to(importExchange()).with(ROUTING_KEY_IMPORT_METADATA_FETCHED);
     }
 
     @Bean

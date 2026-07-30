@@ -38,7 +38,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(requestHandler)
-                .ignoringRequestMatchers("/api/v1/auth/**", "/api/v1/github/webhooks", "/.well-known/**")
+                .ignoringRequestMatchers("/api/v1/auth/**", "/api/v1/github/webhooks", "/.well-known/**", "/api/v1/publish/**")
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth

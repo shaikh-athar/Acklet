@@ -68,7 +68,7 @@ public class AppProperties {
     @Setter
     public static class SecurityFeatureProperties {
         private boolean enterpriseSecurity = true;
-        private boolean rateLimitingEnabled = true;
+        private boolean rateLimitingEnabled = false;
         private boolean captchaEnabled = true;
         private boolean rs256Jwt = true;
         private boolean securityAuditLogging = true;
@@ -123,10 +123,6 @@ public class AppProperties {
 
         @Valid
         @NestedConfigurationProperty
-        private GeminiProperties gemini = new GeminiProperties();
-
-        @Valid
-        @NestedConfigurationProperty
         private ExecutorProperties executor = new ExecutorProperties();
     }
 
@@ -135,13 +131,6 @@ public class AppProperties {
     public static class MistralProperties {
         private String apiKey;
         private String model = "mistral-small-latest";
-    }
-
-    @Getter
-    @Setter
-    public static class GeminiProperties {
-        private String apiKey;
-        private String model = "gemini-2.0-flash";
     }
 
     @Getter

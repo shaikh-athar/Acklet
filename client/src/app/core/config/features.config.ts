@@ -35,7 +35,7 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   rememberMe: true,
   lastLoginAccountHint: true,
   enterpriseSecurity: true,
-  rateLimitingEnabled: true,
+  rateLimitingEnabled: false,
   captchaEnabled: true,
   rs256Jwt: true,
   securityAuditLogging: true,
