@@ -1,8 +1,8 @@
-// client/src/app/pages/workspace/notifications/notifications.ts
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../../../shared/components/icon/icon';
 import { SpotlightDirective } from '../../../shared/directives/spotlight.directive';
+import { NotificationService } from '../../../core/services/notification.service';
 
 interface AlertItem {
   id: string;
@@ -16,7 +16,7 @@ interface AlertItem {
 @Component({
   selector: 'app-workspace-notifications',
   standalone: true,
-  imports: [CommonModule, IconComponent, SpotlightDirective],
+  imports: [CommonModule, IconComponent],
   template: `
     <div class="notifications-root page-enter">
       <header class="header-row mb-8">
@@ -92,12 +92,33 @@ interface AlertItem {
     .text-center { text-align: center; }
   `],
 })
-export class WorkspaceNotificationsComponent {
+export class WorkspaceNotificationsComponent implements OnInit {
+  private readonly notifSvc = inject(NotificationService);
+
   readonly items = signal<AlertItem[]>([
     { id: '1', type: 'info', title: 'JSON Formatter Updated', body: 'Added regex search support inside structural output panes.', time: '1 hour ago', read: false },
     { id: '2', type: 'security', title: 'Workspace Logged In', body: 'New workspace session initialized on Safari macOS.', time: '3 hours ago', read: false },
     { id: '3', type: 'success', title: 'Backup Synchronized', body: 'All favorites folders backed up to cloud workspace.', time: '1 day ago', read: true }
   ]);
+
+  ngOnInit(): void {
+    this.notifSvc.getNotifications(0, 20).subscribe({
+      next: page => {
+        if (page && page.content && page.content.length > 0) {
+          const mapped: AlertItem[] = page.content.map(n => ({
+            id: n.id,
+            type: (n.type as any) || 'info',
+            title: n.title,
+            body: n.message,
+            time: n.createdAt ? new Date(n.createdAt).toLocaleDateString() : 'recently',
+            read: n.isRead
+          }));
+          this.items.set(mapped);
+        }
+      },
+      error: () => {}
+    });
+  }
 
   iconName(type: string): string {
     switch (type) {
@@ -109,12 +130,14 @@ export class WorkspaceNotificationsComponent {
   }
 
   toggleRead(item: AlertItem): void {
-    this.items.update(list => list.map(a => {
-      if (a.id === item.id) {
-        return { ...a, read: true };
+    this.notifSvc.markAsRead(item.id).subscribe({
+      next: () => {
+        this.items.update(list => list.map(a => a.id === item.id ? { ...a, read: true } : a));
+      },
+      error: () => {
+        this.items.update(list => list.map(a => a.id === item.id ? { ...a, read: true } : a));
       }
-      return a;
-    }));
+    });
   }
 
   deleteAlert(item: AlertItem): void {
@@ -122,6 +145,13 @@ export class WorkspaceNotificationsComponent {
   }
 
   markAllAsRead(): void {
-    this.items.update(list => list.map(a => ({ ...a, read: true })));
+    this.notifSvc.markAllAsRead().subscribe({
+      next: () => {
+        this.items.update(list => list.map(a => ({ ...a, read: true })));
+      },
+      error: () => {
+        this.items.update(list => list.map(a => ({ ...a, read: true })));
+      }
+    });
   }
 }

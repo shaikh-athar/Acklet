@@ -1,11 +1,11 @@
 // src/app/core/services/github.service.ts
-
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiResponse } from './tools.service';
 
+// ── Existing tool-scoped integration ──────────────────────────────────────────
 export interface GitHubIntegrationResponse {
   id: string;
   toolId?: string;
@@ -18,30 +18,119 @@ export interface GitHubIntegrationResponse {
   createdAt: string;
 }
 
+// ── New user-scoped models ─────────────────────────────────────────────────────
+export interface GitHubAccount {
+  id: string;
+  githubLogin: string;
+  avatarUrl?: string;
+  scopes?: string;
+  connectedAt: string;
+}
+
+export interface GitHubRepo {
+  id: number;
+  name: string;
+  fullName?: string;
+  full_name?: string;
+  privateRepo?: boolean;
+  private?: boolean;
+  fork: boolean;
+  archived: boolean;
+  description?: string;
+  htmlUrl?: string;
+  html_url?: string;
+  defaultBranch?: string;
+  default_branch?: string;
+  language?: string;
+  stars: number;
+  forks: number;
+  sizeKb?: number;
+  size?: number;
+  updatedAt?: string;
+  updated_at?: string;
+  pushedAt?: string;
+  pushed_at?: string;
+  owner?: { login: string; avatarUrl: string; type: string };
+}
+
+export interface GitHubImportJob {
+  jobId: string;
+  repoFullName: string;
+  status: 'PENDING' | 'CLONING' | 'ANALYZING' | 'AI_GENERATION' | 'DONE' | 'FAILED';
+  currentStep?: string;
+  errorMessage?: string;
+  toolId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class GitHubService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://localhost:8080/api/v1/github';
+  private readonly base = 'http://localhost:8080/api/v1/github';
 
+  // ── OAuth / Connect ────────────────────────────────────────────────────────
+
+  /** Returns the GitHub OAuth URL to redirect the user to. */
   getConnectUrl(): Observable<string> {
-    return this.http.get<ApiResponse<{ url: string }>>(`${this.baseUrl}/connect-url`).pipe(
-      map(res => res.data.url)
-    );
+    return this.http.get<ApiResponse<{ url: string }>>(`${this.base}/connect-url`)
+      .pipe(map(r => r.data.url));
   }
 
+  /** Handles the OAuth callback from GitHub — exchanges code for token. */
+  handleCallback(code: string, state: string): Observable<GitHubAccount> {
+    const params = new HttpParams().set('code', code).set('state', state);
+    return this.http.get<ApiResponse<GitHubAccount>>(`${this.base}/callback`, { params })
+      .pipe(map(r => r.data));
+  }
+
+  // ── Account Management ─────────────────────────────────────────────────────
+
+  listAccounts(): Observable<GitHubAccount[]> {
+    return this.http.get<ApiResponse<GitHubAccount[]>>(`${this.base}/accounts`)
+      .pipe(map(r => r.data));
+  }
+
+  disconnectAccount(accountId: string): Observable<void> {
+    return this.http.delete<ApiResponse<void>>(`${this.base}/accounts/${accountId}`)
+      .pipe(map(() => void 0));
+  }
+
+  // ── Repositories ───────────────────────────────────────────────────────────
+
+  listRepos(accountId: string, page = 1, perPage = 30, search?: string): Observable<GitHubRepo[]> {
+    let params = new HttpParams()
+      .set('page', page)
+      .set('perPage', perPage);
+    if (search) params = params.set('search', search);
+    return this.http.get<ApiResponse<GitHubRepo[]>>(`${this.base}/accounts/${accountId}/repos`, { params })
+      .pipe(map(r => r.data));
+  }
+
+  // ── Import (Phase 1 & Phase 2 Pipeline) ────────────────────────────────────
+
+  importRepo(accountId: string, repoFullName: string): Observable<GitHubImportJob> {
+    const params = new HttpParams()
+      .set('accountId', accountId)
+      .set('repoFullName', repoFullName);
+    return this.http.post<ApiResponse<GitHubImportJob>>('http://localhost:8080/api/v1/projects/import', null, { params })
+      .pipe(map(r => r.data));
+  }
+
+  getImportStatus(jobId: string): Observable<GitHubImportJob> {
+    return this.http.get<ApiResponse<GitHubImportJob>>(`http://localhost:8080/api/v1/projects/${jobId}/status`)
+      .pipe(map(r => r.data));
+  }
+
+  // ── Legacy: tool-scoped methods (kept for backward compat) ─────────────────
+
   connectRepository(code: string, toolId?: string, githubRepo?: string): Observable<GitHubIntegrationResponse> {
-    return this.http.post<ApiResponse<GitHubIntegrationResponse>>(`${this.baseUrl}/connect`, {
-      code,
-      toolId,
-      githubRepo
-    }).pipe(
-      map(res => res.data)
-    );
+    return this.http.post<ApiResponse<GitHubIntegrationResponse>>(`${this.base}/connect`, { code, toolId, githubRepo })
+      .pipe(map(r => r.data));
   }
 
   triggerSync(toolId: string): Observable<void> {
-    return this.http.post<ApiResponse<void>>(`${this.baseUrl}/sync/${toolId}`, {}).pipe(
-      map(() => void 0)
-    );
+    return this.http.post<ApiResponse<void>>(`${this.base}/sync/${toolId}`, {})
+      .pipe(map(() => void 0));
   }
 }

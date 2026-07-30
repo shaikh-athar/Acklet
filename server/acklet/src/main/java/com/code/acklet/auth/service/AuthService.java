@@ -11,6 +11,7 @@ import com.code.acklet.auth.entity.RefreshToken;
 import com.code.acklet.auth.repository.RefreshTokenRepository;
 import com.code.acklet.shared.exception.UnauthorizedException;
 import com.code.acklet.shared.security.JwtTokenProvider;
+import com.code.acklet.shared.security.TokenBlacklistService;
 import com.code.acklet.user.entity.User;
 import com.code.acklet.user.entity.UserProfile;
 import com.code.acklet.user.mapper.UserMapper;
@@ -48,6 +49,8 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserMapper userMapper;
     private final AppProperties appProperties;
+    private final AuditLogService auditLogService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     private String getGoogleClientId() {
         return appProperties.getSecurity().getGoogle().getClientId();
@@ -265,7 +268,7 @@ public class AuthService {
 
         log.info("[OAuth Server] Generating local JWT access and refresh tokens for user session...");
         String accessToken = jwtTokenProvider.generateAccessToken(user);
-        String refreshToken = createAndSaveRefreshToken(user);
+        String refreshToken = createAndSaveRefreshToken(user, null, null, null);
 
         // Determine if user needs onboarding: new user OR existing user who hasn't completed it
         UserProfile finalProfile = user.getProfile();
@@ -281,22 +284,55 @@ public class AuthService {
     }
 
     @Transactional
-    public TokenRefreshResponse refreshToken(TokenRefreshRequest request) {
-        RefreshToken token = refreshTokenRepository.findByToken(request.getRefreshToken())
-                .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
+    public LoginResponse authenticateWithDevice(GoogleLoginRequest request, String userAgent, String ipAddress) {
+        LoginResponse response = loginWithGoogle(request);
+        User user = userRepository.findByEmail(response.getProfile().getEmail()).orElseThrow();
+        String newRefreshToken = createAndSaveRefreshToken(user, null, userAgent, ipAddress);
+        response.setRefreshToken(newRefreshToken);
 
-        if (token.isRevoked() || token.isExpired()) {
-            throw new UnauthorizedException("Refresh token is expired or revoked");
+        auditLogService.logEvent("LOGIN_SUCCESS", user.getId(), user.getEmail(), ipAddress, userAgent, null, "User authenticated via Google OAuth 2.0 PKCE");
+        return response;
+    }
+
+    @Transactional
+    public TokenRefreshResponse refreshToken(TokenRefreshRequest request, String userAgent, String ipAddress) {
+        String rawToken = request.getRefreshToken();
+        if (rawToken == null || rawToken.isBlank()) {
+            throw new UnauthorizedException("Refresh token required");
+        }
+
+        String hash = com.code.acklet.shared.security.CryptoUtils.hashSha256(rawToken);
+        Optional<RefreshToken> tokenOpt = refreshTokenRepository.findByTokenHash(hash);
+
+        if (tokenOpt.isEmpty()) {
+            throw new UnauthorizedException("Invalid refresh token");
+        }
+
+        RefreshToken token = tokenOpt.get();
+
+        // Check for REUSE ATTACK: if token is already revoked, revoke ENTIRE family
+        if (token.isRevoked()) {
+            log.warn("[Security Alert] Refresh token reuse detected! Revoking family {}", token.getFamilyId());
+            refreshTokenRepository.revokeFamily(token.getFamilyId());
+            auditLogService.logEvent("TOKEN_REUSE_ALERT", token.getUser().getId(), token.getUser().getEmail(), ipAddress, userAgent, null, "Refresh token reuse detected! Revoked token family: " + token.getFamilyId());
+            throw new UnauthorizedException("Security Alert: Token reuse detected. All sessions in this family revoked.");
+        }
+
+        if (token.getExpiresAt().isBefore(Instant.now())) {
+            token.setRevoked(true);
+            refreshTokenRepository.save(token);
+            throw new UnauthorizedException("Refresh token has expired. Please sign in again.");
         }
 
         User user = token.getUser();
         String newAccessToken = jwtTokenProvider.generateAccessToken(user);
-        
-        // Rotate refresh token
+
+        // Rotate token: revoke old token and create new token keeping SAME familyId
         token.setRevoked(true);
         refreshTokenRepository.save(token);
 
-        String newRefreshToken = createAndSaveRefreshToken(user);
+        String newRefreshToken = createAndSaveRefreshToken(user, token.getFamilyId(), userAgent, ipAddress);
+        auditLogService.logEvent("TOKEN_REFRESH", user.getId(), user.getEmail(), ipAddress, userAgent, null, "Tokens rotated successfully");
 
         return TokenRefreshResponse.builder()
                 .accessToken(newAccessToken)
@@ -305,22 +341,96 @@ public class AuthService {
     }
 
     @Transactional
-    public void logout(String refreshTokenStr) {
-        refreshTokenRepository.findByToken(refreshTokenStr).ifPresent(token -> {
-            token.setRevoked(true);
-            refreshTokenRepository.save(token);
-        });
+    public void logout(String rawRefreshToken) {
+        if (rawRefreshToken != null && !rawRefreshToken.isBlank()) {
+            String hash = com.code.acklet.shared.security.CryptoUtils.hashSha256(rawRefreshToken);
+            refreshTokenRepository.findByTokenHash(hash).ifPresent(token -> {
+                token.setRevoked(true);
+                refreshTokenRepository.save(token);
+                auditLogService.logEvent("LOGOUT", token.getUser().getId(), token.getUser().getEmail(), token.getIpAddress(), token.getDeviceName(), null, "User session logged out");
+            });
+        }
     }
 
-    private String createAndSaveRefreshToken(User user) {
-        String tokenStr = UUID.randomUUID().toString();
+    @Transactional(readOnly = true)
+    public java.util.List<com.code.acklet.auth.dto.SessionInfoResponse> getUserSessions(User currentUser, String currentRawToken) {
+        String currentHash = currentRawToken != null ? com.code.acklet.shared.security.CryptoUtils.hashSha256(currentRawToken) : "";
+        
+        return refreshTokenRepository.findAllByUserIdAndIsRevokedFalse(currentUser.getId()).stream()
+                .map(t -> com.code.acklet.auth.dto.SessionInfoResponse.builder()
+                        .id(t.getId())
+                        .deviceName(t.getDeviceName() != null ? t.getDeviceName() : "Web Browser")
+                        .ipAddress(t.getIpAddress() != null ? t.getIpAddress() : "127.0.0.1")
+                        .location(t.getLocation() != null ? t.getLocation() : "Localhost")
+                        .lastUsedAt(t.getLastUsedAt())
+                        .createdAt(t.getCreatedAt())
+                        .isCurrentSession(t.getTokenHash().equals(currentHash))
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Transactional
+    public void revokeSession(UUID sessionId, User currentUser) {
+        RefreshToken token = refreshTokenRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found"));
+        if (!token.getUser().getId().equals(currentUser.getId())) {
+            throw new UnauthorizedException("Cannot revoke another user's session");
+        }
+        token.setRevoked(true);
+        refreshTokenRepository.save(token);
+    }
+
+    @Transactional
+    public void revokeAllSessions(User currentUser, String currentRawToken) {
+        if (currentRawToken != null && !currentRawToken.isBlank()) {
+            String currentHash = com.code.acklet.shared.security.CryptoUtils.hashSha256(currentRawToken);
+            Optional<RefreshToken> currentOpt = refreshTokenRepository.findByTokenHash(currentHash);
+            if (currentOpt.isPresent()) {
+                refreshTokenRepository.revokeAllUserTokensExcept(currentUser.getId(), currentOpt.get().getId());
+                return;
+            }
+        }
+        refreshTokenRepository.revokeAllUserTokens(currentUser.getId());
+    }
+
+    public String createAndSaveRefreshToken(User user, UUID familyId, String userAgent, String ipAddress) {
+        String rawTokenStr = UUID.randomUUID().toString() + "." + UUID.randomUUID().toString();
+        String hash = com.code.acklet.shared.security.CryptoUtils.hashSha256(rawTokenStr);
+        
+        UUID effectiveFamilyId = familyId != null ? familyId : UUID.randomUUID();
+        String parsedDevice = parseUserAgent(userAgent);
+
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(user)
-                .token(tokenStr)
-                .expiryDate(Instant.now().plus(7, java.time.temporal.ChronoUnit.DAYS))
-                .revoked(false)
+                .tokenHash(hash)
+                .familyId(effectiveFamilyId)
+                .deviceName(parsedDevice)
+                .ipAddress(ipAddress != null ? ipAddress : "127.0.0.1")
+                .location("Local Dev")
+                .isRevoked(false)
+                .expiresAt(Instant.now().plus(7, java.time.temporal.ChronoUnit.DAYS))
+                .lastUsedAt(Instant.now())
                 .build();
+
         refreshTokenRepository.save(refreshToken);
-        return tokenStr;
+        return rawTokenStr;
+    }
+
+    private String parseUserAgent(String userAgent) {
+        if (userAgent == null || userAgent.isBlank()) return "Unknown Device";
+        if (userAgent.contains("Chrome")) return "Chrome on " + getOs(userAgent);
+        if (userAgent.contains("Firefox")) return "Firefox on " + getOs(userAgent);
+        if (userAgent.contains("Safari")) return "Safari on " + getOs(userAgent);
+        if (userAgent.contains("Edge")) return "Edge on " + getOs(userAgent);
+        return "Browser on " + getOs(userAgent);
+    }
+
+    private String getOs(String ua) {
+        if (ua.contains("Windows")) return "Windows";
+        if (ua.contains("Mac")) return "macOS";
+        if (ua.contains("Linux")) return "Linux";
+        if (ua.contains("Android")) return "Android";
+        if (ua.contains("iPhone") || ua.contains("iPad")) return "iOS";
+        return "Desktop";
     }
 }

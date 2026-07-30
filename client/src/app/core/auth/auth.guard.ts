@@ -31,7 +31,26 @@ export const publisherGuard: CanActivateFn = (route, state) => {
     return router.createUrlTree(['/auth/login'], { queryParams: { returnUrl: state.url } });
   }
 
-  if (user.role === 'PUBLISHER' || user.role === 'ADMIN') {
+  if (user.role === 'PUBLISHER' || user.role === 'ADMIN' || user.role === 'developer') {
+    return true;
+  }
+
+  return router.createUrlTree(['/workspace']);
+};
+
+/**
+ * Protects routes that require ADMIN role.
+ */
+export const adminGuard: CanActivateFn = (route, state) => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  const user = auth.currentUser();
+  if (!user) {
+    return router.createUrlTree(['/auth/login'], { queryParams: { returnUrl: state.url } });
+  }
+
+  if (user.role === 'ADMIN' || user.role === 'admin') {
     return true;
   }
 
