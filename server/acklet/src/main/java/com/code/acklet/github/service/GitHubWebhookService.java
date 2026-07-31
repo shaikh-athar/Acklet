@@ -27,6 +27,7 @@ public class GitHubWebhookService {
 
     private final GitHubIntegrationRepository integrationRepository;
     private final GitHubSyncService        syncService;
+    private final IncrementalSyncService   incrementalSyncService;
     private final ObjectMapper             objectMapper;
     private final AppProperties            appProperties;
 
@@ -86,8 +87,8 @@ public class GitHubWebhookService {
                 case "push":
                     String ref = payload.path("ref").asText("");
                     if (ref.endsWith("/" + integration.getDefaultBranch()) || ref.endsWith("/main") || ref.endsWith("/master")) {
-                        log.info("Push detected on default branch for tool {}. Triggering auto-sync...", integration.getTool().getSlug());
-                        syncService.syncRepository(integration.getTool().getId());
+                        log.info("Push detected on default branch for tool {}. Triggering smart incremental sync...", integration.getTool().getSlug());
+                        incrementalSyncService.processPushWebhook(fullRepoName, payload);
                     }
                     break;
 

@@ -36,9 +36,20 @@ export interface Tool {
   color?: string;
   gradient?: string;
   addedDate?: string;
+  createdAt?: string;
   version?: string;
   url?: string;
   author?: string;
+  authorName?: string;
+  category?: string;
+  githubRepo?: string;
+  executionMode?: string;
+  subdomain?: string;
+  runtime?: string;
+  buildCommand?: string;
+  startCommand?: string;
+  port?: number;
+  repositoryId?: string;
 }
 
 export interface UsageStep {

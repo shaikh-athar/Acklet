@@ -2,6 +2,7 @@
 
 export interface DiscussionThread {
   id: string;
+  slug?: string;
   title: string;
   category: 'general' | 'help' | 'ideas' | 'showcase';
   author: string;

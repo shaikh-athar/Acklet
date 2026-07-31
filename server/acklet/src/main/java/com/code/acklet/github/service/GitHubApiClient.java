@@ -1,7 +1,10 @@
 package com.code.acklet.github.service;
 
 import com.code.acklet.config.properties.AppProperties;
+import com.code.acklet.github.dto.GitHubRepoDto;
 import com.code.acklet.github.dto.GitHubRepoMetadata;
+import com.code.acklet.github.dto.GitHubUserProfileDto;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +29,17 @@ public class GitHubApiClient {
     private final ObjectMapper objectMapper;
     private final AppProperties appProperties;
     private final RestTemplate restTemplate = new RestTemplate();
+
+    /**
+     * Builds the GitHub OAuth authorization URL with CSRF state and required scopes.
+     */
+    public String buildConnectUrl(String state) {
+        String clientId = appProperties.getGithub().getClientId();
+        String scope = "repo,read:user,user:email";
+        return String.format(
+            "https://github.com/login/oauth/authorize?client_id=%s&scope=%s&state=%s&allow_signup=false",
+            clientId != null ? clientId : "", scope, state);
+    }
 
     /**
      * Exchanges OAuth authorization code for a GitHub User Access Token.
@@ -169,5 +183,61 @@ public class GitHubApiClient {
         if (textToScan.contains("python") || textToScan.contains("fastapi")) detected.add("Python");
 
         return new ArrayList<>(detected);
+    }
+
+    // ── User-scoped API calls ──────────────────────────────────────────────────
+
+    /**
+     * Fetches the authenticated user's GitHub profile.
+     */
+    public GitHubUserProfileDto fetchUserProfile(String token) {
+        HttpHeaders headers = buildHeaders(token);
+        try {
+            ResponseEntity<GitHubUserProfileDto> res = restTemplate.exchange(
+                "https://api.github.com/user", HttpMethod.GET,
+                new HttpEntity<>(headers), GitHubUserProfileDto.class);
+            return res.getBody();
+        } catch (Exception e) {
+            log.error("Failed to fetch GitHub user profile: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Lists repositories accessible to the authenticated user (paged, optional search filter).
+     */
+    public List<GitHubRepoDto> fetchUserRepos(String token, int page, int perPage, String search) {
+        String url = String.format(
+            "https://api.github.com/user/repos?sort=updated&direction=desc&per_page=%d&page=%d",
+            perPage, page);
+        HttpHeaders headers = buildHeaders(token);
+        try {
+            ResponseEntity<List<GitHubRepoDto>> res = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers),
+                new org.springframework.core.ParameterizedTypeReference<List<GitHubRepoDto>>() {});
+            List<GitHubRepoDto> repos = res.getBody();
+            if (repos == null) return List.of();
+            if (search != null && !search.isBlank()) {
+                String q = search.toLowerCase();
+                repos = repos.stream()
+                    .filter(r -> r.getName().toLowerCase().contains(q) ||
+                                 (r.getDescription() != null && r.getDescription().toLowerCase().contains(q)))
+                    .toList();
+            }
+            return repos;
+        } catch (Exception e) {
+            log.error("Failed to fetch user repos from GitHub: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    private HttpHeaders buildHeaders(String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("User-Agent", "Acklet-Platform");
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        if (token != null && !token.isBlank() && !token.startsWith("gho_dummy")) {
+            headers.setBearerAuth(token);
+        }
+        return headers;
     }
 }

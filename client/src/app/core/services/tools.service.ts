@@ -178,6 +178,10 @@ export class ToolsService {
     this._tools.set(Array.from(map.values()));
   }
 
+  executeTool(id: string, inputs: any): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.baseUrl}/tools/${id}/execute`, inputs);
+  }
+
   private mapBackendTool(bTool: any): Tool {
     return {
       id: bTool.id,
@@ -205,7 +209,14 @@ export class ToolsService {
       icon: bTool.icon || bTool.logoUrl || 'code',
       version: bTool.version || '1.0.0',
       author: bTool.author || 'Acklet Community',
-      tags: bTool.tags || ['developer', 'tool']
+      tags: bTool.tags || ['developer', 'tool'],
+      executionMode: bTool.executionMode || 'BROWSER',
+      subdomain: bTool.subdomain || `${bTool.slug}.acklet.app`,
+      runtime: bTool.runtime || 'web',
+      buildCommand: bTool.buildCommand,
+      startCommand: bTool.startCommand,
+      port: bTool.port,
+      repositoryId: bTool.repositoryId
     };
   }
 }
