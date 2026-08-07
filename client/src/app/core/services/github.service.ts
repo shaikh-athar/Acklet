@@ -60,6 +60,7 @@ export interface GitHubImportJob {
   currentStep?: string;
   errorMessage?: string;
   toolId?: string;
+  repositoryId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -109,11 +110,24 @@ export class GitHubService {
 
   // ── Import (Phase 1 & Phase 2 Pipeline) ────────────────────────────────────
 
-  importRepo(accountId: string, repoFullName: string): Observable<GitHubImportJob> {
-    const params = new HttpParams()
+  importRepo(
+    accountId: string,
+    repoFullName: string,
+    branch?: string,
+    buildCommand?: string,
+    startCommand?: string,
+    installCommand?: string,
+    envVars?: Record<string, string>
+  ): Observable<GitHubImportJob> {
+    let params = new HttpParams()
       .set('accountId', accountId)
       .set('repoFullName', repoFullName);
-    return this.http.post<ApiResponse<GitHubImportJob>>('http://localhost:8080/api/v1/projects/import', null, { params })
+    if (branch) params = params.set('branch', branch);
+    if (buildCommand) params = params.set('buildCommand', buildCommand);
+    if (startCommand) params = params.set('startCommand', startCommand);
+    if (installCommand) params = params.set('installCommand', installCommand);
+
+    return this.http.post<ApiResponse<GitHubImportJob>>('http://localhost:8080/api/v1/projects/import', envVars || {}, { params })
       .pipe(map(r => r.data));
   }
 

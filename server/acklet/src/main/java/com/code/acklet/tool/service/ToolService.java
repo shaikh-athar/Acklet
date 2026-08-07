@@ -1,5 +1,7 @@
 package com.code.acklet.tool.service;
 
+import com.code.acklet.github.repository.RepositoryRepository;
+import com.code.acklet.shared.exception.ForbiddenException;
 import com.code.acklet.shared.exception.ResourceNotFoundException;
 import com.code.acklet.tool.entity.Category;
 import com.code.acklet.tool.entity.Tool;
@@ -23,6 +25,8 @@ import java.util.UUID;
 public class ToolService {
 
     private final ToolRepository toolRepository;
+    private final RepositoryRepository repositoryRepository;
+
     private final CategoryRepository categoryRepository;
 
     @Cacheable(value = "categories")
@@ -71,5 +75,26 @@ public class ToolService {
                 .orElseThrow(() -> new ResourceNotFoundException("Tool not found with id: " + toolId));
         tool.setUsageCount(tool.getUsageCount() + 1);
         toolRepository.save(tool);
+    }
+
+    public boolean existsBySlug(String slug) {
+        return toolRepository.existsBySlug(slug);
+    }
+
+    @Transactional
+    @CacheEvict(value = {"tools_detail", "tools_trending", "tools_featured"}, allEntries = true)
+    public void deleteToolBySlug(UUID userId, String slug) {
+        Tool tool = toolRepository.findBySlug(slug)
+                .orElseThrow(() -> new ResourceNotFoundException("Tool not found: " + slug));
+        if (tool.getPublisherId() != null && !userId.equals(tool.getPublisherId())) {
+            // If repository belongs to user, allow deletion
+            if (tool.getRepositoryId() != null) {
+                repositoryRepository.findByIdAndUserId(tool.getRepositoryId(), userId)
+                        .orElseThrow(() -> new ForbiddenException("You do not own this tool or repository"));
+            } else {
+                throw new ForbiddenException("You do not own this tool");
+            }
+        }
+        toolRepository.delete(tool);
     }
 }

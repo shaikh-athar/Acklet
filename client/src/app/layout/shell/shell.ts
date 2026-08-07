@@ -68,24 +68,29 @@ interface SidebarLink {
         <nav class="ws-nav">
           @for (link of mainNavLinks; track link.path) {
             @if (link.disabled) {
-              <div class="ws-nav-link ws-nav-disabled">
-                <app-icon [name]="link.icon" class="ws-nav-icon" />
-                <span *ngIf="!sidebarCollapsed()" class="ws-nav-label">{{ link.label }}</span>
-                <span *ngIf="!sidebarCollapsed()" class="ws-nav-soon">Soon</span>
+              <div class="ws-nav-link-wrap" [attr.data-tooltip]="sidebarCollapsed() ? (link.label + ' (Soon)') : null">
+                <div class="ws-nav-link ws-nav-disabled" style="width: 100%;">
+                  <app-icon [name]="link.icon" class="ws-nav-icon" />
+                  <span *ngIf="!sidebarCollapsed()" class="ws-nav-label">{{ link.label }}</span>
+                  <span *ngIf="!sidebarCollapsed()" class="ws-nav-soon">Soon</span>
+                </div>
               </div>
             } @else {
-              <a
-                [routerLink]="link.path"
-                routerLinkActive="active-item"
-                [routerLinkActiveOptions]="{ exact: link.path === '/workspace' }"
-                class="ws-nav-link"
-              >
-                <app-icon [name]="link.icon" class="ws-nav-icon" />
-                <span *ngIf="!sidebarCollapsed()" class="ws-nav-label">{{ link.label }}</span>
-                <span *ngIf="link.badge && !sidebarCollapsed()" class="ws-nav-badge">
-                  {{ link.badge }}
-                </span>
-              </a>
+              <div class="ws-nav-link-wrap" [attr.data-tooltip]="sidebarCollapsed() ? link.label : null">
+                <a
+                  [routerLink]="link.path"
+                  routerLinkActive="active-item"
+                  [routerLinkActiveOptions]="{ exact: link.path === '/workspace' }"
+                  class="ws-nav-link"
+                  style="width: 100%;"
+                >
+                  <app-icon [name]="link.icon" class="ws-nav-icon" />
+                  <span *ngIf="!sidebarCollapsed()" class="ws-nav-label">{{ link.label }}</span>
+                  <span *ngIf="link.badge && !sidebarCollapsed()" class="ws-nav-badge">
+                    {{ link.badge }}
+                  </span>
+                </a>
+              </div>
             }
           }
 
@@ -93,10 +98,12 @@ interface SidebarLink {
           <div class="ws-nav-section-title" *ngIf="!sidebarCollapsed()">Publisher & Admin</div>
 
           @for (link of roleNavLinks; track link.path) {
-            <a [routerLink]="link.path" routerLinkActive="active-item" class="ws-nav-link">
-              <app-icon [name]="link.icon" class="ws-nav-icon" />
-              <span *ngIf="!sidebarCollapsed()" class="ws-nav-label">{{ link.label }}</span>
-            </a>
+            <div class="ws-nav-link-wrap" [attr.data-tooltip]="sidebarCollapsed() ? link.label : null">
+              <a [routerLink]="link.path" routerLinkActive="active-item" class="ws-nav-link" style="width: 100%;">
+                <app-icon [name]="link.icon" class="ws-nav-icon" />
+                <span *ngIf="!sidebarCollapsed()" class="ws-nav-label">{{ link.label }}</span>
+              </a>
+            </div>
           }
         </nav>
 
@@ -110,12 +117,14 @@ interface SidebarLink {
               <div class="ws-user-name">{{ currentUser()?.displayName || 'Developer' }}</div>
             </div>
           </a>
-          <button (click)="toggleSidebar()" class="ws-collapse-btn">
-            <app-icon
-              [name]="sidebarCollapsed() ? 'panel-left-open' : 'panel-left-close'"
-              class="ws-collapse-icon"
-            />
-          </button>
+          <div class="ws-nav-link-wrap" [attr.data-tooltip]="sidebarCollapsed() ? 'Expand Sidebar' : null" style="width: auto;">
+            <button (click)="toggleSidebar()" class="ws-collapse-btn">
+              <app-icon
+                [name]="sidebarCollapsed() ? 'panel-left-open' : 'panel-left-close'"
+                class="ws-collapse-icon"
+              />
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -127,6 +136,19 @@ interface SidebarLink {
             <a routerLink="/" class="ws-breadcrumb-link brand">Acklet</a>
             <span class="ws-breadcrumb-separator">/</span>
             <a routerLink="/workspace" class="ws-breadcrumb-link current">Workspace</a>
+          </div>
+
+          <!-- Cookie Consent Dialog -->
+          <div *ngIf="showCookiesDialog()" class="cookies-dialog-fixed">
+            <div class="cookies-dialog-header">
+              <app-icon name="cookie" class="cookies-icon" />
+              <span class="cookies-title">Cookie Consent</span>
+            </div>
+            <p class="cookies-text">We use cookies to analyze site traffic and optimize your developer tools workspace experience.</p>
+            <div class="cookies-actions">
+              <button (click)="acceptCookies()" class="cookies-btn accept">Accept</button>
+              <button (click)="denyCookies()" class="cookies-btn deny">Deny</button>
+            </div>
           </div>
 
           <!-- Command Palette Input trigger -->
@@ -141,16 +163,17 @@ interface SidebarLink {
           </div>
 
           <div class="ws-header-actions">
-            <a
-              routerLink="/workspace/notifications"
-              class="ws-header-notification"
-              title="Notifications"
-            >
-              <app-icon name="bell" class="ws-header-notification-icon" />
-            </a>
+            <div class="ws-nav-btn-wrap" data-tooltip="Notifications">
+              <a
+                routerLink="/workspace/notifications"
+                class="ws-header-notification"
+              >
+                <app-icon name="bell" class="ws-header-notification-icon" />
+              </a>
+            </div>
 
             <!-- Import Dropdown Group -->
-            <div class="ws-import-dropdown-container">
+            <div class="ws-import-dropdown-container" (mouseenter)="importDropOpen.set(true)" (mouseleave)="importDropOpen.set(false)">
               <button (click)="toggleImportDrop()" class="ws-import-btn">
                 <app-icon name="plus" class="ws-import-btn-icon" />
                 <span>Import</span>
@@ -165,13 +188,6 @@ interface SidebarLink {
                     <span class="ws-import-item-desc">Import Git repository as a tool</span>
                   </div>
                 </a>
-                <a routerLink="/workspace/tools/import" (click)="importDropOpen.set(false)" class="ws-import-dropdown-item" style="text-decoration: none;">
-                  <app-icon name="git-branch" class="ws-import-item-icon purple" />
-                  <div class="ws-import-item-text">
-                    <span class="ws-import-item-title">Connect Repo</span>
-                    <span class="ws-import-item-desc">Link a Git repository</span>
-                  </div>
-                </a>
                 <button (click)="triggerModal('create_collection')" class="ws-import-dropdown-item">
                   <app-icon name="folder" class="ws-import-item-icon green" />
                   <div class="ws-import-item-text">
@@ -182,12 +198,14 @@ interface SidebarLink {
               </div>
             </div>
 
-            <button (click)="themeSvc.toggle()" class="ws-theme-toggle">
-              <app-icon
-                [name]="themeSvc.theme() === 'dark' ? 'sun' : 'moon'"
-                class="ws-theme-toggle-icon"
-              />
-            </button>
+            <div class="ws-nav-btn-wrap" [attr.data-tooltip]="themeSvc.theme() === 'dark' ? 'Light Mode' : 'Dark Mode'">
+              <button (click)="themeSvc.toggle()" class="ws-theme-toggle">
+                <app-icon
+                  [name]="themeSvc.theme() === 'dark' ? 'sun' : 'moon'"
+                  class="ws-theme-toggle-icon"
+                />
+              </button>
+            </div>
           </div>
         </header>
 
@@ -234,63 +252,7 @@ interface SidebarLink {
 
 
         <!-- Connect Repo Modal -->
-        <div
-          *ngIf="stateSvc.activeModal() === 'connect_repo'"
-          class="ws-modal-overlay"
-          (click)="stateSvc.closeModal()"
-        >
-          <div class="ws-modal-card custom-modal" (click)="$event.stopPropagation()">
-            <div class="ws-modal-header">
-              <h2 class="ws-modal-title">Connect Repository</h2>
-              <button (click)="stateSvc.closeModal()" class="ws-modal-close-btn">&times;</button>
-            </div>
-            <div class="ws-modal-body">
-              <div class="ws-form-group">
-                <label>Repository Name (owner/repo) *</label>
-                <input type="text" [(ngModel)]="newRepoName" placeholder="e.g. facebook/react" />
-              </div>
-              <div class="ws-form-row">
-                <div class="ws-form-group">
-                  <label>Git Provider</label>
-                  <select [(ngModel)]="newRepoProvider">
-                    <option value="github">GitHub</option>
-                    <option value="gitlab">GitLab</option>
-                    <option value="bitbucket">BitBucket</option>
-                  </select>
-                </div>
-                <div class="ws-form-group">
-                  <label>Default Branch</label>
-                  <input type="text" [(ngModel)]="newRepoBranch" placeholder="e.g. main" />
-                </div>
-              </div>
-              <div class="ws-form-row">
-                <div class="ws-form-group">
-                  <label>Visibility</label>
-                  <select [(ngModel)]="newRepoVisibility">
-                    <option value="Public">Public</option>
-                    <option value="Private">Private</option>
-                  </select>
-                </div>
-                <div class="ws-form-group">
-                  <label>Language</label>
-                  <input type="text" [(ngModel)]="newRepoLang" placeholder="e.g. TypeScript" />
-                </div>
-              </div>
-            </div>
-            <div class="ws-modal-footer">
-              <button (click)="stateSvc.closeModal()" class="ws-btn-secondary">Cancel</button>
-              <button
-                (click)="submitConnectRepo()"
-                class="ws-btn-primary"
-                [disabled]="!newRepoName.trim()"
-              >
-                Connect
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Create Collection Modal -->
+<!-- Create Collection Modal -->
         <div
           *ngIf="stateSvc.activeModal() === 'create_collection'"
           class="ws-modal-overlay"
@@ -378,6 +340,12 @@ interface SidebarLink {
 
       .ws-sidebar.collapsed {
         width: 56px;
+        overflow: visible !important;
+      }
+
+      .ws-sidebar.collapsed .ws-nav,
+      .ws-sidebar.collapsed .ws-sidebar-footer {
+        overflow: visible !important;
       }
 
       .ws-sidebar-header {
@@ -535,6 +503,69 @@ interface SidebarLink {
         color: var(--vercel-text-primary);
         background: var(--color-surface-800);
         font-weight: 600;
+      }
+
+      .ws-nav-link-wrap {
+        position: relative;
+        display: flex;
+        width: 100%;
+      }
+
+      .ws-nav-link-wrap[data-tooltip]::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: 60px;
+        top: 50%;
+        transform: translateY(-50%) scale(0.9);
+        background: var(--color-neutral-50);
+        color: var(--color-neutral-950);
+        border: 1px solid var(--vercel-border);
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.15s ease-in-out;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        z-index: 100;
+      }
+
+      .ws-nav-link-wrap[data-tooltip]:hover::after {
+        opacity: 1;
+        transform: translateY(-50%) scale(1);
+      }
+
+      .ws-nav-btn-wrap {
+        position: relative;
+        display: inline-flex;
+      }
+
+      .ws-nav-btn-wrap[data-tooltip]::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        top: 130%;
+        left: 50%;
+        transform: translateX(-50%) scale(0.9);
+        background: var(--color-neutral-50);
+        color: var(--color-neutral-950);
+        border: 1px solid var(--vercel-border);
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.15s ease-in-out;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        z-index: 100;
+      }
+
+      .ws-nav-btn-wrap[data-tooltip]:hover::after {
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
       }
 
       .ws-nav-icon {
@@ -807,6 +838,16 @@ interface SidebarLink {
         display: flex;
         flex-direction: column;
         gap: 2px;
+      }
+
+      .ws-import-dropdown-menu::before {
+        content: '';
+        position: absolute;
+        top: -8px;
+        left: 0;
+        right: 0;
+        height: 8px;
+        background: transparent;
       }
 
       .ws-import-dropdown-item {
@@ -1129,10 +1170,90 @@ interface SidebarLink {
         background-color: var(--vercel-bg);
         padding: 32px;
       }
+
+      /* Cookie Consent CSS Styles */
+      .cookies-dialog-fixed {
+        position: fixed;
+        bottom: 24px;
+        left: 24px;
+        z-index: 10000;
+        width: 320px;
+        background: var(--vercel-card-bg, #111);
+        border: 1px solid var(--vercel-border, #333);
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        animation: slideUp 0.3s ease-out;
+      }
+      .cookies-dialog-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .cookies-icon {
+        width: 18px;
+        height: 18px;
+        color: #f59e0b;
+      }
+      .cookies-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--vercel-text-primary, #fff);
+      }
+      .cookies-text {
+        font-size: 12px;
+        color: var(--vercel-text-secondary, #ccc);
+        line-height: 1.5;
+        margin: 0;
+      }
+      .cookies-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+      .cookies-btn {
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: opacity 0.2s;
+      }
+      .cookies-btn:hover {
+        opacity: 0.9;
+      }
+      .cookies-btn.accept {
+        background: #6366f1;
+        color: #fff;
+      }
+      .cookies-btn.deny {
+        background: transparent;
+        border: 1px solid var(--vercel-border, #333);
+        color: var(--vercel-text-secondary, #ccc);
+      }
+      @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
     `,
   ],
 })
 export class ShellLayoutComponent {
+  readonly showCookiesDialog = signal(!localStorage.getItem('acklet_cookie_consent'));
+
+  acceptCookies() {
+    localStorage.setItem('acklet_cookie_consent', 'accepted');
+    this.showCookiesDialog.set(false);
+  }
+
+  denyCookies() {
+    localStorage.setItem('acklet_cookie_consent', 'denied');
+    this.showCookiesDialog.set(false);
+  }
   private readonly authSvc = inject(AuthService);
   readonly themeSvc = inject(ThemeService);
   readonly stateSvc = inject(WorkspaceStateService);
@@ -1155,11 +1276,6 @@ export class ShellLayoutComponent {
   newToolLang = 'TypeScript';
   newToolStatus: 'Published' | 'Draft' | 'In Review' = 'Published';
 
-  newRepoName = '';
-  newRepoProvider: 'github' | 'gitlab' | 'bitbucket' = 'github';
-  newRepoBranch = 'main';
-  newRepoVisibility: 'Public' | 'Private' = 'Public';
-  newRepoLang = 'TypeScript';
 
   newCollName = '';
   newCollDesc = '';
@@ -1188,7 +1304,7 @@ export class ShellLayoutComponent {
     this.importDropOpen.update((v) => !v);
   }
 
-  triggerModal(type: 'add_tool' | 'connect_repo' | 'create_collection'): void {
+  triggerModal(type: 'add_tool' | 'create_collection'): void {
     this.stateSvc.openModal(type);
     this.importDropOpen.set(false);
   }
@@ -1208,26 +1324,6 @@ export class ShellLayoutComponent {
     this.stateSvc.closeModal();
   }
 
-  submitConnectRepo(): void {
-    if (!this.newRepoName.trim()) return;
-    this.stateSvc.addRepository({
-      name: this.newRepoName.trim(),
-      provider: this.newRepoProvider,
-      branch: this.newRepoBranch,
-      visibility: this.newRepoVisibility,
-      framework:
-        this.newRepoLang === 'Go'
-          ? 'Go Stdlib'
-          : this.newRepoLang === 'Python'
-            ? 'FastAPI'
-            : 'Node.js',
-      language: this.newRepoLang,
-      toolStatus: 'Not Generated',
-    });
-    this.toastSvc.success('Repository Connected', `Connected to repository "${this.newRepoName}"`);
-    this.newRepoName = '';
-    this.stateSvc.closeModal();
-  }
 
   submitCreateCollection(): void {
     if (!this.newCollName.trim()) return;
@@ -1275,6 +1371,7 @@ export class ShellLayoutComponent {
     { label: 'Overview', path: '/workspace', icon: 'layout-dashboard' },
     { label: 'Repositories', path: '/workspace/repositories', icon: 'git-branch' },
     { label: 'Tools', path: '/workspace/tools', icon: 'box' },
+    { label: 'Deployments', path: '/workspace/deployments', icon: 'rocket' },
     { label: 'Store', path: '/workspace/store', icon: 'store' },
     { label: 'Collections', path: '/workspace/collections', icon: 'folder-heart' },
     { label: 'AI Jobs', path: '/workspace/ai-jobs', icon: 'sparkles', badge: '2 Run' },

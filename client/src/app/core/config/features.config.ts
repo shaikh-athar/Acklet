@@ -29,6 +29,8 @@ export interface FeatureFlags {
   communityDiscussions: boolean;
   /** Blog articles and engineering insights */
   blogArticles: boolean;
+  /** Require typing the repo full name to confirm deletion */
+  confirmDelete: boolean;
 }
 
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
@@ -47,5 +49,6 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   adminWorkspace: true,
   communityDiscussions: true,
   blogArticles: true,
+  confirmDelete: false, // enabled for testing
 };
 

@@ -39,6 +39,8 @@ public class RepositoryImportPipelineService {
     private final RepositoryHealthRepository healthRepository;
     private final RepositoryTreeRepository treeRepository;
     private final RabbitTemplate rabbitTemplate;
+    private final DeploymentRepository deploymentRepository;
+    private final ProgressiveImportPipelineExecutor progressiveExecutor;
 
     // ── STEP 1: Repository Import Request ──────────────────────────────────────
 
@@ -210,10 +212,10 @@ public class RepositoryImportPipelineService {
         Repository repo = repositoryRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Repository not found"));
 
-        // Enforce: Cannot delete if linked to a published tool
-        if (toolRepository.findByRepositoryId(id).isPresent()) {
-            throw new IllegalStateException("Repository cannot be deleted because it is currently linked to a published Tool. Please unlink the tool first.");
-        }
+        // Delete any published tool associated with this repo
+        toolRepository.findByRepositoryId(id).ifPresent(tool -> {
+            toolRepository.delete(tool);
+        });
 
         // Delete any related Tool Drafts
         draftRepository.findByRepositoryIdAndUserId(id, userId).ifPresent(draftRepository::delete);
@@ -236,5 +238,52 @@ public class RepositoryImportPipelineService {
         // Finally delete the repository
         repositoryRepository.delete(repo);
         log.info("Successfully deleted/disconnected repository: {} for user: {}", repo.getFullName(), userId);
+    }
+
+    @Transactional
+    public void restartPipelineStage(UUID id, UUID userId, String stage) {
+        Repository repo = repositoryRepository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Repository not found"));
+
+        GitHubImportJob job = jobRepository.findAllByRepoFullName(repo.getFullName()).stream()
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("No import job found for repository: " + repo.getFullName()));
+
+        log.info("Restarting import pipeline for repository {} (Job: {}) at stage: {}", repo.getFullName(), job.getId(), stage);
+
+        if ("AI".equalsIgnoreCase(stage)) {
+            // Trigger Stage 4 AI Enrichment asynchronously using cached workspace
+            java.nio.file.Path workspaceDir = java.nio.file.Path.of("a:\\Acklet\\server\\acklet\\workspaces", repo.getId().toString());
+            Deployment deployment = deploymentRepository.findAllByRepositoryIdOrderByCreatedAtDesc(repo.getId()).stream()
+                    .findFirst()
+                    .orElseThrow(() -> new ResourceNotFoundException("No deployments found for repository: " + repo.getId()));
+
+            progressiveExecutor.executeBuildDeployAndAiEnrichment(
+                    job.getId(),
+                    repo.getId(),
+                    deployment.getId(),
+                    deployment.getRuntime(),
+                    deployment.getBuildCommand(),
+                    deployment.getStartCommand(),
+                    deployment.getPort() != null ? deployment.getPort() : 80,
+                    deployment.getPackageManager(),
+                    workspaceDir,
+                    null,
+                    null
+            );
+        } else {
+            // Default: Restart from Stage 2/3 (Clone/Scan/Build)
+            RepoImportEvent event = RepoImportEvent.builder()
+                    .jobId(job.getId())
+                    .accountId(job.getGithubAccount().getId())
+                    .repoFullName(repo.getFullName())
+                    .build();
+
+            rabbitTemplate.convertAndSend(
+                    RabbitMqConfig.IMPORT_EXCHANGE,
+                    RabbitMqConfig.ROUTING_KEY_IMPORT_METADATA_FETCHED,
+                    event
+            );
+        }
     }
 }

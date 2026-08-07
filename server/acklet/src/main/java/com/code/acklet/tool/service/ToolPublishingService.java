@@ -170,7 +170,7 @@ public class ToolPublishingService {
     private Tool requireOwned(String slug, UUID publisherId) {
         Tool tool = toolRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Tool not found: " + slug));
-        if (!publisherId.equals(tool.getPublisherId())) {
+        if (tool.getPublisherId() != null && !publisherId.equals(tool.getPublisherId())) {
             throw new ForbiddenException("You do not own this tool");
         }
         return tool;

@@ -1,8 +1,11 @@
 import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { IconComponent } from '../../../../shared/components/icon/icon';
 import { ToolsService, Deployment } from '../../../../core/services/tools.service';
+import { WorkspaceStateService } from '../../../../core/services/workspace-state.service';
+import { DialogService } from '../../../../core/services/dialog.service';
+import { DEFAULT_FEATURE_FLAGS } from '../../../../core/config/features.config';
 import { Tool } from '../../../../core/models/tool.model';
 import { FormsModule } from '@angular/forms';
 
@@ -86,11 +89,11 @@ import { FormsModule } from '@angular/forms';
               </div>
               <div class="tm-metric-card">
                 <div class="tm-metric-label">Subdomain Domain</div>
-                <div class="tm-metric-value font-mono text-indigo">{{ tool()?.subdomain }}</div>
+                <div class="tm-metric-value domain">{{ tool()?.subdomain }}</div>
               </div>
               <div class="tm-metric-card">
                 <div class="tm-metric-label">Runtime Engine</div>
-                <div class="tm-metric-value cyan">{{ tool()?.runtime || 'nodejs' }}</div>
+                <div class="tm-metric-value">{{ tool()?.runtime || 'nodejs' }}</div>
               </div>
               <div class="tm-metric-card">
                 <div class="tm-metric-label">Sandbox Status</div>
@@ -129,7 +132,7 @@ import { FormsModule } from '@angular/forms';
             }
 
             <!-- Recent Deployments List -->
-            <div class="tm-details-card">
+            <div class="tm-details-card" style="margin-top: 20px;">
               <h3 class="tm-card-title">Recent Deployments</h3>
               <div class="dep-table-container">
                 <table class="dep-table">
@@ -169,36 +172,65 @@ import { FormsModule } from '@angular/forms';
           <!-- DEPLOYMENTS TAB -->
           <div *ngSwitchCase="'deployments'" class="tm-tab-pane">
             <div class="tm-details-card">
-              <h3 class="tm-card-title">Deployment History</h3>
+              
+              <!-- Filter Row (Vercel Style) -->
+              <div class="vercel-filters-row" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+                <input type="text" placeholder="Search deployments..." class="form-input" style="max-width: 240px; font-size: 13px; padding: 6px 12px;" />
+                <select class="form-select" style="max-width: 140px; font-size: 13px; padding: 6px 12px;">
+                  <option>All Branches</option>
+                </select>
+                <select class="form-select" style="max-width: 140px; font-size: 13px; padding: 6px 12px;">
+                  <option>All Authors</option>
+                </select>
+                <select class="form-select" style="max-width: 140px; font-size: 13px; padding: 6px 12px;">
+                  <option>All Environments</option>
+                </select>
+                
+                <button (click)="triggerResync()" class="tm-btn tm-btn-primary" style="margin-left: auto; padding: 6px 14px; font-size: 13px;">
+                  Redeploy
+                </button>
+              </div>
+
               <div class="dep-table-container">
                 <table class="dep-table">
                   <thead>
                     <tr>
+                      <th>Deployment Outcome</th>
                       <th>Status</th>
+                      <th>Environment</th>
                       <th>Commit</th>
                       <th>Branch</th>
-                      <th>Duration</th>
+                      <th>Age</th>
                       <th>Created By</th>
-                      <th>Created At</th>
                     </tr>
                   </thead>
                   <tbody>
                     @for (dep of deployments(); track dep.id) {
                       <tr [routerLink]="['/workspace/tools/manage', tool()?.slug, 'deployments', dep.id]" class="clickable-row">
+                        <td style="font-weight: 600; color: var(--vercel-text-primary);">
+                          {{ dep.commitMessage }}
+                        </td>
                         <td>
-                          <span class="status-pill" [class.ready]="dep.status === 'SUCCESS'" [class.building]="dep.status === 'BUILDING'">
+                          <span class="status-pill" [class.ready]="dep.status === 'SUCCESS'" [class.building]="dep.status === 'BUILDING'" [style.background]="dep.status === 'FAILED' ? 'rgba(239, 68, 68, 0.1)' : null" [style.color]="dep.status === 'FAILED' ? '#ef4444' : null">
                             {{ dep.status }}
                           </span>
                         </td>
-                        <td class="font-mono text-indigo">{{ dep.commitSha?.substring(0,7) }} · {{ dep.commitMessage }}</td>
+                        <td>
+                          <span class="rp-badge" style="font-size: 10px; font-weight: 600; background: rgba(99,102,241,0.08); color: #818cf8; border: 1px solid rgba(99,102,241,0.15); padding: 2px 6px;">Production</span>
+                        </td>
+                        <td class="font-mono text-indigo">{{ dep.commitSha?.substring(0,7) }}</td>
                         <td>{{ dep.branch }}</td>
                         <td>{{ formatDuration(dep.durationMs) }}</td>
-                        <td>{{ dep.createdBy }}</td>
-                        <td>{{ dep.createdAt | date:'medium' }}</td>
+                        <td>
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <div class="ws-avatar-mini" style="width: 18px; height: 18px; font-size: 9px;">{{ dep.createdBy?.charAt(0)?.toUpperCase() || 'A' }}</div>
+                            <span>{{ dep.createdBy }}</span>
+                          </div>
+                        </td>
                       </tr>
                     } @empty {
                       <tr>
-                        <td colspan="6" class="text-center">No deployments found.</td>
+                        <td colspan="7" class="text-center">No deployments found.</td>
                       </tr>
                     }
                   </tbody>
@@ -327,6 +359,18 @@ import { FormsModule } from '@angular/forms';
                 <button class="tm-btn tm-btn-secondary" (click)="addEnvVar()">Add</button>
               </div>
             </div>
+
+            <!-- Danger Zone -->
+            <div class="danger-section">
+              <h4 class="danger-title">Danger Zone</h4>
+              <p class="danger-desc">
+                Permanently delete this developer tool and remove its associated configuration. This action cannot be undone.
+              </p>
+              <button class="tm-btn tm-btn-danger" (click)="deleteCurrentTool()">
+                <app-icon name="trash" class="size-2" />
+                <span>Delete Tool</span>
+              </button>
+            </div>
           </div>
         </div>
       }
@@ -335,7 +379,7 @@ import { FormsModule } from '@angular/forms';
   styles: [`
     :host {
       display: block;
-      color: #f4f4f5;
+      color: var(--vercel-text-primary);
     }
 
     .tm-wrapper {
@@ -354,8 +398,8 @@ import { FormsModule } from '@angular/forms';
       justify-content: center;
       padding: 80px 20px;
       text-align: center;
-      background: #09090b;
-      border: 1px solid #27272a;
+      background: var(--vercel-card-bg);
+      border: 1px solid var(--vercel-border);
       border-radius: 8px;
     }
 
@@ -372,7 +416,7 @@ import { FormsModule } from '@angular/forms';
       justify-content: space-between;
       gap: 16px;
       padding-bottom: 20px;
-      border-bottom: 1px solid #27272a;
+      border-bottom: 1px solid var(--vercel-border);
     }
  
     .tm-header-left {
@@ -386,7 +430,7 @@ import { FormsModule } from '@angular/forms';
       height: 44px;
       border-radius: 8px;
       background: linear-gradient(135deg, #6366f1, #06b6d4);
-      color: #fff;
+      color: #ffffff;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -410,7 +454,7 @@ import { FormsModule } from '@angular/forms';
     .tm-title {
       font-size: 20px;
       font-weight: 700;
-      color: #f4f4f5;
+      color: var(--vercel-text-primary);
       margin: 0;
     }
  
@@ -422,7 +466,7 @@ import { FormsModule } from '@angular/forms';
       font-size: 10px;
       font-weight: 700;
       background: rgba(34, 197, 94, 0.1);
-      color: #22c55e;
+      color: #10b981;
       border: 1px solid rgba(34, 197, 94, 0.2);
     }
 
@@ -434,7 +478,7 @@ import { FormsModule } from '@angular/forms';
 
     .tm-badge-status.ready {
       background: rgba(34, 197, 94, 0.1);
-      color: #22c55e;
+      color: #10b981;
       border-color: rgba(34, 197, 94, 0.2);
     }
 
@@ -452,8 +496,8 @@ import { FormsModule } from '@angular/forms';
  
     .tm-repo-subtitle {
       font-size: 12px;
-      color: #a1a1aa;
-      font-family: monospace;
+      color: var(--vercel-text-secondary);
+      font-family: var(--font-mono);
       margin: 0;
       display: flex;
       align-items: center;
@@ -470,7 +514,20 @@ import { FormsModule } from '@angular/forms';
       align-items: center;
       gap: 10px;
     }
+
+    .domain {
+      font-family: var(--font-mono);
+      color: #6366f1;
+      font-size: 12px;
+      border-bottom: 1px dashed var(--vercel-border);
+      transition: all 0.15s ease;
+    }
  
+    .domain:hover {
+      color: #818cf8;
+      border-bottom-color: #818cf8;
+      cursor: pointer;
+    }
     .tm-btn {
       display: inline-flex;
       align-items: center;
@@ -486,25 +543,42 @@ import { FormsModule } from '@angular/forms';
     }
  
     .tm-btn-primary {
-      background: #6366f1;
-      color: #ffffff;
-      border: none;
+      background: var(--vercel-text-primary);
+      color: var(--vercel-bg);
+      border: 1px solid var(--vercel-text-primary);
     }
  
     .tm-btn-primary:hover {
-      background: #4f46e5;
+      opacity: 0.85;
     }
  
     .tm-btn-secondary {
-      background: #18181b;
-      border: 1px solid #27272a;
-      color: #f4f4f5;
+      background: var(--vercel-card-bg);
+      border: 1px solid var(--vercel-border);
+      color: var(--vercel-text-primary);
     }
  
     .tm-btn-secondary:hover {
-      background: #27272a;
+      background: var(--vercel-subtle-bg);
     }
- 
+
+    .tm-btn-danger {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      color: #ef4444;
+      align-self: flex-start;
+    }
+
+    .tm-btn-danger:hover {
+      background: #ef4444;
+      color: #ffffff;
+    }
+
+    .tm-btn-danger .size-2 {
+      width: 14px;
+      height: 14px;
+    }
+
     .tm-btn:disabled {
       opacity: 0.6;
       cursor: not-allowed;
@@ -514,7 +588,7 @@ import { FormsModule } from '@angular/forms';
       display: flex;
       align-items: center;
       gap: 8px;
-      border-bottom: 1px solid #27272a;
+      border-bottom: 1px solid var(--vercel-border);
       overflow-x: auto;
     }
  
@@ -523,7 +597,7 @@ import { FormsModule } from '@angular/forms';
       background: transparent;
       border: none;
       border-bottom: 2px solid transparent;
-      color: #a1a1aa;
+      color: var(--vercel-text-secondary);
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
@@ -532,12 +606,12 @@ import { FormsModule } from '@angular/forms';
     }
  
     .tab-btn:hover {
-      color: #f4f4f5;
+      color: var(--vercel-text-primary);
     }
  
     .active-tab {
       border-bottom-color: #6366f1;
-      color: #f4f4f5 !important;
+      color: var(--vercel-text-primary) !important;
       font-weight: 600;
     }
  
@@ -554,8 +628,8 @@ import { FormsModule } from '@angular/forms';
     }
  
     .tm-metric-card {
-      background: #09090b;
-      border: 1px solid #27272a;
+      background: var(--vercel-card-bg);
+      border: 1px solid var(--vercel-border);
       border-radius: 8px;
       padding: 16px;
       display: flex;
@@ -565,25 +639,25 @@ import { FormsModule } from '@angular/forms';
  
     .tm-metric-label {
       font-size: 12px;
-      color: #a1a1aa;
+      color: var(--vercel-text-muted);
     }
  
     .tm-metric-value {
-      font-size: 18px;
-      font-weight: 700;
-      color: #f4f4f5;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--vercel-text-primary);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
  
     .tm-metric-value.cyan { color: #06b6d4; }
-    .tm-metric-value.emerald { color: #22c55e; }
-    .tm-metric-value.text-indigo { color: #818cf8; }
+    .tm-metric-value.emerald { color: #10b981; }
+    .tm-metric-value.text-indigo { color: #6366f1; }
  
     .tm-details-card {
-      background: #09090b;
-      border: 1px solid #27272a;
+      background: var(--vercel-card-bg);
+      border: 1px solid var(--vercel-border);
       border-radius: 8px;
       padding: 20px;
       display: flex;
@@ -594,7 +668,7 @@ import { FormsModule } from '@angular/forms';
     .tm-card-title {
       font-size: 14px;
       font-weight: 600;
-      color: #f4f4f5;
+      color: var(--vercel-text-primary);
       margin: 0;
     }
  
@@ -645,11 +719,12 @@ import { FormsModule } from '@angular/forms';
 
     .dep-table th, .dep-table td {
       padding: 12px;
-      border-bottom: 1px solid #27272a;
+      border-bottom: 1px solid var(--vercel-border-subtle);
+      color: var(--vercel-text-primary);
     }
 
     .dep-table th {
-      color: #a1a1aa;
+      color: var(--vercel-text-muted);
       font-weight: 600;
     }
 
@@ -659,7 +734,7 @@ import { FormsModule } from '@angular/forms';
     }
 
     .clickable-row:hover {
-      background: #18181b;
+      background: var(--vercel-subtle-bg);
     }
 
     .status-pill {
@@ -669,12 +744,12 @@ import { FormsModule } from '@angular/forms';
       font-size: 10px;
       font-weight: 700;
       background: rgba(113, 113, 122, 0.1);
-      color: #a1a1aa;
+      color: var(--vercel-text-muted);
     }
 
     .status-pill.ready {
       background: rgba(34, 197, 94, 0.1);
-      color: #22c55e;
+      color: #10b981;
     }
 
     .status-pill.building {
@@ -690,8 +765,8 @@ import { FormsModule } from '@angular/forms';
 
     .logs-toggle {
       display: flex;
-      background: #18181b;
-      border: 1px solid #27272a;
+      background: var(--vercel-subtle-bg);
+      border: 1px solid var(--vercel-border);
       border-radius: 6px;
       padding: 2px;
     }
@@ -700,21 +775,21 @@ import { FormsModule } from '@angular/forms';
       padding: 6px 12px;
       background: transparent;
       border: none;
-      color: #a1a1aa;
+      color: var(--vercel-text-secondary);
       font-size: 11px;
       cursor: pointer;
       border-radius: 4px;
     }
 
     .logs-toggle button.active-btn {
-      background: #27272a;
-      color: #f4f4f5;
+      background: var(--vercel-card-bg);
+      color: var(--vercel-text-primary);
       font-weight: 600;
     }
 
     .logs-console {
-      background: #040405;
-      border: 1px solid #18181b;
+      background: var(--vercel-subtle-bg);
+      border: 1px solid var(--vercel-border);
       border-radius: 6px;
       padding: 12px;
       max-height: 400px;
@@ -734,13 +809,14 @@ import { FormsModule } from '@angular/forms';
       flex-direction: column;
       gap: 12px;
       margin-top: 16px;
-      border-top: 1px solid #27272a;
+      border-top: 1px solid var(--vercel-border);
       padding-top: 16px;
     }
 
     .env-title {
       font-size: 13px;
       font-weight: 600;
+      color: var(--vercel-text-primary);
       margin: 0;
     }
 
@@ -753,10 +829,10 @@ import { FormsModule } from '@angular/forms';
     .env-item {
       display: flex;
       justify-content: space-between;
-      background: #18181b;
+      background: var(--vercel-subtle-bg);
       padding: 8px 12px;
       border-radius: 6px;
-      border: 1px solid #27272a;
+      border: 1px solid var(--vercel-border);
       font-size: 12px;
     }
 
@@ -771,6 +847,30 @@ import { FormsModule } from '@angular/forms';
 
     .env-input {
       flex: 1;
+    }
+
+    .danger-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 24px;
+      border-top: 1px solid rgba(239, 68, 68, 0.2);
+      padding-top: 20px;
+    }
+
+    .danger-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ef4444;
+      margin: 0;
+    }
+
+    .danger-desc {
+      font-size: 13px;
+      color: var(--vercel-text-muted);
+      margin: 0;
+      max-width: 600px;
+      line-height: 1.5;
     }
 
     /* Sandbox layout */
@@ -796,17 +896,18 @@ import { FormsModule } from '@angular/forms';
     .form-label {
       font-size: 12px;
       font-weight: 600;
-      color: #a1a1aa;
+      color: var(--vercel-text-secondary);
     }
 
     .form-input, .form-textarea, .form-select {
-      background: #18181b;
-      border: 1px solid #27272a;
+      background: var(--vercel-subtle-bg);
+      border: 1px solid var(--vercel-border);
       border-radius: 6px;
-      color: #f4f4f5;
+      color: var(--vercel-text-primary);
       padding: 8px 12px;
       font-size: 13px;
       outline: none;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
     }
 
     .form-input:focus, .form-textarea:focus, .form-select:focus {
@@ -950,7 +1051,10 @@ import { FormsModule } from '@angular/forms';
 })
 export class ToolManageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly toolsService = inject(ToolsService);
+  private readonly stateSvc = inject(WorkspaceStateService);
+  private readonly dialogSvc = inject(DialogService);
 
   readonly tool = signal<Tool | null>(null);
   readonly loading = signal<boolean>(true);
@@ -1086,5 +1190,72 @@ export class ToolManageComponent implements OnInit {
   clearConsole(): void {
     this.consoleLogs.set([]);
     this.executionResult.set(null);
+  }
+
+  deleteCurrentTool(): void {
+    const targetTool = this.tool();
+    if (!targetTool) return;
+
+    const hasRepo = !!targetTool.repositoryId;
+    if (hasRepo) {
+      this.dialogSvc
+        .confirm(
+          `This tool is linked to repository. Do you want to detach the repository first? (Click 'Cancel' to delete both tool and repository)`,
+          'Detach Repository?'
+        )
+        .then((detachConfirmed) => {
+          this._promptToolNameAndPerformDelete(targetTool, detachConfirmed);
+        });
+    } else {
+      this._promptToolNameAndPerformDelete(targetTool, false);
+    }
+  }
+
+  private _promptToolNameAndPerformDelete(targetTool: Tool, detachRepo: boolean): void {
+    const executeDelete = () => {
+      this.toolsService.deleteTool(targetTool.slug).subscribe({
+        next: () => {
+          this.stateSvc.refreshTools();
+          if (detachRepo && targetTool.repositoryId) {
+            this.stateSvc.unlinkRepository(targetTool.repositoryId);
+          } else if (targetTool.repositoryId) {
+            this.stateSvc.removeRepository(targetTool.repositoryId);
+          }
+          this.router.navigate(['/workspace/tools']);
+        },
+        error: (err) => {
+          console.error('Failed to delete tool via ToolsService:', err);
+          // Fallback via stateSvc
+          this.stateSvc.deleteToolAndRepo(targetTool.id, targetTool.slug, targetTool.repositoryId, detachRepo);
+          this.router.navigate(['/workspace/tools']);
+        }
+      });
+    };
+
+    if (DEFAULT_FEATURE_FLAGS.confirmDelete) {
+      this.dialogSvc
+        .prompt(
+          `Please type the tool name "${targetTool.name}" to confirm deletion:`,
+          'Tool Name',
+          '',
+          'Confirm Deletion',
+          targetTool.name
+        )
+        .then((typedName) => {
+          if (typedName === targetTool.name) {
+            executeDelete();
+          } else if (typedName !== null) {
+            this.dialogSvc.alert('The typed name did not match. Deletion aborted.', 'Incorrect Name');
+          }
+        });
+    } else {
+      this.dialogSvc
+        .confirm(`Are you sure you want to delete tool "${targetTool.name}"?`, 'Delete Tool')
+        .then((confirmed) => {
+          if (confirmed) {
+            executeDelete();
+          }
+        });
+    }
   }
 }

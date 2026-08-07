@@ -112,7 +112,6 @@ public class PublisherController {
     // ─── Soft delete ──────────────────────────────────────────────────────────
 
     @DeleteMapping("/tools/{slug}")
-    @PreAuthorize("hasAnyRole('PUBLISHER', 'ADMIN')")
     @Operation(summary = "Archive (soft-delete) a tool")
     public ResponseEntity<ApiResponse<Void>> deleteTool(
             @AuthenticationPrincipal User user,

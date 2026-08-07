@@ -9,12 +9,15 @@ import com.code.acklet.tool.entity.Category;
 import com.code.acklet.tool.entity.Tool;
 import com.code.acklet.tool.mapper.ToolMapper;
 import com.code.acklet.tool.service.ToolService;
+import com.code.acklet.user.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -130,5 +133,31 @@ public class ToolController {
     public ResponseEntity<ApiResponse<Void>> recordUsage(@PathVariable UUID id) {
         toolService.incrementUsage(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Usage recorded successfully"));
+    }
+
+    @GetMapping("/tools/validate-slug")
+    @Operation(summary = "Validate URL Slug", description = "Checks whether a tool URL slug is valid and not already in use")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> validateSlug(@RequestParam String slug) {
+        if (slug == null || slug.trim().isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success(java.util.Map.of("valid", false, "reason", "Slug cannot be empty"), "Validation failed"));
+        }
+        if (!slug.matches("^[a-z0-9-]+$")) {
+            return ResponseEntity.ok(ApiResponse.success(java.util.Map.of("valid", false, "reason", "Slug can only contain lowercase letters, numbers, and dashes"), "Validation failed"));
+        }
+        boolean exists = toolService.existsBySlug(slug);
+        if (exists) {
+            return ResponseEntity.ok(ApiResponse.success(java.util.Map.of("valid", false, "reason", "Slug is already taken"), "Validation failed"));
+        }
+        return ResponseEntity.ok(ApiResponse.success(java.util.Map.of("valid", true, "reason", "Slug is available"), "Validation succeeded"));
+    }
+
+    @DeleteMapping("/tools/{slug}")
+    @Operation(summary = "Archive (soft-delete) a tool")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<Void>> deleteTool(
+            @AuthenticationPrincipal User user,
+            @PathVariable String slug) {
+        toolService.deleteToolBySlug(user.getId(), slug);
+        return ResponseEntity.ok(ApiResponse.success(null, "Tool archived successfully"));
     }
 }

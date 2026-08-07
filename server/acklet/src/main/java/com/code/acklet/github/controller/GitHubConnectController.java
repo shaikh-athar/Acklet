@@ -97,8 +97,15 @@ public class GitHubConnectController {
     public ResponseEntity<ApiResponse<GitHubImportResponse>> importRepository(
             @AuthenticationPrincipal User user,
             @RequestParam UUID accountId,
-            @RequestParam String repoFullName) {
-        GitHubImportResponse response = importService.startImport(user, accountId, repoFullName);
+            @RequestParam String repoFullName,
+            @RequestParam(required = false) String branch,
+            @RequestParam(required = false) String buildCommand,
+            @RequestParam(required = false) String startCommand,
+            @RequestParam(required = false) String installCommand,
+            @RequestParam(required = false) Map<String, String> envVars) {
+        GitHubImportResponse response = importService.startImport(
+                user, accountId, repoFullName, branch, buildCommand, startCommand, installCommand, envVars
+        );
         return ResponseEntity.accepted().body(ApiResponse.success(response, "Import started"));
     }
 
@@ -110,5 +117,17 @@ public class GitHubConnectController {
             @PathVariable UUID jobId) {
         GitHubImportJobStatusDto status = importService.getStatus(jobId, user.getId());
         return ResponseEntity.ok(ApiResponse.success(status, "Import status retrieved"));
+    }
+
+    @GetMapping("/accounts/{accountId}/repos/{owner}/{repo}/branches")
+    @Operation(summary = "List Git branches for a repository")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<List<String>>> getBranches(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID accountId,
+            @PathVariable String owner,
+            @PathVariable String repo) {
+        List<String> branches = connectService.listBranches(user.getId(), accountId, owner, repo);
+        return ResponseEntity.ok(ApiResponse.success(branches, "Branches retrieved"));
     }
 }

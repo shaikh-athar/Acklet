@@ -196,8 +196,13 @@ const STEPS = [
                   <span class="pw-input-prefix">acklet.app/tools/</span>
                   <input class="pw-input pw-input-slug" [(ngModel)]="form.slug"
                     placeholder="my-awesome-tool"
-                    (ngModelChange)="onFieldChange()" />
+                    (ngModelChange)="onSlugChange()" />
                 </div>
+                @if (slugValidationMessage) {
+                  <div [style.color]="slugIsValid ? '#10b981' : '#f87171'" style="font-size: 11px; margin-top: 6px; font-weight: 500;">
+                    {{ slugValidationMessage }}
+                  </div>
+                }
               </div>
 
               <!-- Tagline -->
@@ -266,9 +271,9 @@ const STEPS = [
               }
 
               <div class="pw-card">
-                <div class="pw-card-label">Full Description <span class="pw-required">*</span></div>
+                <div class="pw-card-label">Full Description & Embed Docs (Markdown, In-text Video embeds) <span class="pw-required">*</span></div>
                 <textarea class="pw-textarea" rows="5" [(ngModel)]="form.description"
-                  placeholder="Detailed description of what this tool does, its benefits, and how it works."
+                  placeholder="Detailed description of what this tool does. Support markdown headers, lists, and HTML video iframe links to display directly on Acklet."
                   (ngModelChange)="onFieldChange()"></textarea>
               </div>
 
@@ -376,36 +381,7 @@ const STEPS = [
           <!-- ──────────────── STEP 5: CATEGORIES ──────────────── -->
           @if (currentStep() === 5 && draft()) {
             <div class="pw-card-stack">
-              <div class="pw-card">
-                <div class="pw-card-label">Pricing</div>
-                <div class="pw-pricing-grid">
-                  @for (p of pricingOptions; track p.value) {
-                    <button class="pw-pricing-card"
-                      [class.selected]="form.pricingType === p.value"
-                      (click)="form.pricingType = p.value; onFieldChange()">
-                      <app-icon [name]="p.icon" class="pw-pricing-icon" />
-                      <div class="pw-pricing-label">{{ p.label }}</div>
-                      <div class="pw-pricing-desc">{{ p.desc }}</div>
-                    </button>
-                  }
-                </div>
-              </div>
 
-              <div class="pw-card">
-                <div class="pw-card-label">License</div>
-                <select class="pw-select" [(ngModel)]="form.license" (ngModelChange)="onFieldChange()">
-                  <option value="">— Select License —</option>
-                  <option>MIT</option>
-                  <option>Apache 2.0</option>
-                  <option>GPL-3.0</option>
-                  <option>BSD-3-Clause</option>
-                  <option>ISC</option>
-                  <option>LGPL-2.1</option>
-                  <option>MPL-2.0</option>
-                  <option>Proprietary</option>
-                  <option>Other</option>
-                </select>
-              </div>
 
               <div class="pw-card">
                 <div class="pw-card-label">Search Tags</div>
@@ -447,34 +423,35 @@ const STEPS = [
           @if (currentStep() === 6 && draft()) {
             <div class="pw-card-stack">
               <div class="pw-card">
-                <div class="pw-card-label">Logo URL <span class="pw-optional">(optional)</span></div>
-                <input class="pw-input" [(ngModel)]="form.logoUrl"
-                  placeholder="https://your-domain.com/logo.png"
-                  (ngModelChange)="onFieldChange()" />
-                @if (form.logoUrl) {
-                  <img [src]="form.logoUrl" class="pw-logo-preview" alt="logo preview"
-                    (error)="form.logoUrl = ''" />
+                <div class="pw-card-label">Logo Upload <span class="pw-required">*</span></div>
+                <div class="logo-upload-zone" style="border: 2px dashed var(--vercel-border); border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; position: relative;" (click)="logoInput.click()">
+                  <input type="file" #logoInput style="display: none;" (change)="onLogoFileSelected($event)" accept="image/png, image/jpeg" />
+                  <app-icon name="image" style="width: 32px; height: 32px; color: var(--vercel-text-muted); margin-bottom: 8px;" />
+                  <p style="font-size: 13px; margin: 0; color: var(--vercel-text-secondary);">Drag & drop or click to upload PNG/JPG logo (Max 2MB)</p>
+                </div>
+                
+                @if (logoPreviewUrl) {
+                  <div class="crop-focus-container" style="margin-top: 16px; border: 1px solid var(--vercel-border); border-radius: 8px; overflow: hidden; position: relative;">
+                    <div style="font-size: 11px; font-weight: 600; padding: 6px 12px; background: rgba(255,255,255,0.02); display: flex; align-items: center; justify-content: space-between;">
+                      <span>Logo Crop & Focal Position</span>
+                      <span style="color: var(--vercel-text-muted);">Drag pointer to focus key logo elements</span>
+                    </div>
+                    <div class="crop-preview-box" style="height: 180px; position: relative; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                      <img [src]="logoPreviewUrl" [style.transform]="'scale(' + cropZoom + ') translate(' + cropX + 'px, ' + cropY + 'px)'" style="max-height: 100%; max-width: 100%; pointer-events: none;" alt="cropper preview" />
+                      <div class="crop-focal-marker" style="position: absolute; width: 36px; height: 36px; border: 2px solid #6366f1; border-radius: 50%; cursor: move; box-shadow: 0 0 10px rgba(99,102,241,0.5);"></div>
+                    </div>
+                    <div class="crop-controls" style="padding: 10px; display: flex; gap: 12px; align-items: center;">
+                      <label style="font-size: 12px; color: var(--vercel-text-muted);">Zoom:</label>
+                      <input type="range" min="1" max="3" step="0.1" [(ngModel)]="cropZoom" style="flex: 1;" />
+                    </div>
+                  </div>
                 }
-              </div>
-
-              <div class="pw-card">
-                <div class="pw-card-label">Website URL</div>
-                <input class="pw-input" [(ngModel)]="form.websiteUrl"
-                  placeholder="https://yourproject.com"
-                  (ngModelChange)="onFieldChange()" />
               </div>
 
               <div class="pw-card">
                 <div class="pw-card-label">Documentation URL</div>
                 <input class="pw-input" [(ngModel)]="form.documentationUrl"
                   placeholder="https://docs.yourproject.com"
-                  (ngModelChange)="onFieldChange()" />
-              </div>
-
-              <div class="pw-card">
-                <div class="pw-card-label">Discord Server URL</div>
-                <input class="pw-input" [(ngModel)]="form.discordUrl"
-                  placeholder="https://discord.gg/..."
                   (ngModelChange)="onFieldChange()" />
               </div>
             </div>
@@ -1181,8 +1158,60 @@ export class PublishWizardComponent implements OnInit, OnDestroy {
   newTech = '';
   newCap = '';
   newTag = '';
+  logoPreviewUrl: string | null = null;
+  cropZoom = 1.0;
+  cropX = 0;
+  cropY = 0;
+
+  onLogoFileSelected(event: any): void {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Logo file size must be less than 2MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.logoPreviewUrl = reader.result as string;
+      this.form.logoUrl = this.logoPreviewUrl;
+      this.onFieldChange();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  slugValidationMessage: string | null = null;
+  slugIsValid = false;
+  private slugTimer: any = null;
+
+  onSlugChange(): void {
+    this.onFieldChange();
+    clearTimeout(this.slugTimer);
+    const slugVal = this.form.slug?.trim() || '';
+    if (!slugVal) {
+      this.slugValidationMessage = 'Slug cannot be empty';
+      this.slugIsValid = false;
+      return;
+    }
+    this.slugTimer = setTimeout(() => {
+      this.http.get<any>(`${API}/tools/validate-slug?slug=${slugVal}`).subscribe({
+        next: res => {
+          if (res.data) {
+            this.slugIsValid = res.data.valid;
+            this.slugValidationMessage = res.data.reason;
+          }
+        },
+        error: () => {
+          this.slugValidationMessage = 'Failed to validate slug availability.';
+          this.slugIsValid = false;
+        }
+      });
+    }, 400);
+  }
+
   private saveTimer: any = null;
   private eventSource: EventSource | null = null;
+
+
 
   readonly pricingOptions = [
     { value: 'FREE',       icon: 'gift',    label: 'Free',        desc: 'Always free' },

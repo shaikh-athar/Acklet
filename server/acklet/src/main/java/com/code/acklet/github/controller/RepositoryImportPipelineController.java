@@ -169,4 +169,15 @@ public class RepositoryImportPipelineController {
         RepositoryKnowledgeGraph kg = pipelineService.getRepositoryKnowledgeGraph(id);
         return ResponseEntity.ok(ApiResponse.success(kg, "Repository knowledge graph retrieved"));
     }
+
+    @PostMapping("/{id}/restart")
+    @Operation(summary = "Restart the import pipeline from a specific stage for development/debugging")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<Void>> restartStage(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID id,
+            @RequestParam String stage) {
+        pipelineService.restartPipelineStage(id, user.getId(), stage);
+        return ResponseEntity.ok(ApiResponse.success(null, "Import pipeline restarted from stage: " + stage));
+    }
 }

@@ -1,11 +1,13 @@
 import { Component, signal, inject, OnInit, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { RouterLink, Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { IconComponent } from '../../../../shared/components/icon/icon';
 import { GitHubService, GitHubAccount, GitHubRepo } from '../../../../core/services/github.service';
 import { WorkspaceStateService, RepositoryItem } from '../../../../core/services/workspace-state.service';
 import { DialogService } from '../../../../core/services/dialog.service';
+import { HttpClient } from '@angular/common/http';
+
 
 @Component({
   selector: 'app-project-import',
@@ -144,53 +146,100 @@ import { DialogService } from '../../../../core/services/dialog.service';
             </div>
           }
 
-          <!-- Step 2: Remote Repo Picker -->
+          <!-- Step 2: Remote Repo Picker / Deploy Options -->
           @if (step() === 2) {
-            <div class="ip-step-pane">
-              <div class="ip-card-header">
+            <div class="ip-step-pane" style="max-height: 75vh; overflow-y: auto; padding-right: 4px;">
+              <div class="ip-card-header" style="margin-bottom: 16px;">
                 <div class="ip-back-nav" (click)="step.set(1)">
                   <app-icon name="arrow-left" class="ip-back-icon" />
                   <span>Back to providers</span>
                 </div>
-                <h1 class="ip-card-title">Import & Deploy Repository</h1>
+                <h1 class="ip-card-title">Configure Deployment</h1>
+                <p class="ip-card-subtitle">Set up target environment, branch, and build configuration for your tool deployment.</p>
               </div>
 
-              <!-- Account selector -->
-              @if (accounts().length > 1) {
-                <div class="ip-account-row">
-                  <div class="ip-account-label">Account</div>
-                  <select class="ip-select" [(ngModel)]="selectedAccountId" (change)="loadRepos()">
-                    @for (acc of accounts(); track acc.id) {
-                      <option [value]="acc.id">{{ acc.githubLogin }}</option>
-                    }
+              <!-- Configuration settings card -->
+              <div class="ip-deploy-form" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px;">
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                  <div>
+                    <label class="ip-account-label" style="display: block; margin-bottom: 6px;">Workspace</label>
+                    <select class="ip-select" style="width: 100%; box-sizing: border-box;" [(ngModel)]="selectedWorkspace">
+                      <option value="Personal Workspace">Personal Workspace</option>
+                      <option value="Acklet Engineering">Acklet Engineering</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="ip-account-label" style="display: block; margin-bottom: 6px;">Collection</label>
+                    <select class="ip-select" style="width: 100%; box-sizing: border-box;" [(ngModel)]="selectedCollection">
+                      <option value="Developer Tools">Developer Tools</option>
+                      <option value="Utilities">Utilities</option>
+                      <option value="Monitoring">Monitoring</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="ip-account-label" style="display: block; margin-bottom: 6px;">Deploy Branch</label>
+                  <select class="ip-select" style="width: 100%; box-sizing: border-box;" [(ngModel)]="selectedBranch">
+                    <option *ngFor="let b of availableBranches" [value]="b">{{ b }}</option>
+                    <option *ngIf="availableBranches.length === 0" value="main">main</option>
                   </select>
                 </div>
-              } @else if (accounts().length === 1) {
-                <div class="ip-account-chip">
-                  @if (accounts()[0].avatarUrl) {
-                    <img [src]="accounts()[0].avatarUrl" class="ip-account-avatar" alt="" />
-                  }
-                  <span class="ip-account-name">{{ accounts()[0].githubLogin }}</span>
-                  <span class="ip-account-badge">GitHub</span>
-                </div>
-              }
 
-              <!-- Search -->
-              <div class="ip-search-row">
-                <app-icon name="search" class="ip-search-icon" />
-                <input
-                  type="text"
-                  class="ip-search-input"
-                  placeholder="Search repositories…"
-                  [(ngModel)]="searchQuery"
-                  (input)="onSearch()"
-                />
+                <!-- Build Settings Toggleable Area -->
+                <div class="build-settings-group" style="border: 1px solid var(--vercel-border); border-radius: 8px; padding: 12px; background: rgba(255,255,255,0.01);">
+                  <div style="font-size: 13px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                    <span>Build and Output Settings</span>
+                    <app-icon name="sliders" style="width: 14px; height: 14px; color: var(--vercel-text-muted);" />
+                  </div>
+                  
+                  <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div>
+                      <label class="ip-account-label" style="font-size: 11px;">Root Directory</label>
+                      <input type="text" class="ip-search-input" style="padding: 6px 12px; font-size: 12px;" [(ngModel)]="rootDirectory" placeholder="./" />
+                    </div>
+                    <div>
+                      <label class="ip-account-label" style="font-size: 11px;">Build Command</label>
+                      <input type="text" class="ip-search-input" style="padding: 6px 12px; font-size: 12px;" [(ngModel)]="buildCommand" placeholder="npm run build" />
+                    </div>
+                    <div>
+                      <label class="ip-account-label" style="font-size: 11px;">Output Directory</label>
+                      <input type="text" class="ip-search-input" style="padding: 6px 12px; font-size: 12px;" [(ngModel)]="outputDirectory" placeholder="dist/" />
+                    </div>
+                    <div>
+                      <label class="ip-account-label" style="font-size: 11px;">Install Command</label>
+                      <input type="text" class="ip-search-input" style="padding: 6px 12px; font-size: 12px;" [(ngModel)]="installCommand" placeholder="npm install" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Environment Variables Group -->
+                <div class="env-settings-group" style="border: 1px solid var(--vercel-border); border-radius: 8px; padding: 12px; background: rgba(255,255,255,0.01);">
+                  <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+                    <span>Environment Variables</span>
+                    <app-icon name="key" style="width: 14px; height: 14px; color: var(--vercel-text-muted);" />
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div *ngFor="let env of envList; let i = index" style="display: flex; gap: 8px; align-items: center;">
+                      <input type="text" class="ip-search-input" style="padding: 4px 8px; font-size: 12px; flex: 1;" placeholder="KEY" [(ngModel)]="env.key" />
+                      <input type="text" class="ip-search-input" style="padding: 4px 8px; font-size: 12px; flex: 1;" placeholder="VALUE" [(ngModel)]="env.value" />
+                      <button (click)="removeEnvRow(i)" class="ip-btn ip-btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #ef4444;">✕</button>
+                    </div>
+                    <button (click)="addEnvRow()" class="ip-btn ip-btn-secondary" style="align-self: flex-start; padding: 4px 10px; font-size: 11px; margin-top: 4px;">
+                      + Add Variable
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <!-- Repo list -->
+              <!-- Repo selector list -->
+              <div class="ip-account-row" style="margin-bottom: 8px;">
+                <span class="ip-account-label">Select Repository to Deploy</span>
+              </div>
+
               <div class="ip-repo-list">
                 @if (loadingRepos()) {
-                  @for (i of [1,2,3,4]; track i) {
+                  @for (i of [1,2,3]; track i) {
                     <div class="ip-repo-skeleton">
                       <div class="ip-skel-name"></div>
                       <div class="ip-skel-desc"></div>
@@ -203,28 +252,19 @@ import { DialogService } from '../../../../core/services/dialog.service';
                   </div>
                 } @else {
                   @for (repo of filteredRepos(); track repo.id) {
-                    <div class="ip-repo-item">
-                      <!-- Left: colored language icon badge -->
-                      <div class="ip-repo-avatar" [style]="getLangAvatarStyle(repo.language)">
-                        <span class="ip-repo-avatar-letter">{{ getLangInitial(repo.language) }}</span>
-                      </div>
-
-                      <!-- Center: name + lock + desc -->
-                      <div class="ip-repo-info">
+                    <div class="ip-repo-item" style="padding: 10px; border-radius: 8px; border: 1px solid var(--vercel-border); margin-bottom: 8px;">
+                      <div class="ip-repo-info" (click)="loadBranchesForRepo(repo)" style="cursor: pointer; flex: 1;">
                         <div class="ip-repo-name-row">
-                          <span class="ip-repo-name">{{ repo.name }}</span>
+                          <span class="ip-repo-name" style="font-weight: 600;">{{ repo.name }}</span>
                           @if (repo.privateRepo || repo.private) {
                             <app-icon name="lock" class="ip-lock-icon" />
                           }
-                          <span class="ip-repo-dot">·</span>
-                          <span class="ip-repo-date">{{ formatDate(repo.pushed_at || repo.pushedAt || repo.updated_at || repo.updatedAt) }}</span>
                         </div>
                         @if (repo.description) {
-                          <p class="ip-repo-desc">{{ repo.description }}</p>
+                          <p class="ip-repo-desc" style="font-size: 11px; margin-top: 4px;">{{ repo.description }}</p>
                         }
                       </div>
 
-                      <!-- Right: Import button -->
                       <button
                         (click)="startImport(repo)"
                         class="ip-btn ip-btn-primary ip-btn-sm"
@@ -233,7 +273,7 @@ import { DialogService } from '../../../../core/services/dialog.service';
                         @if (importingRepo() === (repo.full_name || repo.fullName)) {
                           <div class="ip-mini-spinner sm"></div>
                         } @else {
-                          Import & Deploy
+                          Deploy
                         }
                       </button>
                     </div>
@@ -654,6 +694,16 @@ import { DialogService } from '../../../../core/services/dialog.service';
       color: var(--vercel-text-muted);
       flex-shrink: 0;
     }
+    .ip-repo-dot {
+      font-size: 25px;
+      color: var(--vercel-text-muted);
+      opacity: 0.7;
+    }
+    .ip-repo-date {
+      font-size: 12px;
+      color: var(--vercel-text-muted);
+      font-weight: 500;
+    }
     .ip-repo-desc {
       font-size: 11px;
       color: var(--vercel-text-muted);
@@ -792,6 +842,9 @@ export class ProjectImportComponent implements OnInit {
   private readonly gh      = inject(GitHubService);
   readonly stateSvc = inject(WorkspaceStateService);
   private readonly dialogSvc = inject(DialogService);
+  private readonly location = inject(Location);
+  private readonly http = inject(HttpClient);
+
 
   readonly step           = signal(1);
   readonly mode           = signal<'import' | 'deploy'>('import');
@@ -808,8 +861,27 @@ export class ProjectImportComponent implements OnInit {
   readonly importStatus   = signal<'PENDING' | 'RUNNING' | 'DONE' | 'FAILED' | null>(null);
   readonly currentStep    = signal<string | null>(null);
   activeJobId: string | null = null;
+  readonly importedRepositoryId = signal<string | null>(null);
 
   searchQuery = '';
+  selectedWorkspace = 'Personal Workspace';
+  selectedCollection = 'Developer Tools';
+  selectedBranch = 'main';
+  availableBranches: string[] = [];
+  rootDirectory = './';
+  buildCommand = '';
+  outputDirectory = '';
+  installCommand = '';
+  envList: Array<{ key: string; value: string }> = [];
+
+  addEnvRow(): void {
+    this.envList.push({ key: '', value: '' });
+  }
+
+  removeEnvRow(index: number): void {
+    this.envList.splice(index, 1);
+  }
+
 
   readonly filteredImportedRepos = computed(() => {
     const list = this.stateSvc.repos();
@@ -914,6 +986,26 @@ export class ProjectImportComponent implements OnInit {
   onSearch(): void {
   }
 
+  loadBranchesForRepo(repo: GitHubRepo): void {
+    if (!this.selectedAccountId) return;
+    const fullName = repo.full_name || repo.fullName || '';
+    if (!fullName.includes('/')) return;
+    const parts = fullName.split('/');
+    const owner = parts[0];
+    const name = parts[1];
+    this.http.get<any>(`http://localhost:8080/api/v1/github/accounts/${this.selectedAccountId}/repos/${owner}/${name}/branches`).subscribe({
+      next: res => {
+        if (res.data) {
+          this.availableBranches = res.data;
+          if (this.availableBranches.length > 0) {
+            this.selectedBranch = this.availableBranches[0];
+          }
+        }
+      }
+    });
+  }
+
+
   deployImportedRepo(repo: RepositoryItem): void {
     if (!this.selectedAccountId) {
       this.importError.set('No connected GitHub account found. Please connect your account in Settings.');
@@ -944,7 +1036,22 @@ export class ProjectImportComponent implements OnInit {
     this.importStatus.set('PENDING');
     this.step.set(3);
 
-    this.gh.importRepo(this.selectedAccountId, fullName).subscribe({
+    const envMap: Record<string, string> = {};
+    for (const env of this.envList) {
+      if (env.key && env.key.trim()) {
+        envMap[env.key.trim()] = env.value ? env.value.trim() : '';
+      }
+    }
+
+    this.gh.importRepo(
+      this.selectedAccountId,
+      fullName,
+      this.selectedBranch,
+      this.buildCommand,
+      undefined,
+      this.installCommand,
+      envMap
+    ).subscribe({
       next: job => {
         this.activeJobId = job.jobId;
         this.pollImportStatus(job.jobId);
@@ -959,45 +1066,59 @@ export class ProjectImportComponent implements OnInit {
 
   private pollImportStatus(jobId: string): void {
     const STATUS_MAP: Record<string, number> = {
-      PENDING: 0,
-      CLONING: 1,
-      ANALYZING: 2,
+      PENDING:       0,
+      CLONING:       1,
+      ANALYZING:     2,
       AI_GENERATION: 3,
-      HEALTH_CALC: 4,
-      DONE: 5
+      HEALTH_CALC:   4,
+      DONE:          5,
     };
 
+    let lastActiveIdx = 0;
+
     const poll = () => {
+      if (!this.activeJobId || this.step() !== 3) return;
       this.gh.getImportStatus(jobId).subscribe({
         next: job => {
+          if (!this.activeJobId || this.step() !== 3) return;
           this.currentStep.set(job.currentStep ?? null);
 
-          const activeIdx = STATUS_MAP[job.status] ?? 0;
+          const isFailed = job.status === 'FAILED';
+          const isDone = job.status === 'DONE';
+          const activeIdx = isFailed ? lastActiveIdx : (STATUS_MAP[job.status] ?? 0);
+          if (!isFailed) lastActiveIdx = activeIdx;
+
           this.progressSteps.update(steps =>
             steps.map((s, i) => ({
               ...s,
-              done:   i < activeIdx || job.status === 'DONE',
-              active: i === activeIdx && job.status !== 'DONE' && job.status !== 'FAILED',
-              failed: i === activeIdx && job.status === 'FAILED'
+              done:   isDone || i < activeIdx,
+              active: i === activeIdx && !isDone && !isFailed,
+              failed: isFailed && i === activeIdx,
             }))
           );
 
-          if (job.status === 'DONE') {
+          if (job.repositoryId) {
+            this.importedRepositoryId.set(job.repositoryId);
+          }
+
+          if (isDone) {
             this.importStatus.set('DONE');
             this.stateSvc.refreshRepos();
-            this.stateSvc.refreshTools(); // Automatically refresh tools
-            setTimeout(() => {
-              this.closeCard();
-            }, 1200);
-          } else if (job.status === 'FAILED') {
+            this.stateSvc.refreshTools();
+            setTimeout(() => this.closeCard(), 1200);
+          } else if (isFailed) {
             this.importStatus.set('FAILED');
-            this.importError.set(job.errorMessage ?? 'Deployment failed. Please check build configuration.');
+            const msg = job.errorMessage?.trim() || 'Deployment failed. Check build configuration.';
+            this.importError.set(msg);
           } else {
             this.importStatus.set('RUNNING');
             setTimeout(poll, 1500);
           }
         },
-        error: () => setTimeout(poll, 3000)
+        error: () => {
+          if (!this.activeJobId || this.step() !== 3) return;
+          setTimeout(poll, 3000);
+        }
       });
     };
 
@@ -1005,21 +1126,24 @@ export class ProjectImportComponent implements OnInit {
   }
 
   closeCard(): void {
-    this.router.navigate(['/workspace/tools']);
+    if (this.importStatus() === 'DONE' && this.importedRepositoryId()) {
+      this.router.navigate(['/workspace/projects/publish', this.importedRepositoryId()]);
+    } else if (this.importStatus() === 'DONE') {
+      this.router.navigate(['/workspace/tools']);
+    } else {
+      this.location.back();
+    }
   }
 
   async onCancelImport(): Promise<void> {
     if (this.step() === 3 && this.activeJobId) {
       const stop = await this.dialogSvc.confirm('Do you really want to stop the deployment?', 'Cancel Build');
       if (stop) {
-        this.gh.cancelImport(this.activeJobId).subscribe({
-          next: () => {
-            this.closeCard();
-          },
-          error: (err) => {
-            console.error('Failed to cancel import:', err);
-            this.closeCard();
-          }
+        const jobIdToCancel = this.activeJobId;
+        this.activeJobId = null; // stop polling immediately
+        this.router.navigate(['/workspace/tools']); // redirect directly to tools
+        this.gh.cancelImport(jobIdToCancel).subscribe({
+          error: (err) => console.error('Failed to cancel import:', err)
         });
       }
     } else {
@@ -1029,8 +1153,18 @@ export class ProjectImportComponent implements OnInit {
 
   formatDate(iso?: string): string {
     if (!iso) return '';
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const now = Date.now();
+    const then = new Date(iso).getTime();
+    if (isNaN(then)) return '';
+    const diffSec = Math.floor((now - then) / 1000);
+    if (diffSec < 60)                             return 'just now';
+    if (diffSec < 3600)  { const m = Math.floor(diffSec / 60);   return `${m}m ago`; }
+    if (diffSec < 86400) { const h = Math.floor(diffSec / 3600); return `${h}h ago`; }
+    const diffDays = Math.floor(diffSec / 86400);
+    if (diffDays < 7)    return `${diffDays}d ago`;
+    if (diffDays < 30)   { const w = Math.floor(diffDays / 7);   return `${w}w ago`; }
+    if (diffDays < 365)  { const mo = Math.floor(diffDays / 30); return `${mo}mo ago`; }
+    const yr = Math.floor(diffDays / 365);       return `${yr}y ago`;
   }
 
   getLangAvatarStyle(lang?: string): string {

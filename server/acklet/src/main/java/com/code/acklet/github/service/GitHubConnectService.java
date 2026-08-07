@@ -108,6 +108,12 @@ public class GitHubConnectService {
         return apiClient.fetchUserRepos(account.getAccessToken(), page, perPage, search);
     }
 
+    public List<String> listBranches(UUID userId, UUID accountId, String owner, String repo) {
+        GitHubAccount account = accountRepository.findByUserIdAndId(userId, accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("GitHub account not found"));
+        return apiClient.fetchRepoBranches(owner + "/" + repo, account.getAccessToken());
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private GitHubAccountResponse toResponse(GitHubAccount a) {

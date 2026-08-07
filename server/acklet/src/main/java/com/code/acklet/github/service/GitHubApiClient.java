@@ -231,6 +231,28 @@ public class GitHubApiClient {
         }
     }
 
+    public List<String> fetchRepoBranches(String ownerRepo, String token) {
+
+        String cleanOwnerRepo = ownerRepo.replace("https://github.com/", "").replaceAll("^/", "").replaceAll("/$", "");
+        String url = "https://api.github.com/repos/" + cleanOwnerRepo + "/branches?per_page=100";
+        HttpHeaders headers = buildHeaders(token);
+        try {
+            ResponseEntity<JsonNode> res = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), JsonNode.class);
+            JsonNode body = res.getBody();
+            if (body != null && body.isArray()) {
+                List<String> list = new ArrayList<>();
+                for (JsonNode node : body) {
+                    list.add(node.path("name").asText());
+                }
+                return list;
+            }
+        } catch (Exception e) {
+            log.error("Failed to fetch branches for {}: {}", cleanOwnerRepo, e.getMessage());
+        }
+        return List.of("main", "master");
+    }
+
+
     private HttpHeaders buildHeaders(String token) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("User-Agent", "Acklet-Platform");

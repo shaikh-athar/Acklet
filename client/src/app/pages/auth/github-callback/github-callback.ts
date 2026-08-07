@@ -127,7 +127,8 @@ export class GitHubCallbackComponent implements OnInit {
         this.statusText.set(`Connected as @${account.githubLogin}! Redirecting…`);
         // Navigate to import page with the connected account pre-selected
         this.router.navigate(['/workspace/projects/import'], {
-          queryParams: { step: 2, accountId: account.id }
+          queryParams: { step: 2, accountId: account.id },
+          replaceUrl: true
         });
       },
       error: (err) => {

@@ -19,31 +19,31 @@ export interface ActiveSession {
   standalone: true,
   imports: [CommonModule, IconComponent],
   template: `
-    <div class="session-manager-root p-6 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 shadow-lg dark:glass-strong space-y-6">
+    <div class="sm-root">
       
       <!-- Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-white/10">
+      <div class="sm-header">
         <div>
-          <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <app-icon name="shield-check" class="size-5 text-cyan-600 dark:text-cyan-400" />
-            Security & Device Governance
+          <h2 class="sm-title">
+            <app-icon name="shield-check" class="sm-title-icon" />
+            <span>Security & Device Governance</span>
           </h2>
-          <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">Manage active device sessions, security tokens, and multi-factor authentication.</p>
+          <p class="sm-subtitle">Manage active device sessions, security tokens, and multi-factor authentication.</p>
         </div>
-        <button (click)="revokeAll()" class="btn btn-secondary text-xs px-3 py-1.5 text-rose-600 dark:text-rose-300 border-rose-300 dark:border-rose-500/30 hover:bg-rose-50 dark:hover:bg-rose-500/10">
+        <button (click)="revokeAll()" class="sm-action-btn">
           Sign Out All Other Devices
         </button>
       </div>
 
       <!-- Tabs Navigation -->
-      <div class="flex items-center gap-2 border-b border-slate-200 dark:border-white/10 pb-2 overflow-x-auto">
-        <button (click)="activeTab.set('sessions')" [class.border-cyan-500]="activeTab() === 'sessions'" [class.text-cyan-600]="activeTab() === 'sessions'" [class.dark:text-cyan-400]="activeTab() === 'sessions'" class="px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 border-b-2 border-transparent transition-all">
+      <div class="sm-tabs">
+        <button (click)="activeTab.set('sessions')" [class.active]="activeTab() === 'sessions'" class="sm-tab-btn">
           Active Sessions
         </button>
-        <button (click)="activeTab.set('audit')" [class.border-cyan-500]="activeTab() === 'audit'" [class.text-cyan-600]="activeTab() === 'audit'" [class.dark:text-cyan-400]="activeTab() === 'audit'" class="px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 border-b-2 border-transparent transition-all">
+        <button (click)="activeTab.set('audit')" [class.active]="activeTab() === 'audit'" class="sm-tab-btn">
           Audit Event Logs
         </button>
-        <button (click)="activeTab.set('2fa')" [class.border-cyan-500]="activeTab() === '2fa'" [class.text-cyan-600]="activeTab() === '2fa'" [class.dark:text-cyan-400]="activeTab() === '2fa'" class="px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 border-b-2 border-transparent transition-all">
+        <button (click)="activeTab.set('2fa')" [class.active]="activeTab() === '2fa'" class="sm-tab-btn">
           2FA & Hardware Keys
         </button>
       </div>
@@ -51,40 +51,40 @@ export interface ActiveSession {
       <!-- Tab Content: Active Sessions -->
       @if (activeTab() === 'sessions') {
         @if (loading()) {
-          <div class="text-center py-6 text-sm text-slate-500 dark:text-slate-400">Loading active sessions...</div>
+          <div class="sm-loading">Loading active sessions...</div>
         } @else {
-          <div class="space-y-3">
+          <div class="sm-content-list">
             @for (s of sessions(); track s.id || s.createdAt) {
-              <div class="p-4 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-between hover:border-cyan-500/40 transition-all">
-                <div class="flex items-center gap-3">
-                  <div class="size-10 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
-                    <app-icon [name]="getDeviceIcon(s.deviceName)" class="size-5" />
+              <div class="sm-item-card">
+                <div class="sm-item-left">
+                  <div class="sm-icon-wrapper">
+                    <app-icon [name]="getDeviceIcon(s.deviceName)" class="sm-device-icon" />
                   </div>
                   <div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-sm font-semibold text-slate-900 dark:text-white">{{ s.deviceName || 'Web Session' }}</span>
+                    <div class="sm-item-title-row">
+                      <span class="sm-device-name">{{ s.deviceName || 'Web Session' }}</span>
                       @if (s.isCurrentSession) {
-                        <span class="px-2 py-0.5 text-xxs font-bold rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                        <span class="sm-badge-current">
                           This Device
                         </span>
                       }
                     </div>
-                    <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-3 mt-0.5">
+                    <div class="sm-item-details">
                       <span>IP: {{ s.ipAddress }}</span>
-                      <span>&bull;</span>
+                      <span class="sm-bullet">&bull;</span>
                       <span>Last active: {{ (s.lastUsedAt || s.createdAt) | date:'medium' }}</span>
                     </div>
                   </div>
                 </div>
 
                 @if (!s.isCurrentSession) {
-                  <button (click)="revoke(s.id)" class="text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 font-medium px-3 py-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors">
+                  <button (click)="revoke(s.id)" class="sm-revoke-btn">
                     Revoke
                   </button>
                 }
               </div>
             } @empty {
-              <div class="text-center py-6 text-sm text-slate-500 dark:text-slate-400">No additional active sessions found.</div>
+              <div class="sm-empty-text">No additional active sessions found.</div>
             }
           </div>
         }
@@ -92,43 +92,302 @@ export interface ActiveSession {
 
       <!-- Tab Content: Audit Event Logs -->
       @if (activeTab() === 'audit') {
-        <div class="space-y-3">
-          <div class="p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-between text-xs text-slate-700 dark:text-slate-300">
-            <div class="flex items-center gap-2">
-              <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono">LOGIN_SUCCESS</span>
-              <span>Google OAuth 2.0 PKCE Login</span>
+        <div class="sm-content-list">
+          <div class="sm-log-item">
+            <div class="sm-log-meta">
+              <span class="sm-log-badge green">LOGIN_SUCCESS</span>
+              <span class="sm-log-title">Google OAuth 2.0 PKCE Login</span>
             </div>
-            <span class="text-slate-400">Just now</span>
+            <span class="sm-log-time">Just now</span>
           </div>
-          <div class="p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-between text-xs text-slate-700 dark:text-slate-300">
-            <div class="flex items-center gap-2">
-              <span class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 font-mono">TOKEN_REFRESH</span>
-              <span>Silent Token Rotation (RS256)</span>
+          <div class="sm-log-item">
+            <div class="sm-log-meta">
+              <span class="sm-log-badge blue">TOKEN_REFRESH</span>
+              <span class="sm-log-title">Silent Token Rotation (RS256)</span>
             </div>
-            <span class="text-slate-400">10 mins ago</span>
+            <span class="sm-log-time">10 mins ago</span>
           </div>
         </div>
       }
 
       <!-- Tab Content: 2FA & Hardware Keys -->
       @if (activeTab() === '2fa') {
-        <div class="p-4 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-3">
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="text-sm font-semibold text-slate-900 dark:text-white">Two-Factor Authentication (2FA)</div>
-              <div class="text-xs text-slate-500 dark:text-slate-400">Require TOTP authenticator app code during sign-in.</div>
-            </div>
-            <span class="px-2.5 py-1 text-xxs font-bold rounded-full bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300">
-              Future Ready (Disabled)
-            </span>
+        <div class="sm-item-card">
+          <div class="sm-2fa-info">
+            <div class="sm-2fa-title">Two-Factor Authentication (2FA)</div>
+            <div class="sm-2fa-desc">Require TOTP authenticator app code during sign-in.</div>
           </div>
+          <span class="sm-badge-disabled">
+            Future Ready (Disabled)
+          </span>
         </div>
       }
 
     </div>
   `,
   styles: [`
-    .text-xxs { font-size: 0.65rem; }
+    .sm-root {
+      background: var(--vercel-card-bg);
+      border: 1px solid var(--vercel-border);
+      border-radius: 10px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .sm-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--vercel-border);
+    }
+
+    .sm-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--vercel-text-primary);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sm-title-icon {
+      width: 18px;
+      height: 18px;
+      color: #06b6d4;
+    }
+
+    .sm-subtitle {
+      font-size: 12px;
+      color: var(--vercel-text-muted);
+      margin: 4px 0 0;
+    }
+
+    .sm-action-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      background: transparent;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #ef4444;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .sm-action-btn:hover {
+      background: rgba(239, 68, 68, 0.05);
+      border-color: #ef4444;
+    }
+
+    .sm-tabs {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 1px solid var(--vercel-border);
+      padding-bottom: 8px;
+      overflow-x: auto;
+    }
+
+    .sm-tab-btn {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--vercel-text-muted);
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 6px 0;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .sm-tab-btn:hover {
+      color: var(--vercel-text-primary);
+    }
+    .sm-tab-btn.active {
+      color: #06b6d4;
+      border-bottom-color: #06b6d4;
+    }
+
+    .sm-loading {
+      text-align: center;
+      padding: 24px;
+      font-size: 13px;
+      color: var(--vercel-text-muted);
+    }
+
+    .sm-content-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .sm-item-card {
+      background: var(--vercel-subtle-bg);
+      border: 1px solid var(--vercel-border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: border-color 0.15s ease;
+    }
+    .sm-item-card:hover {
+      border-color: rgba(6, 182, 212, 0.4);
+    }
+
+    .sm-item-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sm-icon-wrapper {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(6, 182, 212, 0.08);
+      border: 1px solid rgba(6, 182, 212, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #06b6d4;
+      flex-shrink: 0;
+    }
+
+    .sm-device-icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    .sm-item-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sm-device-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--vercel-text-primary);
+    }
+
+    .sm-badge-current {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 99px;
+      background: rgba(16, 185, 129, 0.08);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .sm-item-details {
+      font-size: 11px;
+      color: var(--vercel-text-muted);
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sm-bullet {
+      color: var(--vercel-border);
+    }
+
+    .sm-revoke-btn {
+      font-size: 12px;
+      font-weight: 600;
+      color: #ef4444;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 4px;
+      transition: background-color 0.15s ease;
+    }
+    .sm-revoke-btn:hover {
+      background: rgba(239, 68, 68, 0.05);
+    }
+
+    .sm-empty-text {
+      text-align: center;
+      padding: 24px;
+      font-size: 13px;
+      color: var(--vercel-text-muted);
+    }
+
+    .sm-log-item {
+      background: var(--vercel-subtle-bg);
+      border: 1px solid var(--vercel-border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sm-log-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sm-log-badge {
+      font-size: 9px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .sm-log-badge.green {
+      background: rgba(16, 185, 129, 0.1);
+      color: #10b981;
+    }
+    .sm-log-badge.blue {
+      background: rgba(6, 182, 212, 0.1);
+      color: #06b6d4;
+    }
+
+    .sm-log-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--vercel-text-secondary);
+    }
+
+    .sm-log-time {
+      font-size: 11px;
+      color: var(--vercel-text-muted);
+    }
+
+    .sm-2fa-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .sm-2fa-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--vercel-text-primary);
+    }
+
+    .sm-2fa-desc {
+      font-size: 11px;
+      color: var(--vercel-text-muted);
+    }
+
+    .sm-badge-disabled {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 99px;
+      background: var(--vercel-border);
+      color: var(--vercel-text-muted);
+    }
   `]
 })
 export class SessionManagerComponent implements OnInit {
@@ -145,58 +404,46 @@ export class SessionManagerComponent implements OnInit {
 
   loadSessions(): void {
     this.authSvc.getActiveSessions().subscribe({
-      next: res => {
+      next: (res: any) => {
         if (res.success && res.data) {
           this.sessions.set(res.data);
-        } else {
-          this.sessions.set([
-            { id: '1', deviceName: 'Chrome on Windows', ipAddress: '127.0.0.1', location: 'Local Dev', lastUsedAt: new Date().toISOString(), createdAt: new Date().toISOString(), isCurrentSession: true },
-            { id: '2', deviceName: 'Safari on macOS', ipAddress: '192.168.1.45', location: 'Office WiFi', lastUsedAt: new Date(Date.now() - 3600000).toISOString(), createdAt: new Date(Date.now() - 86400000).toISOString(), isCurrentSession: false }
-          ]);
         }
         this.loading.set(false);
       },
-      error: () => {
-        this.sessions.set([
-          { id: '1', deviceName: 'Chrome on Windows', ipAddress: '127.0.0.1', location: 'Local Dev', lastUsedAt: new Date().toISOString(), createdAt: new Date().toISOString(), isCurrentSession: true },
-          { id: '2', deviceName: 'Safari on macOS', ipAddress: '192.168.1.45', location: 'Office WiFi', lastUsedAt: new Date(Date.now() - 3600000).toISOString(), createdAt: new Date(Date.now() - 86400000).toISOString(), isCurrentSession: false }
-        ]);
-        this.loading.set(false);
-      }
+      error: () => this.loading.set(false)
     });
   }
 
-  revoke(sessionId: string): void {
-    this.authSvc.revokeSession(sessionId).subscribe({
-      next: () => {
-        this.sessions.update(list => list.filter(s => s.id !== sessionId));
-        this.toastSvc.success('Session Revoked', 'The device session has been signed out.');
-      },
-      error: () => {
-        this.sessions.update(list => list.filter(s => s.id !== sessionId));
-        this.toastSvc.success('Session Revoked');
+  revoke(id: string): void {
+    this.authSvc.revokeSession(id).subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          this.sessions.update(list => list.filter(s => s.id !== id));
+          this.toastSvc.success('Session Revoked', 'Active device session signed out.');
+        }
       }
     });
   }
 
   revokeAll(): void {
     this.authSvc.revokeAllSessions().subscribe({
-      next: () => {
-        this.sessions.update(list => list.filter(s => s.isCurrentSession));
-        this.toastSvc.success('All Other Devices Signed Out');
-      },
-      error: () => {
-        this.sessions.update(list => list.filter(s => s.isCurrentSession));
-        this.toastSvc.success('All Other Devices Signed Out');
+      next: (res: any) => {
+        if (res.success) {
+          this.sessions.update(list => list.filter(s => s.isCurrentSession));
+          this.toastSvc.success('All Sessions Revoked', 'Signed out from all other devices.');
+        }
       }
     });
   }
 
-  getDeviceIcon(name: string): string {
-    if (!name) return 'monitor';
-    const lower = name.toLowerCase();
-    if (lower.includes('iphone') || lower.includes('android')) return 'smartphone';
-    if (lower.includes('mac') || lower.includes('windows') || lower.includes('linux')) return 'monitor';
-    return 'globe';
+  getDeviceIcon(name?: string): string {
+    const n = (name || '').toLowerCase();
+    if (n.includes('chrome') || n.includes('firefox') || n.includes('safari') || n.includes('edge')) {
+      return 'globe';
+    }
+    if (n.includes('phone') || n.includes('android') || n.includes('ios')) {
+      return 'smartphone';
+    }
+    return 'monitor';
   }
 }

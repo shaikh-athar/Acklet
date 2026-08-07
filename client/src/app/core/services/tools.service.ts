@@ -224,6 +224,10 @@ export class ToolsService {
     return this.http.get<ApiResponse<Deployment[]>>(`${this.baseUrl}/deployments/project/${repositoryId}`);
   }
 
+  getAllDeployments(): Observable<ApiResponse<Deployment[]>> {
+    return this.http.get<ApiResponse<Deployment[]>>(`${this.baseUrl}/deployments`);
+  }
+
   getDeploymentDetails(id: string): Observable<ApiResponse<Deployment>> {
     return this.http.get<ApiResponse<Deployment>>(`${this.baseUrl}/deployments/${id}`);
   }
@@ -234,6 +238,11 @@ export class ToolsService {
 
   redeployDeployment(id: string): Observable<ApiResponse<Deployment>> {
     return this.http.post<ApiResponse<Deployment>>(`${this.baseUrl}/deployments/${id}/redeploy`, {});
+  }
+
+  deleteTool(slug: string): Observable<ApiResponse<void>> {
+    console.log("URL : " + `${this.baseUrl}/tools/${slug}`);
+    return this.http.delete<ApiResponse<void>>(`${this.baseUrl}/tools/${slug}`);
   }
 }
 

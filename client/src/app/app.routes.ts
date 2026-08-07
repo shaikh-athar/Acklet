@@ -64,6 +64,7 @@ export const routes: Routes = [
       { path: 'projects/review/:toolId', loadComponent: () => import('./pages/workspace/projects/publish-preview/publish-preview').then(m => m.PublishPreviewComponent), title: 'Review & Publish — Acklet' },
       { path: 'repositories', loadComponent: () => import('./pages/workspace/repositories/repositories').then(m => m.WorkspaceRepositoriesComponent), title: 'Repositories — Acklet' },
       { path: 'tools', loadComponent: () => import('./pages/workspace/tools/tools').then(m => m.WorkspaceToolsComponent), title: 'Tools — Acklet' },
+      { path: 'deployments', loadComponent: () => import('./pages/workspace/deployments/deployments').then(m => m.WorkspaceDeploymentsComponent), title: 'Deployments — Acklet' },
       { path: 'store', loadComponent: () => import('./pages/workspace/store/store').then(m => m.WorkspaceStoreComponent), title: 'Store — Acklet' },
       { path: 'tools/manage/:id', loadComponent: () => import('./pages/workspace/tools/tool-manage/tool-manage').then(m => m.ToolManageComponent), title: 'Manage Tool — Acklet' },
       { path: 'tools/manage/:id/deployments/:depId', loadComponent: () => import('./pages/workspace/tools/tool-manage/deployment-detail').then(m => m.DeploymentDetailComponent), title: 'Deployment Details — Acklet' },

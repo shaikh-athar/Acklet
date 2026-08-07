@@ -4,6 +4,7 @@ import com.code.acklet.ai.service.AiOrchestrationService;
 import com.code.acklet.github.dto.GitHubImportJobStatusDto;
 import com.code.acklet.github.dto.GitHubImportResponse;
 import com.code.acklet.github.dto.GitHubRepoMetadata;
+import com.code.acklet.github.dto.RepoImportEvent;
 import com.code.acklet.github.entity.GitHubAccount;
 import com.code.acklet.github.entity.GitHubImportJob;
 import com.code.acklet.github.entity.GitHubImportJob.ImportStatus;
@@ -44,6 +45,8 @@ public class GitHubImportService {
     private final ToolRepository            toolRepository;
     private final CategoryRepository        categoryRepository;
     private final AiOrchestrationService    aiOrchestrationService;
+    private final com.code.acklet.github.repository.RepositoryRepository repositoryRepository;
+    private final RepositoryImportPipelineService pipelineService;
 
     private static final Pattern NON_SLUG = Pattern.compile("[^a-z0-9-]");
 
@@ -57,7 +60,7 @@ public class GitHubImportService {
      * @param repoFullName  e.g. "athar-taj/acklet-cli"
      */
     @Transactional
-    public GitHubImportResponse startImport(User user, UUID accountId, String repoFullName) {
+    public GitHubImportResponse startImport(User user, UUID accountId, String repoFullName, String branch, String buildCommand, String startCommand, String installCommand, java.util.Map<String, String> envVars) {
         GitHubAccount account = accountRepository.findByUserIdAndId(user.getId(), accountId)
                 .orElseThrow(() -> new ForbiddenException("GitHub account not found or not yours"));
 
@@ -70,7 +73,18 @@ public class GitHubImportService {
                 .build();
         job = jobRepository.save(job);
 
-        // Kick off async pipeline (separate thread)
+        // Kick off async pipeline event
+        RepoImportEvent event = RepoImportEvent.builder()
+                .jobId(job.getId())
+                .accountId(account.getId())
+                .repoFullName(repoFullName)
+                .branch(branch)
+                .buildCommand(buildCommand)
+                .startCommand(startCommand)
+                .installCommand(installCommand)
+                .envVars(envVars)
+                .build();
+
         runImportAsync(job.getId(), account.getAccessToken(), repoFullName, user);
 
         return GitHubImportResponse.builder()
@@ -96,10 +110,40 @@ public class GitHubImportService {
         GitHubImportJob job = jobRepository.findByIdAndUserId(jobId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Import job not found: " + jobId));
 
-        if (job.getStatus() == ImportStatus.DONE || job.getStatus() == ImportStatus.FAILED) {
+        if (job.getStatus() == ImportStatus.DONE) {
             return;
         }
 
+        // 1. Delete associated repository and metadata if it has been created
+        repositoryRepository.findByUserIdAndFullName(userId, job.getRepoFullName()).ifPresent(repo -> {
+            log.info("Cancelling import: Clean up repository data and workspace files for {}", repo.getFullName());
+            
+            // Delete workspace files on disk
+            java.nio.file.Path workspaceDir = java.nio.file.Path.of("a:\\Acklet\\server\\acklet\\workspaces", repo.getId().toString());
+            try {
+                org.springframework.util.FileSystemUtils.deleteRecursively(workspaceDir);
+            } catch (Exception e) {
+                log.warn("Failed to delete workspace folder during cancel: {}", e.getMessage());
+            }
+
+            // Delete associated tools first to bypass deleteRepository checks
+            toolRepository.findByRepositoryId(repo.getId()).ifPresent(tool -> {
+                log.info("Deleting tool associated with cancelled repository import: {}", tool.getSlug());
+                try {
+                    toolRepository.delete(tool);
+                } catch (Exception e) {
+                    log.warn("Failed to delete tool during cancel: {}", e.getMessage());
+                }
+            });
+
+            try {
+                pipelineService.deleteRepository(repo.getId(), userId);
+            } catch (Exception e) {
+                log.warn("Failed to delete repository database records during cancel: {}", e.getMessage());
+            }
+        });
+
+        // 2. Delete any orphaned Tool Drafts if set
         UUID toolId = job.getToolId();
         if (toolId != null) {
             try {
@@ -109,6 +153,7 @@ public class GitHubImportService {
             }
         }
 
+        // 3. Mark the job as FAILED/CANCELLED
         job.setStatus(ImportStatus.FAILED);
         job.setCurrentStep("Cancelled");
         job.setErrorMessage("Import cancelled by user");
@@ -134,7 +179,7 @@ public class GitHubImportService {
         });
     }
 
-    @Async("aiTaskExecutor")
+    @Async("aiExecutor")
     public void runImportAsync(UUID jobId, String accessToken, String repoFullName, User user) {
         try {
             if (isCancelled(jobId)) return;
@@ -250,12 +295,17 @@ public class GitHubImportService {
     }
 
     private GitHubImportJobStatusDto toStatusDto(GitHubImportJob job) {
+        UUID repositoryId = repositoryRepository.findByUserIdAndFullName(job.getUser().getId(), job.getRepoFullName())
+                .map(com.code.acklet.github.entity.Repository::getId)
+                .orElse(null);
+
         return GitHubImportJobStatusDto.builder()
                 .jobId(job.getId())
                 .status(job.getStatus().name())
                 .currentStep(job.getCurrentStep())
                 .errorMessage(job.getErrorMessage())
                 .toolId(job.getToolId())
+                .repositoryId(repositoryId)
                 .createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt())
                 .build();

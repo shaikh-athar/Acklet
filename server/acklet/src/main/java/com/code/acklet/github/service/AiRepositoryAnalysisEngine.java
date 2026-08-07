@@ -31,7 +31,7 @@ public class AiRepositoryAnalysisEngine {
         String readmeContent = readReadme(workspace);
         String buildFilesSummary = summarizeBuildFiles(workspace);
 
-        // Task 1: Repository Understanding
+        // Task 1: Repository Understanding Prompt
         String understandingPrompt = String.format(
             "Analyze this repository:\nName: %s\nDescription: %s\nREADME:\n%s\n\n" +
             "Provide a JSON response with fields:\n" +
@@ -44,9 +44,7 @@ public class AiRepositoryAnalysisEngine {
             repo.getFullName(), metadata.getDescription(), readmeContent
         );
 
-        String understandingResult = providerRouter.route(understandingPrompt, AiTaskType.SUMMARY);
-
-        // Task 2: Architecture & Infrastructure Inference
+        // Task 2: Architecture & Infrastructure Inference Prompt
         String archPrompt = String.format(
             "Based on the project structure and build files:\n%s\n" +
             "And description: %s\n\n" +
@@ -60,33 +58,69 @@ public class AiRepositoryAnalysisEngine {
             buildFilesSummary, metadata.getDescription()
         );
 
-        String archResult = providerRouter.route(archPrompt, AiTaskType.CAPABILITIES);
+        // Run both AI tasks concurrently to cut AI pipeline time in half
+        java.util.concurrent.CompletableFuture<String> understandingFuture = java.util.concurrent.CompletableFuture.supplyAsync(
+            () -> providerRouter.route(understandingPrompt, AiTaskType.SUMMARY)
+        );
+        java.util.concurrent.CompletableFuture<String> archFuture = java.util.concurrent.CompletableFuture.supplyAsync(
+            () -> providerRouter.route(archPrompt, AiTaskType.CAPABILITIES)
+        );
+
+        // Wait for both concurrent requests to finish
+        try {
+            java.util.concurrent.CompletableFuture.allOf(understandingFuture, archFuture).join();
+        } catch (Exception e) {
+            log.error("AI pipeline exception in async task aggregation: {}", e.getMessage());
+        }
+
+        String understandingResult = null;
+        try {
+            understandingResult = understandingFuture.get();
+        } catch (Exception e) {
+            log.warn("Failed to retrieve AI repository understanding response: {}", e.getMessage());
+        }
+
+        String archResult = null;
+        try {
+            archResult = archFuture.get();
+        } catch (Exception e) {
+            log.warn("Failed to retrieve AI architecture inference response: {}", e.getMessage());
+        }
 
         RepositoryKnowledgeGraph kg = RepositoryKnowledgeGraph.builder()
-                .repository(repo)
-                .analyzedAt(Instant.now())
-                .build();
+                 .repository(repo)
+                 .analyzedAt(Instant.now())
+                 .build();
 
         try {
-            JsonNode underNode = objectMapper.readTree(cleanJsonString(understandingResult));
-            kg.setSummary(underNode.path("summary").asText(""));
-            kg.setPurpose(underNode.path("purpose").asText(""));
-            kg.setTargetAudience(underNode.path("targetAudience").asText(""));
-            kg.setBusinessDomain(underNode.path("businessDomain").asText(""));
+            if (understandingResult != null) {
+                JsonNode underNode = objectMapper.readTree(cleanJsonString(understandingResult));
+                kg.setSummary(underNode.path("summary").asText(""));
+                kg.setPurpose(underNode.path("purpose").asText(""));
+                kg.setTargetAudience(underNode.path("targetAudience").asText(""));
+                kg.setBusinessDomain(underNode.path("businessDomain").asText(""));
+            } else {
+                kg.setSummary(metadata.getDescription());
+            }
         } catch (Exception e) {
             log.warn("Failed to parse AI understanding response: {}", e.getMessage());
             kg.setSummary(metadata.getDescription());
         }
 
         try {
-            JsonNode archNode = objectMapper.readTree(cleanJsonString(archResult));
-            kg.setArchitectureType(archNode.path("architectureType").asText("Unknown"));
-            kg.setArchitectureConfidence(archNode.path("architectureConfidence").asDouble(1.0));
-            kg.setInfrastructureStyle(archNode.path("infrastructureStyle").asText("Unknown"));
-            
-            List<String> tags = new ArrayList<>();
-            archNode.path("aiTags").forEach(n -> tags.add(n.asText()));
-            kg.setAiTags(tags);
+            if (archResult != null) {
+                JsonNode archNode = objectMapper.readTree(cleanJsonString(archResult));
+                kg.setArchitectureType(archNode.path("architectureType").asText("Unknown"));
+                kg.setArchitectureConfidence(archNode.path("architectureConfidence").asDouble(1.0));
+                kg.setInfrastructureStyle(archNode.path("infrastructureStyle").asText("Unknown"));
+                
+                List<String> tags = new ArrayList<>();
+                archNode.path("aiTags").forEach(n -> tags.add(n.asText()));
+                kg.setAiTags(tags);
+            } else {
+                kg.setArchitectureType("Unknown");
+                kg.setAiTags(Collections.emptyList());
+            }
         } catch (Exception e) {
             log.warn("Failed to parse AI architecture response: {}", e.getMessage());
             kg.setArchitectureType("Unknown");
@@ -116,6 +150,17 @@ public class AiRepositoryAnalysisEngine {
         try {
             Files.walk(workspace)
                     .filter(Files::isRegularFile)
+                    .filter(path -> {
+                        String relative = workspace.relativize(path).toString().replace('\\', '/');
+                        String lower = relative.toLowerCase();
+                        return !lower.contains(".git/") &&
+                               !lower.contains("node_modules/") &&
+                               !lower.contains("vendor/") &&
+                               !lower.contains("target/") &&
+                               !lower.contains("dist/") &&
+                               !lower.contains("build/") &&
+                               !lower.contains("coverage/");
+                    })
                     .forEach(path -> {
                         String name = path.getFileName().toString();
                         if (name.equals("package.json") || name.equals("pom.xml") || name.equals("Dockerfile")) {

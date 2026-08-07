@@ -15,7 +15,7 @@ public interface RepositoryRepository extends JpaRepository<Repository, UUID> {
     Optional<Repository> findByUserIdAndFullName(UUID userId, String fullName);
     Page<Repository> findAllByUserId(UUID userId, Pageable pageable);
 
-    @Query("SELECT r FROM Repository r WHERE r.user.id = :userId AND r.externalId NOT LIKE :prefix%")
+    @Query("SELECT r FROM Repository r WHERE r.user.id = :userId AND r.externalId NOT LIKE :prefix% AND r.statusAiAnalyzed = true")
     Page<Repository> findAllByUserIdAndExternalIdNotStartingWith(
             @Param("userId") UUID userId,
             @Param("prefix") String prefix,

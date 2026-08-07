@@ -18,10 +18,14 @@ export interface RepositoryItem {
 export interface WorkspaceTool {
   id: string;
   name: string;
+  slug: string;
+  repositoryId?: string;
   description: string;
   lang: string;
   langColor: string;
   status: 'Published' | 'Draft' | 'In Review';
+  branch?: string;
+  lastCommit?: string;
   downloads: number;
   stars: number;
   lastUpdated: string;
@@ -65,7 +69,7 @@ export class WorkspaceStateService {
     JSON.parse(localStorage.getItem('acklet:collections') ?? '[]')
   );
   readonly storeItems = signal<StoreItem[]>([]);
-  readonly activeModal = signal<'add_tool' | 'connect_repo' | 'create_collection' | null>(null);
+  readonly activeModal = signal<'add_tool' | 'create_collection' | null>(null);
 
   constructor() {
     this.refreshRepos();
@@ -79,10 +83,14 @@ export class WorkspaceStateService {
           const mapped: WorkspaceTool[] = res.data.content.map((t: any) => ({
             id: t.id,
             name: t.name,
+            slug: t.slug,
+            repositoryId: t.repositoryId,
             description: t.description || t.tagline || '',
             lang: t.runtime || 'nodejs',
             langColor: '#6366f1',
             status: t.status === 'ACTIVE' ? 'Published' : 'Draft',
+            branch: t.branch || 'main',
+            lastCommit: t.lastCommitSha ? t.lastCommitSha.substring(0, 7) : 'main',
             downloads: t.usageCount || 0,
             stars: t.upvoteCount || 0,
             lastUpdated: 'Just now'
@@ -115,7 +123,7 @@ export class WorkspaceStateService {
               description: repo.description || '',
               lastSync: 'Just now',
               syncStatus: repo.statusTreeAnalyzed ? 'Synced' : 'Syncing',
-              toolStatus: repo.statusAiAnalyzed ? 'Published' : 'Not Generated'
+              toolStatus: repo.statusAiAnalyzed ? 'Published' : 'Importing'
             }));
           this.repos.set(mapped);
         } else {
@@ -129,7 +137,7 @@ export class WorkspaceStateService {
   }
 
   // Modal actions
-  openModal(type: 'add_tool' | 'connect_repo' | 'create_collection'): void {
+  openModal(type: 'add_tool' | 'create_collection'): void {
     this.activeModal.set(type);
   }
   closeModal(): void {
@@ -205,6 +213,52 @@ export class WorkspaceStateService {
 
   // Stub methods to keep existing callers compiling
   openModal_alt = this.openModal;
+  deleteToolAndRepo(toolId: string, slug: string, repositoryId?: string, detachRepo = false): void {
+    if (detachRepo && repositoryId) {
+      this.http.post<any>(`${API_BASE}/projects/${repositoryId}/unlink`, {}).subscribe({
+        next: () => {
+          this._deleteToolOnly(slug);
+        },
+        error: (err) => {
+          console.error('Failed to detach repository:', err);
+          this._deleteToolOnly(slug);
+        }
+      });
+    } else {
+      if (repositoryId) {
+        this.http.post<any>(`${API_BASE}/projects/${repositoryId}/unlink`, {}).subscribe({
+          next: () => {
+            this._deleteToolOnly(slug, repositoryId);
+          },
+          error: (err) => {
+            console.error('Failed to unlink repository before deletion:', err);
+            this._deleteToolOnly(slug, repositoryId);
+          }
+        });
+      } else {
+        this._deleteToolOnly(slug);
+      }
+    }
+  }
+
+  private _deleteToolOnly(slug: string, repositoryIdToDelete?: string): void {
+    this.http.delete<any>(`${API_BASE}/tools/${slug}`).subscribe({
+      next: () => {
+        this.refreshTools();
+        if (repositoryIdToDelete) {
+          this.removeRepository(repositoryIdToDelete);
+        }
+      },
+      error: (err) => {
+        console.error('Failed to delete tool:', err);
+        this.refreshTools();
+        if (repositoryIdToDelete) {
+          this.removeRepository(repositoryIdToDelete);
+        }
+      }
+    });
+  }
+
   addRepository(_repo: any): void {}
   addTool(_tool: any): void {}
   removeTool(_id: string): void {}

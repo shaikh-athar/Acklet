@@ -18,4 +18,10 @@ public class RepoImportEvent implements Serializable {
     private UUID jobId;
     private UUID accountId;
     private String repoFullName;
+
+    private String branch;
+    private String buildCommand;
+    private String startCommand;
+    private String installCommand;
+    private java.util.Map<String, String> envVars;
 }

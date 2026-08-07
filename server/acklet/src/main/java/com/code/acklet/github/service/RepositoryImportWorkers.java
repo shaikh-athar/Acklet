@@ -50,6 +50,8 @@ public class RepositoryImportWorkers {
     private final AiRepositoryAnalysisEngine aiRepositoryAnalysisEngine;
     private final TemporaryWorkspaceManager workspaceManager;
     private final RabbitTemplate rabbitTemplate;
+    private final ImportTimelineTracker timelineTracker;
+    private final ProgressiveImportPipelineExecutor progressiveExecutor;
 
     // ── STEP 2: METADATA WORKER ────────────────────────────────────────────────
 
@@ -62,6 +64,7 @@ public class RepositoryImportWorkers {
         if (job == null) return;
 
         try {
+            timelineTracker.startStage(event.getJobId(), "Stage 1: Fetch Metadata");
             job.setStatus(GitHubImportJob.ImportStatus.CLONING); // Step: Fetching Metadata
             job.setCurrentStep("Fetching Repository Metadata");
             job.setUpdatedAt(Instant.now());
@@ -139,6 +142,8 @@ public class RepositoryImportWorkers {
             // Calculate & Store Health Metrics (STEP 5)
             calculateHealthMetrics(repo, stats, repMeta);
 
+            timelineTracker.endStage(event.getJobId(), "Stage 1: Fetch Metadata");
+
             // Publish next event to RabbitMQ
             rabbitTemplate.convertAndSend(
                     RabbitMqConfig.IMPORT_EXCHANGE,
@@ -167,6 +172,8 @@ public class RepositoryImportWorkers {
         if (job == null) return;
 
         try {
+            // Stage 2: Clone & Framework Detection
+            timelineTracker.startStage(event.getJobId(), "Stage 2: Clone & Framework Detection");
             job.setStatus(GitHubImportJob.ImportStatus.CLONING);
             job.setCurrentStep("Cloning Repository");
             job.setUpdatedAt(Instant.now());
@@ -177,16 +184,20 @@ public class RepositoryImportWorkers {
 
             // 1. Clone Entire Repository
             Path workspaceDir = Path.of("a:\\Acklet\\server\\acklet\\workspaces", repo.getId().toString());
-            Files.createDirectories(workspaceDir.getParent());
-            if (Files.exists(workspaceDir)) {
-                workspaceManager.cleanWorkspace(workspaceDir);
+            boolean reuseCache = Boolean.getBoolean("acklet.import.reuse-cache");
+            boolean cacheExists = Files.exists(workspaceDir);
+
+            if (reuseCache && cacheExists) {
+                log.info("Developer Mode: Reusing existing workspace cache at {}", workspaceDir);
+            } else {
+                Files.createDirectories(workspaceDir.getParent());
+                if (cacheExists) {
+                    workspaceManager.cleanWorkspace(workspaceDir);
+                }
             }
 
             StringBuilder buildLog = new StringBuilder();
-            buildLog.append("Initializing Git Clone for ").append(event.getRepoFullName()).append("\n");
-
             String cloneUrl = "https://x-access-token:" + account.getAccessToken() + "@github.com/" + event.getRepoFullName() + ".git";
-            long startTime = System.currentTimeMillis();
 
             Deployment deployment = Deployment.builder()
                     .repository(repo)
@@ -200,23 +211,40 @@ public class RepositoryImportWorkers {
                     .build();
             deployment = deploymentRepository.save(deployment);
 
-            List<String> cloneCmd = List.of("git", "clone", "--depth", "1", "-b", repo.getDefaultBranch(), cloneUrl, workspaceDir.toAbsolutePath().toString());
-            try {
-                runCommand(cloneCmd, new File("."), buildLog);
-                buildLog.append("Successfully cloned complete repository to managed workspace.\n");
-            } catch (Exception e) {
-                buildLog.append("Git clone warning (using local fallback clone): ").append(e.getMessage()).append("\n");
-                Files.createDirectories(workspaceDir);
-                Files.writeString(workspaceDir.resolve("README.md"), "# " + repo.getName());
-                Files.writeString(workspaceDir.resolve("package.json"), "{\"name\": \"" + repo.getName() + "\", \"version\": \"1.0.0\", \"scripts\": {\"build\": \"echo building\", \"start\": \"echo running\"}}");
+            if (reuseCache && cacheExists) {
+                buildLog.append("Developer Mode: Skipping Git clone and reusing workspace cache.\n");
+            } else {
+                buildLog.append("Initializing Git Clone for ").append(event.getRepoFullName()).append("\n");
+                List<String> cloneCmd = List.of("git", "clone", "--depth", "1", "-b", repo.getDefaultBranch(), cloneUrl, workspaceDir.toAbsolutePath().toString());
+                try {
+                    runCommand(cloneCmd, new File("."), buildLog);
+                    buildLog.append("Successfully cloned complete repository to managed workspace.\n");
+                } catch (Exception e) {
+                    buildLog.append("Git clone warning (using local fallback clone): ").append(e.getMessage()).append("\n");
+                    Files.createDirectories(workspaceDir);
+                    Files.writeString(workspaceDir.resolve("README.md"), "# " + repo.getName());
+                    Files.writeString(workspaceDir.resolve("package.json"), "{\"name\": \"" + repo.getName() + "\", \"version\": \"1.0.0\", \"scripts\": {\"build\": \"echo building\", \"start\": \"echo running\"}}");
+                }
             }
 
-            // 2. Repository Analysis (Local Scan)
+            // 2. Repository Analysis (Local Scan with Exclusions)
             List<String> treePaths = new ArrayList<>();
             List<Path> allFiles = new ArrayList<>();
             if (Files.exists(workspaceDir)) {
                 try (var walk = Files.walk(workspaceDir)) {
-                    allFiles = walk.filter(Files::isRegularFile).toList();
+                    allFiles = walk.filter(Files::isRegularFile)
+                            .filter(path -> {
+                                String relative = workspaceDir.relativize(path).toString().replace('\\', '/');
+                                String lower = relative.toLowerCase();
+                                return !lower.contains(".git/") &&
+                                       !lower.contains("node_modules/") &&
+                                       !lower.contains("vendor/") &&
+                                       !lower.contains("target/") &&
+                                       !lower.contains("dist/") &&
+                                       !lower.contains("build/") &&
+                                       !lower.contains("coverage/");
+                            })
+                            .toList();
                 }
             }
             for (Path file : allFiles) {
@@ -250,60 +278,113 @@ public class RepositoryImportWorkers {
             repo.setStatusTreeAnalyzed(true);
             repo = repositoryRepository.save(repo);
 
-            // Framework / Configuration Detection
+            // Framework / Configuration / Tech Stack & Version Detection
             String framework = "Static Site";
             String language = "HTML/JS";
             String packageManager = "None";
             String runtime = "web";
-            String buildCommand = "echo 'No build command required'";
-            String startCommand = "serve";
+            String buildCommand = (event.getBuildCommand() != null && !event.getBuildCommand().isBlank()) 
+                    ? event.getBuildCommand() : "echo 'No build command required'";
+            String startCommand = (event.getStartCommand() != null && !event.getStartCommand().isBlank()) 
+                    ? event.getStartCommand() : "serve";
             int port = 80;
 
             if (buildFiles.stream().anyMatch(f -> f.endsWith("package.json"))) {
-                framework = "Next.js";
                 language = "JavaScript/TypeScript";
                 packageManager = "npm";
                 runtime = "nodejs";
-                buildCommand = "npm run build";
-                startCommand = "npm start";
-                port = 3000;
+                
+                // Inspect package.json for exact framework & version
+                Path pkgJsonPath = workspaceDir.resolve("package.json");
+                if (Files.exists(pkgJsonPath)) {
+                    try {
+                        String content = Files.readString(pkgJsonPath);
+                        if (content.contains("\"next\"")) {
+                            framework = "Next.js";
+                            port = 3000;
+                        } else if (content.contains("\"react\"")) {
+                            framework = "React (Vite/CRA)";
+                            port = 3000;
+                        } else if (content.contains("\"vue\"")) {
+                            framework = "Vue.js";
+                            port = 5173;
+                        } else if (content.contains("\"@angular/core\"")) {
+                            framework = "Angular";
+                            port = 4200;
+                        } else if (content.contains("\"express\"")) {
+                            framework = "Express.js";
+                            port = 3000;
+                        } else if (content.contains("\"@nestjs/core\"")) {
+                            framework = "NestJS";
+                            port = 3000;
+                        } else {
+                            framework = "Node.js App";
+                            port = 3000;
+                        }
+                    } catch (Exception ex) {
+                        framework = "Node.js App";
+                        port = 3000;
+                    }
+                } else {
+                    framework = "Node.js App";
+                    port = 3000;
+                }
+
+                if (event.getBuildCommand() == null || event.getBuildCommand().isBlank()) {
+                    buildCommand = "npm run build";
+                }
+                if (event.getStartCommand() == null || event.getStartCommand().isBlank()) {
+                    startCommand = "npm start";
+                }
             } else if (buildFiles.stream().anyMatch(f -> f.endsWith("pom.xml"))) {
                 framework = "Spring Boot";
                 language = "Java";
                 packageManager = "maven";
                 runtime = "java";
-                buildCommand = "mvn clean package";
-                startCommand = "java -jar target/*.jar";
+                if (event.getBuildCommand() == null || event.getBuildCommand().isBlank()) {
+                    buildCommand = "mvn clean package -DskipTests";
+                }
+                if (event.getStartCommand() == null || event.getStartCommand().isBlank()) {
+                    startCommand = "java -jar target/*.jar";
+                }
                 port = 8080;
             } else if (buildFiles.stream().anyMatch(f -> f.endsWith("requirements.txt"))) {
-                framework = "FastAPI/Flask";
+                framework = "Python App";
                 language = "Python";
                 packageManager = "pip";
                 runtime = "python";
-                buildCommand = "pip install -r requirements.txt";
-                startCommand = "python app.py";
+                if (event.getBuildCommand() == null || event.getBuildCommand().isBlank()) {
+                    buildCommand = "pip install -r requirements.txt";
+                }
+                if (event.getStartCommand() == null || event.getStartCommand().isBlank()) {
+                    startCommand = "python app.py";
+                }
                 port = 8000;
             } else if (buildFiles.stream().anyMatch(f -> f.endsWith("Cargo.toml"))) {
-                framework = "Rust Actix";
+                framework = "Rust App";
                 language = "Rust";
                 packageManager = "cargo";
                 runtime = "rust";
-                buildCommand = "cargo build --release";
-                startCommand = "./target/release/app";
+                if (event.getBuildCommand() == null || event.getBuildCommand().isBlank()) {
+                    buildCommand = "cargo build --release";
+                }
+                if (event.getStartCommand() == null || event.getStartCommand().isBlank()) {
+                    startCommand = "./target/release/app";
+                }
                 port = 8080;
             } else if (buildFiles.stream().anyMatch(f -> f.endsWith("go.mod"))) {
-                framework = "Go Gin";
+                framework = "Go App";
                 language = "Go";
                 packageManager = "go";
                 runtime = "go";
-                buildCommand = "go build -o app";
-                startCommand = "./app";
+                if (event.getBuildCommand() == null || event.getBuildCommand().isBlank()) {
+                    buildCommand = "go build -o app";
+                }
+                if (event.getStartCommand() == null || event.getStartCommand().isBlank()) {
+                    startCommand = "./app";
+                }
                 port = 8080;
             }
-
-            job.setStatus(GitHubImportJob.ImportStatus.AI_GENERATION);
-            job.setCurrentStep("Building and Deploying Application");
-            jobRepository.save(job);
 
             deployment.setFramework(framework);
             deployment.setRuntime(runtime);
@@ -312,98 +393,54 @@ public class RepositoryImportWorkers {
             deployment.setStartCommand(startCommand);
             deployment.setPort(port);
             deployment = deploymentRepository.save(deployment);
+            
+            timelineTracker.endStage(event.getJobId(), "Stage 2: Clone & Framework Detection");
 
-            buildLog.append("[acklet-builder] Installing dependencies using ").append(packageManager).append("...\n");
-            buildLog.append("[acklet-builder] Executing build command: ").append(buildCommand).append("\n");
-
-            // Build simulation
-            Thread.sleep(1500);
-            buildLog.append("[acklet-builder] Resolving external dependency artifacts...\n");
-            Thread.sleep(1000);
-            buildLog.append("[acklet-builder] Compilation finished. Compiled successfully.\n");
-            buildLog.append("[acklet-builder] Build finished.\n");
-
-            // Deployment simulation
-            buildLog.append("[acklet-deployer] Launching execution sandbox container...\n");
-            buildLog.append("[acklet-deployer] Subdomain registered: ").append(repo.getName().toLowerCase()).append(".acklet.app\n");
-            buildLog.append("[acklet-deployer] Sandbox runtime created successfully.\n");
-
-            StringBuilder runtimeLog = new StringBuilder();
-            runtimeLog.append("[acklet-runtime] Spinning up runtime execution engine (").append(runtime).append(")\n");
-            runtimeLog.append("[acklet-runtime] Listening on internal port: ").append(port).append("\n");
-            runtimeLog.append("[acklet-runtime] Performing deployment health checks...\n");
-            Thread.sleep(1000);
-            runtimeLog.append("[acklet-runtime] Health Check Successful: HTTP 200 OK\n");
-            runtimeLog.append("[acklet-runtime] Live application is ready.\n");
-
-            // Register/Create Tool
-            String slug = repo.getName().toLowerCase().replaceAll("[^a-z0-9-]", "-");
-            com.code.acklet.tool.entity.Category category = categoryRepository.findAll().stream().findFirst().orElse(null);
-
-            Tool tool = toolRepository.findByRepositoryId(repo.getId()).orElse(null);
-            if (tool == null) {
-                tool = Tool.builder()
-                        .name(repo.getName())
-                        .slug(slug)
-                        .description(metadataRepository.findByRepositoryId(repo.getId()).map(RepositoryMetadata::getDescription).orElse("Live tool for " + repo.getName()))
-                        .version("1.0.0")
-                        .executionMode(Tool.ExecutionMode.BACKEND)
-                        .runtime(runtime)
-                        .buildCommand(buildCommand)
-                        .startCommand(startCommand)
-                        .port(port)
-                        .subdomain(slug + ".acklet.app")
-                        .repositoryId(repo.getId())
-                        .status(Tool.ToolStatus.ACTIVE)
-                        .category(category)
-                        .build();
-                tool = toolRepository.save(tool);
-            } else {
-                tool.setRuntime(runtime);
-                tool.setBuildCommand(buildCommand);
-                tool.setStartCommand(startCommand);
-                tool.setPort(port);
-                tool.setSubdomain(slug + ".acklet.app");
-                tool = toolRepository.save(tool);
-            }
-
-            long endTime = System.currentTimeMillis();
-            deployment.setStatus("SUCCESS");
-            deployment.setTool(tool);
-            deployment.setDurationMs(endTime - startTime);
-            deployment.setBuildLogs(buildLog.toString());
-            deployment.setRuntimeLogs(runtimeLog.toString());
-            deployment.setLiveUrl("http://localhost/tools/" + slug);
-            deployment = deploymentRepository.save(deployment);
-
-            // Register with registry service
-            toolRegistryService.registerTool(tool.getId().toString(), tool.getName(), tool.getSlug(), tool.getVersion(), port);
-
-            // Run AI analysis if metadata exists
-            RepositoryMetadata meta = metadataRepository.findByRepositoryId(repo.getId()).orElse(null);
-            if (meta != null) {
-                RepositoryKnowledgeGraph kg = aiRepositoryAnalysisEngine.analyzeRepository(repo, meta, workspaceDir);
-                knowledgeGraphRepository.save(kg);
-                repo.setStatusAiAnalyzed(true);
-                repositoryRepository.save(repo);
-            }
-
-            // Clean up temporary builds (do NOT delete permanently cloned source, but clean temp cache)
-            buildLog.append("[acklet-cleanup] Removing temporary build caches.\n");
-
-            job.setStatus(GitHubImportJob.ImportStatus.DONE);
-            job.setCurrentStep("Live Tool Deployed Successfully");
-            job.setUpdatedAt(Instant.now());
-            jobRepository.save(job);
-
-            log.info("Live Tool deploy complete for repo: {}", event.getRepoFullName());
+            // Kick off Stage 3 & 4 Asynchronously
+            progressiveExecutor.executeBuildDeployAndAiEnrichment(
+                    job.getId(),
+                    repo.getId(),
+                    deployment.getId(),
+                    runtime,
+                    buildCommand,
+                    startCommand,
+                    port,
+                    packageManager,
+                    workspaceDir,
+                    event.getInstallCommand(),
+                    event.getEnvVars()
+            );
 
         } catch (Exception e) {
             log.error("Failed executing live tool deployment for job: {}", event.getJobId(), e);
+            // Walk the cause chain to get the deepest meaningful message
+            Throwable root = e;
+            while (root.getCause() != null && root.getCause().getMessage() != null) {
+                root = root.getCause();
+            }
+            String errorMsg = root.getMessage() != null ? root.getMessage() : e.getClass().getSimpleName();
             job.setStatus(GitHubImportJob.ImportStatus.FAILED);
-            job.setErrorMessage(e.getMessage());
+            job.setErrorMessage(errorMsg);
             job.setUpdatedAt(Instant.now());
             jobRepository.save(job);
+
+            try {
+                repositoryRepository.findByUserIdAndFullName(job.getUser().getId(), job.getRepoFullName()).ifPresent(repository -> {
+                    Deployment failedDep = Deployment.builder()
+                            .repository(repository)
+                            .branch("main")
+                            .commitSha("HEAD")
+                            .commitMessage("Deployment failed: " + errorMsg)
+                            .status("FAILED")
+                            .buildLogs("[acklet-builder] Deployment pipeline execution error:\n" + errorMsg)
+                            .createdBy(job.getUser() != null ? job.getUser().getEmail() : "System")
+                            .createdAt(Instant.now())
+                            .build();
+                    deploymentRepository.save(failedDep);
+                });
+            } catch (Exception ex) {
+                log.error("Could not record failed deployment history entry", ex);
+            }
         }
     }
 

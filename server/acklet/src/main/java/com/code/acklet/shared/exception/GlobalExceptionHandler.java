@@ -69,10 +69,23 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
     }
 
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSecurityException(SecurityException ex) {
+        log.warn("Security exception occurred [traceId={}]: {}", getTraceId(), ex.getMessage());
+        ApiResponse<Void> response = ApiResponse.error(ex.getMessage(), getTraceId());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleAllUncaughtException(Exception ex) {
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleAllUncaughtException(Exception ex) {
         log.error("Unhandled exception caught [traceId={}]:", getTraceId(), ex);
-        ApiResponse<Void> response = ApiResponse.error("An unexpected error occurred. Please contact support.", getTraceId());
+        Map<String, String> details = new java.util.HashMap<>();
+        details.put("error", ex.getClass().getName() + ": " + ex.getMessage());
+        ApiResponse<Map<String, String>> response = ApiResponse.error(
+                "An unexpected error occurred. Please contact support.", 
+                getTraceId(), 
+                details
+        );
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

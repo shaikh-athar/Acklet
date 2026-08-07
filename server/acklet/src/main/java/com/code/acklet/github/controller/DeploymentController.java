@@ -43,6 +43,14 @@ public class DeploymentController {
         return ResponseEntity.ok(ApiResponse.success(deployments, "Deployments list retrieved"));
     }
 
+    @GetMapping
+    @Operation(summary = "List all deployments across all tools and repositories")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<List<Deployment>>> listAllDeployments() {
+        List<Deployment> deployments = deploymentRepository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
+        return ResponseEntity.ok(ApiResponse.success(deployments, "All deployments list retrieved"));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get details of a specific deployment")
     @SecurityRequirement(name = "bearerAuth")

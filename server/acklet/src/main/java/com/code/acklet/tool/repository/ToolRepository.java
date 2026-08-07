@@ -20,7 +20,7 @@ public interface ToolRepository extends JpaRepository<Tool, UUID>, JpaSpecificat
     List<Tool> findByIsTrendingTrue();
     Page<Tool> findByCategoryId(UUID categoryId, Pageable pageable);
 
-    @Query("SELECT t FROM Tool t WHERE LOWER(t.name) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(t.description) LIKE LOWER(CONCAT('%', :query, '%'))")
+    @Query("SELECT t FROM Tool t WHERE t.deletedAt IS NULL AND (LOWER(t.name) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(t.description) LIKE LOWER(CONCAT('%', :query, '%')))")
     Page<Tool> searchTools(@Param("query") String query, Pageable pageable);
 
     @Query("SELECT t FROM Tool t ORDER BY t.createdAt DESC")

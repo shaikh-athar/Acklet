@@ -15,6 +15,7 @@ public class GitHubImportJobStatusDto {
     private String currentStep;
     private String errorMessage;
     private UUID toolId;         // non-null once DONE
+    private UUID repositoryId;   // non-null once imported/created
     private Instant createdAt;
     private Instant updatedAt;
 }
