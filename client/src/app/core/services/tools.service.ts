@@ -219,4 +219,48 @@ export class ToolsService {
       repositoryId: bTool.repositoryId
     };
   }
+
+  getDeployments(repositoryId: string): Observable<ApiResponse<Deployment[]>> {
+    return this.http.get<ApiResponse<Deployment[]>>(`${this.baseUrl}/deployments/project/${repositoryId}`);
+  }
+
+  getDeploymentDetails(id: string): Observable<ApiResponse<Deployment>> {
+    return this.http.get<ApiResponse<Deployment>>(`${this.baseUrl}/deployments/${id}`);
+  }
+
+  rollbackDeployment(id: string): Observable<ApiResponse<Deployment>> {
+    return this.http.post<ApiResponse<Deployment>>(`${this.baseUrl}/deployments/${id}/rollback`, {});
+  }
+
+  redeployDeployment(id: string): Observable<ApiResponse<Deployment>> {
+    return this.http.post<ApiResponse<Deployment>>(`${this.baseUrl}/deployments/${id}/redeploy`, {});
+  }
 }
+
+export interface Deployment {
+  id: string;
+  repositoryId?: string;
+  toolId?: string;
+  commitSha: string;
+  commitMessage: string;
+  branch: string;
+  author: string;
+  status: string;
+  buildLogs?: string;
+  runtimeLogs?: string;
+  durationMs: number;
+  framework: string;
+  runtime: string;
+  packageManager: string;
+  port?: number;
+  liveUrl?: string;
+  buildCommand?: string;
+  startCommand?: string;
+  createdBy: string;
+  healthStatus?: string;
+  cpuUsage?: string;
+  memoryUsage?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+

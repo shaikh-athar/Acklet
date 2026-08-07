@@ -110,7 +110,7 @@ public class RepositoryImportPipelineService {
     }
 
     public Page<RepositorySummaryDto> listRepositories(UUID userId, Pageable pageable) {
-        Page<Repository> page = repositoryRepository.findAllByUserId(userId, pageable);
+        Page<Repository> page = repositoryRepository.findAllByUserIdAndExternalIdNotStartingWith(userId, "PENDING_", pageable);
         List<RepositorySummaryDto> dtos = page.getContent().stream().map(repo -> {
             var meta = metadataRepository.findByRepositoryId(repo.getId());
             String primaryLanguage = meta.map(RepositoryMetadata::getPrimaryLanguage).orElse(null);

@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IconComponent } from '../../../shared/components/icon/icon';
 import { WorkspaceStateService } from '../../../core/services/workspace-state.service';
+import { DialogService } from '../../../core/services/dialog.service';
 
 interface CollectionTool {
   id: string;
@@ -407,6 +408,7 @@ interface CollectionFolder {
 })
 export class WorkspaceCollectionsComponent {
   private readonly stateSvc = inject(WorkspaceStateService);
+  private readonly dialogSvc = inject(DialogService);
   readonly folders = this.stateSvc.collections;
   readonly selectedFolder = signal<CollectionFolder | null>(null);
 
@@ -429,8 +431,10 @@ export class WorkspaceCollectionsComponent {
   }
 
   deleteFolder(folder: CollectionFolder): void {
-    if (confirm(`Are you sure you want to delete collection "${folder.name}"?`)) {
-      this.stateSvc.removeCollection(folder.id);
-    }
+    this.dialogSvc.confirm(`Are you sure you want to delete collection "${folder.name}"?`, 'Delete Collection').then(confirmed => {
+      if (confirmed) {
+        this.stateSvc.removeCollection(folder.id);
+      }
+    });
   }
 }

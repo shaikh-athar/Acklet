@@ -6,8 +6,9 @@ import { DiscoveryService } from '../../core/services/discovery.service';
 import { ToolKnowledgeService } from '../../core/services/tool-knowledge.service';
 import { SeoService } from '../../core/services/seo.service';
 import { IconComponent } from '../../shared/components/icon/icon';
-import { Tool } from '../../core/models/tool.model';
 import { ToolKnowledgeHub } from '../../core/models/tool-knowledge.model';
+import { DialogService } from '../../core/services/dialog.service';
+import { Tool } from '../../core/models/tool.model';
 
 @Component({
   selector: 'app-tool-detail',
@@ -538,6 +539,7 @@ export class ToolDetailComponent implements OnInit {
   private readonly discoverySvc = inject(DiscoveryService);
   private readonly knowledgeSvc = inject(ToolKnowledgeService);
   private readonly seoSvc = inject(SeoService);
+  private readonly dialogSvc = inject(DialogService);
 
   readonly tool = signal<Tool | undefined>(undefined);
   readonly knowledge = signal<ToolKnowledgeHub | null>(null);
@@ -572,7 +574,7 @@ export class ToolDetailComponent implements OnInit {
   }
 
   toggleFavorite(): void { this.isFavorited.update(v => !v); }
-  useTool(): void { alert('Tool sandbox interface launching locally.'); }
+  useTool(): void { this.dialogSvc.alert('Tool sandbox interface launching locally.', 'Launch Tool'); }
   copyLink(): void { navigator.clipboard.writeText(window.location.href); }
 
   getCategorySlug(): string {

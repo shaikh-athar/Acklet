@@ -154,9 +154,7 @@ interface SidebarLink {
               <button (click)="toggleImportDrop()" class="ws-import-btn">
                 <app-icon name="plus" class="ws-import-btn-icon" />
                 <span>Import</span>
-                <span class="ws-import-btn-arrow" style="margin-left: 4px; font-size: 10px;"
-                  >▼</span
-                >
+                <app-icon name="chevron-down" class="ws-import-btn-arrow" [strokeWidth]="3" />
               </button>
 
               <div *ngIf="importDropOpen()" class="ws-import-dropdown-menu">
@@ -167,13 +165,13 @@ interface SidebarLink {
                     <span class="ws-import-item-desc">Import Git repository as a tool</span>
                   </div>
                 </a>
-                <button (click)="triggerModal('connect_repo')" class="ws-import-dropdown-item">
+                <a routerLink="/workspace/tools/import" (click)="importDropOpen.set(false)" class="ws-import-dropdown-item" style="text-decoration: none;">
                   <app-icon name="git-branch" class="ws-import-item-icon purple" />
                   <div class="ws-import-item-text">
                     <span class="ws-import-item-title">Connect Repo</span>
                     <span class="ws-import-item-desc">Link a Git repository</span>
                   </div>
-                </button>
+                </a>
                 <button (click)="triggerModal('create_collection')" class="ws-import-dropdown-item">
                   <app-icon name="folder" class="ws-import-item-icon green" />
                   <div class="ws-import-item-text">
@@ -784,6 +782,14 @@ interface SidebarLink {
         width: 14px;
         height: 14px;
         font-weight: 800;
+      }
+
+      .ws-import-btn-arrow {
+        width: 12px;
+        height: 12px;
+        margin-left: 2px;
+        display: inline-flex;
+        align-items: center;
       }
 
       .ws-import-dropdown-menu {

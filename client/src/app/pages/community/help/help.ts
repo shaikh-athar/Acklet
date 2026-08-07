@@ -1,8 +1,9 @@
 // client/src/app/pages/community/help/help.ts
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../../../shared/components/icon/icon';
 import { SpotlightDirective } from '../../../shared/directives/spotlight.directive';
+import { DialogService } from '../../../core/services/dialog.service';
 
 interface HelpTopic {
   question: string;
@@ -88,6 +89,8 @@ interface HelpTopic {
   `],
 })
 export class CommunityHelpComponent {
+  private readonly dialogSvc = inject(DialogService);
+
   readonly faqs = signal<HelpTopic[]>([
     { question: 'Is my input data safe inside Acklet?', answer: 'Yes. Acklet operates offline. All encoding, formatting, hashing, and signature decodes take place in your local browser sandbox. No server transmission logs are created.' },
     { question: 'How do I synchronize my settings across multiple machines?', answer: 'By creating a free account, you can enable workspace synchronization. This syncs your favorites, collection folders, settings preferences, and execution history.' },
@@ -96,7 +99,7 @@ export class CommunityHelpComponent {
 
   onSubmit(e: Event): void {
     e.preventDefault();
-    alert('Support ticket submitted successfully. Our team will contact you soon.');
+    this.dialogSvc.alert('Support ticket submitted successfully. Our team will contact you soon.', 'Ticket Submitted');
     (e.target as HTMLFormElement).reset();
   }
 }

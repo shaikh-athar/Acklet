@@ -84,6 +84,9 @@ import {
   LucidePanelLeftOpen,
   LucideLayoutDashboard,
   LucideList,
+  LucideTrash2,
+  LucideLink2Off,
+  LucideRocket,
 } from '@lucide/angular';
 
 @Component({
@@ -226,6 +229,9 @@ export class IconComponent {
     'panel-left-open': LucidePanelLeftOpen,
     'layout-dashboard': LucideLayoutDashboard,
     list: LucideList,
+    trash: LucideTrash2,
+    unlink: LucideLink2Off,
+    rocket: LucideRocket,
   };
 
   readonly lucideIconComponent = computed(() => {

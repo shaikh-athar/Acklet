@@ -66,6 +66,7 @@ export const routes: Routes = [
       { path: 'tools', loadComponent: () => import('./pages/workspace/tools/tools').then(m => m.WorkspaceToolsComponent), title: 'Tools — Acklet' },
       { path: 'store', loadComponent: () => import('./pages/workspace/store/store').then(m => m.WorkspaceStoreComponent), title: 'Store — Acklet' },
       { path: 'tools/manage/:id', loadComponent: () => import('./pages/workspace/tools/tool-manage/tool-manage').then(m => m.ToolManageComponent), title: 'Manage Tool — Acklet' },
+      { path: 'tools/manage/:id/deployments/:depId', loadComponent: () => import('./pages/workspace/tools/tool-manage/deployment-detail').then(m => m.DeploymentDetailComponent), title: 'Deployment Details — Acklet' },
       { path: 'ai-jobs', loadComponent: () => import('./pages/workspace/ai-jobs/ai-jobs').then(m => m.AIJobsComponent), title: 'AI Jobs — Acklet' },
       { path: 'analytics', loadComponent: () => import('./pages/workspace/analytics/analytics').then(m => m.WorkspaceAnalyticsComponent), title: 'Analytics — Acklet' },
       { path: 'favorites', loadComponent: () => import('./pages/workspace/favorites/favorites').then(m => m.WorkspaceFavoritesComponent), title: 'Favorites — Acklet' },

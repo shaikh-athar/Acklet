@@ -122,6 +122,11 @@ export class GitHubService {
       .pipe(map(r => r.data));
   }
 
+  cancelImport(jobId: string): Observable<void> {
+    return this.http.post<ApiResponse<void>>(`http://localhost:8080/api/v1/projects/${jobId}/cancel`, null)
+      .pipe(map(() => void 0));
+  }
+
   // ── Legacy: tool-scoped methods (kept for backward compat) ─────────────────
 
   connectRepository(code: string, toolId?: string, githubRepo?: string): Observable<GitHubIntegrationResponse> {

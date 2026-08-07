@@ -30,12 +30,21 @@ public class ToolRegistryService {
     }
 
     public RegisteredTool registerTool(String toolId, String name, String slug, String version) {
+        return registerTool(toolId, name, slug, version, null);
+    }
+
+    public RegisteredTool registerTool(String toolId, String name, String slug, String version, Integer customPort) {
         // Check if already registered
         if (registry.containsKey(toolId)) {
-            return registry.get(toolId);
+            RegisteredTool existing = registry.get(toolId);
+            if (customPort != null) {
+                existing.setPort(customPort);
+                existing.setExecutionUrl("http://localhost:" + customPort);
+            }
+            return existing;
         }
 
-        int port = nextPort.getAndIncrement();
+        int port = customPort != null ? customPort : nextPort.getAndIncrement();
         String executionUrl = "http://localhost:" + port;
 
         RegisteredTool registered = RegisteredTool.builder()

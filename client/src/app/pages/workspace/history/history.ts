@@ -1,9 +1,10 @@
 // client/src/app/pages/workspace/history/history.ts
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../../../shared/components/icon/icon';
 import { SpotlightDirective } from '../../../shared/directives/spotlight.directive';
+import { DialogService } from '../../../core/services/dialog.service';
 
 interface LogItem {
   id: string;
@@ -103,6 +104,8 @@ interface LogItem {
   `],
 })
 export class WorkspaceHistoryComponent {
+  private readonly dialogSvc = inject(DialogService);
+
   readonly logs = signal<LogItem[]>([
     { id: '1', tool: 'JWT Inspector', category: 'Developer', details: 'Parsed claims payload (HS256)', time: '10 mins ago', status: 'success' },
     { id: '2', tool: 'JSON Formatter', category: 'Formatters', details: 'Cleaned client.json structure (2.4 KB)', time: '1 hour ago', status: 'success' },
@@ -115,8 +118,10 @@ export class WorkspaceHistoryComponent {
   }
 
   clearAll(): void {
-    if (confirm('Are you sure you want to clear all history?')) {
-      this.logs.set([]);
-    }
+    this.dialogSvc.confirm('Are you sure you want to clear all history?', 'Clear History').then(confirmed => {
+      if (confirmed) {
+        this.logs.set([]);
+      }
+    });
   }
 }

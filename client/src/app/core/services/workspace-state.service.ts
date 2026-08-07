@@ -69,6 +69,33 @@ export class WorkspaceStateService {
 
   constructor() {
     this.refreshRepos();
+    this.refreshTools();
+  }
+
+  refreshTools(): void {
+    this.http.get<any>(`${API_BASE}/tools/search?size=100`).subscribe({
+      next: (res) => {
+        if (res?.data?.content) {
+          const mapped: WorkspaceTool[] = res.data.content.map((t: any) => ({
+            id: t.id,
+            name: t.name,
+            description: t.description || t.tagline || '',
+            lang: t.runtime || 'nodejs',
+            langColor: '#6366f1',
+            status: t.status === 'ACTIVE' ? 'Published' : 'Draft',
+            downloads: t.usageCount || 0,
+            stars: t.upvoteCount || 0,
+            lastUpdated: 'Just now'
+          }));
+          this.tools.set(mapped);
+        } else {
+          this.tools.set([]);
+        }
+      },
+      error: () => {
+        this.tools.set([]);
+      }
+    });
   }
 
   refreshRepos(): void {

@@ -91,9 +91,54 @@ public class GitHubImportService {
 
     // ── Async Pipeline ─────────────────────────────────────────────────────────
 
+    @Transactional
+    public void cancelImport(UUID jobId, UUID userId) {
+        GitHubImportJob job = jobRepository.findByIdAndUserId(jobId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Import job not found: " + jobId));
+
+        if (job.getStatus() == ImportStatus.DONE || job.getStatus() == ImportStatus.FAILED) {
+            return;
+        }
+
+        UUID toolId = job.getToolId();
+        if (toolId != null) {
+            try {
+                toolRepository.deleteById(toolId);
+            } catch (Exception e) {
+                log.warn("Failed to clean up tool draft {} during cancellation: {}", toolId, e.getMessage());
+            }
+        }
+
+        job.setStatus(ImportStatus.FAILED);
+        job.setCurrentStep("Cancelled");
+        job.setErrorMessage("Import cancelled by user");
+        job.setUpdatedAt(Instant.now());
+        jobRepository.save(job);
+    }
+
+    private boolean isCancelled(UUID jobId) {
+        return jobRepository.findById(jobId)
+                .map(j -> j.getStatus() == ImportStatus.FAILED)
+                .orElse(true);
+    }
+
+    private void cleanUpTool(UUID jobId) {
+        jobRepository.findById(jobId).ifPresent(job -> {
+            if (job.getToolId() != null) {
+                try {
+                    toolRepository.deleteById(job.getToolId());
+                } catch (Exception e) {
+                    log.warn("Cleanup of tool draft failed for cancelled job {}: {}", jobId, e.getMessage());
+                }
+            }
+        });
+    }
+
     @Async("aiTaskExecutor")
     public void runImportAsync(UUID jobId, String accessToken, String repoFullName, User user) {
         try {
+            if (isCancelled(jobId)) return;
+
             // Step 1: Clone metadata
             advance(jobId, ImportStatus.CLONING, "Cloning repository metadata");
             GitHubRepoMetadata meta = apiClient.fetchRepoMetadata(repoFullName, accessToken);
@@ -101,6 +146,8 @@ public class GitHubImportService {
                 fail(jobId, "Repository not found or inaccessible: " + repoFullName);
                 return;
             }
+
+            if (isCancelled(jobId)) return;
 
             // Step 2: Analyze framework, language, etc.
             advance(jobId, ImportStatus.ANALYZING, "Analyzing repository structure");
@@ -110,6 +157,8 @@ public class GitHubImportService {
             while (toolRepository.existsBySlug(slug)) {
                 slug = slug + "-" + UUID.randomUUID().toString().substring(0, 4);
             }
+
+            if (isCancelled(jobId)) return;
 
             // Pick a default category ("developer-tools" or first available)
             Category category = categoryRepository.findBySlug("developer-tools")
@@ -135,10 +184,20 @@ public class GitHubImportService {
             tool = toolRepository.save(tool);
             final UUID toolId = tool.getId();
 
+            if (isCancelled(jobId)) {
+                cleanUpTool(jobId);
+                return;
+            }
+
             // Patch job with toolId
             GitHubImportJob job = jobRepository.findById(jobId).orElseThrow();
             job.setToolId(toolId);
             jobRepository.save(job);
+
+            if (isCancelled(jobId)) {
+                cleanUpTool(jobId);
+                return;
+            }
 
             // Step 3: AI generation
             advance(jobId, ImportStatus.AI_GENERATION, "Generating AI metadata");
@@ -146,6 +205,11 @@ public class GitHubImportService {
                 aiOrchestrationService.enrich(toolId);
             } catch (Exception e) {
                 log.warn("AI enrichment failed for tool {} (non-fatal): {}", toolId, e.getMessage());
+            }
+
+            if (isCancelled(jobId)) {
+                cleanUpTool(jobId);
+                return;
             }
 
             // Done
@@ -160,7 +224,11 @@ public class GitHubImportService {
 
         } catch (Exception e) {
             log.error("Import pipeline failed for job {}: {}", jobId, e.getMessage(), e);
-            fail(jobId, e.getMessage());
+            if (isCancelled(jobId)) {
+                cleanUpTool(jobId);
+            } else {
+                fail(jobId, e.getMessage());
+            }
         }
     }
 

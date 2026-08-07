@@ -2,7 +2,7 @@ import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { IconComponent } from '../../../../shared/components/icon/icon';
-import { ToolsService } from '../../../../core/services/tools.service';
+import { ToolsService, Deployment } from '../../../../core/services/tools.service';
 import { Tool } from '../../../../core/models/tool.model';
 import { FormsModule } from '@angular/forms';
 
@@ -43,7 +43,7 @@ import { FormsModule } from '@angular/forms';
               </div>
               <p class="tm-repo-subtitle">
                 <app-icon name="git-branch" class="tm-repo-icon" />
-                <span>{{ tool()?.githubUrl || 'Local Repository' }}</span>
+                <span>{{ tool()?.githubUrl || 'https://github.com/' + tool()?.slug }}</span>
               </p>
             </div>
           </div>
@@ -57,18 +57,20 @@ import { FormsModule } from '@angular/forms';
                 <span>Trigger Re-sync</span>
               }
             </button>
-            <a [href]="'https://' + tool()?.subdomain" target="_blank" class="tm-btn tm-btn-primary">
-              Visit Live Tool ↗
-            </a>
+            @if (tool()?.subdomain) {
+              <a [href]="'http://localhost/tools/' + tool()?.slug" target="_blank" class="tm-btn tm-btn-primary">
+                Visit Live Tool ↗
+              </a>
+            }
           </div>
         </div>
      
         <!-- Navigation Tabs (Vercel Style) -->
         <div class="tm-tabs">
           <button (click)="activeTab.set('overview')" [class.active-tab]="activeTab() === 'overview'" class="tab-btn">Overview</button>
+          <button (click)="activeTab.set('deployments')" [class.active-tab]="activeTab() === 'deployments'" class="tab-btn">Deployments</button>
+          <button (click)="activeTab.set('logs')" [class.active-tab]="activeTab() === 'logs'" class="tab-btn">Logs</button>
           <button (click)="activeTab.set('sandbox')" [class.active-tab]="activeTab() === 'sandbox'" class="tab-btn">Sandbox Execution</button>
-          <button (click)="activeTab.set('docs')" [class.active-tab]="activeTab() === 'docs'" class="tab-btn">Documentation</button>
-          <button (click)="activeTab.set('versions')" [class.active-tab]="activeTab() === 'versions'" class="tab-btn">Versions</button>
           <button (click)="activeTab.set('settings')" [class.active-tab]="activeTab() === 'settings'" class="tab-btn">Settings</button>
         </div>
      
@@ -88,33 +90,135 @@ import { FormsModule } from '@angular/forms';
               </div>
               <div class="tm-metric-card">
                 <div class="tm-metric-label">Runtime Engine</div>
-                <div class="tm-metric-value cyan">{{ tool()?.runtime }}</div>
+                <div class="tm-metric-value cyan">{{ tool()?.runtime || 'nodejs' }}</div>
               </div>
               <div class="tm-metric-card">
                 <div class="tm-metric-label">Sandbox Status</div>
                 <div class="tm-metric-value emerald">HEALTHY</div>
               </div>
             </div>
-     
+
+            <!-- Active Deployment Card -->
+            @if (latestDeployment()) {
+              <div class="tm-details-card">
+                <div class="dd-header-row">
+                  <h3 class="tm-card-title">Production Deployment</h3>
+                  <span class="tm-badge-status ready">Active</span>
+                </div>
+                <div class="active-dep-content">
+                  <div class="dep-info-line">
+                    <span class="dep-lbl">Deployment:</span>
+                    <a [routerLink]="['/workspace/tools/manage', tool()?.slug, 'deployments', latestDeployment()?.id]" class="dep-link">
+                      {{ latestDeployment()?.commitMessage }} ({{ latestDeployment()?.commitSha?.substring(0,7) }})
+                    </a>
+                  </div>
+                  <div class="dep-info-line">
+                    <span class="dep-lbl">Duration:</span>
+                    <span>{{ formatDuration(latestDeployment()?.durationMs) }}</span>
+                  </div>
+                  <div class="dep-info-line">
+                    <span class="dep-lbl">Created By:</span>
+                    <span>{{ latestDeployment()?.createdBy }}</span>
+                  </div>
+                  <div class="dep-info-line">
+                    <span class="dep-lbl">Date:</span>
+                    <span>{{ latestDeployment()?.createdAt | date:'short' }}</span>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- Recent Deployments List -->
             <div class="tm-details-card">
-              <h3 class="tm-card-title">Orchestration & Deploy Specs</h3>
-              <div class="tm-meta-grid">
-                <div class="tm-meta-item">
-                  <span class="tm-meta-label">Build Command:</span>
-                  <span class="tm-meta-val font-mono">{{ tool()?.buildCommand || 'N/A' }}</span>
+              <h3 class="tm-card-title">Recent Deployments</h3>
+              <div class="dep-table-container">
+                <table class="dep-table">
+                  <thead>
+                    <tr>
+                      <th>Status</th>
+                      <th>Commit</th>
+                      <th>Branch</th>
+                      <th>Created By</th>
+                      <th>Created At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (dep of deployments(); track dep.id) {
+                      <tr [routerLink]="['/workspace/tools/manage', tool()?.slug, 'deployments', dep.id]" class="clickable-row">
+                        <td>
+                          <span class="status-pill" [class.ready]="dep.status === 'SUCCESS'" [class.building]="dep.status === 'BUILDING'">
+                            {{ dep.status }}
+                          </span>
+                        </td>
+                        <td class="font-mono text-indigo">{{ dep.commitSha?.substring(0,7) }} · {{ dep.commitMessage }}</td>
+                        <td>{{ dep.branch }}</td>
+                        <td>{{ dep.createdBy }}</td>
+                        <td>{{ dep.createdAt | date:'short' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="5" class="text-center">No deployments found.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- DEPLOYMENTS TAB -->
+          <div *ngSwitchCase="'deployments'" class="tm-tab-pane">
+            <div class="tm-details-card">
+              <h3 class="tm-card-title">Deployment History</h3>
+              <div class="dep-table-container">
+                <table class="dep-table">
+                  <thead>
+                    <tr>
+                      <th>Status</th>
+                      <th>Commit</th>
+                      <th>Branch</th>
+                      <th>Duration</th>
+                      <th>Created By</th>
+                      <th>Created At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (dep of deployments(); track dep.id) {
+                      <tr [routerLink]="['/workspace/tools/manage', tool()?.slug, 'deployments', dep.id]" class="clickable-row">
+                        <td>
+                          <span class="status-pill" [class.ready]="dep.status === 'SUCCESS'" [class.building]="dep.status === 'BUILDING'">
+                            {{ dep.status }}
+                          </span>
+                        </td>
+                        <td class="font-mono text-indigo">{{ dep.commitSha?.substring(0,7) }} · {{ dep.commitMessage }}</td>
+                        <td>{{ dep.branch }}</td>
+                        <td>{{ formatDuration(dep.durationMs) }}</td>
+                        <td>{{ dep.createdBy }}</td>
+                        <td>{{ dep.createdAt | date:'medium' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="6" class="text-center">No deployments found.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- LOGS TAB -->
+          <div *ngSwitchCase="'logs'" class="tm-tab-pane">
+            <div class="tm-details-card">
+              <div class="logs-header-row">
+                <h3 class="tm-card-title">Build & Runtime Logs</h3>
+                <div class="logs-toggle">
+                  <button (click)="logsView.set('build')" [class.active-btn]="logsView() === 'build'">Build Logs</button>
+                  <button (click)="logsView.set('runtime')" [class.active-btn]="logsView() === 'runtime'">Runtime Logs</button>
                 </div>
-                <div class="tm-meta-item">
-                  <span class="tm-meta-label">Start Command:</span>
-                  <span class="tm-meta-val font-mono">{{ tool()?.startCommand || 'N/A' }}</span>
-                </div>
-                <div class="tm-meta-item">
-                  <span class="tm-meta-label">Sandbox Port:</span>
-                  <span class="tm-meta-val font-mono">{{ tool()?.port || 'N/A' }}</span>
-                </div>
-                <div class="tm-meta-item">
-                  <span class="tm-meta-label">Git Sync Status:</span>
-                  <span class="tm-meta-val text-emerald">Connected</span>
-                </div>
+              </div>
+              <div class="logs-console">
+                <pre class="logs-body">{{ activeLogs() }}</pre>
               </div>
             </div>
           </div>
@@ -163,7 +267,7 @@ import { FormsModule } from '@angular/forms';
                   <h3 class="tm-card-title console-title">Sandbox Console Logs</h3>
                   <button class="console-clear-btn" (click)="clearConsole()">Clear</button>
                 </div>
-                <div class="console-body" #consoleScroll>
+                <div class="console-body">
                   @if (consoleLogs().length === 0) {
                     <div class="console-placeholder">
                       <app-icon name="terminal" class="console-icon" />
@@ -185,37 +289,6 @@ import { FormsModule } from '@angular/forms';
               </div>
             </div>
           </div>
-     
-          <!-- DOCS TAB -->
-          <div *ngSwitchCase="'docs'" class="tm-details-card">
-            <div class="tm-card-header-row">
-              <h3 class="tm-card-title">AI-Generated Tool Documentation</h3>
-              <button class="tm-btn tm-btn-sm tm-btn-secondary">Regenerate Docs</button>
-            </div>
-            <div class="tm-code-block">
-              # {{ tool()?.name }}<br/>
-              {{ tool()?.description }}<br/><br/>
-              ## Deployed Subdomain<br/>
-              https://{{ tool()?.subdomain }}<br/><br/>
-              ## Execution Specification<br/>
-              Mode: {{ tool()?.executionMode }}<br/>
-              Runtime: {{ tool()?.runtime }}
-            </div>
-          </div>
-     
-          <!-- VERSIONS TAB -->
-          <div *ngSwitchCase="'versions'" class="tm-details-card">
-            <h3 class="tm-card-title">Release Version Timeline</h3>
-            <div class="tm-timeline">
-              <div class="tm-timeline-item">
-                <div class="tm-timeline-info">
-                  <span class="tm-timeline-version">v1.0.0</span>
-                  <span class="tm-timeline-desc">Initial container deployment and runtime mapping</span>
-                </div>
-                <span class="tm-timeline-date">Just now</span>
-              </div>
-            </div>
-          </div>
 
           <!-- SETTINGS TAB -->
           <div *ngSwitchCase="'settings'" class="tm-details-card">
@@ -223,7 +296,36 @@ import { FormsModule } from '@angular/forms';
             <div class="form-group">
               <label class="form-label">Live Tool Subdomain Prefix</label>
               <input type="text" class="form-input" [ngModel]="tool()?.slug" readonly />
-              <p class="form-hint">Changes to subdomains must be verified against active routing tables.</p>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Build Command Override</label>
+              <input type="text" class="form-input" [ngModel]="tool()?.buildCommand" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Start Command Override</label>
+              <input type="text" class="form-input" [ngModel]="tool()?.startCommand" />
+            </div>
+
+            <!-- Environment Variables -->
+            <div class="env-section">
+              <h4 class="env-title">Environment Variables</h4>
+              <div class="env-list">
+                <div class="env-item">
+                  <span class="env-key font-mono">NODE_ENV</span>
+                  <span class="env-val font-mono">production</span>
+                </div>
+                <div class="env-item">
+                  <span class="env-key font-mono">PORT</span>
+                  <span class="env-val font-mono">{{ tool()?.port }}</span>
+                </div>
+              </div>
+              <div class="env-add-row">
+                <input type="text" placeholder="KEY" class="form-input env-input" [(ngModel)]="newEnvKey" />
+                <input type="text" placeholder="VALUE" class="form-input env-input" [(ngModel)]="newEnvValue" />
+                <button class="tm-btn tm-btn-secondary" (click)="addEnvVar()">Add</button>
+              </div>
             </div>
           </div>
         </div>
@@ -330,6 +432,12 @@ import { FormsModule } from '@angular/forms';
       border-color: rgba(245, 158, 11, 0.2);
     }
 
+    .tm-badge-status.ready {
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+      border-color: rgba(34, 197, 94, 0.2);
+    }
+
     .tm-badge-mode {
       display: inline-flex;
       align-items: center;
@@ -396,15 +504,10 @@ import { FormsModule } from '@angular/forms';
     .tm-btn-secondary:hover {
       background: #27272a;
     }
-
+ 
     .tm-btn:disabled {
       opacity: 0.6;
       cursor: not-allowed;
-    }
- 
-    .tm-btn-sm {
-      font-size: 11px;
-      padding: 6px 10px;
     }
  
     .tm-tabs {
@@ -443,7 +546,7 @@ import { FormsModule } from '@angular/forms';
       flex-direction: column;
       gap: 24px;
     }
-
+ 
     .tm-metrics-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -494,93 +597,180 @@ import { FormsModule } from '@angular/forms';
       color: #f4f4f5;
       margin: 0;
     }
-
-    .tm-card-desc {
-      font-size: 12px;
-      color: #a1a1aa;
-      margin: 0 0 10px 0;
-    }
  
-    .tm-meta-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 12px;
-    }
- 
-    .tm-meta-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-    }
- 
-    .tm-meta-label {
-      color: #a1a1aa;
-    }
- 
-    .tm-meta-val {
-      color: #f4f4f5;
-      font-weight: 500;
-    }
- 
-    .tm-meta-val.text-emerald {
-      color: #22c55e;
-      font-weight: 600;
-    }
- 
-    .tm-card-header-row {
+    .dd-header-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
     }
- 
-    .tm-code-block {
+
+    .active-dep-content {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .dep-info-line {
+      display: flex;
+      gap: 10px;
+    }
+
+    .dep-lbl {
+      color: #a1a1aa;
+      width: 100px;
+      flex-shrink: 0;
+    }
+
+    .dep-link {
+      color: #6366f1;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .dep-link:hover {
+      text-decoration: underline;
+    }
+
+    .dep-table-container {
+      overflow-x: auto;
+    }
+
+    .dep-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    .dep-table th, .dep-table td {
+      padding: 12px;
+      border-bottom: 1px solid #27272a;
+    }
+
+    .dep-table th {
+      color: #a1a1aa;
+      font-weight: 600;
+    }
+
+    .clickable-row {
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .clickable-row:hover {
+      background: #18181b;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 700;
+      background: rgba(113, 113, 122, 0.1);
+      color: #a1a1aa;
+    }
+
+    .status-pill.ready {
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+    }
+
+    .status-pill.building {
+      background: rgba(245, 158, 11, 0.1);
+      color: #f59e0b;
+    }
+
+    .logs-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logs-toggle {
+      display: flex;
       background: #18181b;
       border: 1px solid #27272a;
       border-radius: 6px;
-      padding: 16px;
+      padding: 2px;
+    }
+
+    .logs-toggle button {
+      padding: 6px 12px;
+      background: transparent;
+      border: none;
+      color: #a1a1aa;
+      font-size: 11px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .logs-toggle button.active-btn {
+      background: #27272a;
+      color: #f4f4f5;
+      font-weight: 600;
+    }
+
+    .logs-console {
+      background: #040405;
+      border: 1px solid #18181b;
+      border-radius: 6px;
+      padding: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .logs-body {
+      margin: 0;
       font-family: monospace;
       font-size: 12px;
-      color: #d4d4d8;
-      line-height: 1.6;
+      color: #a1a1aa;
+      white-space: pre-wrap;
     }
- 
-    .tm-timeline {
+
+    .env-section {
       display: flex;
       flex-direction: column;
       gap: 12px;
+      margin-top: 16px;
+      border-top: 1px solid #27272a;
+      padding-top: 16px;
     }
- 
-    .tm-timeline-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 16px;
-      background: #18181b;
-      border: 1px solid #27272a;
-      border-radius: 6px;
+
+    .env-title {
       font-size: 13px;
+      font-weight: 600;
+      margin: 0;
     }
- 
-    .tm-timeline-info {
+
+    .env-list {
       display: flex;
-      align-items: center;
-      gap: 12px;
+      flex-direction: column;
+      gap: 8px;
     }
- 
-    .tm-timeline-version {
-      font-weight: 700;
-      color: #f4f4f5;
+
+    .env-item {
+      display: flex;
+      justify-content: space-between;
+      background: #18181b;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #27272a;
+      font-size: 12px;
     }
- 
-    .tm-timeline-desc {
-      color: #a1a1aa;
+
+    .env-key { color: #818cf8; font-weight: 600; }
+    .env-val { color: #34d399; }
+
+    .env-add-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
     }
- 
-    .tm-timeline-date {
-      color: #71717a;
-      font-size: 11px;
+
+    .env-input {
+      flex: 1;
     }
 
     /* Sandbox layout */
@@ -633,12 +823,6 @@ import { FormsModule } from '@angular/forms';
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
-    }
-
-    .form-hint {
-      font-size: 11px;
-      color: #71717a;
-      margin: 4px 0 0 0;
     }
 
     .run-btn {
@@ -756,6 +940,8 @@ import { FormsModule } from '@angular/forms';
       font-family: monospace;
     }
 
+    .text-indigo { color: #818cf8; }
+
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
@@ -770,6 +956,15 @@ export class ToolManageComponent implements OnInit {
   readonly loading = signal<boolean>(true);
   readonly activeTab = signal<string>('overview');
   readonly syncStatus = signal<string>('SYNCED');
+
+  // Deployments list
+  readonly deployments = signal<Deployment[]>([]);
+  readonly latestDeployment = signal<Deployment | null>(null);
+  readonly logsView = signal<string>('build');
+
+  // Settings / Env vars
+  newEnvKey = '';
+  newEnvValue = '';
 
   // Sandbox inputs
   sandboxInputText = 'Sample target input document content for Acklet platform...';
@@ -787,9 +982,11 @@ export class ToolManageComponent implements OnInit {
         next: (t) => {
           if (t) {
             this.tool.set(t);
-            // Default sync status from tool state
             if (t.status === 'PENDING') {
               this.syncStatus.set('BUILDING');
+            }
+            if (t.repositoryId) {
+              this.loadDeployments(t.repositoryId);
             }
           }
           this.loading.set(false);
@@ -803,22 +1000,50 @@ export class ToolManageComponent implements OnInit {
     }
   }
 
+  loadDeployments(repoId: string): void {
+    this.toolsService.getDeployments(repoId).subscribe(res => {
+      if (res && res.data) {
+        this.deployments.set(res.data);
+        if (res.data.length > 0) {
+          this.latestDeployment.set(res.data[0]);
+        }
+      }
+    });
+  }
+
+  activeLogs(): string {
+    const dep = this.latestDeployment();
+    if (!dep) return 'No deployment logs captured.';
+    return this.logsView() === 'build' 
+      ? dep.buildLogs || 'No build logs captured.' 
+      : dep.runtimeLogs || 'No runtime logs captured.';
+  }
+
+  formatDuration(ms?: number): string {
+    if (!ms) return '0s';
+    return (ms / 1000).toFixed(1) + 's';
+  }
+
+  addEnvVar(): void {
+    if (!this.newEnvKey || !this.newEnvValue) return;
+    this.newEnvKey = '';
+    this.newEnvValue = '';
+  }
+
   getInitials(name?: string): string {
     if (!name) return 'AT';
     return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
   }
 
   triggerResync(): void {
+    const t = this.tool();
+    if (!t || !t.repositoryId) return;
+
     this.syncStatus.set('BUILDING');
-    this.consoleLogs.set(['[acklet-sync] Received webhook event trigger...', '[acklet-sync] Running AI impact analysis...']);
-    setTimeout(() => {
-      this.consoleLogs.update(logs => [
-        ...logs,
-        '[acklet-sync] Rebuild not required: metadata and README files successfully updated.',
-        '[acklet-sync] Traffic switch complete. Tool is fully updated!'
-      ]);
+    this.toolsService.redeployDeployment(t.id).subscribe(() => {
+      this.loadDeployments(t.repositoryId!);
       this.syncStatus.set('SYNCED');
-    }, 2500);
+    });
   }
 
   runSandboxTool(): void {

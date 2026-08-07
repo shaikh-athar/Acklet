@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IconComponent } from '../../../shared/components/icon/icon';
 import { WorkspaceStateService } from '../../../core/services/workspace-state.service';
+import { DialogService } from '../../../core/services/dialog.service';
 
 interface Tool {
   id: string;
@@ -27,7 +28,7 @@ interface Tool {
           <h1 class="tl-page-title">Tools</h1>
           <p class="tl-page-subtitle">Manage and monitor all developer tools linked to your workspace.</p>
         </div>
-        <a routerLink="/workspace/tools/import" class="tl-cta-btn" style="text-decoration: none;">
+        <a routerLink="/workspace/tools/import" [queryParams]="{ mode: 'deploy' }" class="tl-cta-btn" style="text-decoration: none;">
           <app-icon name="plus" class="tl-cta-icon" />
           <span>Add Tool</span>
         </a>
@@ -320,6 +321,7 @@ interface Tool {
 })
 export class WorkspaceToolsComponent {
   private readonly stateSvc = inject(WorkspaceStateService);
+  private readonly dialogSvc = inject(DialogService);
 
   get tools(): Tool[] {
     return this.stateSvc.tools();
@@ -341,8 +343,10 @@ export class WorkspaceToolsComponent {
   }
 
   removeTool(id: string): void {
-    if (confirm('Are you sure you want to remove this tool?')) {
-      this.stateSvc.removeTool(id);
-    }
+    this.dialogSvc.confirm('Are you sure you want to remove this tool?', 'Delete Tool').then(confirmed => {
+      if (confirmed) {
+        this.stateSvc.removeTool(id);
+      }
+    });
   }
 }

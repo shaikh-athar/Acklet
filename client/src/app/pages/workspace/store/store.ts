@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { IconComponent } from '../../../shared/components/icon/icon';
 import { WorkspaceStateService, StoreItem } from '../../../core/services/workspace-state.service';
+import { DialogService } from '../../../core/services/dialog.service';
 
 @Component({
   selector: 'app-workspace-store',
@@ -772,6 +773,7 @@ import { WorkspaceStateService, StoreItem } from '../../../core/services/workspa
 })
 export class WorkspaceStoreComponent {
   private readonly stateSvc = inject(WorkspaceStateService);
+  private readonly dialogSvc = inject(DialogService);
 
   readonly searchQuery = signal('');
   readonly activeTab = signal<'all' | 'tool_used' | 'file_downloaded' | 'file_edited' | 'working_on' | 'collections'>('all');
@@ -847,7 +849,7 @@ export class WorkspaceStoreComponent {
   }
 
   simulateDownload(item: StoreItem): void {
-    alert(`Simulating redownload of "${item.name}"...`);
+    this.dialogSvc.alert(`Simulating redownload of "${item.name}"...`, 'Store Simulation');
     this.stateSvc.addStoreItem({
       name: item.name,
       type: 'file_downloaded',
@@ -856,7 +858,7 @@ export class WorkspaceStoreComponent {
   }
 
   simulateEdit(item: StoreItem): void {
-    alert(`Opening inline simulator editor for "${item.name}"...`);
+    this.dialogSvc.alert(`Opening inline simulator editor for "${item.name}"...`, 'Store Simulation');
     this.stateSvc.addStoreItem({
       name: item.name,
       type: 'file_edited',

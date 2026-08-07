@@ -960,3 +960,12 @@ html.lenis, html.lenis body {
 }
 
 /* Grayscale theme on load removed to allow color display */
+
+.dialog-highlight-text {
+  color: #000000;
+  font-weight: 900;
+}
+
+html[data-theme="dark"] .dialog-highlight-text {
+  color: #ffffff;
+}

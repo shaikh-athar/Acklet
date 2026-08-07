@@ -80,6 +80,16 @@ public class RepositoryImportPipelineController {
         return ResponseEntity.ok(ApiResponse.success(status, "Import job status retrieved"));
     }
 
+    @PostMapping("/{id}/cancel")
+    @Operation(summary = "Cancel/abort an active repository import job")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<Void>> cancelImport(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID id) {
+        legacyImportService.cancelImport(id, user.getId());
+        return ResponseEntity.ok(ApiResponse.success(null, "Import job cancelled successfully"));
+    }
+
     @GetMapping("/{id}/repository")
     @Operation(summary = "Alias to retrieve repository core entity details")
     @SecurityRequirement(name = "bearerAuth")
