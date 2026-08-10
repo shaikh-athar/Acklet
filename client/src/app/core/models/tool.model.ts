@@ -50,6 +50,7 @@ export interface Tool {
   startCommand?: string;
   port?: number;
   repositoryId?: string;
+  previewImageUrl?: string;
 }
 
 export interface UsageStep {

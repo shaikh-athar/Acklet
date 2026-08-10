@@ -171,7 +171,7 @@ public class GitHubWebhookController {
                         .framework(tool.getRuntime())
                         .runtime(tool.getRuntime())
                         .port(tool.getPort())
-                        .liveUrl("http://localhost/tools/" + tool.getSlug())
+                        .liveUrl("http://localhost:8080/tools/" + tool.getSlug())
                         .buildCommand(tool.getBuildCommand())
                         .startCommand(tool.getStartCommand())
                         .createdBy("GitHub Webhook Sync")

@@ -57,7 +57,7 @@ export interface StoreItem {
   status?: string;
 }
 
-const API_BASE = 'http://localhost:8080/api/v1';
+import { API_BASE } from '../config/api.config';
 
 @Injectable({ providedIn: 'root' })
 export class WorkspaceStateService {

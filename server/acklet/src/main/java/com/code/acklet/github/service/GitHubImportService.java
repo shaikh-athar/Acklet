@@ -51,6 +51,10 @@ public class GitHubImportService {
     private final DeploymentRepository      deploymentRepository;
     private final TemporaryWorkspaceManager workspaceManager;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private GitHubImportService self;
+
     private static final Pattern NON_SLUG = Pattern.compile("[^a-z0-9-]");
 
     // ── Public API ─────────────────────────────────────────────────────────────
@@ -88,7 +92,7 @@ public class GitHubImportService {
                 .envVars(envVars)
                 .build();
 
-        runImportAsync(job.getId(), account.getAccessToken(), repoFullName, user);
+        self.runImportAsync(job.getId(), account.getAccessToken(), repoFullName, user);
 
         return GitHubImportResponse.builder()
                 .jobId(job.getId())

@@ -121,6 +121,9 @@ public class Tool extends Auditable {
     @Column(name = "port")
     private Integer port;
 
+    @Column(name = "preview_image_url", length = 1024)
+    private String previewImageUrl;
+
     public enum ExecutionMode {
         BROWSER, BACKEND, HYBRID
     }

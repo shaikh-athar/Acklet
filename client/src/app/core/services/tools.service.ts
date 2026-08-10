@@ -23,10 +23,12 @@ export interface PageResponse<T> {
   number: number;
 }
 
+import { API_BASE, TOOLS_BASE_URL } from '../config/api.config';
+
 @Injectable({ providedIn: 'root' })
 export class ToolsService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://localhost:8080/api/v1';
+  private readonly baseUrl = API_BASE;
 
   private readonly _tools = signal<Tool[]>(MOCK_TOOLS);
   private readonly _categories = signal<Category[]>(MOCK_CATEGORIES);
@@ -121,6 +123,18 @@ export class ToolsService {
     );
   }
 
+  /** Triggers a one-time server-side screenshot capture via microlink.io. Returns cached URL on subsequent calls. */
+  capturePreview(slug: string, liveUrl: string): Observable<string | null> {
+    return this.http.post<ApiResponse<string>>(
+      `${this.baseUrl}/tools/${slug}/preview`,
+      null,
+      { params: { url: liveUrl } }
+    ).pipe(
+      map(res => res.data ?? null),
+      catchError(() => of(null))
+    );
+  }
+
   getToolById(id: string): Tool | undefined {
     return this._tools().find(t => t.id === id);
   }
@@ -211,7 +225,7 @@ export class ToolsService {
       author: bTool.author || 'Acklet Community',
       tags: bTool.tags || ['developer', 'tool'],
       executionMode: bTool.executionMode || 'BROWSER',
-      subdomain: bTool.subdomain || `${bTool.slug}.acklet.app`,
+      subdomain: bTool.subdomain || `${TOOLS_BASE_URL.replace('http://', '').replace('https://', '')}/${bTool.slug}`,
       runtime: bTool.runtime || 'web',
       buildCommand: bTool.buildCommand,
       startCommand: bTool.startCommand,
@@ -309,5 +323,10 @@ export interface Deployment {
   memoryUsage?: string;
   createdAt: string;
   updatedAt: string;
+  failureStage?: string;
+  failureCode?: string;
+  failureReason?: string;
+  errorMessage?: string;
+  exitCode?: number;
 }
 

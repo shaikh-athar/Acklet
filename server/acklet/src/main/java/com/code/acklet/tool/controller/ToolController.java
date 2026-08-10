@@ -14,8 +14,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +27,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1")
+@Slf4j
 @RequiredArgsConstructor
 @Tag(name = "Tools Catalog", description = "Endpoints for browsing categories and developer tools")
 public class ToolController {
@@ -32,6 +35,8 @@ public class ToolController {
     private final ToolService        toolService;
     private final HybridSearchService hybridSearchService;
     private final ToolMapper         toolMapper;
+
+
 
     @GetMapping("/categories")
     @Operation(summary = "List all tool categories", description = "Retrieves all categories configured in the system")
@@ -99,6 +104,22 @@ public class ToolController {
     public ResponseEntity<ApiResponse<ToolResponse>> getToolBySlug(@PathVariable String slug) {
         Tool tool = toolService.getToolBySlug(slug);
         return ResponseEntity.ok(ApiResponse.success(toolMapper.toToolResponse(tool), "Tool retrieved successfully"));
+    }
+
+    /**
+     * Captures and caches a screenshot of the tool's live URL via microlink.io.
+     * First call fetches and stores; subsequent calls return the cached URL.
+     */
+    @PostMapping("/tools/{slug}/preview")
+    @Operation(summary = "Capture tool preview screenshot", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<String>> capturePreview(
+            @PathVariable String slug,
+            @RequestParam("url") String liveUrl) {
+        String imageUrl = toolService.refreshPreviewImage(slug, liveUrl);
+        if (imageUrl == null) {
+            return ResponseEntity.ok(ApiResponse.success(null, "Preview unavailable"));
+        }
+        return ResponseEntity.ok(ApiResponse.success(imageUrl, "Preview captured"));
     }
 
     @GetMapping("/tools/featured")
@@ -229,5 +250,22 @@ public class ToolController {
         Tool tool = toolService.getToolBySlug(slug);
         String health = runtimeEngine.checkHealth(tool.getId().toString(), "/health");
         return ResponseEntity.ok(ApiResponse.success(java.util.Map.of("status", health, "slug", slug), "Health check completed"));
+    }
+
+    @GetMapping("/tools/{slug}/preview-image")
+    @Operation(summary = "Serve captured preview screenshot of a tool")
+    public ResponseEntity<byte[]> servePreviewImage(@PathVariable String slug) {
+        try {
+            java.nio.file.Path imagePath = java.nio.file.Path.of("a:\\Acklet\\server\\acklet\\workspaces\\previews", slug + ".png");
+            if (java.nio.file.Files.exists(imagePath)) {
+                byte[] imageBytes = java.nio.file.Files.readAllBytes(imagePath);
+                return ResponseEntity.ok()
+                        .contentType(MediaType.IMAGE_PNG)
+                        .body(imageBytes);
+            }
+        } catch (Exception e) {
+            log.error("Failed to serve preview image for slug: {}", slug, e);
+        }
+        return ResponseEntity.notFound().build();
     }
 }

@@ -98,4 +98,19 @@ public class Deployment {
     @Column(name = "updated_at", nullable = false)
     @Builder.Default
     private Instant updatedAt = Instant.now();
+
+    @Column(name = "failure_stage")
+    private String failureStage;
+
+    @Column(name = "failure_code")
+    private String failureCode;
+
+    @Column(name = "failure_reason")
+    private String failureReason;
+
+    @Column(name = "error_message")
+    private String errorMessage;
+
+    @Column(name = "exit_code")
+    private Integer exitCode;
 }

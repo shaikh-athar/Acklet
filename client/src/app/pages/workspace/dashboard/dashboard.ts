@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../../../shared/components/icon/icon';
 import { WorkspaceStateService } from '../../../core/services/workspace-state.service';
+import { TOOLS_BASE_URL } from '../../../core/config/api.config';
 
 @Component({
   selector: 'app-workspace-dashboard',
@@ -507,6 +508,7 @@ import { WorkspaceStateService } from '../../../core/services/workspace-state.se
 })
 export class WorkspaceDashboardComponent {
   readonly stateSvc = inject(WorkspaceStateService);
+  readonly toolsBaseUrl = TOOLS_BASE_URL.replace('http://', '').replace('https://', '');
 
   readonly syncedCount = computed(() =>
     this.stateSvc.repos().filter(r => r.syncStatus === 'Synced').length
@@ -519,12 +521,15 @@ export class WorkspaceDashboardComponent {
   );
 
   readonly projects = computed(() =>
-    this.stateSvc.repos().map(repo => ({
-      id: repo.id,
-      name: repo.name.split('/')[1] || repo.name,
-      domain: `${repo.name.split('/')[1] || repo.name}.acklet.app`,
-      repo: repo.name,
-      lastSync: repo.lastSync,
-    }))
+    this.stateSvc.repos().map(repo => {
+      const slug = repo.name.split('/')[1] || repo.name;
+      return {
+        id: repo.id,
+        name: slug,
+        domain: `${this.toolsBaseUrl}/${slug.toLowerCase()}`,
+        repo: repo.name,
+        lastSync: repo.lastSync,
+      };
+    })
   );
 }

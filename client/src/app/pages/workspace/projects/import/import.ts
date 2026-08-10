@@ -11,6 +11,7 @@ import {
 import { DialogService } from '../../../../core/services/dialog.service';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { TOOLS_BASE_URL } from '../../../../core/config/api.config';
 
 @Component({
   selector: 'app-project-import',
@@ -699,7 +700,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
                     <div style="flex:1;min-width:0;">
                       <div class="ip-success-tool-name">{{ importingRepo() }}</div>
                       @if (deployedToolSlug()) {
-                        <div class="ip-success-url">acklet.app/tools/{{ deployedToolSlug() }}</div>
+                        <div class="ip-success-url">{{ toolsBaseUrl }}/{{ deployedToolSlug() }}</div>
                       }
                     </div>
                     <span class="ip-success-live-badge">● LIVE</span>
@@ -2200,6 +2201,7 @@ export class ProjectImportComponent implements OnInit, OnDestroy {
     return this.sanitizer.bypassSecurityTrustResourceUrl(this.getToolUrl());
   }
 
+  readonly toolsBaseUrl = TOOLS_BASE_URL.replace('http://', '').replace('https://', '');
   readonly step = signal(1);
   readonly mode = signal<'import' | 'deploy'>('import');
   readonly connecting = signal(false);

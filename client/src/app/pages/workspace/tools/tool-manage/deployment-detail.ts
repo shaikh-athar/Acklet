@@ -110,7 +110,7 @@ import { FormsModule } from '@angular/forms';
               <span class="dd-meta-label">Domains</span>
               <div class="dd-meta-value">
                 <a [href]="deployment()?.liveUrl" target="_blank" class="dd-domain-link">
-                  {{ toolId }}.acklet.app
+                  {{ deployment()?.liveUrl?.replace('http://', '')?.replace('https://', '') || (toolId + '.acklet.app') }}
                 </a>
               </div>
             </div>

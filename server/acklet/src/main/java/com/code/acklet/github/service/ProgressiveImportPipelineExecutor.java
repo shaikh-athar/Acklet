@@ -8,9 +8,11 @@ import com.code.acklet.tool.repository.ToolRepository;
 import com.code.acklet.tool.service.ToolRegistryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.code.acklet.tool.service.ToolService;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,7 +23,6 @@ import java.util.UUID;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ProgressiveImportPipelineExecutor {
 
     private final GitHubImportJobRepository jobRepository;
@@ -34,6 +35,32 @@ public class ProgressiveImportPipelineExecutor {
     private final AiRepositoryAnalysisEngine aiRepositoryAnalysisEngine;
     private final RepositoryKnowledgeGraphRepository knowledgeGraphRepository;
     private final ImportTimelineTracker timelineTracker;
+    private final ToolService toolService;
+
+    public ProgressiveImportPipelineExecutor(
+            GitHubImportJobRepository jobRepository,
+            RepositoryRepository repositoryRepository,
+            RepositoryMetadataRepository metadataRepository,
+            DeploymentRepository deploymentRepository,
+            ToolRepository toolRepository,
+            CategoryRepository categoryRepository,
+            ToolRegistryService toolRegistryService,
+            AiRepositoryAnalysisEngine aiRepositoryAnalysisEngine,
+            RepositoryKnowledgeGraphRepository knowledgeGraphRepository,
+            ImportTimelineTracker timelineTracker,
+            @Lazy ToolService toolService) {
+        this.jobRepository = jobRepository;
+        this.repositoryRepository = repositoryRepository;
+        this.metadataRepository = metadataRepository;
+        this.deploymentRepository = deploymentRepository;
+        this.toolRepository = toolRepository;
+        this.categoryRepository = categoryRepository;
+        this.toolRegistryService = toolRegistryService;
+        this.aiRepositoryAnalysisEngine = aiRepositoryAnalysisEngine;
+        this.knowledgeGraphRepository = knowledgeGraphRepository;
+        this.timelineTracker = timelineTracker;
+        this.toolService = toolService;
+    }
 
     @Async("aiExecutor")
     @Transactional
@@ -60,9 +87,15 @@ public class ProgressiveImportPipelineExecutor {
             return;
         }
 
+        StringBuilder buildLog = new StringBuilder(deployment.getBuildLogs() != null ? deployment.getBuildLogs() : "");
+        StringBuilder runtimeLog = new StringBuilder(deployment.getRuntimeLogs() != null ? deployment.getRuntimeLogs() : "");
+        String currentStage = "BUILDING";
+
         try {
             if (isCancelled(jobId)) {
                 log.info("Job {} cancelled before Stage 3. Aborting progressive pipeline.", jobId);
+                deployment.setStatus("CANCELLED");
+                deploymentRepository.save(deployment);
                 return;
             }
 
@@ -72,34 +105,56 @@ public class ProgressiveImportPipelineExecutor {
             job.setCurrentStep("Building and Deploying Application");
             jobRepository.save(job);
 
-            StringBuilder buildLog = new StringBuilder();
+            deployment.setStatus("BUILDING");
+            deploymentRepository.save(deployment);
+
             buildLog.append("[acklet-builder] Environment initialization...\n");
             if (envVars != null && !envVars.isEmpty()) {
-                buildLog.append("[acklet-builder] Custom Environment Variables Injected: ").append(envVars.keySet()).append("\n");
+                buildLog.append("[acklet-builder] Custom Environment Variables Injected\n");
             }
             
             String finalInstallCmd = (installCommand != null && !installCommand.isBlank()) 
                     ? installCommand : (packageManager.equalsIgnoreCase("npm") ? "npm install" : "echo 'Installing dependencies...'");
             
             buildLog.append("[acklet-builder] Executing install command: ").append(finalInstallCmd).append("\n");
-            runProcessCommand(deploymentId, finalInstallCmd, workspaceDir.toFile(), envVars, buildLog);
+            try {
+                runProcessCommand(deploymentId, finalInstallCmd, workspaceDir.toFile(), envVars, buildLog);
+            } catch (Exception e) {
+                deployment.setFailureStage("BUILDING");
+                deployment.setFailureCode("INSTALL_FAILED");
+                deployment.setFailureReason("Installation command failed: " + e.getMessage());
+                throw e;
+            }
 
             buildLog.append("[acklet-builder] Executing build command: ").append(buildCommand).append("\n");
-            runProcessCommand(deploymentId, buildCommand, workspaceDir.toFile(), envVars, buildLog);
+            try {
+                runProcessCommand(deploymentId, buildCommand, workspaceDir.toFile(), envVars, buildLog);
+            } catch (Exception e) {
+                deployment.setFailureStage("BUILDING");
+                deployment.setFailureCode("BUILD_FAILED");
+                deployment.setFailureReason("Build command failed: " + e.getMessage());
+                throw e;
+            }
             buildLog.append("[acklet-builder] Build completed successfully.\n");
+            deploymentRepository.updateBuildLogs(deploymentId, buildLog.toString());
 
-            // Deployment & Runtime startup simulation
+            // STARTING stage
+            currentStage = "STARTING";
+            deployment.setStatus("STARTING");
+            deploymentRepository.save(deployment);
+
             buildLog.append("[acklet-deployer] Launching execution sandbox container...\n");
             buildLog.append("[acklet-deployer] Subdomain registered: ").append(repo.getName().toLowerCase()).append(".acklet.app\n");
             buildLog.append("[acklet-deployer] Execution container created successfully.\n");
+            deploymentRepository.updateBuildLogs(deploymentId, buildLog.toString());
 
             // Port scanning & verification
             boolean isStatic = Files.exists(workspaceDir.resolve("dist")) || 
                                Files.exists(workspaceDir.resolve("build")) ||
-                               Files.exists(workspaceDir.resolve("public"));
+                               Files.exists(workspaceDir.resolve("public")) ||
+                               Files.exists(workspaceDir.resolve("index.html"));
 
             int finalPort = port;
-            StringBuilder runtimeLog = new StringBuilder();
             runtimeLog.append("[acklet-runtime] Spinning up runtime execution engine (").append(runtime).append(")\n");
             
             if (isStatic) {
@@ -122,13 +177,23 @@ public class ProgressiveImportPipelineExecutor {
                     pb.start();
                     runtimeLog.append("[acklet-runtime] Background process started successfully.\n");
                 } catch (Exception e) {
-                    runtimeLog.append("[acklet-runtime] Warning: Failed to spawn host process: ").append(e.getMessage()).append(". Simulating port fallback.\n");
+                    deployment.setFailureStage("STARTING");
+                    deployment.setFailureCode("START_FAILED");
+                    deployment.setFailureReason("Failed to start host runtime process: " + e.getMessage());
+                    throw e;
                 }
 
-                // Compile a list of candidate ports to scan
+                // HEALTH_CHECKING stage
+                currentStage = "HEALTH_CHECKING";
+                deployment.setStatus("HEALTH_CHECKING");
+                deploymentRepository.save(deployment);
+
+                // Compile a list of candidate ports to scan (excluding 8080 which is our host spring server)
                 List<Integer> candidates = new ArrayList<>();
-                candidates.add(port);
-                for (int p : List.of(3000, 5173, 8080, 8000, 4200)) {
+                if (port != 8080) {
+                    candidates.add(port);
+                }
+                for (int p : List.of(3000, 5173, 8000, 4200)) {
                     if (!candidates.contains(p)) candidates.add(p);
                 }
 
@@ -144,7 +209,7 @@ public class ProgressiveImportPipelineExecutor {
                         } catch (Exception ignored) {}
                     }
                     if (portFound) break;
-                    try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+                    try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
                 }
 
                 if (portFound) {
@@ -152,8 +217,10 @@ public class ProgressiveImportPipelineExecutor {
                     runtimeLog.append("[acklet-runtime] Health Check Successful: HTTP 200 OK\n");
                     runtimeLog.append("[acklet-runtime] Live application is ready.\n");
                 } else {
-                    runtimeLog.append("[acklet-runtime] Warning: No active process detected on candidate ports. Defaulting gateway to port: ").append(port).append("\n");
-                    runtimeLog.append("[acklet-runtime] Live application ready (unverified).\n");
+                    deployment.setFailureStage("HEALTH_CHECKING");
+                    deployment.setFailureCode("HEALTH_CHECK_FAILED");
+                    deployment.setFailureReason("Application failed to respond on candidate ports within timeout period.");
+                    throw new RuntimeException("Application health check failed: Timeout waiting for port response.");
                 }
             }
 
@@ -208,7 +275,7 @@ public class ProgressiveImportPipelineExecutor {
             deployment.setTool(tool);
             deployment.setBuildLogs(buildLog.toString());
             deployment.setRuntimeLogs(runtimeLog.toString());
-            deployment.setLiveUrl("http://localhost/tools/" + slug);
+            deployment.setLiveUrl("http://localhost:8080/tools/" + slug);
             deploymentRepository.save(deployment);
 
             // Register with registry service using verified port
@@ -221,13 +288,24 @@ public class ProgressiveImportPipelineExecutor {
             timelineTracker.endStage(jobId, "Stage 3: Build & Deploy");
 
             // Mark job as DONE immediately after successful deployment.
-            // This is like Coolify and Vercel: App is live and ready! AI Analysis happens in background.
             job.setStatus(GitHubImportJob.ImportStatus.DONE);
             job.setCurrentStep("Live Tool Deployed Successfully");
             job.setUpdatedAt(Instant.now());
             jobRepository.save(job);
 
             timelineTracker.logTimeline(jobId);
+
+            // Fetch and cache the preview screenshot asynchronously immediately after successful deployment
+            final String finalSlug = tool.getSlug();
+            final String finalLiveUrl = "http://localhost:8080/tools/" + finalSlug;
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
+                try {
+                    log.info("Triggering async tool preview screenshot capture for: {}", finalSlug);
+                    toolService.refreshPreviewImage(finalSlug, finalLiveUrl);
+                } catch (Exception ex) {
+                    log.warn("Async tool preview screenshot capture failed for {}: {}", finalSlug, ex.getMessage());
+                }
+            });
 
             // Trigger AI enrichment asynchronously so it does not block the build status
             final Repository finalRepo = repo;
@@ -250,6 +328,23 @@ public class ProgressiveImportPipelineExecutor {
                 root = root.getCause();
             }
             String errorMsg = root.getMessage() != null ? root.getMessage() : e.getClass().getSimpleName();
+            
+            // Mark deployment as FAILED and record structured failure information
+            deployment.setStatus("FAILED");
+            deployment.setErrorMessage(errorMsg);
+            if (deployment.getFailureStage() == null) {
+                deployment.setFailureStage(currentStage);
+            }
+            if (deployment.getFailureCode() == null) {
+                deployment.setFailureCode("EXECUTION_FAILED");
+            }
+            if (deployment.getFailureReason() == null) {
+                deployment.setFailureReason(errorMsg);
+            }
+            deployment.setBuildLogs(buildLog.toString());
+            deployment.setRuntimeLogs(runtimeLog.toString());
+            deploymentRepository.save(deployment);
+
             job.setStatus(GitHubImportJob.ImportStatus.FAILED);
             job.setErrorMessage(errorMsg);
             job.setUpdatedAt(Instant.now());
@@ -371,10 +466,12 @@ public class ProgressiveImportPipelineExecutor {
             if (exitCode != 0) {
                 logBuilder.append("[acklet-runner] Command completed with exit code ").append(exitCode).append("\n");
                 updateDeploymentLogs(deploymentId, logBuilder.toString());
+                throw new RuntimeException("Command '" + commandStr + "' failed with exit code " + exitCode);
             }
         } catch (Exception e) {
             logBuilder.append("[acklet-runner] Error executing command '").append(commandStr).append("': ").append(e.getMessage()).append("\n");
             updateDeploymentLogs(deploymentId, logBuilder.toString());
+            throw new RuntimeException(e.getMessage(), e);
         }
     }
 

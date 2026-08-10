@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { IconComponent } from '../../../../shared/components/icon/icon';
+import { TOOLS_BASE_URL } from '../../../../core/config/api.config';
 
 interface AnalysisStage {
   id: string;
@@ -193,7 +194,7 @@ const STEPS = [
               <div class="pw-card">
                 <div class="pw-card-label">URL Slug <span class="pw-required">*</span></div>
                 <div class="pw-input-prefix-wrap">
-                  <span class="pw-input-prefix">acklet.app/tools/</span>
+                  <span class="pw-input-prefix">{{ toolsBaseUrl }}</span>
                   <input class="pw-input pw-input-slug" [(ngModel)]="form.slug"
                     placeholder="my-awesome-tool"
                     (ngModelChange)="onSlugChange()" />
@@ -1145,6 +1146,7 @@ export class PublishWizardComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
 
+  readonly toolsBaseUrl = TOOLS_BASE_URL.replace('http://', '').replace('https://', '') + '/';
   readonly steps = STEPS;
   readonly currentStep = signal(1);
   readonly draft = signal<DraftState | null>(null);

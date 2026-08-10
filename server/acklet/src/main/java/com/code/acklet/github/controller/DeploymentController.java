@@ -22,6 +22,10 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.util.*;
 
+import com.code.acklet.github.repository.GitHubImportJobRepository;
+import com.code.acklet.github.service.TemporaryWorkspaceManager;
+import com.code.acklet.github.service.ProgressiveImportPipelineExecutor;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/deployments")
@@ -33,6 +37,9 @@ public class DeploymentController {
     private final RepositoryRepository repositoryRepository;
     private final ToolRepository toolRepository;
     private final ToolRegistryService toolRegistryService;
+    private final GitHubImportJobRepository jobRepository;
+    private final TemporaryWorkspaceManager workspaceManager;
+    private final ProgressiveImportPipelineExecutor progressiveExecutor;
 
     @GetMapping("/project/{repositoryId}")
     @Operation(summary = "List all deployments for a repository project")
@@ -131,6 +138,11 @@ public class DeploymentController {
                     .orElseThrow(() -> new ResourceNotFoundException("No active Tool associated with this repository"));
         }
 
+        String buildCommand = tool.getBuildCommand() != null ? tool.getBuildCommand() : target.getBuildCommand();
+        String startCommand = tool.getStartCommand() != null ? tool.getStartCommand() : target.getStartCommand();
+        String runtime = tool.getRuntime() != null ? tool.getRuntime() : target.getRuntime();
+        Integer port = tool.getPort() != null ? tool.getPort() : target.getPort();
+
         // Create a new active build deployment
         Deployment redeploy = Deployment.builder()
                 .repository(target.getRepository())
@@ -139,24 +151,45 @@ public class DeploymentController {
                 .commitSha(target.getCommitSha())
                 .commitMessage("Redeploy: " + target.getCommitMessage())
                 .author(target.getAuthor())
-                .status("SUCCESS")
+                .status("QUEUED")
                 .framework(target.getFramework())
-                .runtime(target.getRuntime())
+                .runtime(runtime)
                 .packageManager(target.getPackageManager())
-                .port(target.getPort())
+                .port(port)
                 .liveUrl(target.getLiveUrl())
-                .buildCommand(target.getBuildCommand())
-                .startCommand(target.getStartCommand())
-                .buildLogs("[acklet-builder] Triggering clean redeploy of commit " + target.getCommitSha() + "...\n[acklet-builder] Re-running build...\n[acklet-builder] Compilation finished successfully.\n[acklet-deployer] Sandbox deployment refreshed.")
-                .runtimeLogs("[acklet-runtime] Clean launch completed.\n[acklet-runtime] Running health check: SUCCESS")
+                .buildCommand(buildCommand)
+                .startCommand(startCommand)
+                .buildLogs("[acklet-builder] Redeploy triggered. Initializing clean build workspace...\n")
+                .runtimeLogs("[acklet-runtime] Launching runtime process...\n")
                 .createdBy(user.getEmail())
                 .createdAt(Instant.now())
                 .build();
 
         redeploy = deploymentRepository.save(redeploy);
 
-        // Register in active registry
-        toolRegistryService.registerTool(tool.getId().toString(), tool.getName(), tool.getSlug(), tool.getVersion(), tool.getPort());
+        // Find the active import job to track progress
+        com.code.acklet.github.entity.GitHubImportJob job = jobRepository.findAllByRepoFullName(target.getRepository().getFullName()).stream()
+                .findFirst()
+                .orElse(null);
+
+        UUID jobId = job != null ? job.getId() : UUID.randomUUID();
+
+        // Trigger physical build and deployment pipeline stage asynchronously
+        java.nio.file.Path workspaceDir = workspaceManager.getWorkspacePath(target.getRepository().getFullName());
+        
+        progressiveExecutor.executeBuildDeployAndAiEnrichment(
+                jobId,
+                target.getRepository().getId(),
+                redeploy.getId(),
+                runtime != null ? runtime : "nodejs",
+                buildCommand,
+                startCommand,
+                port != null ? port : 8080,
+                target.getPackageManager(),
+                workspaceDir,
+                null,
+                null
+        );
 
         return ResponseEntity.ok(ApiResponse.success(redeploy, "Redeploy triggered successfully"));
     }

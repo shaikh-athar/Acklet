@@ -50,6 +50,13 @@ public class ToolGatewayController {
         // 2. Resolve request path suffix
         String fullPath = (String) request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
         String prefix = "/tools/" + slug;
+        
+        if (fullPath.equals(prefix)) {
+            return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY)
+                    .header(HttpHeaders.LOCATION, prefix + "/")
+                    .build();
+        }
+
         String suffix = "";
         if (fullPath.startsWith(prefix)) {
             suffix = fullPath.substring(prefix.length());
@@ -71,6 +78,9 @@ public class ToolGatewayController {
                 if (!Files.exists(distDir)) {
                     distDir = workspaceDir.resolve("public");
                 }
+                if (!Files.exists(distDir) && Files.exists(workspaceDir.resolve("index.html"))) {
+                    distDir = workspaceDir;
+                }
 
                 if (Files.exists(distDir)) {
                     String relativeFilePath = suffix.startsWith("/") ? suffix.substring(1) : suffix;
@@ -85,6 +95,17 @@ public class ToolGatewayController {
                         try {
                             byte[] fileBytes = Files.readAllBytes(fileToServe);
                             String contentType = Files.probeContentType(fileToServe);
+                            if (fileToServe.getFileName().toString().equals("index.html")) {
+                                contentType = "text/html";
+                                String html = new String(fileBytes, java.nio.charset.StandardCharsets.UTF_8);
+                                html = html.replace("href=\"/assets/", "href=\"assets/");
+                                html = html.replace("src=\"/assets/", "src=\"assets/");
+                                html = html.replace("href='/assets/", "href='assets/");
+                                html = html.replace("src='/assets/", "src='assets/");
+                                html = html.replace("href=\"/favicon.svg\"", "href=\"favicon.svg\"");
+                                html = html.replace("href=\"/favicon.ico\"", "href=\"favicon.ico\"");
+                                fileBytes = html.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                            }
                             if (contentType == null) {
                                 if (fileToServe.toString().endsWith(".js")) {
                                     contentType = "application/javascript";
@@ -146,5 +167,72 @@ public class ToolGatewayController {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                     .body(("Tool gateway connection failed. Is the application running on port " + port + "? Error: " + e.getMessage()).getBytes());
         }
+    }
+
+    @RequestMapping(value = "/**")
+    public ResponseEntity<byte[]> handleStaticAssets(
+            HttpServletRequest request,
+            HttpMethod method,
+            @RequestBody(required = false) byte[] body) {
+
+        String referer = request.getHeader("Referer");
+        if (referer != null && referer.contains("/tools/")) {
+            // Extract slug from referer, e.g. ".../tools/athar-portfolio" -> "athar-portfolio"
+            String temp = referer.substring(referer.indexOf("/tools/") + 7);
+            int slashIdx = temp.indexOf('/');
+            String slug = slashIdx != -1 ? temp.substring(0, slashIdx) : temp;
+
+            if (slug.contains("?")) {
+                slug = slug.substring(0, slug.indexOf('?'));
+            }
+
+            String fullPath = (String) request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
+
+            Optional<Tool> toolOpt = toolRepository.findBySlug(slug);
+            if (toolOpt.isPresent() && toolOpt.get().getRepositoryId() != null) {
+                Optional<Repository> repoOpt = repositoryRepository.findById(toolOpt.get().getRepositoryId());
+                if (repoOpt.isPresent()) {
+                    Path workspaceDir = Path.of("a:\\Acklet\\server\\acklet\\workspaces", repoOpt.get().getFullName().replace('/', '_'));
+                    Path distDir = workspaceDir.resolve("dist");
+                    if (!Files.exists(distDir)) {
+                        distDir = workspaceDir.resolve("build");
+                    }
+                    if (!Files.exists(distDir)) {
+                        distDir = workspaceDir.resolve("public");
+                    }
+
+                    if (Files.exists(distDir)) {
+                        String relativeFilePath = fullPath.startsWith("/") ? fullPath.substring(1) : fullPath;
+                        Path fileToServe = distDir.resolve(relativeFilePath);
+                        if (Files.exists(fileToServe) && !Files.isDirectory(fileToServe)) {
+                            try {
+                                byte[] fileBytes = Files.readAllBytes(fileToServe);
+                                String contentType = Files.probeContentType(fileToServe);
+                                if (contentType == null) {
+                                    if (fileToServe.toString().endsWith(".js")) {
+                                        contentType = "application/javascript";
+                                    } else if (fileToServe.toString().endsWith(".css")) {
+                                        contentType = "text/css";
+                                    } else if (fileToServe.toString().endsWith(".html")) {
+                                        contentType = "text/html";
+                                    } else if (fileToServe.toString().endsWith(".svg")) {
+                                        contentType = "image/svg+xml";
+                                    } else {
+                                        contentType = "application/octet-stream";
+                                    }
+                                }
+                                return ResponseEntity.ok()
+                                        .header(HttpHeaders.CONTENT_TYPE, contentType)
+                                        .body(fileBytes);
+                            } catch (Exception e) {
+                                log.error("Failed to read asset file {} from workspace: {}", fileToServe, e.getMessage());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
 }

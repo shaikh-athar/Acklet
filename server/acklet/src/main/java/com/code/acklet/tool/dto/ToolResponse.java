@@ -48,4 +48,5 @@ public class ToolResponse {
     private String startCommand;
     private Integer port;
     private UUID repositoryId;
+    private String previewImageUrl;
 }
