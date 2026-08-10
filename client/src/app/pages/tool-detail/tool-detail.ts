@@ -573,8 +573,22 @@ export class ToolDetailComponent implements OnInit {
     });
   }
 
+  getToolUrl(tool: Tool | undefined): string {
+    if (!tool) return '';
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return `http://localhost:8080/tools/${tool.slug}`;
+    }
+    const sub = tool.subdomain || `${tool.slug}.tools.acklet.com`;
+    return sub.startsWith('http') ? sub : `https://${sub}`;
+  }
+
   toggleFavorite(): void { this.isFavorited.update(v => !v); }
-  useTool(): void { this.dialogSvc.alert('Tool sandbox interface launching locally.', 'Launch Tool'); }
+  useTool(): void {
+    const t = this.tool();
+    if (t) {
+      window.open(this.getToolUrl(t), '_blank');
+    }
+  }
   copyLink(): void { navigator.clipboard.writeText(window.location.href); }
 
   getCategorySlug(): string {

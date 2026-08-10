@@ -149,11 +149,13 @@ export class WorkspaceStateService {
     this.http.delete<any>(`${API_BASE}/projects/${id}`).subscribe({
       next: () => {
         this.repos.update(list => list.filter(r => r.id !== id));
+        this.refreshRepos();
       },
       error: (err) => {
         console.error('Failed to disconnect repository:', err);
         // Fallback local update to keep UI responsive
         this.repos.update(list => list.filter(r => r.id !== id));
+        this.refreshRepos();
       }
     });
   }
@@ -162,10 +164,12 @@ export class WorkspaceStateService {
     this.http.post<any>(`${API_BASE}/projects/${id}/unlink`, {}).subscribe({
       next: () => {
         this.repos.update(list => list.map(r => r.id === id ? { ...r, toolStatus: 'Not Generated' } : r));
+        this.refreshRepos();
       },
       error: (err) => {
         console.error('Failed to unlink repository:', err);
         this.repos.update(list => list.map(r => r.id === id ? { ...r, toolStatus: 'Not Generated' } : r));
+        this.refreshRepos();
       }
     });
   }
@@ -218,10 +222,12 @@ export class WorkspaceStateService {
       this.http.post<any>(`${API_BASE}/projects/${repositoryId}/unlink`, {}).subscribe({
         next: () => {
           this._deleteToolOnly(slug);
+          this.unlinkRepository(repositoryId);
         },
         error: (err) => {
           console.error('Failed to detach repository:', err);
           this._deleteToolOnly(slug);
+          this.unlinkRepository(repositoryId);
         }
       });
     } else {
@@ -245,6 +251,7 @@ export class WorkspaceStateService {
     this.http.delete<any>(`${API_BASE}/tools/${slug}`).subscribe({
       next: () => {
         this.refreshTools();
+        this.refreshRepos();
         if (repositoryIdToDelete) {
           this.removeRepository(repositoryIdToDelete);
         }
@@ -252,6 +259,7 @@ export class WorkspaceStateService {
       error: (err) => {
         console.error('Failed to delete tool:', err);
         this.refreshTools();
+        this.refreshRepos();
         if (repositoryIdToDelete) {
           this.removeRepository(repositoryIdToDelete);
         }

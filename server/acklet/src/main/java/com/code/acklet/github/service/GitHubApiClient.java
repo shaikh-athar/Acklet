@@ -197,6 +197,9 @@ public class GitHubApiClient {
                 "https://api.github.com/user", HttpMethod.GET,
                 new HttpEntity<>(headers), GitHubUserProfileDto.class);
             return res.getBody();
+        } catch (org.springframework.web.client.HttpClientErrorException.Unauthorized e) {
+            log.error("Failed to fetch GitHub user profile due to bad credentials: {}", e.getMessage());
+            throw new com.code.acklet.shared.exception.UnauthorizedException("GitHub integration token is invalid or expired. Please reconnect your account.");
         } catch (Exception e) {
             log.error("Failed to fetch GitHub user profile: {}", e.getMessage());
             return null;
@@ -225,6 +228,9 @@ public class GitHubApiClient {
                     .toList();
             }
             return repos;
+        } catch (org.springframework.web.client.HttpClientErrorException.Unauthorized e) {
+            log.error("Failed to fetch user repos from GitHub due to bad credentials: {}", e.getMessage());
+            throw new com.code.acklet.shared.exception.UnauthorizedException("GitHub integration token is invalid or expired. Please reconnect your account.");
         } catch (Exception e) {
             log.error("Failed to fetch user repos from GitHub: {}", e.getMessage());
             return List.of();
@@ -246,6 +252,9 @@ public class GitHubApiClient {
                 }
                 return list;
             }
+        } catch (org.springframework.web.client.HttpClientErrorException.Unauthorized e) {
+            log.error("Failed to fetch branches for {} due to bad credentials: {}", cleanOwnerRepo, e.getMessage());
+            throw new com.code.acklet.shared.exception.UnauthorizedException("GitHub integration token is invalid or expired. Please reconnect your account.");
         } catch (Exception e) {
             log.error("Failed to fetch branches for {}: {}", cleanOwnerRepo, e.getMessage());
         }

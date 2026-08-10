@@ -244,6 +244,44 @@ export class ToolsService {
     console.log("URL : " + `${this.baseUrl}/tools/${slug}`);
     return this.http.delete<ApiResponse<void>>(`${this.baseUrl}/tools/${slug}`);
   }
+
+  // ── Phase 7 Runtime Engine API Bindings ─────────────────────────────────────
+
+  getRuntimeStatus(slug: string): Observable<ApiResponse<RuntimeInstance>> {
+    return this.http.get<ApiResponse<RuntimeInstance>>(`${this.baseUrl}/tools/${slug}/runtime`);
+  }
+
+  stopRuntime(slug: string): Observable<ApiResponse<void>> {
+    return this.http.post<ApiResponse<void>>(`${this.baseUrl}/tools/${slug}/runtime/stop`, {});
+  }
+
+  restartRuntime(slug: string): Observable<ApiResponse<RuntimeInstance>> {
+    return this.http.post<ApiResponse<RuntimeInstance>>(`${this.baseUrl}/tools/${slug}/runtime/restart`, {});
+  }
+
+  sleepRuntime(slug: string): Observable<ApiResponse<void>> {
+    return this.http.post<ApiResponse<void>>(`${this.baseUrl}/tools/${slug}/runtime/sleep`, {});
+  }
+
+  wakeRuntime(slug: string): Observable<ApiResponse<void>> {
+    return this.http.post<ApiResponse<void>>(`${this.baseUrl}/tools/${slug}/runtime/wake`, {});
+  }
+
+  checkHealth(slug: string): Observable<ApiResponse<{ status: string; slug: string }>> {
+    return this.http.get<ApiResponse<{ status: string; slug: string }>>(`${this.baseUrl}/tools/${slug}/runtime/health`);
+  }
+}
+
+export interface RuntimeInstance {
+  toolId: string;
+  slug: string;
+  runtimeType: string;
+  allocatedPort: number;
+  status: 'RUNNING' | 'STOPPED' | 'SLEEPING';
+  healthStatus: 'HEALTHY' | 'UNHEALTHY' | 'UNKNOWN';
+  processPid: number;
+  lastActiveTimestamp: number;
+  startCommand?: string;
 }
 
 export interface Deployment {

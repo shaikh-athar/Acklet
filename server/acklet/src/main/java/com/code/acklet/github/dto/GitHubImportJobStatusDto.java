@@ -18,4 +18,8 @@ public class GitHubImportJobStatusDto {
     private UUID repositoryId;   // non-null once imported/created
     private Instant createdAt;
     private Instant updatedAt;
+    /** Accumulated build + runtime logs from the active deployment — streamed to the UI terminal. */
+    private String buildLogs;
+    /** Tool slug for deep-linking to the tool dashboard after deployment completes. */
+    private String toolSlug;
 }

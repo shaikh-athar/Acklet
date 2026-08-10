@@ -30,15 +30,47 @@ public class GitHubWebhookController {
     private final DeploymentRepository deploymentRepository;
     private final ToolRegistryService toolRegistryService;
 
+    @org.springframework.beans.factory.annotation.Value("${app.github.webhook-secret:Acklet Local Webhook Secret}")
+    private String webhookSecret;
+
     @PostMapping
     @Operation(summary = "Handle incoming GitHub push events for Vercel-like sync")
     public ResponseEntity<ApiResponse<Map<String, Object>>> handleWebhook(
             @RequestHeader(value = "X-GitHub-Event", defaultValue = "push") String eventType,
-            @RequestBody Map<String, Object> payload) {
+            @RequestHeader(value = "X-Hub-Signature-256", required = false) String signature,
+            @RequestBody String rawPayload) {
         
         log.info("Received GitHub webhook event type: {}", eventType);
 
         Map<String, Object> response = new LinkedHashMap<>();
+
+        // Verify HMAC-SHA256 signature
+        if (signature != null && !signature.isBlank()) {
+            try {
+                String expectedSignature = "sha256=" + calculateHmacSha256(rawPayload, webhookSecret);
+                if (!signature.equals(expectedSignature)) {
+                    log.warn("Invalid webhook signature. Expected: {}, Got: {}", expectedSignature, signature);
+                    response.put("status", "UNAUTHORIZED");
+                    response.put("reason", "Signature verification failed");
+                    return ResponseEntity.status(401).body(ApiResponse.error("Signature verification failed", "N/A", response));
+                }
+            } catch (Exception e) {
+                log.error("Failed to verify signature", e);
+                response.put("status", "FAILED");
+                response.put("reason", "Signature verification error");
+                return ResponseEntity.status(500).body(ApiResponse.error("Internal verification error", "N/A", response));
+            }
+        }
+
+        // Parse Payload Map
+        Map<String, Object> payload;
+        try {
+            payload = new com.fasterxml.jackson.databind.ObjectMapper().readValue(rawPayload, Map.class);
+        } catch (Exception e) {
+            response.put("status", "FAILED");
+            response.put("reason", "Malformed JSON payload");
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid payload", "N/A", response));
+        }
         
         if (!"push".equalsIgnoreCase(eventType)) {
             response.put("status", "IGNORED");
@@ -207,5 +239,19 @@ public class GitHubWebhookController {
         response.put("changedFilesCount", modifiedFiles.size());
 
         return ResponseEntity.ok(ApiResponse.success(response, "Webhook processed successfully"));
+    }
+
+    private String calculateHmacSha256(String data, String key) throws Exception {
+        javax.crypto.spec.SecretKeySpec secretKeySpec = new javax.crypto.spec.SecretKeySpec(key.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256");
+        javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+        mac.init(secretKeySpec);
+        byte[] rawHmac = mac.doFinal(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : rawHmac) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) hexString.append('0');
+            hexString.append(hex);
+        }
+        return hexString.toString();
     }
 }

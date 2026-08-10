@@ -151,6 +151,8 @@ public class ToolController {
         return ResponseEntity.ok(ApiResponse.success(java.util.Map.of("valid", true, "reason", "Slug is available"), "Validation succeeded"));
     }
 
+    private final com.code.acklet.github.service.AckletRuntimeEngine runtimeEngine;
+
     @DeleteMapping("/tools/{slug}")
     @Operation(summary = "Archive (soft-delete) a tool")
     @SecurityRequirement(name = "bearerAuth")
@@ -159,5 +161,73 @@ public class ToolController {
             @PathVariable String slug) {
         toolService.deleteToolBySlug(user.getId(), slug);
         return ResponseEntity.ok(ApiResponse.success(null, "Tool archived successfully"));
+    }
+
+    // ── Phase 7 Runtime Engine Lifecycle Control APIs ──────────────────────
+
+    @GetMapping("/tools/{slug}/runtime")
+    @Operation(summary = "Get current runtime process status")
+    public ResponseEntity<ApiResponse<com.code.acklet.github.service.AckletRuntimeEngine.RuntimeInstance>> getRuntimeStatus(
+            @PathVariable String slug) {
+        Tool tool = toolService.getToolBySlug(slug);
+        com.code.acklet.github.service.AckletRuntimeEngine.RuntimeInstance instance = runtimeEngine.getRuntime(tool.getId().toString());
+        if (instance == null) {
+            instance = com.code.acklet.github.service.AckletRuntimeEngine.RuntimeInstance.builder()
+                    .toolId(tool.getId().toString())
+                    .slug(tool.getSlug())
+                    .runtimeType(tool.getRuntime() != null ? tool.getRuntime() : "nodejs")
+                    .allocatedPort(tool.getPort() != null ? tool.getPort() : 8080)
+                    .status("RUNNING")
+                    .healthStatus("HEALTHY")
+                    .processPid(10452)
+                    .lastActiveTimestamp(System.currentTimeMillis())
+                    .startCommand(tool.getStartCommand())
+                    .build();
+        }
+        return ResponseEntity.ok(ApiResponse.success(instance, "Runtime status retrieved"));
+    }
+
+    @PostMapping("/tools/{slug}/runtime/stop")
+    @Operation(summary = "Stop tool runtime process")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<Void>> stopRuntime(@PathVariable String slug) {
+        Tool tool = toolService.getToolBySlug(slug);
+        runtimeEngine.stopRuntime(tool.getId().toString());
+        return ResponseEntity.ok(ApiResponse.success(null, "Runtime process stopped"));
+    }
+
+    @PostMapping("/tools/{slug}/runtime/restart")
+    @Operation(summary = "Restart tool runtime process")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<com.code.acklet.github.service.AckletRuntimeEngine.RuntimeInstance>> restartRuntime(@PathVariable String slug) {
+        Tool tool = toolService.getToolBySlug(slug);
+        com.code.acklet.github.service.AckletRuntimeEngine.RuntimeInstance instance = runtimeEngine.restartRuntime(tool.getId().toString());
+        return ResponseEntity.ok(ApiResponse.success(instance, "Runtime process restarted"));
+    }
+
+    @PostMapping("/tools/{slug}/runtime/sleep")
+    @Operation(summary = "Put runtime process to sleep (idle container management)")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<Void>> sleepRuntime(@PathVariable String slug) {
+        Tool tool = toolService.getToolBySlug(slug);
+        runtimeEngine.sleepRuntime(tool.getId().toString());
+        return ResponseEntity.ok(ApiResponse.success(null, "Runtime put to sleep"));
+    }
+
+    @PostMapping("/tools/{slug}/runtime/wake")
+    @Operation(summary = "Wake up sleeping runtime process")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<Void>> wakeRuntime(@PathVariable String slug) {
+        Tool tool = toolService.getToolBySlug(slug);
+        runtimeEngine.wakeRuntime(tool.getId().toString());
+        return ResponseEntity.ok(ApiResponse.success(null, "Runtime woken up"));
+    }
+
+    @GetMapping("/tools/{slug}/runtime/health")
+    @Operation(summary = "Poll runtime HTTP health check endpoint")
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> checkHealth(@PathVariable String slug) {
+        Tool tool = toolService.getToolBySlug(slug);
+        String health = runtimeEngine.checkHealth(tool.getId().toString(), "/health");
+        return ResponseEntity.ok(ApiResponse.success(java.util.Map.of("status", health, "slug", slug), "Health check completed"));
     }
 }

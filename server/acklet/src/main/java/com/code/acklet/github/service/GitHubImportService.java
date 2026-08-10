@@ -8,6 +8,7 @@ import com.code.acklet.github.dto.RepoImportEvent;
 import com.code.acklet.github.entity.GitHubAccount;
 import com.code.acklet.github.entity.GitHubImportJob;
 import com.code.acklet.github.entity.GitHubImportJob.ImportStatus;
+import com.code.acklet.github.repository.DeploymentRepository;
 import com.code.acklet.github.repository.GitHubAccountRepository;
 import com.code.acklet.github.repository.GitHubImportJobRepository;
 import com.code.acklet.shared.exception.ForbiddenException;
@@ -47,6 +48,8 @@ public class GitHubImportService {
     private final AiOrchestrationService    aiOrchestrationService;
     private final com.code.acklet.github.repository.RepositoryRepository repositoryRepository;
     private final RepositoryImportPipelineService pipelineService;
+    private final DeploymentRepository      deploymentRepository;
+    private final TemporaryWorkspaceManager workspaceManager;
 
     private static final Pattern NON_SLUG = Pattern.compile("[^a-z0-9-]");
 
@@ -118,8 +121,8 @@ public class GitHubImportService {
         repositoryRepository.findByUserIdAndFullName(userId, job.getRepoFullName()).ifPresent(repo -> {
             log.info("Cancelling import: Clean up repository data and workspace files for {}", repo.getFullName());
             
-            // Delete workspace files on disk
-            java.nio.file.Path workspaceDir = java.nio.file.Path.of("a:\\Acklet\\server\\acklet\\workspaces", repo.getId().toString());
+            // Delete workspace files on disk (use deterministic owner_repo path)
+            java.nio.file.Path workspaceDir = workspaceManager.getWorkspacePath(repo.getFullName());
             try {
                 org.springframework.util.FileSystemUtils.deleteRecursively(workspaceDir);
             } catch (Exception e) {
@@ -295,9 +298,30 @@ public class GitHubImportService {
     }
 
     private GitHubImportJobStatusDto toStatusDto(GitHubImportJob job) {
-        UUID repositoryId = repositoryRepository.findByUserIdAndFullName(job.getUser().getId(), job.getRepoFullName())
-                .map(com.code.acklet.github.entity.Repository::getId)
+        com.code.acklet.github.entity.Repository repo = repositoryRepository
+                .findByUserIdAndFullName(job.getUser().getId(), job.getRepoFullName())
                 .orElse(null);
+        UUID repositoryId = repo != null ? repo.getId() : null;
+
+        // Gather accumulated build + runtime logs from the latest deployment
+        String buildLogs = null;
+        String toolSlug = null;
+        if (repositoryId != null) {
+            var deployments = deploymentRepository.findAllByRepositoryIdOrderByCreatedAtDesc(repositoryId);
+            if (!deployments.isEmpty()) {
+                var latest = deployments.get(0);
+                StringBuilder logs = new StringBuilder();
+                if (latest.getBuildLogs() != null) logs.append(latest.getBuildLogs());
+                if (latest.getRuntimeLogs() != null) logs.append(latest.getRuntimeLogs());
+                buildLogs = logs.length() > 0 ? logs.toString() : null;
+            }
+        }
+        // Fetch the slug from the linked tool if DONE
+        if (job.getToolId() != null) {
+            toolSlug = toolRepository.findById(job.getToolId())
+                    .map(com.code.acklet.tool.entity.Tool::getSlug)
+                    .orElse(null);
+        }
 
         return GitHubImportJobStatusDto.builder()
                 .jobId(job.getId())
@@ -308,6 +332,8 @@ public class GitHubImportService {
                 .repositoryId(repositoryId)
                 .createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt())
+                .buildLogs(buildLogs)
+                .toolSlug(toolSlug)
                 .build();
     }
 

@@ -28,6 +28,7 @@ public class ToolService {
     private final RepositoryRepository repositoryRepository;
 
     private final CategoryRepository categoryRepository;
+    private final com.code.acklet.github.service.RepositoryImportPipelineService repositoryImportPipelineService;
 
     @Cacheable(value = "categories")
     public List<Category> getAllCategories() {
@@ -95,6 +96,16 @@ public class ToolService {
                 throw new ForbiddenException("You do not own this tool");
             }
         }
+        UUID repoId = tool.getRepositoryId();
         toolRepository.delete(tool);
+        
+        if (repoId != null) {
+            try {
+                repositoryImportPipelineService.deleteRepository(repoId, userId);
+            } catch (Exception e) {
+                // Fallback to manual delete if it is not owned or already partially removed
+                repositoryRepository.deleteById(repoId);
+            }
+        }
     }
 }

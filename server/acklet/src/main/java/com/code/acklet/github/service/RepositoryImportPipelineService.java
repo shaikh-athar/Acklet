@@ -56,6 +56,20 @@ public class RepositoryImportPipelineService {
         GitHubAccount account = accountRepository.findByUserIdAndId(user.getId(), accountId)
                 .orElseThrow(() -> new ForbiddenException("GitHub account not found or not yours"));
 
+        // Cancel any stale (non-DONE) import jobs for this repo — avoids orphaned jobs
+        // accumulating when the same repo is imported multiple times (common during testing).
+        java.util.List<GitHubImportJob> existingJobs = jobRepository.findAllByRepoFullName(repoFullName);
+        for (GitHubImportJob old : existingJobs) {
+            if (old.getStatus() != GitHubImportJob.ImportStatus.DONE) {
+                log.info("Cancelling stale import job {} for re-import of {}", old.getId(), repoFullName);
+                old.setStatus(GitHubImportJob.ImportStatus.FAILED);
+                old.setCurrentStep("Superseded by new import");
+                old.setErrorMessage("A new import was triggered for this repository");
+                old.setUpdatedAt(Instant.now());
+                jobRepository.save(old);
+            }
+        }
+
         // Create the Import Job in QUEUED status
         GitHubImportJob job = GitHubImportJob.builder()
                 .user(user)
@@ -93,8 +107,6 @@ public class RepositoryImportPipelineService {
             log.info("Successfully queued Repository Import for {} (Job: {})", repoFullName, job.getId());
         } catch (Exception e) {
             log.warn("Failed to publish Repository Import event to RabbitMQ, falling back: {}", e.getMessage());
-            // In a production setup, we might persist failed events or throw an error.
-            // For resilience, we proceed as the consumer can poll/retry.
         }
 
         return GitHubImportResponse.builder()
@@ -103,6 +115,7 @@ public class RepositoryImportPipelineService {
                 .status(GitHubImportJob.ImportStatus.PENDING.name())
                 .build();
     }
+
 
     // ── Get Data APIs ──────────────────────────────────────────────────────────
 
@@ -183,6 +196,7 @@ public class RepositoryImportPipelineService {
     private final RepositoryKnowledgeGraphRepository knowledgeGraphRepository;
     private final ToolDraftRepository draftRepository;
     private final ToolRepository toolRepository;
+    private final TemporaryWorkspaceManager workspaceManager;
 
     public RepositoryKnowledgeGraph getRepositoryKnowledgeGraph(UUID repositoryId) {
         return knowledgeGraphRepository.findByRepositoryId(repositoryId)
@@ -235,6 +249,14 @@ public class RepositoryImportPipelineService {
         java.util.List<GitHubImportJob> jobs = jobRepository.findAllByRepoFullName(repo.getFullName());
         jobRepository.deleteAll(jobs);
 
+        // Delete the physical repository workspace files
+        try {
+            java.nio.file.Path workspaceDir = workspaceManager.getWorkspacePath(repo.getFullName());
+            workspaceManager.cleanWorkspace(workspaceDir);
+        } catch (Exception e) {
+            log.error("Failed to delete workspace directory for repository: {}", repo.getFullName(), e);
+        }
+
         // Finally delete the repository
         repositoryRepository.delete(repo);
         log.info("Successfully deleted/disconnected repository: {} for user: {}", repo.getFullName(), userId);
@@ -252,8 +274,8 @@ public class RepositoryImportPipelineService {
         log.info("Restarting import pipeline for repository {} (Job: {}) at stage: {}", repo.getFullName(), job.getId(), stage);
 
         if ("AI".equalsIgnoreCase(stage)) {
-            // Trigger Stage 4 AI Enrichment asynchronously using cached workspace
-            java.nio.file.Path workspaceDir = java.nio.file.Path.of("a:\\Acklet\\server\\acklet\\workspaces", repo.getId().toString());
+            // Trigger Stage 4 AI Enrichment using the deterministic workspace path
+            java.nio.file.Path workspaceDir = workspaceManager.getWorkspacePath(repo.getFullName());
             Deployment deployment = deploymentRepository.findAllByRepositoryIdOrderByCreatedAtDesc(repo.getId()).stream()
                     .findFirst()
                     .orElseThrow(() -> new ResourceNotFoundException("No deployments found for repository: " + repo.getId()));

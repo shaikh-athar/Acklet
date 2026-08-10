@@ -1,4 +1,4 @@
-import { Component, signal, inject, OnInit } from '@angular/core';
+import { Component, signal, inject, OnInit, OnDestroy, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { IconComponent } from '../../../../shared/components/icon/icon';
@@ -51,7 +51,7 @@ import { FormsModule } from '@angular/forms';
             </div>
           </div>
      
-          <div class="tm-header-actions">
+          <div class="tm-header-actions" style="display: flex; gap: 8px; align-items: center;">
             <button class="tm-btn tm-btn-secondary" (click)="triggerResync()" [disabled]="syncStatus() === 'BUILDING'">
               @if (syncStatus() === 'BUILDING') {
                 <span class="tm-spinner sm"></span>
@@ -60,8 +60,30 @@ import { FormsModule } from '@angular/forms';
                 <span>Trigger Re-sync</span>
               }
             </button>
+
+            <!-- Runtime Engine Lifecycle Buttons -->
+            @if (runtimeInstance()?.status === 'RUNNING') {
+              <button class="tm-btn tm-btn-secondary" (click)="stopCurrentRuntime()" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3);" title="Stop Runtime Process">
+                <app-icon name="square" style="width: 12px; height: 12px;" />
+                <span>Stop</span>
+              </button>
+              <button class="tm-btn tm-btn-secondary" (click)="sleepCurrentRuntime()" style="color: #f59e0b; border-color: rgba(245, 158, 11, 0.3);" title="Put Runtime to Sleep">
+                <app-icon name="moon" style="width: 12px; height: 12px;" />
+                <span>Sleep</span>
+              </button>
+            } @else if (runtimeInstance()?.status === 'SLEEPING') {
+              <button class="tm-btn tm-btn-secondary" (click)="wakeCurrentRuntime()" style="color: #10b981; border-color: rgba(16, 185, 129, 0.3);" title="Wake Runtime">
+                <app-icon name="sun" style="width: 12px; height: 12px;" />
+                <span>Wake</span>
+              </button>
+            }
+            <button class="tm-btn tm-btn-secondary" (click)="restartCurrentRuntime()" title="Restart Runtime">
+              <app-icon name="refresh-cw" style="width: 12px; height: 12px;" />
+              <span>Restart</span>
+            </button>
+
             @if (tool()?.subdomain) {
-              <a [href]="'http://localhost/tools/' + tool()?.slug" target="_blank" class="tm-btn tm-btn-primary">
+              <a [href]="getToolUrl(tool())" target="_blank" class="tm-btn tm-btn-primary">
                 Visit Live Tool ↗
               </a>
             }
@@ -171,71 +193,116 @@ import { FormsModule } from '@angular/forms';
 
           <!-- DEPLOYMENTS TAB -->
           <div *ngSwitchCase="'deployments'" class="tm-tab-pane">
-            <div class="tm-details-card">
-              
-              <!-- Filter Row (Vercel Style) -->
-              <div class="vercel-filters-row" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
-                <input type="text" placeholder="Search deployments..." class="form-input" style="max-width: 240px; font-size: 13px; padding: 6px 12px;" />
-                <select class="form-select" style="max-width: 140px; font-size: 13px; padding: 6px 12px;">
-                  <option>All Branches</option>
-                </select>
-                <select class="form-select" style="max-width: 140px; font-size: 13px; padding: 6px 12px;">
-                  <option>All Authors</option>
-                </select>
-                <select class="form-select" style="max-width: 140px; font-size: 13px; padding: 6px 12px;">
-                  <option>All Environments</option>
-                </select>
-                
-                <button (click)="triggerResync()" class="tm-btn tm-btn-primary" style="margin-left: auto; padding: 6px 14px; font-size: 13px;">
-                  Redeploy
-                </button>
-              </div>
 
-              <div class="dep-table-container">
-                <table class="dep-table">
-                  <thead>
-                    <tr>
-                      <th>Deployment Outcome</th>
-                      <th>Status</th>
-                      <th>Environment</th>
-                      <th>Commit</th>
-                      <th>Branch</th>
-                      <th>Age</th>
-                      <th>Created By</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (dep of deployments(); track dep.id) {
-                      <tr [routerLink]="['/workspace/tools/manage', tool()?.slug, 'deployments', dep.id]" class="clickable-row">
-                        <td style="font-weight: 600; color: var(--vercel-text-primary);">
-                          {{ dep.commitMessage }}
-                        </td>
-                        <td>
-                          <span class="status-pill" [class.ready]="dep.status === 'SUCCESS'" [class.building]="dep.status === 'BUILDING'" [style.background]="dep.status === 'FAILED' ? 'rgba(239, 68, 68, 0.1)' : null" [style.color]="dep.status === 'FAILED' ? '#ef4444' : null">
-                            {{ dep.status }}
-                          </span>
-                        </td>
-                        <td>
-                          <span class="rp-badge" style="font-size: 10px; font-weight: 600; background: rgba(99,102,241,0.08); color: #818cf8; border: 1px solid rgba(99,102,241,0.15); padding: 2px 6px;">Production</span>
-                        </td>
-                        <td class="font-mono text-indigo">{{ dep.commitSha?.substring(0,7) }}</td>
-                        <td>{{ dep.branch }}</td>
-                        <td>{{ formatDuration(dep.durationMs) }}</td>
-                        <td>
-                          <div style="display: flex; align-items: center; gap: 6px;">
-                            <div class="ws-avatar-mini" style="width: 18px; height: 18px; font-size: 9px;">{{ dep.createdBy?.charAt(0)?.toUpperCase() || 'A' }}</div>
-                            <span>{{ dep.createdBy }}</span>
-                          </div>
-                        </td>
-                      </tr>
-                    } @empty {
-                      <tr>
-                        <td colspan="7" class="text-center">No deployments found.</td>
-                      </tr>
+            <!-- Filter Pills (Coolify-style) -->
+            <div class="dep-filters-row">
+              @for (f of depFilters; track f.key) {
+                <button
+                  class="dep-filter-pill"
+                  [class.active]="deploymentFilter() === f.key"
+                  [class.pill-ready]="f.key === 'SUCCESS'"
+                  [class.pill-building]="f.key === 'BUILDING'"
+                  [class.pill-error]="f.key === 'FAILED'"
+                  (click)="deploymentFilter.set(f.key)">
+                  <span class="pill-dot" [class.dot-ready]="f.key === 'SUCCESS'" [class.dot-building]="f.key === 'BUILDING'" [class.dot-error]="f.key === 'FAILED'"></span>
+                  {{ f.label }}
+                  @if (depCounts()[f.key]) {
+                    <span class="pill-count">{{ depCounts()[f.key] }}</span>
+                  }
+                </button>
+              }
+              <button class="tm-btn tm-btn-primary" style="margin-left: auto; padding: 5px 14px; font-size: 12px;" (click)="triggerResync()" [disabled]="syncStatus() === 'BUILDING'">
+                @if (syncStatus() === 'BUILDING') {
+                  <span class="tm-spinner sm"></span>
+                } @else {
+                  <app-icon name="refresh-cw" style="width: 12px; height: 12px;"/>
+                }
+                Redeploy
+              </button>
+            </div>
+
+            <!-- Deployment list (Coolify-style cards) -->
+            <div class="dep-list">
+              @if (filteredDeployments().length === 0) {
+                <div class="dep-empty">
+                  <app-icon name="layers" class="dep-empty-icon"/>
+                  <p>No deployments match this filter.</p>
+                </div>
+              }
+              @for (dep of filteredDeployments(); track dep.id; let i = $index) {
+                <div class="dep-card" [class.active-dep]="i === 0 && (dep.status === 'SUCCESS')">
+
+                  <!-- Status icon column -->
+                  <div class="dep-status-col">
+                    <div class="dep-status-icon" [ngClass]="depIconClass(dep.status)">
+                      @if (dep.status === 'BUILDING' || dep.status === 'DEPLOYING') {
+                        <div class="dep-spinner"></div>
+                      } @else if (dep.status === 'SUCCESS') {
+                        <app-icon name="check" class="dep-si"/>
+                      } @else if (dep.status === 'FAILED') {
+                        <app-icon name="x" class="dep-si"/>
+                      } @else if (dep.status === 'CANCELLED') {
+                        <app-icon name="minus" class="dep-si"/>
+                      } @else {
+                        <div class="dep-queued-dot"></div>
+                      }
+                    </div>
+                    @if (i < filteredDeployments().length - 1) {
+                      <div class="dep-status-line" [class.done]="dep.status === 'SUCCESS'"></div>
                     }
-                  </tbody>
-                </table>
-              </div>
+                  </div>
+
+                  <!-- Main info -->
+                  <div class="dep-card-body" (click)="openDrawer(dep)">
+                    <div class="dep-card-top">
+                      <div class="dep-card-left">
+                        <span class="dep-card-msg">{{ dep.commitMessage || 'Deployment' }}</span>
+                        <span class="dep-status-badge" [ngClass]="depBadgeClass(dep.status)">
+                          @if (dep.status === 'BUILDING' || dep.status === 'DEPLOYING') {
+                            <span class="dep-pulse"></span>
+                          }
+                          {{ depStatusLabel(dep.status) }}
+                        </span>
+                        @if (i === 0 && dep.status === 'SUCCESS') {
+                          <span class="dep-production-badge">● PRODUCTION</span>
+                        }
+                      </div>
+                      <div class="dep-card-actions">
+                        @if (dep.status === 'BUILDING' || dep.status === 'DEPLOYING') {
+                          <button class="dep-action-btn cancel" (click)="$event.stopPropagation(); cancelDeployment(dep)" title="Cancel deployment">
+                            <app-icon name="square" style="width:11px;height:11px;"/> Cancel
+                          </button>
+                        } @else if (dep.status === 'SUCCESS' || dep.status === 'FAILED') {
+                          <button class="dep-action-btn redeploy" (click)="$event.stopPropagation(); triggerResync()" title="Redeploy">
+                            <app-icon name="refresh-cw" style="width:11px;height:11px;"/> Redeploy
+                          </button>
+                        }
+                        <button class="dep-action-btn" (click)="$event.stopPropagation(); openDrawer(dep)" title="View logs">
+                          <app-icon name="terminal" style="width:11px;height:11px;"/> Logs
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="dep-card-meta">
+                      @if (dep.commitSha) {
+                        <span class="dep-meta-chip mono"><app-icon name="git-commit" class="dep-meta-icon"/> {{ dep.commitSha.substring(0, 7) }}</span>
+                      }
+                      @if (dep.branch) {
+                        <span class="dep-meta-chip"><app-icon name="git-branch" class="dep-meta-icon"/> {{ dep.branch }}</span>
+                      }
+                      @if (dep.durationMs) {
+                        <span class="dep-meta-chip"><app-icon name="clock" class="dep-meta-icon"/> {{ formatDuration(dep.durationMs) }}</span>
+                      }
+                      @if (dep.createdBy) {
+                        <span class="dep-meta-chip"><app-icon name="user" class="dep-meta-icon"/> {{ dep.createdBy }}</span>
+                      }
+                      @if (dep.createdAt) {
+                        <span class="dep-meta-chip muted">{{ relativeTime(dep.createdAt) }}</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
             </div>
           </div>
 
@@ -375,6 +442,111 @@ import { FormsModule } from '@angular/forms';
         </div>
       }
     </div>
+
+    <!-- ═══ Deployment Log Drawer ═══ -->
+    @if (drawerOpen()) {
+      <div class="drawer-backdrop" (click)="closeDrawer()"></div>
+      <div class="dep-drawer" [class.drawer-visible]="drawerOpen()">
+
+        <!-- Drawer header -->
+        <div class="drawer-header">
+          <div class="drawer-title-row">
+            <span class="drawer-title">Deployment Details</span>
+            <span class="dep-status-badge" [ngClass]="depBadgeClass(selectedDeployment()?.status)">
+              @if (selectedDeployment()?.status === 'BUILDING' || selectedDeployment()?.status === 'DEPLOYING') {
+                <span class="dep-pulse"></span>
+              }
+              {{ depStatusLabel(selectedDeployment()?.status) }}
+            </span>
+          </div>
+          <button class="drawer-close" (click)="closeDrawer()"><app-icon name="x" style="width:14px;height:14px;"/></button>
+        </div>
+
+        <!-- Pipeline timeline -->
+        <div class="drawer-pipeline">
+          @for (stage of drawerStages; track stage.id; let i = $index) {
+            <div class="dp-stage" [class.dp-done]="isDrawerStageDone(i)" [class.dp-active]="isDrawerStageActive(i)">
+              <div class="dp-node">
+                @if (isDrawerStageDone(i)) {
+                  <app-icon name="check" style="width:10px;height:10px;color:#10b981;"/>
+                } @else if (isDrawerStageActive(i)) {
+                  <div class="dep-spinner sm"></div>
+                } @else {
+                  <div class="dp-dot"></div>
+                }
+              </div>
+              <span class="dp-label">{{ stage.label }}</span>
+              @if (i < drawerStages.length - 1) { <div class="dp-connector" [class.done]="isDrawerStageDone(i)"></div> }
+            </div>
+          }
+        </div>
+
+        <!-- Deployment meta -->
+        <div class="drawer-meta">
+          @if (selectedDeployment()?.commitSha) {
+            <span class="dep-meta-chip mono"><app-icon name="git-commit" class="dep-meta-icon"/> {{ selectedDeployment()?.commitSha?.substring(0,7) }}</span>
+          }
+          @if (selectedDeployment()?.branch) {
+            <span class="dep-meta-chip"><app-icon name="git-branch" class="dep-meta-icon"/> {{ selectedDeployment()?.branch }}</span>
+          }
+          @if (selectedDeployment()?.durationMs) {
+            <span class="dep-meta-chip"><app-icon name="clock" class="dep-meta-icon"/> {{ formatDuration(selectedDeployment()?.durationMs) }}</span>
+          }
+          @if (selectedDeployment()?.createdAt) {
+            <span class="dep-meta-chip muted">{{ relativeTime(selectedDeployment()?.createdAt) }}</span>
+          }
+        </div>
+
+        <!-- Terminal log -->
+        <div class="drawer-terminal">
+          <div class="drawer-term-topbar">
+            <div class="dt-dots">
+              <span class="dt-dot red"></span><span class="dt-dot yellow"></span><span class="dt-dot green"></span>
+            </div>
+            <span class="dt-title">build + runtime log</span>
+            <div style="flex:1"></div>
+            @if (selectedDeployment()?.status === 'BUILDING' || selectedDeployment()?.status === 'DEPLOYING') {
+              <span class="dt-live"><span class="dep-pulse sm"></span> LIVE</span>
+            }
+            <button class="dt-copy" (click)="copyLogsToClipboard()" title="Copy logs"><app-icon name="copy" style="width:12px;height:12px;"/></button>
+          </div>
+          <div class="drawer-term-body" id="drawer-terminal-body">
+            @if (drawerLogLines().length === 0) {
+              <div class="drawer-term-idle">
+                <div class="dep-spinner sm" style="border-color:rgba(99,102,241,0.2);border-top-color:#6366f1"></div>
+                No logs captured yet.
+              </div>
+            } @else {
+              @for (line of drawerLogLines(); track $index) {
+                <div class="dt-line" [ngClass]="line.cls">
+                  <span class="dt-prefix">{{ line.prefix }}</span>
+                  <span class="dt-text">{{ line.text }}</span>
+                </div>
+              }
+              @if (selectedDeployment()?.status === 'BUILDING' || selectedDeployment()?.status === 'DEPLOYING') {
+                <div class="dt-line"><span class="dt-cursor">█</span></div>
+              }
+            }
+          </div>
+        </div>
+
+        <!-- Drawer actions -->
+        <div class="drawer-actions">
+          @if (selectedDeployment()?.status === 'BUILDING' || selectedDeployment()?.status === 'DEPLOYING') {
+            <button class="dep-action-btn cancel" (click)="cancelDeployment(selectedDeployment()!)">
+              <app-icon name="square" style="width:11px;height:11px;"/> Cancel Build
+            </button>
+          } @else {
+            <button class="dep-action-btn redeploy" (click)="triggerResync()">
+              <app-icon name="refresh-cw" style="width:11px;height:11px;"/> Redeploy
+            </button>
+          }
+          <button class="dep-action-btn" (click)="copyLogsToClipboard()">
+            <app-icon name="copy" style="width:11px;height:11px;"/> Copy Logs
+          </button>
+        </div>
+      </div>
+    }
   `,
   styles: [`
     :host {
@@ -1037,11 +1209,433 @@ import { FormsModule } from '@angular/forms';
       border-width: 2px;
     }
 
-    .font-mono {
-      font-family: monospace;
+    /* ─── Deployment Lifecycle Styles ─────────────────────────────── */
+
+    .dep-filters-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
     }
 
-    .text-indigo { color: #818cf8; }
+    .dep-filter-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 12px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid var(--vercel-border);
+      background: var(--vercel-card-bg);
+      color: var(--vercel-text-secondary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .dep-filter-pill:hover { background: var(--vercel-subtle-bg); }
+    .dep-filter-pill.active {
+      background: var(--vercel-subtle-bg);
+      border-color: var(--vercel-text-muted);
+      color: var(--vercel-text-primary);
+    }
+
+    .pill-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--vercel-border);
+    }
+    .dot-ready   { background: #10b981; }
+    .dot-building { background: #f59e0b; }
+    .dot-error   { background: #ef4444; }
+
+    .pill-count {
+      font-size: 10px;
+      background: var(--vercel-border);
+      padding: 0 4px;
+      border-radius: 4px;
+    }
+
+    /* Deployment timeline list */
+    .dep-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      background: var(--vercel-card-bg);
+      border: 1px solid var(--vercel-border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .dep-card {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      transition: background 0.15s;
+      border-bottom: 1px solid var(--vercel-border);
+    }
+    .dep-card:last-child { border-bottom: none; }
+    .dep-card.active-dep {
+      background: rgba(16, 185, 129, 0.03);
+      border-left: 3px solid #10b981;
+    }
+
+    .dep-status-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 8px 0 16px;
+      gap: 0;
+      flex-shrink: 0;
+      width: 44px;
+    }
+
+    .dep-status-icon {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid var(--vercel-border);
+      background: var(--vercel-card-bg);
+      flex-shrink: 0;
+      transition: all 0.3s;
+    }
+    .dep-si { width: 12px; height: 12px; }
+
+    .dep-icon-success { border-color: #10b981; background: rgba(16,185,129,0.1); color: #10b981; }
+    .dep-icon-failed  { border-color: #ef4444; background: rgba(239,68,68,0.1);  color: #ef4444; }
+    .dep-icon-building { border-color: #f59e0b; background: rgba(245,158,11,0.1); animation: glow-amber 1.5s ease-in-out infinite; }
+    .dep-icon-deploying { border-color: #a78bfa; background: rgba(167,139,250,0.1); animation: glow-purple 1.5s ease-in-out infinite; }
+    .dep-icon-queued   { border-color: var(--vercel-border); }
+    .dep-icon-cancelled { border-color: var(--vercel-border); opacity: 0.5; }
+
+    @keyframes glow-amber  { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0)}  50%{box-shadow:0 0 8px 2px rgba(245,158,11,0.4)} }
+    @keyframes glow-purple { 0%,100%{box-shadow:0 0 0 0 rgba(167,139,250,0)} 50%{box-shadow:0 0 8px 2px rgba(167,139,250,0.4)} }
+
+    .dep-status-line {
+      flex: 1;
+      width: 2px;
+      background: var(--vercel-border);
+      margin: 4px 0 0;
+      min-height: 24px;
+      transition: background 0.3s;
+    }
+    .dep-status-line.done { background: #10b981; }
+
+    .dep-queued-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--vercel-border);
+    }
+
+    .dep-spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(245,158,11,0.25);
+      border-top-color: #f59e0b;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    .dep-spinner.sm { width: 10px; height: 10px; border-width: 1.5px; }
+
+    .dep-card-body {
+      flex: 1;
+      padding: 14px 16px;
+      cursor: pointer;
+      min-width: 0;
+    }
+    .dep-card-body:hover { background: var(--vercel-subtle-bg); }
+
+    .dep-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .dep-card-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .dep-card-msg {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--vercel-text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 280px;
+    }
+
+    .dep-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 99px;
+      letter-spacing: 0.04em;
+    }
+    .dep-badge-success  { background: rgba(16,185,129,0.1);  color: #10b981; border: 1px solid rgba(16,185,129,0.25); }
+    .dep-badge-failed   { background: rgba(239,68,68,0.1);   color: #ef4444; border: 1px solid rgba(239,68,68,0.25);  }
+    .dep-badge-building { background: rgba(245,158,11,0.1);  color: #f59e0b; border: 1px solid rgba(245,158,11,0.25); }
+    .dep-badge-deploying { background: rgba(167,139,250,0.1); color: #a78bfa; border: 1px solid rgba(167,139,250,0.25); }
+    .dep-badge-queued   { background: var(--vercel-subtle-bg); color: var(--vercel-text-muted); border: 1px solid var(--vercel-border); }
+    .dep-badge-cancelled { background: var(--vercel-subtle-bg); color: var(--vercel-text-muted); border: 1px solid var(--vercel-border); opacity: 0.7; }
+
+    .dep-production-badge {
+      font-size: 9px; font-weight: 800;
+      color: #10b981; letter-spacing: 0.08em;
+    }
+
+    .dep-pulse {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse-dot 1.5s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    .dep-pulse.sm { width: 5px; height: 5px; }
+    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.3;transform:scale(0.7)} }
+
+    .dep-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .dep-action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 5px;
+      border: 1px solid var(--vercel-border);
+      background: var(--vercel-card-bg);
+      color: var(--vercel-text-secondary);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .dep-action-btn:hover { background: var(--vercel-subtle-bg); color: var(--vercel-text-primary); }
+    .dep-action-btn.cancel { color: #ef4444; border-color: rgba(239,68,68,0.3); }
+    .dep-action-btn.cancel:hover { background: rgba(239,68,68,0.08); }
+    .dep-action-btn.redeploy { color: #6366f1; border-color: rgba(99,102,241,0.3); }
+    .dep-action-btn.redeploy:hover { background: rgba(99,102,241,0.08); }
+
+    .dep-card-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .dep-meta-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--vercel-text-muted);
+    }
+    .dep-meta-chip.mono { font-family: 'JetBrains Mono', monospace; color: #818cf8; }
+    .dep-meta-chip.muted { color: var(--vercel-text-muted); }
+    .dep-meta-icon { width: 11px; height: 11px; }
+
+    .dep-empty {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--vercel-text-muted);
+      font-size: 13px;
+    }
+    .dep-empty-icon { width: 28px; height: 28px; margin: 0 auto 8px; display: block; opacity: 0.4; }
+
+    /* ─── Drawer ──────────────────────────────────────────────────── */
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 50;
+      backdrop-filter: blur(2px);
+    }
+
+    .dep-drawer {
+      position: fixed;
+      top: 0; right: 0; bottom: 0;
+      width: 480px;
+      max-width: 96vw;
+      background: var(--vercel-card-bg);
+      border-left: 1px solid var(--vercel-border);
+      z-index: 51;
+      display: flex;
+      flex-direction: column;
+      box-shadow: -8px 0 40px rgba(0,0,0,0.25);
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+    .dep-drawer.drawer-visible { transform: translateX(0); }
+
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--vercel-border);
+      flex-shrink: 0;
+    }
+    .drawer-title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .drawer-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--vercel-text-primary);
+    }
+    .drawer-close {
+      background: transparent;
+      border: 1px solid var(--vercel-border);
+      border-radius: 5px;
+      color: var(--vercel-text-muted);
+      width: 26px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .drawer-close:hover { color: var(--vercel-text-primary); background: var(--vercel-subtle-bg); }
+
+    /* Drawer pipeline timeline */
+    .drawer-pipeline {
+      display: flex;
+      align-items: center;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--vercel-border);
+      flex-shrink: 0;
+      overflow-x: auto;
+    }
+    .dp-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      flex: 1;
+      position: relative;
+      min-width: 60px;
+    }
+    .dp-node {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      border: 2px solid var(--vercel-border);
+      background: var(--vercel-card-bg);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1;
+      position: relative;
+      transition: all 0.3s;
+    }
+    .dp-stage.dp-done .dp-node { border-color: #10b981; background: rgba(16,185,129,0.12); }
+    .dp-stage.dp-active .dp-node { border-color: #6366f1; background: rgba(99,102,241,0.12); box-shadow: 0 0 10px rgba(99,102,241,0.3); }
+    .dp-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--vercel-border); }
+    .dp-connector {
+      position: absolute;
+      top: 12px; left: 50%;
+      width: 100%; height: 2px;
+      background: var(--vercel-border);
+      z-index: 0;
+      transition: background 0.3s;
+    }
+    .dp-connector.done { background: #10b981; }
+    .dp-label { font-size: 9px; font-weight: 600; color: var(--vercel-text-muted); text-align: center; }
+    .dp-stage.dp-done .dp-label { color: #10b981; }
+    .dp-stage.dp-active .dp-label { color: #818cf8; }
+
+    .drawer-meta {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--vercel-border);
+      flex-shrink: 0;
+    }
+
+    /* Drawer terminal */
+    .drawer-terminal {
+      flex: 1; display: flex; flex-direction: column;
+      background: #0d0d11;
+      overflow: hidden;
+    }
+    .drawer-term-topbar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 14px;
+      background: #111116;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+    .dt-dots { display: flex; gap: 4px; }
+    .dt-dot { width: 9px; height: 9px; border-radius: 50%; }
+    .dt-dot.red    { background: #ff5f57; }
+    .dt-dot.yellow { background: #ffbd2e; }
+    .dt-dot.green  { background: #28ca41; }
+    .dt-title {
+      font-size: 10px; color: rgba(255,255,255,0.3);
+      font-family: 'JetBrains Mono', monospace;
+      flex: 1; text-align: center;
+    }
+    .dt-live {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 9px; font-weight: 800; color: #818cf8; letter-spacing: 0.1em;
+    }
+    .dt-copy {
+      background: transparent; border: none;
+      color: rgba(255,255,255,0.3); cursor: pointer;
+      transition: color 0.15s;
+    }
+    .dt-copy:hover { color: rgba(255,255,255,0.7); }
+
+    .drawer-term-body {
+      flex: 1; overflow-y: auto;
+      padding: 10px 14px;
+      font-family: 'JetBrains Mono','Fira Code',monospace;
+      font-size: 11px;
+      line-height: 1.65;
+    }
+    .drawer-term-body::-webkit-scrollbar { width: 4px; }
+    .drawer-term-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+    .drawer-term-idle {
+      display: flex; align-items: center; gap: 8px;
+      color: rgba(255,255,255,0.25); font-size: 11px; padding: 8px 0;
+    }
+
+    .dt-line {
+      display: flex; align-items: baseline; gap: 8px;
+      white-space: pre-wrap; word-break: break-all; line-height: 1.65;
+    }
+    .dt-prefix { font-weight: 700; flex-shrink: 0; font-size: 10px; }
+    .dt-text { color: rgba(255,255,255,0.8); }
+
+    .dt-line.builder  .dt-prefix { color: #22d3ee; }
+    .dt-line.deployer .dt-prefix { color: #a78bfa; }
+    .dt-line.runtime  .dt-prefix { color: #4ade80; }
+    .dt-line.runner   .dt-prefix { color: #fbbf24; }
+    .dt-line.error    .dt-prefix { color: #f87171; }
+    .dt-line.error    .dt-text   { color: #fca5a5; }
+    .dt-line.plain    .dt-text   { color: rgba(255,255,255,0.5); }
+
+    .dt-cursor { color: #6366f1; animation: blink 1.1s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    .drawer-actions {
+      display: flex; gap: 8px; padding: 12px 20px;
+      border-top: 1px solid var(--vercel-border);
+      flex-shrink: 0;
+    }
 
     @keyframes spin {
       0% { transform: rotate(0deg); }
@@ -1049,22 +1643,74 @@ import { FormsModule } from '@angular/forms';
     }
   `],
 })
-export class ToolManageComponent implements OnInit {
+export class ToolManageComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toolsService = inject(ToolsService);
   private readonly stateSvc = inject(WorkspaceStateService);
   private readonly dialogSvc = inject(DialogService);
 
+  getToolUrl(tool: Tool | null): string {
+    if (!tool) return '';
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return `http://localhost:8080/tools/${tool.slug}`;
+    }
+    const sub = tool.subdomain || `${tool.slug}.tools.acklet.com`;
+    return sub.startsWith('http') ? sub : `https://${sub}`;
+  }
+
   readonly tool = signal<Tool | null>(null);
   readonly loading = signal<boolean>(true);
   readonly activeTab = signal<string>('overview');
   readonly syncStatus = signal<string>('SYNCED');
 
-  // Deployments list
+  // Deployments list + filtering
   readonly deployments = signal<Deployment[]>([]);
   readonly latestDeployment = signal<Deployment | null>(null);
   readonly logsView = signal<string>('build');
+  readonly deploymentFilter = signal<string>('ALL');
+
+  readonly filteredDeployments = computed(() => {
+    const f = this.deploymentFilter();
+    const all = this.deployments();
+    if (f === 'ALL') return all;
+    return all.filter(d => this.normalizeStatus(d.status) === f);
+  });
+
+  readonly depCounts = computed(() => {
+    const all = this.deployments();
+    const counts: Record<string, number> = {};
+    for (const d of all) {
+      const k = this.normalizeStatus(d.status);
+      counts[k] = (counts[k] || 0) + 1;
+    }
+    return counts;
+  });
+
+  readonly depFilters = [
+    { key: 'ALL',       label: 'All' },
+    { key: 'SUCCESS',   label: 'Ready' },
+    { key: 'BUILDING',  label: 'Building' },
+    { key: 'DEPLOYING', label: 'Deploying' },
+    { key: 'FAILED',    label: 'Error' },
+    { key: 'PENDING',   label: 'Queued' },
+    { key: 'CANCELLED', label: 'Cancelled' },
+  ];
+
+  // Drawer state
+  readonly drawerOpen = signal<boolean>(false);
+  readonly selectedDeployment = signal<Deployment | null>(null);
+  readonly drawerLogLines = signal<Array<{prefix:string;text:string;cls:string}>>([]);
+  private drawerRawLogs = '';
+
+  readonly drawerStages = [
+    { id: 'clone',  label: 'Clone' },
+    { id: 'build',  label: 'Build' },
+    { id: 'deploy', label: 'Deploy' },
+  ];
+
+  // Live polling for in-progress deployments
+  private livePollingInterval: ReturnType<typeof setInterval> | null = null;
 
   // Settings / Env vars
   newEnvKey = '';
@@ -1079,6 +1725,8 @@ export class ToolManageComponent implements OnInit {
   readonly consoleLogs = signal<string[]>([]);
   readonly executionResult = signal<any | null>(null);
 
+  readonly runtimeInstance = signal<any | null>(null);
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -1086,22 +1734,220 @@ export class ToolManageComponent implements OnInit {
         next: (t) => {
           if (t) {
             this.tool.set(t);
-            if (t.status === 'PENDING') {
-              this.syncStatus.set('BUILDING');
-            }
+            if (t.status === 'PENDING') { this.syncStatus.set('BUILDING'); }
             if (t.repositoryId) {
               this.loadDeployments(t.repositoryId);
+              this.startLivePolling(t.repositoryId);
             }
+            this.loadRuntimeStatus(t.slug);
           }
           this.loading.set(false);
         },
-        error: () => {
-          this.loading.set(false);
-        }
+        error: () => { this.loading.set(false); }
       });
     } else {
       this.loading.set(false);
     }
+  }
+
+  ngOnDestroy(): void {
+    this.stopLivePolling();
+  }
+
+  // ── Live polling ──────────────────────────────────────────────────
+  private startLivePolling(repoId: string): void {
+    this.stopLivePolling();
+    this.livePollingInterval = setInterval(() => {
+      const hasLive = this.deployments().some(d => d.status === 'BUILDING' || d.status === 'DEPLOYING' || d.status === 'PENDING');
+      if (hasLive) {
+        this.toolsService.getDeployments(repoId).subscribe(res => {
+          if (res?.data) {
+            this.deployments.set(res.data);
+            if (res.data.length > 0) this.latestDeployment.set(res.data[0]);
+            // If drawer is open for a live deployment, refresh its logs
+            const sel = this.selectedDeployment();
+            if (sel) {
+              const updated = res.data.find((d: Deployment) => d.id === sel.id);
+              if (updated) {
+                this.selectedDeployment.set(updated);
+                this.refreshDrawerLogs(updated);
+              }
+            }
+          }
+        });
+      }
+    }, 2500);
+  }
+
+  private stopLivePolling(): void {
+    if (this.livePollingInterval) { clearInterval(this.livePollingInterval); this.livePollingInterval = null; }
+  }
+
+  // ── Drawer ────────────────────────────────────────────────────────
+  openDrawer(dep: Deployment): void {
+    this.selectedDeployment.set(dep);
+    this.drawerRawLogs = '';
+    this.drawerLogLines.set([]);
+    this.refreshDrawerLogs(dep);
+    this.drawerOpen.set(true);
+  }
+
+  closeDrawer(): void {
+    this.drawerOpen.set(false);
+    this.selectedDeployment.set(null);
+    this.drawerRawLogs = '';
+    this.drawerLogLines.set([]);
+  }
+
+  private refreshDrawerLogs(dep: Deployment): void {
+    const raw = ((dep.buildLogs || '') + (dep.runtimeLogs || ''));
+    if (!raw || raw === this.drawerRawLogs) return;
+    const newContent = raw.slice(this.drawerRawLogs.length);
+    this.drawerRawLogs = raw;
+    const newLines = newContent.split('\n').filter(l => l.trim());
+    const parsed = newLines.map(l => this.parseLine(l));
+    this.drawerLogLines.update(existing => [...existing, ...parsed]);
+    setTimeout(() => {
+      const el = document.getElementById('drawer-terminal-body');
+      if (el) el.scrollTop = el.scrollHeight;
+    }, 30);
+  }
+
+  private parseLine(line: string): { prefix: string; text: string; cls: string } {
+    const m = line.match(/^\[([^\]]+)\]/);
+    if (!m) return { prefix: '>', text: line, cls: 'plain' };
+    const tag = m[1].toLowerCase();
+    const text = line.slice(m[0].length).trimStart();
+    const prefix = `[${m[1]}]`;
+    if (tag.includes('builder'))  return { prefix, text, cls: 'builder' };
+    if (tag.includes('deployer')) return { prefix, text, cls: 'deployer' };
+    if (tag.includes('runtime'))  return { prefix, text, cls: 'runtime' };
+    if (tag.includes('runner') || tag.includes('sandbox')) return { prefix, text, cls: 'runner' };
+    if (tag.includes('error') || tag.includes('fail'))     return { prefix, text, cls: 'error' };
+    return { prefix, text, cls: 'plain' };
+  }
+
+  copyLogsToClipboard(): void {
+    const lines = this.drawerLogLines();
+    const text = lines.map(l => `${l.prefix} ${l.text}`).join('\n');
+    navigator.clipboard.writeText(text).catch(() => {});
+  }
+
+  // ── Deployment status helpers ─────────────────────────────────────
+  normalizeStatus(status?: string): string {
+    if (!status) return 'PENDING';
+    const s = status.toUpperCase();
+    if (s === 'DONE' || s === 'SUCCESS' || s === 'FINISHED') return 'SUCCESS';
+    if (s === 'IN_PROGRESS') return 'BUILDING';
+    if (s.includes('CANCEL')) return 'CANCELLED';
+    return s;
+  }
+
+  depStatusLabel(status?: string): string {
+    const labels: Record<string, string> = {
+      SUCCESS: 'Ready', FAILED: 'Error', BUILDING: 'Building',
+      DEPLOYING: 'Deploying', PENDING: 'Queued', CANCELLED: 'Cancelled',
+    };
+    return labels[this.normalizeStatus(status)] ?? status ?? 'Unknown';
+  }
+
+  depIconClass(status?: string): string {
+    const classes: Record<string, string> = {
+      SUCCESS: 'dep-icon-success', FAILED: 'dep-icon-failed',
+      BUILDING: 'dep-icon-building', DEPLOYING: 'dep-icon-deploying',
+      PENDING: 'dep-icon-queued', CANCELLED: 'dep-icon-cancelled',
+    };
+    return classes[this.normalizeStatus(status)] ?? 'dep-icon-queued';
+  }
+
+  depBadgeClass(status?: string): string {
+    const classes: Record<string, string> = {
+      SUCCESS: 'dep-badge-success', FAILED: 'dep-badge-failed',
+      BUILDING: 'dep-badge-building', DEPLOYING: 'dep-badge-deploying',
+      PENDING: 'dep-badge-queued', CANCELLED: 'dep-badge-cancelled',
+    };
+    return classes[this.normalizeStatus(status)] ?? 'dep-badge-queued';
+  }
+
+  // Drawer pipeline stage helpers
+  isDrawerStageDone(idx: number): boolean {
+    const s = this.normalizeStatus(this.selectedDeployment()?.status);
+    if (s === 'SUCCESS') return true;
+    if (s === 'FAILED') return false;
+    if (s === 'DEPLOYING') return idx < 2;
+    if (s === 'BUILDING')  return idx < 1;
+    return false;
+  }
+  isDrawerStageActive(idx: number): boolean {
+    const s = this.normalizeStatus(this.selectedDeployment()?.status);
+    if (s === 'SUCCESS' || s === 'FAILED') return false;
+    if (s === 'BUILDING')  return idx === 1;
+    if (s === 'DEPLOYING') return idx === 2;
+    return idx === 0;
+  }
+
+  cancelDeployment(dep: Deployment): void {
+    if (!dep) return;
+    // Mark locally as cancelled — backend kill would go here via a future endpoint
+    this.deployments.update(list => list.map(d => d.id === dep.id ? { ...d, status: 'CANCELLED' } : d));
+    if (this.selectedDeployment()?.id === dep.id) {
+      this.selectedDeployment.update(d => d ? { ...d, status: 'CANCELLED' } : d);
+    }
+  }
+
+  relativeTime(iso?: string): string {
+    if (!iso) return '';
+    const then = new Date(iso).getTime();
+    if (isNaN(then)) return '';
+    const diff = Math.floor((Date.now() - then) / 1000);
+    if (diff < 60)  return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    return `${Math.floor(diff/86400)}d ago`;
+  }
+
+  loadRuntimeStatus(slug: string): void {
+    this.toolsService.getRuntimeStatus(slug).subscribe({
+      next: (res) => {
+        if (res && res.data) {
+          this.runtimeInstance.set(res.data);
+        }
+      }
+    });
+  }
+
+  stopCurrentRuntime(): void {
+    const t = this.tool();
+    if (!t) return;
+    this.toolsService.stopRuntime(t.slug).subscribe(() => {
+      this.loadRuntimeStatus(t.slug);
+    });
+  }
+
+  restartCurrentRuntime(): void {
+    const t = this.tool();
+    if (!t) return;
+    this.toolsService.restartRuntime(t.slug).subscribe((res) => {
+      if (res && res.data) {
+        this.runtimeInstance.set(res.data);
+      }
+    });
+  }
+
+  sleepCurrentRuntime(): void {
+    const t = this.tool();
+    if (!t) return;
+    this.toolsService.sleepRuntime(t.slug).subscribe(() => {
+      this.loadRuntimeStatus(t.slug);
+    });
+  }
+
+  wakeCurrentRuntime(): void {
+    const t = this.tool();
+    if (!t) return;
+    this.toolsService.wakeRuntime(t.slug).subscribe(() => {
+      this.loadRuntimeStatus(t.slug);
+    });
   }
 
   loadDeployments(repoId: string): void {
@@ -1216,6 +2062,7 @@ export class ToolManageComponent implements OnInit {
       this.toolsService.deleteTool(targetTool.slug).subscribe({
         next: () => {
           this.stateSvc.refreshTools();
+          this.stateSvc.refreshRepos();
           if (detachRepo && targetTool.repositoryId) {
             this.stateSvc.unlinkRepository(targetTool.repositoryId);
           } else if (targetTool.repositoryId) {
