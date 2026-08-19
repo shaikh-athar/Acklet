@@ -16,6 +16,7 @@ export const routes: Routes = [
         path: 'tools',
         children: [
           { path: 'explore', loadComponent: () => import('./pages/tools/tools').then(m => m.ToolsComponent), title: 'Explore Solutions — Acklet' },
+          { path: 'json-lens', loadComponent: () => import('../tools/json-lens/json-lens.component').then(m => m.JsonLensComponent), title: 'JsonLens — JSON Formatter & Validator — Acklet' },
           { path: 'categories', loadComponent: () => import('./pages/categories/categories').then(m => m.CategoriesComponent), title: 'Categories — Acklet' },
           { path: 'trending', loadComponent: () => import('./pages/tools/trending/trending').then(m => m.ToolsTrendingComponent), title: 'Trending Solutions — Acklet' },
           { path: 'new', loadComponent: () => import('./pages/tools/new-releases/new-releases').then(m => m.ToolsNewReleasesComponent), title: 'New Releases — Acklet' },
