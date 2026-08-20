@@ -1,0 +1,100 @@
+name: acklet
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: acklet-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-acklet}
+      POSTGRES_USER: ${DB_USERNAME:-acklet}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-acklet_secret_password}
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-acklet} -d ${DB_NAME:-acklet}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - acklet_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: acklet-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - acklet_network
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: acklet-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"     # AMQP protocol
+      - "15672:15672"                     # RabbitMQ Web Management Dashboard
+    volumes:
+      - rabbitmqdata:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - acklet_network
+
+  backend:
+    build:
+      context: ./server/acklet
+      dockerfile: Dockerfile
+    container_name: acklet-backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-acklet}
+      DB_USERNAME: ${DB_USERNAME:-acklet}
+      DB_PASSWORD: ${DB_PASSWORD:-acklet_secret_password}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      JWT_SECRET: ${JWT_SECRET:-dGhpcy1pcy1hLXNlY3VyZS1kZXZlbG9wbWVudC1qd3Qtc2VjcmV0LWtleS0yNTYtYml0cw==}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - acklet_network
+
+networks:
+  acklet_network:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redisdata:
+  rabbitmqdata:
