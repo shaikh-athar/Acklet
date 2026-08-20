@@ -189,6 +189,36 @@ public class PublishDraftService {
         Category category = categoryRepository.findBySlug(categorySlug)
                 .orElseGet(() -> categoryRepository.findAll().get(0));
 
+        Repository repo = draft.getRepository();
+        String framework = projectRepository.findRootByRepositoryId(repo.getId())
+                .map(com.code.acklet.github.entity.RepositoryProject::getFramework).orElse("Unknown");
+
+        Tool.ExecutionMode mode = Tool.ExecutionMode.BROWSER;
+        String runtime = "web";
+        String buildCommand = "";
+        String startCommand = "";
+        Integer port = 8080;
+
+        if ("Spring Boot".equals(framework)) {
+            mode = Tool.ExecutionMode.BACKEND;
+            runtime = "java17";
+            buildCommand = "mvn clean package -DskipTests";
+            startCommand = "java -jar target/*.jar";
+            port = 8080;
+        } else if ("Rust".equals(framework)) {
+            mode = Tool.ExecutionMode.BACKEND;
+            runtime = "rust";
+            buildCommand = "cargo build --release";
+            startCommand = "./target/release/" + repo.getName();
+            port = 8080;
+        } else if ("React/NextJS".equals(framework) || "Node.js".equals(framework)) {
+            mode = Tool.ExecutionMode.BROWSER;
+            runtime = "nodejs";
+            buildCommand = "npm install && npm run build";
+            startCommand = "npm run start";
+            port = 3000;
+        }
+
         Tool tool = Tool.builder()
                 .name(draft.getToolName())
                 .slug(slug)
@@ -202,6 +232,13 @@ public class PublishDraftService {
                 .coverUrl(draft.getCoverUrl())
                 .pricingType(draft.getPricingType() != null ? draft.getPricingType() : "FREE")
                 .isOpenSource(draft.isOpenSource())
+                .repositoryId(repo.getId())
+                .executionMode(mode)
+                .subdomain(slug + ".acklet.app")
+                .runtime(runtime)
+                .buildCommand(buildCommand)
+                .startCommand(startCommand)
+                .port(port)
                 .status(Tool.ToolStatus.ACTIVE)  // auto-approve for own repos
                 .build();
 

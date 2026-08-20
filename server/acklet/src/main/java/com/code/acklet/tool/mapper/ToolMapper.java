@@ -19,5 +19,6 @@ public interface ToolMapper {
     @Mapping(target = "isOpenSource",       source = "openSource")
     @Mapping(target = "status",             expression = "java(tool.getStatus() != null ? tool.getStatus().name() : null)")
     @Mapping(target = "verificationStatus", expression = "java(tool.getVerificationStatus() != null ? tool.getVerificationStatus().name() : null)")
+    @Mapping(target = "executionMode",      expression = "java(tool.getExecutionMode() != null ? tool.getExecutionMode().name() : null)")
     ToolResponse toToolResponse(Tool tool);
 }
