@@ -60,7 +60,19 @@ export class WorkspaceStateService {
   private readonly http = inject(HttpClient);
 
   readonly repos = signal<RepositoryItem[]>([]);
-  readonly tools = signal<WorkspaceTool[]>([]);
+  readonly tools = signal<WorkspaceTool[]>([
+    {
+      id: 'json-formatter',
+      name: 'JSON Formatter',
+      description: 'Beautify, minify, and validate JSON with syntax highlighting.',
+      lang: 'TypeScript',
+      langColor: '#3178c6',
+      status: 'Published',
+      downloads: 452000,
+      stars: 1248,
+      lastUpdated: 'Just now'
+    }
+  ]);
   readonly collections = signal<CollectionFolder[]>(
     JSON.parse(localStorage.getItem('acklet:collections') ?? '[]')
   );

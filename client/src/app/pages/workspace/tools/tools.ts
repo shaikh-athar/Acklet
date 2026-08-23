@@ -69,7 +69,7 @@ interface Tool {
             <div class="tl-td tl-td-name">
               <div class="tl-tool-avatar">{{ tool.name.charAt(0).toUpperCase() }}</div>
               <div>
-                <div class="tl-tool-name">{{ tool.name }}</div>
+                <a [routerLink]="['/tools', tool.id]" class="tl-tool-name" style="text-decoration: none; color: inherit;">{{ tool.name }}</a>
                 <div class="tl-tool-desc">{{ tool.description }}</div>
               </div>
             </div>
@@ -92,8 +92,8 @@ interface Tool {
             <div class="tl-td tl-td-right tl-muted">{{ tool.lastUpdated }}</div>
             <div class="tl-td tl-td-actions">
               <div style="display: flex; gap: 8px; align-items: center;">
-                <a [routerLink]="['/workspace/tools/manage', tool.id]" class="tl-manage-btn">
-                  Manage
+                <a [routerLink]="['/tools', tool.id]" class="tl-manage-btn" style="text-decoration: none;">
+                  Open
                   <app-icon name="arrow-right" class="tl-manage-icon" />
                 </a>
                 <button (click)="removeTool(tool.id)" style="background: transparent; border: none; color: var(--vercel-text-muted); cursor: pointer; padding: 4px; display: inline-flex;" title="Delete tool">
