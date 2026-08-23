@@ -616,23 +616,7 @@ export class ToolDetailComponent implements OnInit {
   useTool(): void {
     const slug = this.tool()?.slug;
     if (!slug) return;
-
-    this.sandboxLaunched.set(true);
-    this.loadError.set(null);
-
-    const loader = TOOL_COMPONENTS[slug];
-    if (loader) {
-      loader()
-        .then(comp => {
-          this.dynamicComponent.set(comp);
-        })
-        .catch(err => {
-          console.error('Failed to load tool component', err);
-          this.loadError.set('Failed to initialize the sandbox component. Please check your network or build integration.');
-        });
-    } else {
-      this.loadError.set('This tool does not have an interactive sandbox implemented yet.');
-    }
+    window.open(`/tools/${slug}`, '_blank');
   }
 
   closeSandbox(): void {

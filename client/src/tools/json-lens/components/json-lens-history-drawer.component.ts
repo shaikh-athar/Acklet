@@ -1,12 +1,12 @@
 import { Component, ChangeDetectionStrategy, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HistoryGroup, HistoryItem } from '../services/json-lens-history.service';
-import { LucideAngularModule, Trash2, RotateCcw, ShieldCheck, X } from 'lucide-angular';
+import { IconComponent } from '../../../app/shared/components/icon/icon';
 
 @Component({
   selector: 'app-json-lens-history-drawer',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule],
+  imports: [CommonModule, IconComponent],
   template: `
     @if (isOpen()) {
       <div class="history-drawer-overlay" (click)="closeDrawer.emit()">
@@ -16,19 +16,19 @@ import { LucideAngularModule, Trash2, RotateCcw, ShieldCheck, X } from 'lucide-a
             <div class="drawer-title-group">
               <h3>Local History</h3>
               <span class="privacy-tag">
-                <lucide-icon [img]="ShieldIcon" class="icon-xs"></lucide-icon>
+                <app-icon name="shield-check" class="icon-xs"></app-icon>
                 Stored locally on this device
               </span>
             </div>
             <div class="drawer-header-actions">
               @if (historyGroups().length > 0) {
                 <button class="drawer-clear-btn" (click)="clearAllClick.emit()" title="Clear all local history">
-                  <lucide-icon [img]="ClearIcon" class="icon-xs"></lucide-icon>
+                  <app-icon name="clock" class="icon-xs"></app-icon>
                   Clear All
                 </button>
               }
               <button class="icon-nav-btn" (click)="closeDrawer.emit()">
-                <lucide-icon [img]="CloseIcon" class="icon-xs"></lucide-icon>
+                <app-icon name="close" class="icon-xs"></app-icon>
               </button>
             </div>
           </div>
@@ -52,7 +52,7 @@ import { LucideAngularModule, Trash2, RotateCcw, ShieldCheck, X } from 'lucide-a
                           Restore
                         </button>
                         <button class="card-action-btn delete-btn" (click)="$event.stopPropagation(); deleteItem.emit(item.id)" title="Delete item">
-                          <lucide-icon [img]="TrashIcon" class="icon-xs"></lucide-icon>
+                          <app-icon name="close" class="icon-xs"></app-icon>
                         </button>
                       </div>
                     </div>
@@ -61,7 +61,7 @@ import { LucideAngularModule, Trash2, RotateCcw, ShieldCheck, X } from 'lucide-a
               </div>
             } @empty {
               <div class="empty-history-container">
-                <lucide-icon [img]="ShieldIcon" class="icon-lg opacity-40"></lucide-icon>
+                <app-icon name="shield" class="icon-lg opacity-40"></app-icon>
                 <div class="empty-history-title">No Local History Found</div>
                 <div class="empty-history-desc">Formatted payloads will be safely saved locally on this device.</div>
               </div>
@@ -82,9 +82,4 @@ export class JsonLensHistoryDrawerComponent {
   restoreItem = output<HistoryItem>();
   deleteItem = output<string>();
   clearAllClick = output<void>();
-
-  readonly ShieldIcon = ShieldCheck;
-  readonly TrashIcon = Trash2;
-  readonly ClearIcon = RotateCcw;
-  readonly CloseIcon = X;
 }

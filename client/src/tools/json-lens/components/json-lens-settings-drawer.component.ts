@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LucideAngularModule, Settings, SunMoon, Sliders, X } from 'lucide-angular';
+import { IconComponent } from '../../../app/shared/components/icon/icon';
 
 export interface JsonLensSettings {
   indent: number | string;
@@ -16,7 +16,7 @@ export interface JsonLensSettings {
 @Component({
   selector: 'app-json-lens-settings-drawer',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   template: `
     @if (isOpen()) {
       <div class="settings-drawer-overlay" (click)="closeDrawer.emit()">
@@ -28,7 +28,7 @@ export interface JsonLensSettings {
               <span class="settings-subtitle">Configure editor behavior & preferences</span>
             </div>
             <button class="icon-nav-btn" (click)="closeDrawer.emit()">
-              <lucide-icon [img]="CloseIcon" class="icon-xs"></lucide-icon>
+              <app-icon name="close" class="icon-xs"></app-icon>
             </button>
           </div>
 
@@ -37,7 +37,7 @@ export interface JsonLensSettings {
             <!-- Theme Section (Section 42) -->
             <div class="settings-section">
               <div class="section-title">
-                <lucide-icon [img]="ThemeIcon" class="icon-xs"></lucide-icon>
+                <app-icon name="palette" class="icon-xs"></app-icon>
                 Theme
               </div>
               <div class="theme-options-grid">
@@ -68,7 +68,7 @@ export interface JsonLensSettings {
             <!-- Editor Options (Section 43) -->
             <div class="settings-section">
               <div class="section-title">
-                <lucide-icon [img]="EditorIcon" class="icon-xs"></lucide-icon>
+                <app-icon name="ruler" class="icon-xs"></app-icon>
                 Editor Settings
               </div>
 
@@ -151,10 +151,6 @@ export class JsonLensSettingsDrawerComponent {
 
   closeDrawer = output<void>();
   settingsChange = output<Partial<JsonLensSettings>>();
-
-  readonly ThemeIcon = SunMoon;
-  readonly EditorIcon = Sliders;
-  readonly CloseIcon = X;
 
   updateTheme(theme: 'dark' | 'light' | 'system') {
     this.settingsChange.emit({ theme });

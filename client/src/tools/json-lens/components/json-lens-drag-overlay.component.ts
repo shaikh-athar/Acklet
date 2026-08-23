@@ -1,16 +1,16 @@
 import { Component, ChangeDetectionStrategy, input, HostListener, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, FileUp } from 'lucide-angular';
+import { IconComponent } from '../../../app/shared/components/icon/icon';
 
 @Component({
   selector: 'app-json-lens-drag-overlay',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule],
+  imports: [CommonModule, IconComponent],
   template: `
     @if (isDragging()) {
       <div class="workspace-drag-overlay">
         <div class="drag-drop-card">
-          <lucide-icon [img]="FileIcon" class="icon-lg drag-icon"></lucide-icon>
+          <app-icon name="file-up" class="icon-lg drag-icon"></app-icon>
           <div class="drag-drop-title">Drop JSON file to open</div>
           <div class="drag-drop-subtitle">Release file or text payload anywhere in the workspace</div>
         </div>
@@ -22,7 +22,6 @@ import { LucideAngularModule, FileUp } from 'lucide-angular';
 })
 export class JsonLensDragOverlayComponent {
   isDragging = signal<boolean>(false);
-  readonly FileIcon = FileUp;
 
   @HostListener('window:dragover', ['$event'])
   onDragOver(event: DragEvent) {

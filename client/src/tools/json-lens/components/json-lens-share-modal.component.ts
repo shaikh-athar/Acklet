@@ -1,30 +1,30 @@
 import { Component, ChangeDetectionStrategy, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LucideAngularModule, ShieldAlert, Share2, Copy, Check, X } from 'lucide-angular';
+import { IconComponent } from '../../../app/shared/components/icon/icon';
 
 @Component({
   selector: 'app-json-lens-share-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   template: `
     @if (isOpen()) {
       <div class="modal-overlay" (click)="closeModal.emit()">
         <div class="share-modal" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <div class="modal-title-group">
-              <lucide-icon [img]="ShareIcon" class="icon-sm share-title-icon"></lucide-icon>
+              <app-icon name="wand" class="icon-sm share-title-icon"></app-icon>
               <h3>Share Payload Architecture</h3>
             </div>
             <button class="icon-nav-btn" (click)="closeModal.emit()">
-              <lucide-icon [img]="CloseIcon" class="icon-xs"></lucide-icon>
+              <app-icon name="close" class="icon-xs"></app-icon>
             </button>
           </div>
 
           <div class="modal-body">
             <!-- Warning Banner -->
             <div class="share-warning-banner">
-              <lucide-icon [img]="WarningIcon" class="icon-md warning-icon"></lucide-icon>
+              <app-icon name="shield-alert" class="icon-xs warning-icon"></app-icon>
               <div class="warning-text">
                 <strong>⚠ Privacy & Secrets Warning</strong>
                 <span>JSON payloads frequently contain API keys, credentials, or personal data. Never share unredacted payloads publicly.</span>
@@ -45,14 +45,9 @@ import { LucideAngularModule, ShieldAlert, Share2, Copy, Check, X } from 'lucide
             @if (generatedLink()) {
               <div class="link-result-box">
                 <input type="text" readonly [value]="generatedLink()" class="link-input" />
-                <button class="action-btn btn-primary" (click)="copyShareLink()">
-                  @if (copied()) {
-                    <lucide-icon [img]="CheckIcon" class="icon-xs"></lucide-icon>
-                    Copied
-                  } @else {
-                    <lucide-icon [img]="CopyIcon" class="icon-xs"></lucide-icon>
-                    Copy Link
-                  }
+                <button class="btn-copy-share" (click)="copyShareLink()">
+                  <app-icon [name]="copied() ? 'check' : 'copy'" class="icon-xs"></app-icon>
+                  {{ copied() ? 'Copied' : 'Copy' }}
                 </button>
               </div>
             }
@@ -78,11 +73,7 @@ export class JsonLensShareModalComponent {
   generatedLink = signal<string>('');
   copied = signal<boolean>(false);
 
-  readonly ShareIcon = Share2;
-  readonly WarningIcon = ShieldAlert;
-  readonly CopyIcon = Copy;
-  readonly CheckIcon = Check;
-  readonly CloseIcon = X;
+
 
   generateLink() {
     const dummyHash = Math.random().toString(36).substring(2, 12);

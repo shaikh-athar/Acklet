@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, input, output, signal, computed, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LucideAngularModule, Search, Terminal, CheckCheck, ArrowLeftRight, Wand2, Copy, Download, FileUp, Layers, Table, BarChart2, Code2, RefreshCw, SunMoon, RotateCcw } from 'lucide-angular';
+import { IconComponent } from '../../../app/shared/components/icon/icon';
 
 export interface CommandItem {
   id: string;
@@ -14,13 +14,13 @@ export interface CommandItem {
 @Component({
   selector: 'app-json-lens-command-palette',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   template: `
     @if (isOpen()) {
       <div class="command-palette-overlay" (click)="closePalette.emit()">
         <div class="command-palette-modal" (click)="$event.stopPropagation()">
           <div class="palette-search-bar">
-            <lucide-icon [img]="SearchIcon" class="icon-sm search-icon"></lucide-icon>
+            <app-icon name="search" class="icon-sm search-icon"></app-icon>
             <input
               #searchInput
               type="text"
@@ -41,7 +41,7 @@ export interface CommandItem {
                 (click)="executeCommand(cmd)"
                 (mouseenter)="selectedIndex.set(idx)"
               >
-                <lucide-icon [img]="cmd.icon" class="icon-sm cmd-icon"></lucide-icon>
+                <app-icon [name]="cmd.icon" class="icon-sm cmd-icon"></app-icon>
                 <div class="cmd-info">
                   <span class="cmd-label">{{ cmd.label }}</span>
                   <span class="cmd-category">{{ cmd.category }}</span>
@@ -86,26 +86,26 @@ export class JsonLensCommandPaletteComponent implements AfterViewInit {
   convertYamlClick = output<void>();
   clearClick = output<void>();
 
-  readonly SearchIcon = Search;
+  readonly SearchIcon = 'search';
 
   commandsList: CommandItem[] = [
-    { id: 'format', label: 'Format JSON', category: 'Actions', icon: CheckCheck, action: () => this.formatClick.emit() },
-    { id: 'minify', label: 'Minify JSON', category: 'Actions', icon: ArrowLeftRight, action: () => this.minifyClick.emit() },
-    { id: 'validate', label: 'Validate JSON', category: 'Actions', icon: Terminal, action: () => this.validateClick.emit() },
-    { id: 'fix', label: 'Fix JSON Syntax', category: 'Actions', icon: Wand2, action: () => this.fixClick.emit() },
-    { id: 'expand', label: 'Expand All Nodes', category: 'View Modes', icon: Layers, action: () => this.expandAllClick.emit() },
-    { id: 'collapse', label: 'Collapse All Nodes', category: 'View Modes', icon: Layers, action: () => this.collapseAllClick.emit() },
-    { id: 'copy', label: 'Copy JSON', category: 'Actions', icon: Copy, action: () => this.copyClick.emit() },
-    { id: 'download', label: 'Download JSON', category: 'Actions', icon: Download, action: () => this.downloadClick.emit() },
-    { id: 'open_file', label: 'Open File', category: 'Workspace', icon: FileUp, action: () => this.openFileClick.emit() },
-    { id: 'toggle_tree', label: 'Toggle Tree View', category: 'View Modes', icon: Layers, action: () => this.toggleTreeClick.emit() },
-    { id: 'toggle_table', label: 'Toggle Table View', category: 'View Modes', icon: Table, action: () => this.toggleTableClick.emit() },
-    { id: 'show_stats', label: 'Show Statistics', category: 'View Modes', icon: BarChart2, action: () => this.showStatsClick.emit() },
-    { id: 'gen_ts', label: 'Generate TypeScript', category: 'Code Gen', icon: Code2, action: () => this.generateTsClick.emit() },
-    { id: 'gen_py', label: 'Generate Python', category: 'Code Gen', icon: Code2, action: () => this.generatePythonClick.emit() },
-    { id: 'gen_go', label: 'Generate Go Struct', category: 'Code Gen', icon: Code2, action: () => this.generateGoClick.emit() },
-    { id: 'convert_yaml', label: 'Convert to YAML', category: 'Transform', icon: RefreshCw, action: () => this.convertYamlClick.emit() },
-    { id: 'clear', label: 'Clear Workspace', category: 'Workspace', icon: RotateCcw, action: () => this.clearClick.emit() }
+    { id: 'format', label: 'Format JSON', category: 'Actions', icon: 'check', action: () => this.formatClick.emit() },
+    { id: 'minify', label: 'Minify JSON', category: 'Actions', icon: 'git-compare', action: () => this.minifyClick.emit() },
+    { id: 'validate', label: 'Validate JSON', category: 'Actions', icon: 'code', action: () => this.validateClick.emit() },
+    { id: 'fix', label: 'Fix JSON Syntax', category: 'Actions', icon: 'wand-2', action: () => this.fixClick.emit() },
+    { id: 'expand', label: 'Expand All Nodes', category: 'View Modes', icon: 'list', action: () => this.expandAllClick.emit() },
+    { id: 'collapse', label: 'Collapse All Nodes', category: 'View Modes', icon: 'list', action: () => this.collapseAllClick.emit() },
+    { id: 'copy', label: 'Copy JSON', category: 'Actions', icon: 'copy', action: () => this.copyClick.emit() },
+    { id: 'download', label: 'Download JSON', category: 'Actions', icon: 'file', action: () => this.downloadClick.emit() },
+    { id: 'open_file', label: 'Open File', category: 'Workspace', icon: 'file-code', action: () => this.openFileClick.emit() },
+    { id: 'toggle_tree', label: 'Toggle Tree View', category: 'View Modes', icon: 'list', action: () => this.toggleTreeClick.emit() },
+    { id: 'toggle_table', label: 'Toggle Table View', category: 'View Modes', icon: 'table', action: () => this.toggleTableClick.emit() },
+    { id: 'show_stats', label: 'Show Statistics', category: 'View Modes', icon: 'ruler', action: () => this.showStatsClick.emit() },
+    { id: 'gen_ts', label: 'Generate TypeScript', category: 'Code Gen', icon: 'code-2', action: () => this.generateTsClick.emit() },
+    { id: 'gen_py', label: 'Generate Python', category: 'Code Gen', icon: 'code-2', action: () => this.generatePythonClick.emit() },
+    { id: 'gen_go', label: 'Generate Go Struct', category: 'Code Gen', icon: 'code-2', action: () => this.generateGoClick.emit() },
+    { id: 'convert_yaml', label: 'Convert to YAML', category: 'Transform', icon: 'wand', action: () => this.convertYamlClick.emit() },
+    { id: 'clear', label: 'Clear Workspace', category: 'Workspace', icon: 'clock', action: () => this.clearClick.emit() }
   ];
 
   filteredCommands = computed(() => {

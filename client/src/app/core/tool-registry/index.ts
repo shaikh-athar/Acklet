@@ -75,5 +75,5 @@ export const TOOL_REGISTRY: Record<string, ToolManifest> = {
 
 // Dynamic Component map for dynamic imports of tool components
 export const TOOL_COMPONENTS: Record<string, () => Promise<Type<any>>> = {
-  'json-formatter': () => import('../../../tools/json-formatter/src/pages/json-formatter.component').then(m => m.JsonFormatterComponent)
+  'json-formatter': () => import('../../../tools/json-lens/json-lens.component').then(m => m.JsonLensComponent)
 };

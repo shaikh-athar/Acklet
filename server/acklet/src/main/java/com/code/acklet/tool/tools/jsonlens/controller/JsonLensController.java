@@ -7,7 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/tools/json-lens")
+@RequestMapping({"/api/v1/tools/datalens", "/api/v1/tools/data-lens", "/api/v1/tools/json-lens"})
 @CrossOrigin(origins = "*")
 public class JsonLensController {
 

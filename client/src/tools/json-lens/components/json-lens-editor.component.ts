@@ -1,13 +1,13 @@
-import { Component, ChangeDetectionStrategy, input, output, ElementRef, ViewChild, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, ElementRef, ViewChild, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { JsonLensResult } from '../services/json-lens.service';
-import { LucideAngularModule, FileCode, UploadCloud } from 'lucide-angular';
+import { IconComponent } from '../../../app/shared/components/icon/icon';
 
 @Component({
   selector: 'app-json-lens-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   template: `
     <div
       class="panel input-panel"
@@ -41,7 +41,7 @@ import { LucideAngularModule, FileCode, UploadCloud } from 'lucide-angular';
       <!-- Drag & Drop Active Overlay -->
       @if (isDragging()) {
         <div class="drag-drop-overlay">
-          <lucide-icon [img]="UploadCloudIcon" class="icon-lg opacity-80"></lucide-icon>
+          <app-icon name="file-code" class="icon-lg opacity-80"></app-icon>
           <div class="drag-overlay-title">Drop JSON File Here</div>
           <div class="drag-overlay-subtitle">Release to automatically parse & format payload</div>
         </div>
@@ -54,7 +54,7 @@ import { LucideAngularModule, FileCode, UploadCloud } from 'lucide-angular';
         @if (!rawInput() || rawInput().trim() === '') {
           <div class="empty-state-container">
             <div class="empty-icon">
-              <lucide-icon [img]="FileCodeIcon" class="icon-lg"></lucide-icon>
+              <app-icon name="file-code" class="icon-lg"></app-icon>
             </div>
             <div class="empty-title">Drop JSON here, paste payload, or load a sample</div>
             
@@ -86,9 +86,9 @@ export class JsonLensEditorComponent {
   @ViewChild('editorTextarea') editorTextarea!: ElementRef<HTMLTextAreaElement>;
 
   rawInput = input<string>('');
-  lineNumbers = input<string>('1');
   wordWrap = input<boolean>(true);
   result = input<JsonLensResult | null>(null);
+  errorLine = input<number | null>(null);
 
   inputChange = output<string>();
   clearClick = output<void>();
@@ -97,8 +97,10 @@ export class JsonLensEditorComponent {
 
   isDragging = signal<boolean>(false);
 
-  readonly FileCodeIcon = FileCode;
-  readonly UploadCloudIcon = UploadCloud;
+  readonly lineNumbers = computed(() => {
+    const lines = this.rawInput().split('\n').length;
+    return Array.from({ length: Math.max(lines, 1) }, (_, i) => i + 1).join('\n');
+  });
 
   onDragOver(event: DragEvent) {
     event.preventDefault();

@@ -42,6 +42,9 @@ export const routes: Routes = [
     ],
   },
 
+  // --- Standalone Tool Applications (Pure Tool UI, No Platform Shell/Navbar) ---
+  { path: 'tools/json-formatter', loadComponent: () => import('../tools/json-lens/json-lens.component').then(m => m.JsonLensComponent), title: 'JSON Formatter & Validator — Acklet' },
+
   // --- Standalone Auth Pages (No Navbar / No Main Footer) ---
   { path: 'login', redirectTo: 'auth/login', pathMatch: 'full' },
   { path: 'signup', redirectTo: 'auth/login', pathMatch: 'full' },

@@ -1,18 +1,18 @@
 import { Component, ChangeDetectionStrategy, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { JsonLensResult } from '../services/json-lens.service';
-import { LucideAngularModule, AlertCircle, Wrench } from 'lucide-angular';
+import { IconComponent } from '../../../app/shared/components/icon/icon';
 
 @Component({
   selector: 'app-json-lens-error-panel',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule],
+  imports: [CommonModule, IconComponent],
   template: `
     @if (result(); as res) {
       @if (!res.success) {
         <div class="compact-error-panel">
           <div class="error-badge-icon">
-            <lucide-icon [img]="AlertIcon" class="icon-xs"></lucide-icon>
+            <app-icon name="shield-alert" class="icon-xs"></app-icon>
           </div>
           <div class="error-main-info">
             <div class="error-title-row">
@@ -26,9 +26,9 @@ import { LucideAngularModule, AlertCircle, Wrench } from 'lucide-angular';
           <div class="error-actions">
             <button class="err-action-btn" (click)="goToErrorClick.emit()">Go to error</button>
             @if (res.repairedJson) {
-              <button class="err-action-btn fix-btn" (click)="openRepairClick.emit()">
-                <lucide-icon [img]="FixIcon" class="icon-xs"></lucide-icon>
-                Try Fix
+              <button class="btn-fix-sm" (click)="fixClick.emit()">
+                <app-icon name="wand-2" class="icon-xs"></app-icon>
+                Smart Auto-Fix
               </button>
             }
           </div>
@@ -43,8 +43,5 @@ export class JsonLensErrorPanelComponent {
   result = input<JsonLensResult | null>(null);
   
   goToErrorClick = output<void>();
-  openRepairClick = output<void>();
-
-  readonly AlertIcon = AlertCircle;
-  readonly FixIcon = Wrench;
+  fixClick = output<void>();
 }

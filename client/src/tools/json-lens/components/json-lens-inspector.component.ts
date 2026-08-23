@@ -2,12 +2,12 @@ import { Component, ChangeDetectionStrategy, input, output, signal, computed } f
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { JsonLensResult, JsonStats } from '../services/json-lens.service';
-import { LucideAngularModule, Table, AlertTriangle, Copy, Download, ChevronRight, ChevronDown, Edit2, Trash2, Code2, Search } from 'lucide-angular';
+import { IconComponent } from '../../../app/shared/components/icon/icon';
 
 @Component({
   selector: 'app-json-lens-inspector',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   template: `
     <div class="panel output-panel">
       <!-- Navbar Row 2: Sub-Header Tab Bar -->
@@ -41,7 +41,7 @@ import { LucideAngularModule, Table, AlertTriangle, Copy, Download, ChevronRight
       <!-- Search Match Counter Indicator -->
       @if (searchQuery().trim()) {
         <div class="search-match-bar">
-          <lucide-icon [img]="SearchIcon" class="icon-xs"></lucide-icon>
+          <app-icon name="search" class="icon-xs"></app-icon>
           <span><strong>{{ searchMatchesCount() }} matches</strong> found for "{{ searchQuery() }}"</span>
         </div>
       }
@@ -49,7 +49,7 @@ import { LucideAngularModule, Table, AlertTriangle, Copy, Download, ChevronRight
       <!-- Duplicate Keys Warning Alert -->
       @if (result()?.duplicateKeys?.length) {
         <div class="duplicate-key-alert">
-          <lucide-icon [img]="AlertIcon" class="icon-xs"></lucide-icon>
+          <app-icon name="shield-alert" class="icon-xs"></app-icon>
           <span><strong>⚠ Duplicate Key Detected:</strong> "{{ result()?.duplicateKeys?.join(', ') }}" appears multiple times. One value may overwrite another depending on parser AST.</span>
         </div>
       }
@@ -101,7 +101,7 @@ import { LucideAngularModule, Table, AlertTriangle, Copy, Download, ChevronRight
               </table>
             } @else {
               <div class="non-tabular-notice">
-                <lucide-icon [img]="TableIcon" class="icon-lg opacity-40"></lucide-icon>
+                <app-icon name="table" class="icon-lg opacity-40"></app-icon>
                 <div class="notice-title">This JSON structure isn't naturally tabular.</div>
                 <div class="notice-subtitle">Try Tree view or Formatted view instead.</div>
               </div>
@@ -235,7 +235,7 @@ import { LucideAngularModule, Table, AlertTriangle, Copy, Download, ChevronRight
             <span class="node-key">{{ key }}</span>
             <span class="node-val" [ngClass]="getTypeClass(val)">{{ formatVal(val) }}</span>
             <button class="node-action-btn" (click)="copyNodePath(path)" title="Copy JSONPath">
-              <lucide-icon [img]="CopyIcon" class="icon-xs"></lucide-icon>
+              <app-icon name="copy" class="icon-xs"></app-icon>
             </button>
           </div>
         }
@@ -261,11 +261,6 @@ export class JsonLensInspectorComponent {
   tabChange = output<'formatted' | 'tree' | 'table' | 'stats' | 'codegen'>();
   copyClick = output<void>();
   downloadClick = output<void>();
-
-  readonly TableIcon = Table;
-  readonly AlertIcon = AlertTriangle;
-  readonly CopyIcon = Copy;
-  readonly SearchIcon = Search;
 
   searchMatchesCount = computed(() => {
     const q = this.searchQuery().trim().toLowerCase();
