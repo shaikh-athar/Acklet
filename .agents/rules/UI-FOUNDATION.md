@@ -462,12 +462,11 @@ If the answer is unclear, keep the component local.
 
 ---
 
-# 15. Core Installed Dependencies
-
 | Package             | Role                                        | Status                |
 | ------------------- | ------------------------------------------- | --------------------- |
 | `@spartan-ng/brain` | Headless accessible Angular primitives      | Installed (`^1.3.1`)  |
 | `@angular/cdk`      | Focus, overlays, keyboard and accessibility | Installed (`^22.1.2`) |
+| `devicon`           | Programming language & tech stack icons     | Installed (`^2.16.0`) |
 | `@lucide/angular`   | Icon system                                 | Installed (`^1.23.0`) |
 | `@tailwindcss/vite` | Tailwind CSS v4                             | Installed (`^4.3.2`)  |
 | `@taiga-ui/core`    | Secondary component fallback                | Installed (`^5.20.0`) |
