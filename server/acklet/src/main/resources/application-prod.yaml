@@ -1,0 +1,83 @@
+spring:
+  # Database configuration mapped to environment variables (Supports standard DB_* & Railway PG* environment variables)
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:acklet_prod}}
+    username: ${DB_USERNAME:${PGUSER:postgres}}
+    password: ${DB_PASSWORD:${PGPASSWORD}}
+
+  # JPA & Hibernate configuration for production
+  jpa:
+    show-sql: false
+
+  # Redis configuration mapped to environment variables (Supports standard REDIS_* & Railway REDIS* environment variables)
+  data:
+    redis:
+      host: ${REDIS_HOST:${REDISHOST:localhost}}
+      port: ${REDIS_PORT:${REDISPORT:6379}}
+      username: ${REDIS_USER:${REDISUSER:}}
+      password: ${REDIS_PASSWORD:${REDISPASSWORD:}}
+
+  # Mail configuration mapped to environment variables
+  mail:
+    host: ${SPRING_MAIL_HOST}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME}
+    password: ${SPRING_MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  # RabbitMQ Configuration mapped to environment variables
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER}
+    password: ${RABBITMQ_PASSWORD}
+    listener:
+      simple:
+        retry:
+          enabled: true
+          initial-interval: 2000ms
+          max-attempts: 3
+          max-interval: 10000ms
+        auto-startup: true
+
+# Logging configuration for production
+logging:
+  level:
+    root: WARN
+    com.code.acklet: INFO
+    org.springframework.security: WARN
+
+# Production security & application parameters mapped to environment variables
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+      access-token-expiration-ms: ${JWT_ACCESS_TOKEN_EXPIRATION:900000}
+      refresh-token-expiration-ms: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
+    encryption:
+      key: ${APP_ENCRYPTION_KEY}
+    google:
+      client-id: ${GOOGLE_CLIENT_ID}
+      client-secret: ${GOOGLE_CLIENT_SECRET}
+
+  ai:
+    mistral:
+      api-key: ${MISTRAL_API_KEY}
+      model: ${MISTRAL_MODEL:mistral-small-latest}
+    gemini:
+      api-key: ${GEMINI_API_KEY}
+      model: ${GEMINI_MODEL:gemini-2.0-flash}
+    executor:
+      core-size: ${AI_EXECUTOR_CORE:2}
+      max-size: ${AI_EXECUTOR_MAX:5}
+      queue-capacity: ${AI_EXECUTOR_QUEUE:50}
+
+  github:
+    client-id: ${GITHUB_CLIENT_ID}
+    client-secret: ${GITHUB_CLIENT_SECRET}
+    webhook-secret: ${GITHUB_WEBHOOK_SECRET}
