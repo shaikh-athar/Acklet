@@ -33,6 +33,44 @@ export interface ToolManifest {
 }
 
 export const TOOL_REGISTRY: Record<string, ToolManifest> = {
+  'easy-convert': {
+    id: 'easy-convert',
+    name: 'EasyConvert',
+    slug: 'easy-convert',
+    category: 'Converters',
+    description: 'Convert documents and files between supported formats with minimal friction, transparent processing, strong privacy controls, and verified output.',
+    shortDescription: 'Convert files effortlessly without privacy compromises.',
+    version: '1.0.0',
+    status: 'active',
+    route: '/tools/easy-convert',
+    icon: 'arrow-right-left',
+    theme: {
+      mode: 'both',
+      accent: '#2196F3'
+    },
+    features: [
+      'Instant Drag & Drop file detection',
+      'Smart conversion recommendations',
+      'Client-side zero telemetry processing',
+      'Batch conversion queues',
+      'Large file streaming'
+    ],
+    capabilities: [
+      'offline-first',
+      'client-side-processing',
+      'batch-queues'
+    ],
+    seo: {
+      title: 'EasyConvert — Secure Document & File Converter | Acklet',
+      description: 'Convert PDF, Word, Excel, images, and text documents securely with instant local browser processing.',
+      keywords: ['easyconvert', 'pdf converter', 'doc to pdf', 'image converter', 'acklet tools']
+    },
+    analytics: {
+      enabled: true,
+      toolId: 'easy_convert_001'
+    },
+    relatedTools: ['csv-to-json', 'unit-converter', 'base64-encoder']
+  },
   'json-formatter': {
     id: 'tool-2', // maps to MOCK_TOOLS tool-2
     name: 'JSON Formatter',
@@ -75,5 +113,5 @@ export const TOOL_REGISTRY: Record<string, ToolManifest> = {
 
 // Dynamic Component map for dynamic imports of tool components
 export const TOOL_COMPONENTS: Record<string, () => Promise<Type<any>>> = {
-  'json-formatter': () => import('../../../tools/json-formatter/src/pages/json-formatter.component').then(m => m.JsonFormatterComponent)
+  'easy-convert': () => import('../../../tools/easy-convert/src/pages/easy-convert.component').then(m => m.EasyConvertComponent),
 };

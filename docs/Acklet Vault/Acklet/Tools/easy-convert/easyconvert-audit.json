@@ -1,0 +1,427 @@
+[
+  {
+    "section": 0,
+    "requirement": "ROLE & PRODUCT FOCUS",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/services/file-inspector.service.ts",
+      "a:/Acklet/client/src/tools/easy-convert/src/services/filename-sanitizer.service.ts",
+      "a:/Acklet/server/acklet/src/main/java/com/code/acklet/tool/easyconvert/EasyConvertService.java"
+    ],
+    "symbols": [
+      "FileInspectorService",
+      "FilenameSanitizerService",
+      "EasyConvertService"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Verified binary inspection, SHA-256 fingerprinting, isolated storage, MDC correlation tracking."
+  },
+  {
+    "section": 1,
+    "requirement": "PRODUCT PRINCIPLE & USER FLOW",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts",
+      "a:/Acklet/client/src/tools/easy-convert/src/components/dropzone.component.ts"
+    ],
+    "symbols": [
+      "EasyConvertComponent",
+      "DropzoneComponent"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Immediate above-the-fold workspace container with recursive folder dropzone support."
+  },
+  {
+    "section": 2,
+    "requirement": "IMPORTANT PRODUCT POSITIONING",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts"
+    ],
+    "symbols": [
+      "EasyConvertComponent"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Functional desktop-class document utility layout adhering strictly to Acklet design tokens."
+  },
+  {
+    "section": 3,
+    "requirement": "EASYCONVERT IDENTITY & CONCISE COPY",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts",
+      "a:/Acklet/client/src/tools/easy-convert/src/services/error-taxonomy.ts"
+    ],
+    "symbols": [
+      "EasyConvertComponent",
+      "ErrorTaxonomy"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Concise non-marketing status copy (Preparing file, Converting, Checking output, Conversion complete)."
+  },
+  {
+    "section": 4,
+    "requirement": "ACKLET DESIGN SYSTEM MANDATORY",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts"
+    ],
+    "symbols": [
+      "ToastService",
+      "IconComponent"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Reused native Acklet primitives (ToastService, IconComponent)."
+  },
+  {
+    "section": 5,
+    "requirement": "EASYCONVERT COLOR SYSTEM",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts"
+    ],
+    "symbols": [
+      "EasyConvertComponent"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Core accent palette (--ec-primary: #2196F3, --ec-primary-deep: #0D47A1, --ec-surface-soft: #E3F2FD, --ec-secondary: #90CAF9) with distinct semantic colors."
+  },
+  {
+    "section": 6,
+    "requirement": "DUAL THEME",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts"
+    ],
+    "symbols": [
+      "EasyConvertComponent"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Acklet theme token compliance for high contrast in Dark and Light modes."
+  },
+  {
+    "section": 7,
+    "requirement": "CORE UX - ABOVE THE FOLD",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts"
+    ],
+    "symbols": [
+      "EasyConvertComponent"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Header Bar, Privacy Badge, Tool Title, Subtitle, and Central Dropzone/Queue container immediately visible above the fold."
+  },
+  {
+    "section": 8,
+    "requirement": "UPLOAD EXPERIENCE",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts",
+      "a:/Acklet/client/src/tools/easy-convert/src/components/dropzone.component.ts"
+    ],
+    "symbols": [
+      "EasyConvertComponent",
+      "DropzoneComponent"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Window drag host listeners rendering subtle overlay ('Drop files to convert') with recursive folder extraction."
+  },
+  {
+    "section": 9,
+    "requirement": "FILE AUTO-DETECTION & BINARY MAGIC BYTES",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/services/file-inspector.service.ts",
+      "a:/Acklet/client/src/tools/easy-convert/src/services/error-taxonomy.ts"
+    ],
+    "symbols": [
+      "FileInspectorService",
+      "ErrorTaxonomy"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Magic byte header inspection (%PDF-, JPEG, PNG, RIFF, ZIP) and MIME mismatch validation."
+  },
+  {
+    "section": 10,
+    "requirement": "CONVERSION MATRIX & NO FAKE CAPABILITIES",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/services/conversion-registry.service.ts",
+      "a:/Acklet/client/src/tools/easy-convert/src/services/error-taxonomy.ts"
+    ],
+    "symbols": [
+      "ConversionRegistryService",
+      "ErrorTaxonomy"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Exposes ONLY genuinely supported capabilities, rejecting unsupported pairs with 'This conversion is not available yet.'"
+  },
+  {
+    "section": 11,
+    "requirement": "SMART CONVERSION SELECTION",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts",
+      "a:/Acklet/client/src/tools/easy-convert/src/services/conversion-registry.service.ts"
+    ],
+    "symbols": [
+      "EasyConvertComponent",
+      "ConversionRegistryService"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Format pills filtered dynamically per input extension with recommended highlights and preset memory."
+  },
+  {
+    "section": 12,
+    "requirement": "FILE QUEUE & PER-FILE INDEPENDENT STATE",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts"
+    ],
+    "symbols": [
+      "EasyConvertComponent"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Multi-file batch queue with independent state tracking and progress bars."
+  },
+  {
+    "section": 13,
+    "requirement": "BATCH CONVERSION & BOUNDED CONCURRENCY WORKER POOL",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts"
+    ],
+    "symbols": [
+      "EasyConvertComponent"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "processNextInQueue worker pool bounding concurrency to MAX_CONCURRENCY = 2."
+  },
+  {
+    "section": 14,
+    "requirement": "CONFIGURABLE LARGE FILE RESOURCE LIMITS",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts",
+      "a:/Acklet/client/src/tools/easy-convert/src/services/resource-limits.config.ts"
+    ],
+    "symbols": [
+      "DEFAULT_RESOURCE_LIMITS",
+      "EasyConvertComponent"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Enforces 100 MB max input size limit, raising FILE_TOO_LARGE error cards."
+  },
+  {
+    "section": 15,
+    "requirement": "LARGE FILE UX & HONEST STAGE MESSAGING",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/services/client-converter.engine.ts",
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts"
+    ],
+    "symbols": [
+      "ClientConverterEngine",
+      "EasyConvertComponent"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Explicit stage progress notifications (Preparing file, Decoding bitmap, Validating output)."
+  },
+  {
+    "section": 16,
+    "requirement": "ABORT CONTROLLER CANCELLATION",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts"
+    ],
+    "symbols": [
+      "EasyConvertComponent"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "AbortController integration with stage transitions ('Stopping conversion...' -> 'Conversion cancelled')."
+  },
+  {
+    "section": 17,
+    "requirement": "RETRY POLICY & BOUNDED RETRIES",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts",
+      "a:/Acklet/client/src/tools/easy-convert/src/services/error-taxonomy.ts"
+    ],
+    "symbols": [
+      "EasyConvertComponent",
+      "ErrorTaxonomy"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Distinguishes transient vs permanent errors, capping max retries to 3 attempts."
+  },
+  {
+    "section": 18,
+    "requirement": "ERROR HANDLING & FALLBACK MESSAGING",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/services/error-taxonomy.ts",
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts"
+    ],
+    "symbols": [
+      "ErrorTaxonomy",
+      "EasyConvertComponent"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Structured error cards with title, reason, and actionable recovery bullets."
+  },
+  {
+    "section": 19,
+    "requirement": "ERROR CLASSIFICATION & UI SECURITY SANITIZATION",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/services/error-taxonomy.ts"
+    ],
+    "symbols": [
+      "ErrorTaxonomy"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "sanitizeDetails() strips raw stack traces, local filesystem paths, and exception strings."
+  },
+  {
+    "section": 20,
+    "requirement": "PASSWORD PROTECTION DETECTION",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/services/file-inspector.service.ts",
+      "a:/Acklet/client/src/tools/easy-convert/src/services/error-taxonomy.ts"
+    ],
+    "symbols": [
+      "FileInspectorService",
+      "ErrorTaxonomy"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Detects /Encrypt in PDFs and raises clear error cards without logging passwords."
+  },
+  {
+    "section": 21,
+    "requirement": "DIGITAL SIGNATURE SAFETY",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/services/file-inspector.service.ts",
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts"
+    ],
+    "symbols": [
+      "FileInspectorService",
+      "EasyConvertComponent"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Detects /ByteRange and /Sig in PDFs, renders warning overlays, and displays signature status in preview modal."
+  },
+  {
+    "section": 22,
+    "requirement": "METADATA PRIVACY",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts",
+      "a:/Acklet/client/src/tools/easy-convert/src/services/file-inspector.service.ts"
+    ],
+    "symbols": [
+      "EasyConvertComponent",
+      "FileInspectorService"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Header bar toggle [x] Strip Metadata for explicit EXIF and document property removal."
+  },
+  {
+    "section": 23,
+    "requirement": "MACRO / ACTIVE CONTENT SAFETY",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/services/file-inspector.service.ts",
+      "a:/Acklet/client/src/tools/easy-convert/src/pages/easy-convert.component.ts"
+    ],
+    "symbols": [
+      "FileInspectorService",
+      "EasyConvertComponent"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Detects embedded macros (/VBA, .docm, .xlsm, .pptm) and JS payloads, displaying warning badges."
+  },
+  {
+    "section": 24,
+    "requirement": "MALFORMED / HOSTILE FILE PROTECTION",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/client/src/tools/easy-convert/src/services/filename-sanitizer.service.ts",
+      "a:/Acklet/server/acklet/src/main/java/com/code/acklet/tool/easyconvert/EasyConvertService.java"
+    ],
+    "symbols": [
+      "FilenameSanitizerService",
+      "EasyConvertService"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Sanitizes path traversal, null bytes, control chars, and Windows reserved names."
+  },
+  {
+    "section": 25,
+    "requirement": "ISOLATED TEMPORARY STORAGE LIFECYCLE",
+    "status": "IMPLEMENTED",
+    "confidence": "HIGH",
+    "files": [
+      "a:/Acklet/server/acklet/src/main/java/com/code/acklet/tool/easyconvert/EasyConvertService.java"
+    ],
+    "symbols": [
+      "EasyConvertService"
+    ],
+    "tests": [],
+    "runtimeVerified": true,
+    "notes": "Isolates files in workspaces/temp_conversions with @Scheduled 1-hour expiration retention cleanup."
+  }
+]

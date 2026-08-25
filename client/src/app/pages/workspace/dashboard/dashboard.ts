@@ -120,6 +120,106 @@ import { WorkspaceStateService } from '../../../core/services/workspace-state.se
           </div>
         </div>
       </div>
+
+      <!-- ── Quick Launch Tools Widget ─────────────────────────────────────── -->
+      <div class="ql-section">
+        <div class="ql-section-header">
+          <div class="ql-section-title-group">
+            <app-icon name="zap" class="ql-section-icon" />
+            <h2 class="ql-section-title">Quick Launch</h2>
+            <span class="ql-section-badge">Tools</span>
+          </div>
+          <a routerLink="/tools/explore" class="ql-browse-link">
+            Browse All
+            <app-icon name="arrow-right" class="ql-browse-icon" />
+          </a>
+        </div>
+
+        <div class="ql-tools-grid">
+          <!-- EasyConvert -->
+          <a routerLink="/tools/easy-convert" class="ql-tool-card">
+            <div class="ql-tool-accent" style="background: linear-gradient(135deg, #2196F3, #0D47A1)"></div>
+            <div class="ql-tool-body">
+              <div class="ql-tool-icon-wrap" style="background: linear-gradient(135deg, #2196F3, #0D47A1)">
+                <app-icon name="arrow-right-left" class="ql-tool-icon" />
+              </div>
+              <div class="ql-tool-info">
+                <div class="ql-tool-header">
+                  <span class="ql-tool-name">EasyConvert</span>
+                  <span class="ql-tool-badge new">New</span>
+                </div>
+                <p class="ql-tool-desc">Convert PDF, Word, images &amp; more — locally in your browser.</p>
+                <div class="ql-tool-meta">
+                  <span class="ql-tool-tag"><app-icon name="shield-check" class="ql-tag-icon" /> Local-first</span>
+                  <span class="ql-tool-tag"><app-icon name="layers" class="ql-tag-icon" /> Batch support</span>
+                </div>
+              </div>
+            </div>
+            <div class="ql-tool-footer">
+              <span class="ql-launch-btn">
+                <app-icon name="rocket" class="ql-launch-icon" />
+                Launch EasyConvert
+              </span>
+              <span class="ql-rating">★ 5.0 · 154k uses</span>
+            </div>
+          </a>
+
+          <!-- JSON Formatter -->
+          <a routerLink="/tools/json-formatter" class="ql-tool-card">
+            <div class="ql-tool-accent" style="background: linear-gradient(135deg, #f97316, #ea580c)"></div>
+            <div class="ql-tool-body">
+              <div class="ql-tool-icon-wrap" style="background: linear-gradient(135deg, #f97316, #ea580c)">
+                <app-icon name="braces" class="ql-tool-icon" />
+              </div>
+              <div class="ql-tool-info">
+                <div class="ql-tool-header">
+                  <span class="ql-tool-name">JSON Formatter</span>
+                </div>
+                <p class="ql-tool-desc">Beautify, minify, and validate JSON with syntax highlighting.</p>
+                <div class="ql-tool-meta">
+                  <span class="ql-tool-tag"><app-icon name="zap" class="ql-tag-icon" /> Instant</span>
+                  <span class="ql-tool-tag"><app-icon name="shield-check" class="ql-tag-icon" /> Browser-only</span>
+                </div>
+              </div>
+            </div>
+            <div class="ql-tool-footer">
+              <span class="ql-launch-btn">
+                <app-icon name="rocket" class="ql-launch-icon" />
+                Launch JSON Formatter
+              </span>
+              <span class="ql-rating">★ 4.8 · 891k uses</span>
+            </div>
+          </a>
+
+          <!-- Color Palette Generator -->
+          <a routerLink="/tools/color-palette" class="ql-tool-card">
+            <div class="ql-tool-accent" style="background: linear-gradient(135deg, #ec4899, #8b5cf6)"></div>
+            <div class="ql-tool-body">
+              <div class="ql-tool-icon-wrap" style="background: linear-gradient(135deg, #ec4899, #8b5cf6)">
+                <app-icon name="palette" class="ql-tool-icon" />
+              </div>
+              <div class="ql-tool-info">
+                <div class="ql-tool-header">
+                  <span class="ql-tool-name">Color Palette</span>
+                  <span class="ql-tool-badge hot">Trending</span>
+                </div>
+                <p class="ql-tool-desc">Generate beautiful palettes for design systems and UIs.</p>
+                <div class="ql-tool-meta">
+                  <span class="ql-tool-tag"><app-icon name="eye" class="ql-tag-icon" /> WCAG check</span>
+                  <span class="ql-tool-tag"><app-icon name="download" class="ql-tag-icon" /> CSS export</span>
+                </div>
+              </div>
+            </div>
+            <div class="ql-tool-footer">
+              <span class="ql-launch-btn">
+                <app-icon name="rocket" class="ql-launch-icon" />
+                Launch Color Palette
+              </span>
+              <span class="ql-rating">★ 4.9 · 234k uses</span>
+            </div>
+          </a>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -491,6 +591,241 @@ import { WorkspaceStateService } from '../../../core/services/workspace-state.se
  
     .db-project-time {
       flex-shrink: 0;
+    }
+
+    /* ── Quick Launch Tools ─────────────────────────────────────── */
+    .ql-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .ql-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .ql-section-title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ql-section-icon {
+      width: 16px;
+      height: 16px;
+      color: #f59e0b;
+    }
+
+    .ql-section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--vercel-text-primary);
+      margin: 0;
+    }
+
+    .ql-section-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(99, 102, 241, 0.15);
+      color: #818cf8;
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .ql-browse-link {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--vercel-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .ql-browse-link:hover {
+      color: var(--vercel-text-primary);
+    }
+
+    .ql-browse-icon {
+      width: 12px;
+      height: 12px;
+    }
+
+    .ql-tools-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    @media (min-width: 768px) {
+      .ql-tools-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 1280px) {
+      .ql-tools-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .ql-tool-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      background: var(--vercel-card-bg);
+      border: 1px solid var(--vercel-border);
+      border-radius: 10px;
+      overflow: hidden;
+      text-decoration: none;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+      cursor: pointer;
+    }
+
+    .ql-tool-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      border-color: rgba(99, 102, 241, 0.4);
+    }
+
+    .ql-tool-accent {
+      height: 3px;
+      width: 100%;
+    }
+
+    .ql-tool-body {
+      display: flex;
+      gap: 14px;
+      padding: 16px;
+      flex: 1;
+    }
+
+    .ql-tool-icon-wrap {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .ql-tool-icon {
+      width: 20px;
+      height: 20px;
+      color: #fff;
+    }
+
+    .ql-tool-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .ql-tool-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ql-tool-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--vercel-text-primary);
+    }
+
+    .ql-tool-badge {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .ql-tool-badge.new {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.25);
+    }
+
+    .ql-tool-badge.hot {
+      background: rgba(249, 115, 22, 0.15);
+      color: #fb923c;
+      border: 1px solid rgba(249, 115, 22, 0.25);
+    }
+
+    .ql-tool-desc {
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--vercel-text-muted);
+      margin: 0;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .ql-tool-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .ql-tool-tag {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--vercel-text-muted);
+      background: var(--vercel-subtle-bg);
+      border: 1px solid var(--vercel-border);
+      border-radius: 4px;
+      padding: 2px 6px;
+    }
+
+    .ql-tag-icon {
+      width: 10px;
+      height: 10px;
+    }
+
+    .ql-tool-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-top: 1px solid var(--vercel-border);
+      background: var(--vercel-subtle-bg);
+    }
+
+    .ql-launch-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--vercel-text-primary);
+    }
+
+    .ql-launch-icon {
+      width: 12px;
+      height: 12px;
+      color: #818cf8;
+    }
+
+    .ql-rating {
+      font-size: 10px;
+      color: var(--vercel-text-muted);
     }
   `],
 })

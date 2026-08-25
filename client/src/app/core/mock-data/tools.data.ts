@@ -3,6 +3,48 @@
 import { Tool } from '../models/tool.model';
 
 export const MOCK_TOOLS: Tool[] = [
+  {
+    id: 'easy-convert',
+    name: 'EasyConvert',
+    slug: 'easy-convert',
+    categoryId: 'cat-10',
+    categoryName: 'Converters',
+    categoryIcon: 'arrow-right-left',
+    shortDescription: 'Convert documents and files effortlessly with maximum security and privacy.',
+    description: 'EasyConvert is Acklet\'s flagship document and file conversion workspace. Convert PDFs, Word documents, images, and spreadsheets with client-first processing, transparent verification, and no privacy compromises.',
+    tags: ['Convert', 'PDF', 'Word', 'Images', 'Documents', 'Security'],
+    features: [
+      'Instant drag-and-drop file inspection & auto-detection',
+      'Client-side execution for local files with zero telemetry',
+      'Smart output format recommendations & preset memory',
+      'Multi-format support for PDF, Word, Excel, Images, and text',
+      'Keyboard shortcut Ctrl+U for rapid upload',
+    ],
+    usageSteps: [
+      { step: 1, title: 'Drop File', description: 'Drag and drop any document or file into the workspace.' },
+      { step: 2, title: 'Select Target', description: 'Choose from smart recommended output formats.' },
+      { step: 3, title: 'Convert & Download', description: 'Process seamlessly and download your output file.' },
+    ],
+    screenshots: [
+      { id: 'ss-1', title: 'Conversion Workspace', description: 'Clean, effortless conversion interface' },
+    ],
+    faqs: [
+      { question: 'Is my document private?', answer: 'Yes. EasyConvert prioritizes local browser processing so confidential files never leave your device unless cloud processing is explicitly required.' },
+      { question: 'What file formats are supported?', answer: 'PDF, DOCX, XLSX, PPTX, JPG, PNG, WebP, Markdown, Text, and more.' },
+    ],
+    relatedToolIds: ['tool-15', 'tool-16', 'tool-7'],
+    rating: 5.0,
+    reviewCount: 412,
+    usageCount: 154000,
+    isNew: true,
+    isFeatured: true,
+    isTrending: true,
+    isPopular: true,
+    icon: 'arrow-right-left',
+    color: '#2196F3',
+    gradient: 'linear-gradient(135deg, #2196F3, #0D47A1)',
+    addedDate: '2026-08-19',
+  },
   // ── Developer Tools ────────────────────────────────────────
   {
     id: 'tool-1',

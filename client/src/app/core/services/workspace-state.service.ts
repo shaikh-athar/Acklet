@@ -62,7 +62,7 @@ export class WorkspaceStateService {
   readonly repos = signal<RepositoryItem[]>([]);
   readonly tools = signal<WorkspaceTool[]>([]);
   readonly collections = signal<CollectionFolder[]>(
-    JSON.parse(localStorage.getItem('acklet:collections') ?? '[]')
+    JSON.parse(localStorage.getItem('acklet:collections') ?? '[]'),
   );
   readonly storeItems = signal<StoreItem[]>([]);
   readonly activeModal = signal<'add_tool' | 'connect_repo' | 'create_collection' | null>(null);
@@ -88,7 +88,7 @@ export class WorkspaceStateService {
               description: repo.description || '',
               lastSync: 'Just now',
               syncStatus: repo.statusTreeAnalyzed ? 'Synced' : 'Syncing',
-              toolStatus: repo.statusAiAnalyzed ? 'Published' : 'Not Generated'
+              toolStatus: repo.statusAiAnalyzed ? 'Published' : 'Not Generated',
             }));
           this.repos.set(mapped);
         } else {
@@ -97,7 +97,7 @@ export class WorkspaceStateService {
       },
       error: () => {
         this.repos.set([]);
-      }
+      },
     });
   }
 
@@ -113,25 +113,29 @@ export class WorkspaceStateService {
   removeRepository(id: string): void {
     this.http.delete<any>(`${API_BASE}/projects/${id}`).subscribe({
       next: () => {
-        this.repos.update(list => list.filter(r => r.id !== id));
+        this.repos.update((list) => list.filter((r) => r.id !== id));
       },
       error: (err) => {
         console.error('Failed to disconnect repository:', err);
         // Fallback local update to keep UI responsive
-        this.repos.update(list => list.filter(r => r.id !== id));
-      }
+        this.repos.update((list) => list.filter((r) => r.id !== id));
+      },
     });
   }
 
   unlinkRepository(id: string): void {
     this.http.post<any>(`${API_BASE}/projects/${id}/unlink`, {}).subscribe({
       next: () => {
-        this.repos.update(list => list.map(r => r.id === id ? { ...r, toolStatus: 'Not Generated' } : r));
+        this.repos.update((list) =>
+          list.map((r) => (r.id === id ? { ...r, toolStatus: 'Not Generated' } : r)),
+        );
       },
       error: (err) => {
         console.error('Failed to unlink repository:', err);
-        this.repos.update(list => list.map(r => r.id === id ? { ...r, toolStatus: 'Not Generated' } : r));
-      }
+        this.repos.update((list) =>
+          list.map((r) => (r.id === id ? { ...r, toolStatus: 'Not Generated' } : r)),
+        );
+      },
     });
   }
 
@@ -142,33 +146,37 @@ export class WorkspaceStateService {
       name,
       description: description || 'Custom collection.',
       color,
-      tools: []
+      tools: [],
     };
-    this.collections.update(list => [newFolder, ...list]);
+    this.collections.update((list) => [newFolder, ...list]);
     this._saveCollections();
   }
 
   removeCollection(id: string): void {
-    this.collections.update(list => list.filter(c => c.id !== id));
+    this.collections.update((list) => list.filter((c) => c.id !== id));
     this._saveCollections();
   }
 
   addToolToCollection(collectionId: string, tool: CollectionTool): void {
-    this.collections.update(list => list.map(c => {
-      if (c.id === collectionId) {
-        if (c.tools.some(t => t.id === tool.id)) return c;
-        return { ...c, tools: [...c.tools, tool] };
-      }
-      return c;
-    }));
+    this.collections.update((list) =>
+      list.map((c) => {
+        if (c.id === collectionId) {
+          if (c.tools.some((t) => t.id === tool.id)) return c;
+          return { ...c, tools: [...c.tools, tool] };
+        }
+        return c;
+      }),
+    );
     this._saveCollections();
   }
 
   removeToolFromCollection(collectionId: string, toolId: string): void {
-    this.collections.update(list => list.map(c => {
-      if (c.id === collectionId) return { ...c, tools: c.tools.filter(t => t.id !== toolId) };
-      return c;
-    }));
+    this.collections.update((list) =>
+      list.map((c) => {
+        if (c.id === collectionId) return { ...c, tools: c.tools.filter((t) => t.id !== toolId) };
+        return c;
+      }),
+    );
     this._saveCollections();
   }
 
