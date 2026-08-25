@@ -616,7 +616,7 @@ export class ToolDetailComponent implements OnInit {
   useTool(): void {
     const slug = this.tool()?.slug;
     if (!slug) return;
-    window.open(`/tools/${slug}`, '_blank');
+    window.open(`/tools/app/${slug}`, '_blank');
   }
 
   closeSandbox(): void {
