@@ -1,0 +1,37 @@
+:host {
+  display: block;
+  width: 100%;
+  min-height: 100vh;
+  color: var(--color-text, #f4f4f5);
+  font-family: inherit;
+}
+
+/* Animations */
+@keyframes pulseGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.sync-pulse {
+  animation: pulseGlow 2s infinite;
+}
+
+@keyframes syncSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin-slow {
+  animation: syncSpin 3s linear infinite;
+}

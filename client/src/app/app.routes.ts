@@ -63,6 +63,14 @@ export const routes: Routes = [
             title: 'EasyConvert — File Converter | Acklet',
           },
           {
+            path: 'airvault',
+            loadComponent: () =>
+              import('../tools/airvault/airvault.component').then(
+                (m) => m.AirVaultComponent,
+              ),
+            title: 'AirVault — Cross-Device Clipboard | Acklet',
+          },
+          {
             path: ':id',
             loadComponent: () =>
               import('./pages/tool-detail/tool-detail').then((m) => m.ToolDetailComponent),

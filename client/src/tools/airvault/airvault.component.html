@@ -1,0 +1,563 @@
+<div class="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200">
+  <!-- Top Navigation Bar -->
+  <header class="border-b border-slate-800/80 bg-slate-900/50 backdrop-blur sticky top-0 z-30 px-4 lg:px-8 py-3.5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="h-9 w-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-950/50">
+        <lucide-icon name="cloud" [size]="20" class="text-slate-950"></lucide-icon>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            AirVault
+            <span class="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              Live Sync
+            </span>
+          </h1>
+        </div>
+        <p class="text-xs text-slate-400">End-to-End Encrypted Cross-Device Clipboard</p>
+      </div>
+    </div>
+
+    <!-- Cluster Status & Actions -->
+    <div class="flex items-center gap-2.5">
+      <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs">
+        <span class="h-2 w-2 rounded-full bg-emerald-500 sync-pulse"></span>
+        <span class="text-slate-300 font-medium">{{ activeDeviceCount() }} Devices Active</span>
+      </div>
+
+      <button
+        (click)="openPairingModal()"
+        class="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-colors shadow-sm cursor-pointer"
+      >
+        <lucide-icon name="plus" [size]="15"></lucide-icon>
+        Pair Device
+      </button>
+
+      <button
+        (click)="toggleSettingsModal()"
+        class="p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors cursor-pointer"
+        title="Settings"
+      >
+        <lucide-icon name="settings" [size]="18"></lucide-icon>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- LEFT COLUMN: Hero Current Clip & Manual Capture (7 cols) -->
+    <section class="lg:col-span-7 flex flex-col gap-6">
+      
+      <!-- HERO: Live Active Clipboard Card -->
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 lg:p-6 backdrop-blur shadow-xl relative overflow-hidden">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2.5">
+            <span class="flex h-2.5 w-2.5 relative">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider">Live Synchronized Clip</h2>
+          </div>
+
+          <div class="flex items-center gap-2">
+            @if (currentClip()) {
+              <span class="text-xs px-2.5 py-0.5 rounded-full font-mono bg-slate-800 text-slate-300 border border-slate-700">
+                {{ currentClip()?.contentType }}
+              </span>
+            }
+            <button
+              (click)="captureClipboard()"
+              class="flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer"
+              title="Read Local Clipboard"
+            >
+              <lucide-icon name="refresh-cw" [size]="13" [class.spin-slow]="isSyncing()"></lucide-icon>
+              Read Local
+            </button>
+          </div>
+        </div>
+
+        <!-- Clip Content Display -->
+        @if (currentClip()) {
+          @if (currentClip()?.contentType === 'image') {
+            <div class="rounded-xl border border-slate-800/80 bg-slate-950/80 p-3 flex flex-col items-center justify-center max-h-72 overflow-hidden">
+              <img [src]="currentClip()?.content" alt="Synchronized Image" class="max-h-60 object-contain rounded-lg shadow-md" />
+            </div>
+          } @else {
+            <div class="relative group rounded-xl border border-slate-800/80 bg-slate-950/80 p-4 font-mono text-sm leading-relaxed text-slate-200 break-words whitespace-pre-wrap max-h-56 overflow-y-auto">
+              {{ currentClip()?.content }}
+            </div>
+          }
+
+          <!-- Metadata & Action Footer -->
+          <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
+            <div class="flex items-center gap-2">
+              <lucide-icon [name]="getDeviceIcon(currentClip()!.originDeviceType)" [size]="14" class="text-emerald-400"></lucide-icon>
+              <span>From: <strong class="text-slate-200 font-medium">{{ currentClip()?.originDeviceName }}</strong></span>
+              <span>•</span>
+              <span>{{ timeAgo(currentClip()!.createdAt) }}</span>
+            </div>
+
+            <div class="flex items-center gap-2">
+              @if (currentClip()?.contentType === 'url') {
+                <button
+                  (click)="openInTool(currentClip()!)"
+                  class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 transition cursor-pointer font-medium"
+                >
+                  <lucide-icon name="external-link" [size]="14"></lucide-icon>
+                  Open URL
+                </button>
+              } @else if (currentClip()?.language === 'json' || currentClip()?.content?.startsWith('{')) {
+                <button
+                  (click)="openInTool(currentClip()!)"
+                  class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 transition cursor-pointer font-medium"
+                >
+                  <lucide-icon name="code-2" [size]="14"></lucide-icon>
+                  Inspect in JSONLens
+                </button>
+              }
+
+              <button
+                (click)="copyClip(currentClip()!.content)"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition cursor-pointer font-medium"
+              >
+                <lucide-icon [name]="copiedState() ? 'check' : 'copy'" [size]="14"></lucide-icon>
+                {{ copiedState() ? 'Copied!' : 'Copy to Clipboard' }}
+              </button>
+
+              <button
+                (click)="openTargetSendModal(currentClip()!)"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer"
+              >
+                <lucide-icon name="send" [size]="14"></lucide-icon>
+                Send to Device
+              </button>
+            </div>
+          </div>
+        } @else {
+          <!-- Empty State -->
+          <div class="py-12 flex flex-col items-center justify-center text-center px-4">
+            <div class="h-12 w-12 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 mb-3">
+              <lucide-icon name="clipboard-copy" [size]="24"></lucide-icon>
+            </div>
+            <p class="text-sm font-medium text-slate-300">Your AirVault is empty</p>
+            <p class="text-xs text-slate-500 mt-1 max-w-sm">
+              Copy any text, link, code snippet, or image to sync instantly.
+            </p>
+          </div>
+        }
+      </div>
+
+      <!-- Quick Stage / Manual Input Area with File Upload -->
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur">
+        <div class="flex items-center justify-between mb-2">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+            Instant Push Content
+          </label>
+          <label class="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition cursor-pointer font-medium">
+            <lucide-icon name="paperclip" [size]="13"></lucide-icon>
+            <span>Attach Image/File</span>
+            <input type="file" (change)="onFileSelected($event)" class="hidden" accept="image/*,.txt,.json,.md,.js,.ts" />
+          </label>
+        </div>
+        <div class="relative">
+          <textarea
+            [(ngModel)]="manualInputText"
+            (keydown.control.enter)="pushManualContent()"
+            (keydown.meta.enter)="pushManualContent()"
+            rows="3"
+            placeholder="Type or paste text, links, or code here... (Press Ctrl+Enter to push)"
+            class="w-full rounded-xl border border-slate-800 bg-slate-950/90 px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 resize-none font-mono"
+          ></textarea>
+        </div>
+
+        <div class="mt-3 flex items-center justify-between">
+          <span class="text-xs text-slate-500">
+            Detected: <strong class="text-slate-400">{{ detectedInputType() }}</strong>
+          </span>
+
+          <button
+            (click)="pushManualContent()"
+            [disabled]="!manualInputText.trim()"
+            class="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold transition cursor-pointer shadow-sm"
+          >
+            <lucide-icon name="send" [size]="14"></lucide-icon>
+            Push to All Devices
+          </button>
+        </div>
+      </div>
+
+      <!-- History Feed -->
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 flex flex-col gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h3 class="text-sm font-semibold text-slate-200">Clipboard History</h3>
+
+          <!-- Filter Pills -->
+          <div class="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+            @for (f of ['all', 'url', 'code', 'plain-text', 'image']; track f) {
+              <button
+                (click)="setTypeFilter(f)"
+                [class.bg-slate-800]="typeFilter() === f"
+                [class.text-white]="typeFilter() === f"
+                [class.text-slate-400]="typeFilter() !== f"
+                class="px-2.5 py-1 rounded-md transition font-medium capitalize cursor-pointer"
+              >
+                {{ f }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="relative">
+          <lucide-icon name="search" [size]="15" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500"></lucide-icon>
+          <input
+            type="text"
+            [(ngModel)]="searchFilter"
+            (ngModelChange)="onSearchChange($event)"
+            placeholder="Search clipboard history..."
+            class="w-full rounded-xl border border-slate-800 bg-slate-950/70 pl-9 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:border-slate-700 focus:outline-none"
+          />
+        </div>
+
+        <!-- History Item List -->
+        <div class="flex flex-col gap-2.5 max-h-96 overflow-y-auto pr-1">
+          @for (item of filteredClips(); track item.id) {
+            <div class="group rounded-xl border border-slate-800/80 bg-slate-950/60 hover:bg-slate-900/80 p-3.5 transition flex flex-col gap-2">
+              <div class="flex items-start justify-between gap-2">
+                <span class="text-xs line-clamp-2 text-slate-300 font-mono break-all select-all">
+                  {{ item.content }}
+                </span>
+                
+                <div class="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition">
+                  <button
+                    (click)="copyClip(item.content)"
+                    class="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 hover:text-emerald-400 transition cursor-pointer"
+                    title="Copy"
+                  >
+                    <lucide-icon name="copy" [size]="14"></lucide-icon>
+                  </button>
+
+                  <button
+                    (click)="togglePin(item.id)"
+                    class="p-1.5 rounded-md hover:bg-slate-800 transition cursor-pointer"
+                    [class.text-amber-400]="item.isPinned"
+                    [class.text-slate-500]="!item.isPinned"
+                    title="Pin"
+                  >
+                    <lucide-icon name="pin" [size]="14"></lucide-icon>
+                  </button>
+
+                  <button
+                    (click)="deleteClip(item.id)"
+                    class="p-1.5 rounded-md hover:bg-slate-800 text-slate-500 hover:text-rose-400 transition cursor-pointer"
+                    title="Delete"
+                  >
+                    <lucide-icon name="trash-2" [size]="14"></lucide-icon>
+                  </button>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between text-[11px] text-slate-500">
+                <div class="flex items-center gap-1.5">
+                  <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono uppercase text-[10px]">
+                    {{ item.contentType }}
+                  </span>
+                  <span>From {{ item.originDeviceName }}</span>
+                </div>
+                <span>{{ timeAgo(item.createdAt) }}</span>
+              </div>
+            </div>
+          } @empty {
+            <div class="py-8 text-center text-xs text-slate-500">
+              No matching clipboard entries found.
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: Connected Device Matrix & Quick Controls (5 cols) -->
+    <section class="lg:col-span-5 flex flex-col gap-6">
+      
+      <!-- Device Cluster Management -->
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 lg:p-6 backdrop-blur flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-semibold text-slate-200">Connected Device Cluster</h3>
+            <p class="text-xs text-slate-400 mt-0.5">AirVault synchronized workspace mesh</p>
+          </div>
+          <button
+            (click)="openPairingModal()"
+            class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition cursor-pointer"
+            title="Add Device"
+          >
+            <lucide-icon name="plus" [size]="16"></lucide-icon>
+          </button>
+        </div>
+
+        <!-- Devices List -->
+        <div class="flex flex-col gap-3">
+          @for (dev of devices(); track dev.id) {
+            <div
+              class="rounded-xl border border-slate-800/80 bg-slate-950/70 p-3.5 flex items-center justify-between transition hover:border-slate-700"
+              [class.border-emerald-500/40]="dev.isCurrentDevice"
+            >
+              <div class="flex items-center gap-3">
+                <div class="h-9 w-9 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300">
+                  <lucide-icon [name]="getDeviceIcon(dev.type)" [size]="18"></lucide-icon>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold text-slate-200">{{ dev.name }}</span>
+                    @if (dev.isCurrentDevice) {
+                      <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-medium">
+                        This Device
+                      </span>
+                    }
+                  </div>
+                  <div class="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                    <span class="flex items-center gap-1">
+                      <span
+                        class="h-1.5 w-1.5 rounded-full"
+                        [class.bg-emerald-400]="dev.status === 'connected'"
+                        [class.bg-amber-400]="dev.status === 'idle'"
+                        [class.bg-slate-600]="dev.status === 'offline'"
+                      ></span>
+                      <span class="capitalize">{{ dev.status }}</span>
+                    </span>
+                    @if (dev.batteryLevel) {
+                      <span>•</span>
+                      <span>{{ dev.batteryLevel }}% batt</span>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <!-- Device Actions -->
+              <div class="flex items-center gap-1">
+                <button
+                  (click)="openRenameModal(dev)"
+                  class="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition cursor-pointer"
+                  title="Rename Device"
+                >
+                  <lucide-icon name="edit-2" [size]="13"></lucide-icon>
+                </button>
+
+                @if (!dev.isCurrentDevice) {
+                  <button
+                    (click)="toggleDeviceOnline(dev.id)"
+                    class="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition cursor-pointer"
+                    [title]="dev.status === 'connected' ? 'Simulate Offline' : 'Set Connected'"
+                  >
+                    <lucide-icon [name]="dev.status === 'connected' ? 'wifi' : 'wifi-off'" [size]="14"></lucide-icon>
+                  </button>
+
+                  <button
+                    (click)="revokeDevice(dev.id)"
+                    class="p-1.5 rounded-md hover:bg-slate-800 text-slate-500 hover:text-rose-400 transition cursor-pointer"
+                    title="Revoke Device"
+                  >
+                    <lucide-icon name="trash-2" [size]="14"></lucide-icon>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Live Sync Activity Feed -->
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 flex flex-col gap-3">
+        <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Sync Security & Loopback</h4>
+        <div class="space-y-2 text-xs text-slate-300">
+          <div class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/80">
+            <span class="text-slate-400">Loopback Safe Guard</span>
+            <span class="text-emerald-400 font-mono font-medium">Active (SHA-256)</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/80">
+            <span class="text-slate-400">Transport Layer</span>
+            <span class="text-sky-400 font-mono font-medium">WSS / Outbox Sync</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/80">
+            <span class="text-slate-400">Auto-Sync</span>
+            <span class="text-emerald-400 font-medium">Enabled</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- PAIRING MODAL DIALOG -->
+  @if (showPairingModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+      <div class="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl flex flex-col gap-5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <lucide-icon name="smartphone" [size]="20" class="text-emerald-400"></lucide-icon>
+            <h3 class="text-base font-bold text-white">Pair Secondary Device</h3>
+          </div>
+          <button (click)="closePairingModal()" class="text-slate-400 hover:text-white cursor-pointer">
+            <lucide-icon name="x" [size]="18"></lucide-icon>
+          </button>
+        </div>
+
+        <p class="text-xs text-slate-400 leading-relaxed">
+          Scan the QR code or enter the 6-digit one-time code on your mobile device to join this AirVault cluster.
+        </p>
+
+        <!-- 6-digit code display -->
+        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 text-center">
+          <span class="text-2xl font-mono font-extrabold tracking-widest text-emerald-400">
+            {{ currentPairingSession()?.code }}
+          </span>
+          <p class="text-[11px] text-slate-500 mt-1">Valid for 5 minutes</p>
+        </div>
+
+        <!-- Mock Quick Connect Button for Demo -->
+        <div class="border-t border-slate-800 pt-4 flex flex-col gap-2">
+          <span class="text-xs font-semibold text-slate-400">Quick Demo Pairing:</span>
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              (click)="simulatePairDevice('Pixel 9 Pro', 'mobile', 'android')"
+              class="px-3 py-2 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition cursor-pointer text-center"
+            >
+              + Pair Android Phone
+            </button>
+            <button
+              (click)="simulatePairDevice('MacBook Air M3', 'laptop', 'macos')"
+              class="px-3 py-2 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition cursor-pointer text-center"
+            >
+              + Pair MacBook Air
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- TARGET SEND MODAL -->
+  @if (showTargetSendModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+      <div class="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <lucide-icon name="send" [size]="16" class="text-emerald-400"></lucide-icon>
+            Send Directly to Device
+          </h3>
+          <button (click)="closeTargetSendModal()" class="text-slate-400 hover:text-white cursor-pointer">
+            <lucide-icon name="x" [size]="18"></lucide-icon>
+          </button>
+        </div>
+
+        <p class="text-xs text-slate-400">Choose a connected peer device to deliver this clipboard item directly:</p>
+
+        <div class="flex flex-col gap-2 max-h-60 overflow-y-auto">
+          @for (d of otherDevices(); track d.id) {
+            <button
+              (click)="executeTargetSend(d.id)"
+              class="w-full p-3 rounded-xl border border-slate-800 bg-slate-950/70 hover:bg-slate-800/80 transition flex items-center justify-between text-left cursor-pointer"
+            >
+              <div class="flex items-center gap-2.5">
+                <lucide-icon [name]="getDeviceIcon(d.type)" [size]="16" class="text-slate-400"></lucide-icon>
+                <span class="text-xs font-semibold text-slate-200">{{ d.name }}</span>
+              </div>
+              <span class="text-[10px] px-2 py-0.5 rounded font-medium bg-slate-800 text-slate-300">
+                Push Now
+              </span>
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- SETTINGS MODAL -->
+  @if (showSettingsModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+      <div class="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl flex flex-col gap-5">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <lucide-icon name="settings" [size]="18" class="text-slate-300"></lucide-icon>
+            AirVault Settings & Privacy
+          </h3>
+          <button (click)="toggleSettingsModal()" class="text-slate-400 hover:text-white cursor-pointer">
+            <lucide-icon name="x" [size]="18"></lucide-icon>
+          </button>
+        </div>
+
+        <div class="space-y-3">
+          <div class="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
+            <div>
+              <p class="text-xs font-semibold text-slate-200">Auto-Sync Clipboard</p>
+              <p class="text-[11px] text-slate-400">Broadcast clipboard updates automatically</p>
+            </div>
+            <input type="checkbox" [checked]="settings().autoSync" class="h-4 w-4 accent-emerald-500" />
+          </div>
+
+          <div class="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
+            <div>
+              <p class="text-xs font-semibold text-slate-200">Mask Passwords</p>
+              <p class="text-[11px] text-slate-400">Exclude token-like strings from auto sync</p>
+            </div>
+            <input type="checkbox" [checked]="settings().maskPasswords" class="h-4 w-4 accent-emerald-500" />
+          </div>
+
+          <div class="pt-2">
+            <button
+              (click)="clearHistory()"
+              class="w-full py-2 px-3 rounded-lg border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-medium transition cursor-pointer text-center"
+            >
+              Clear Unpinned History
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+  <!-- RENAME DEVICE MODAL -->
+  @if (showRenameModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+      <div class="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-2xl flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <lucide-icon name="edit-2" [size]="16" class="text-emerald-400"></lucide-icon>
+            Rename Device
+          </h3>
+          <button (click)="closeRenameModal()" class="text-slate-400 hover:text-white cursor-pointer">
+            <lucide-icon name="x" [size]="18"></lucide-icon>
+          </button>
+        </div>
+
+        <div>
+          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1.5">
+            Device Display Name
+          </label>
+          <input
+            type="text"
+            [(ngModel)]="newDeviceName"
+            (keydown.enter)="saveRenameDevice()"
+            placeholder="e.g. Work MacBook Pro"
+            class="w-full rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:border-emerald-500/50 focus:outline-none"
+          />
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button
+            (click)="closeRenameModal()"
+            class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium hover:bg-slate-700 transition cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            (click)="saveRenameDevice()"
+            [disabled]="!newDeviceName.trim()"
+            class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold transition cursor-pointer"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

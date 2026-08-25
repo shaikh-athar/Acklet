@@ -319,7 +319,7 @@ export class JsonLensService {
       let code = `export interface ${name} {\n`;
       for (const k in obj) {
         const val = obj[k];
-        let typeName = typeof val;
+        let typeName: string = typeof val;
         if (val === null) typeName = 'any';
         else if (Array.isArray(val)) typeName = `${typeof val[0] || 'any'}[]`;
         else if (typeof val === 'object') typeName = 'Record<string, any>';
