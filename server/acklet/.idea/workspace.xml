@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="8cc24f72-cf76-4714-94a5-20cada12dd6d" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/application.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/application.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V10__intelligent_discovery_engine.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V11__tool_knowledge_hub.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V12__personalization_engine.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V13__publisher_tool_ownership.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V14__reviews_and_trust.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V15__capabilities.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V16__ai_jobs_github.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V17__pgvector_embeddings.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V18__otp_resend_rate_limit.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V19__simplify_user_oauth.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V1__init_schema.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V20__onboarding_completed_flag.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V21__enterprise_refresh_tokens.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V22__trusted_devices_and_audit.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V23__fix_legacy_refresh_token_columns.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V24__github_accounts.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V25__repo_pipeline.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V26__repository_knowledge_graph.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V27__repo_sync_history.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V28__repo_embeddings.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V29__repo_progressive_status.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V2__add_missing_deleted_at.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/classes/db/migration/V30__tool_publish_wizard.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/rules/UI-FOUNDATION.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../.agents/rules/UI-FOUNDATION.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/angular.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/angular.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/app.routes.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/app.routes.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/app.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/app.spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/services/seo.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/services/seo.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/services/workspace-state.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/services/workspace-state.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/tool-registry/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/tool-registry/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/tool-detail/tool-detail.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/tool-detail/tool-detail.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/workspace/tools/tools.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/workspace/tools/tools.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/shared/components/fallback-state/fallback-state.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/shared/components/fallback-state/fallback-state.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/shared/components/icon/icon.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/shared/components/icon/icon.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/styles.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-command-palette.component.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-drag-overlay.component.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-editor.component.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-error-panel.component.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-history-drawer.component.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-inspector.component.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-privacy-modal.component.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-seo-footer.component.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-settings-drawer.component.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-share-modal.component.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-toast-container.component.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-toolbar.component.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/json-lens.component.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/json-lens.component.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/json-lens.component.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/services/json-lens-history.service.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/services/json-lens.service.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docker-compose.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Architecture/UI-FOUNDATION.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Architecture/UI-FOUNDATION.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/json-lens/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/json-lens/description.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/json-lens/feature.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/build-configuration.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/AckletApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/AckletApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/jsonlens/controller/JsonLensController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/jsonlens/controller/JsonLensController.java" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
+  </component>
+  <component name="MavenImportPreferences">
+    <option name="generalSettings">
+      <MavenGeneralSettings>
+        <option name="mavenHomeTypeForPersistence" value="WRAPPER" />
+      </MavenGeneralSettings>
+    </option>
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 2
+}</component>
+  <component name="ProjectId" id="3I8kHHakkZnIuHOUouZAeRoJU4A" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Application.Acklet.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "Spring Boot.AckletApplication.executor": "Run",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "tools/json-formatter",
+    "kotlin-language-version-configured": "true",
+    "nodejs_package_manager_path": "npm",
+    "ts.external.directory.path": "/Applications/IntelliJ IDEA.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RunManager">
+    <configuration name="Acklet" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="com.code.acklet.AckletApplication" />
+      <module name="acklet" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-37e91769500f-intellij.indexing.shared.core-IU-261.25134.95" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-IU-261.25134.95" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="8cc24f72-cf76-4714-94a5-20cada12dd6d" name="Changes" comment="" />
+      <created>1787153494736</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1787153494736</updated>
+      <workItem from="1787153495837" duration="7000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="UnknownFeatures">
+    <option featureType="dependencySupport" implementationName="java:org.springframework:spring-core" />
+    <option featureType="dependencySupport" implementationName="java:org.springframework.security:spring-security-core" />
+    <option featureType="dependencySupport" implementationName="java:jakarta.validation:jakarta.validation-api" />
+    <option featureType="dependencySupport" implementationName="java:io.projectreactor:reactor-core" />
+    <option featureType="dependencySupport" implementationName="executable:kubectl" />
+    <option featureType="dependencySupport" implementationName="java:org.springframework.data:spring-data-commons" />
+    <option featureType="dependencySupport" implementationName="java:org.hibernate.validator:hibernate-validator" />
+    <option featureType="dependencySupport" implementationName="java:org.springframework:spring-webmvc" />
+    <option featureType="dependencySupport" implementationName="java:org.projectlombok:lombok" />
+    <option featureType="dependencySupport" implementationName="java:junit:junit" />
+    <option featureType="dependencySupport" implementationName="executable:docker" />
+    <option featureType="dependencySupport" implementationName="java:jakarta.persistence:jakarta.persistence-api" />
+    <option featureType="dependencySupport" implementationName="java:org.flywaydb:flyway-core" />
+    <option featureType="dependencySupport" implementationName="java:org.springframework.boot:spring-boot" />
+  </component>
+</project>

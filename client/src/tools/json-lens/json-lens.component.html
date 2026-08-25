@@ -1,0 +1,207 @@
+<div class="json-lens-workspace" [attr.data-theme]="theme()">
+  <!-- Section 37: Drag & Drop Overlay Component -->
+  <app-json-lens-drag-overlay></app-json-lens-drag-overlay>
+
+  <!-- Section 38: Toast Container Component -->
+  <app-json-lens-toast-container></app-json-lens-toast-container>
+
+  <!-- Modular Top Toolbar Header Component -->
+  <app-json-lens-toolbar
+    [copied]="copied()"
+    [hasRepairedJson]="!!result()?.repairedJson"
+    [showMoreMenu]="showMoreMenu()"
+    [wordWrap]="wordWrap()"
+    [sortKeys]="sortKeys()"
+    (formatClick)="processJson()"
+    (minifyClick)="toggleMinify()"
+    (fixClick)="openRepairModal()"
+    (copyClick)="copyToClipboard()"
+    (downloadClick)="download()"
+    (clearClick)="clear()"
+    (convertClick)="convertPayload($event)"
+    (toggleMore)="toggleMoreMenu()"
+    (toggleWordWrap)="toggleWordWrap()"
+    (toggleSortKeys)="toggleSortKeys()"
+    (historyClick)="toggleHistory()"
+    (settingsClick)="toggleSettingsDrawer()"
+    (uploadChange)="onFileUpload($event)"
+  ></app-json-lens-toolbar>
+
+  <!-- Section 32: Compact Hero & Privacy Guarantee Badge -->
+  <section class="compact-hero">
+    <div class="hero-left">
+      <h1 class="hero-title">JSONLens</h1>
+      <p class="hero-subtitle">Format, validate, and inspect JSON without leaving your browser.</p>
+    </div>
+    <div class="privacy-badge" (click)="openPrivacyExplanation()" title="Click to view privacy details">
+      <span class="privacy-indicator"></span>
+      <div class="privacy-text">
+        <strong>🔒 Processed entirely in your browser</strong>
+        <span>Your JSON is never uploaded to Acklet · <u class="how-link">How?</u></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Navbar Row 2: Secondary Controls Bar -->
+  <div class="workspace-toolbar">
+    <div class="toolbar-group">
+      <span class="control-label">Indent:</span>
+      <select class="indent-select" [ngModel]="indent()" (ngModelChange)="onIndentChange($event)">
+        <option [ngValue]="1">1 space</option>
+        <option [ngValue]="2">2 spaces</option>
+        <option [ngValue]="3">3 spaces</option>
+        <option [ngValue]="4">4 spaces</option>
+        <option [ngValue]="'\t'">Tabs</option>
+      </select>
+    </div>
+
+    <div class="toolbar-group">
+      <button class="toggle-control-btn" [class.active]="sortKeys()" (click)="toggleSortKeys()">Sort Keys</button>
+      <button class="toggle-control-btn" [class.active]="minify()" (click)="toggleMinify()">Minify</button>
+    </div>
+
+    <div class="search-box">
+      <input type="text" [value]="filterQuery()" (input)="filterQuery.set($any($event.target).value)" placeholder="Search keys or values (Ctrl+F)..." />
+    </div>
+
+    <!-- Section 41: Share Button Trigger -->
+    <button class="toggle-control-btn ml-auto" (click)="toggleShareModal()" title="Share JSON Link Architecture">
+      <span>Share</span>
+    </button>
+
+    <button class="cmd-palette-trigger-btn" (click)="toggleCommandPalette()" title="Open Command Palette (Cmd/Ctrl + K)">
+      <span>Cmd/Ctrl + K</span>
+    </button>
+  </div>
+
+  <!-- Section 31: Large File Notice & Processing Spinner -->
+  @if (isProcessing()) {
+    <div class="large-file-processing-banner">
+      <span class="spinner-dot"></span>
+      <span>Processing payload...</span>
+    </div>
+  } @else if (result()?.isLargeFile) {
+    <div class="large-file-detected-banner">
+      <span class="large-file-badge">⚡ Large JSON detected · {{ result()?.fileSizeMb }} MB</span>
+      <span class="large-file-hint">Processed asynchronously without blocking the UI thread.</span>
+    </div>
+  }
+
+  <!-- Modular Compact Error Panel Component -->
+  <app-json-lens-error-panel
+    [result]="result()"
+    (goToErrorClick)="goToErrorLocation()"
+    (openRepairClick)="openRepairModal()"
+  ></app-json-lens-error-panel>
+
+  <!-- Split IDE Workspace Grid -->
+  <main class="editor-grid">
+    <!-- Modular Input Editor Component with Drag & Drop Event -->
+    <app-json-lens-editor
+      [rawInput]="rawInput()"
+      [wordWrap]="wordWrap()"
+      [result]="result()"
+      (inputChange)="onInputChange($event)"
+      (clearClick)="clear()"
+      (sampleClick)="loadSample($event)"
+      (fileDropped)="handleFileObject($event)"
+    ></app-json-lens-editor>
+
+    <!-- Modular Inspector Component passing Search Query -->
+    <app-json-lens-inspector
+      #inspectorComp
+      [inspectorTab]="inspectorTab()"
+      [displayOutput]="displayOutput()"
+      [searchQuery]="filterQuery()"
+      [result]="result()"
+      [stats]="result()?.stats"
+      [copied]="copied()"
+      (tabChange)="setInspectorTab($event)"
+      (copyClick)="copyToClipboard()"
+      (downloadClick)="download()"
+    ></app-json-lens-inspector>
+  </main>
+
+  <!-- Section 51: Lightweight Non-Intrusive SEO Section Below Tool -->
+  <app-json-lens-seo-footer></app-json-lens-seo-footer>
+
+  <!-- Section 35: Command Palette Component -->
+  <app-json-lens-command-palette
+    [isOpen]="showCommandPalette()"
+    (closePalette)="toggleCommandPalette()"
+    (formatClick)="processJson()"
+    (minifyClick)="toggleMinify()"
+    (validateClick)="processJson()"
+    (fixClick)="openRepairModal()"
+    (expandAllClick)="inspectorComp.expandAllTreeNodes()"
+    (collapseAllClick)="inspectorComp.collapseAllTreeNodes()"
+    (copyClick)="copyToClipboard()"
+    (downloadClick)="download()"
+    (toggleTreeClick)="setInspectorTab('tree')"
+    (toggleTableClick)="setInspectorTab('table')"
+    (showStatsClick)="setInspectorTab('stats')"
+    (generateTsClick)="setInspectorTab('codegen')"
+    (generatePythonClick)="setInspectorTab('codegen')"
+    (generateGoClick)="setInspectorTab('codegen')"
+    (convertYamlClick)="convertPayload('yaml')"
+    (clearClick)="clear()"
+  ></app-json-lens-command-palette>
+
+  <!-- Section 43: Settings Drawer Component -->
+  <app-json-lens-settings-drawer
+    [isOpen]="showSettingsDrawer()"
+    [settings]="settings()"
+    (closeDrawer)="toggleSettingsDrawer()"
+    (settingsChange)="updateSettings($event)"
+  ></app-json-lens-settings-drawer>
+
+  <!-- Section 41: Share Feature Modal Component -->
+  <app-json-lens-share-modal
+    [isOpen]="showShareModal()"
+    (closeModal)="toggleShareModal()"
+    (triggerToast)="triggerToast($event)"
+  ></app-json-lens-share-modal>
+
+  <!-- Section 32: Privacy Explanation Modal Component -->
+  <app-json-lens-privacy-modal></app-json-lens-privacy-modal>
+
+  <!-- Section 33 & 34: Local History Drawer Component -->
+  <app-json-lens-history-drawer
+    [isOpen]="showHistoryDrawer()"
+    [historyGroups]="historyGroups()"
+    (closeDrawer)="toggleHistory()"
+    (restoreItem)="restoreHistoryItem($event)"
+    (deleteItem)="deleteHistoryItem($event)"
+    (clearAllClick)="clearAllHistory()"
+  ></app-json-lens-history-drawer>
+
+  <!-- Smart Fix Confirmation Modal -->
+  @if (showRepairModal()) {
+    <div class="modal-overlay" (click)="closeRepairModal()">
+      <div class="repair-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Smart Repair Preview</h3>
+          <button class="icon-nav-btn" (click)="closeRepairModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="issues-summary">
+            <strong>{{ result()?.repairIssues?.length || 0 }} repairable issues found:</strong>
+            <ul>
+              @for (issue of result()?.repairIssues; track issue.type) {
+                <li><strong>{{ issue.type }}:</strong> {{ issue.description }}</li>
+              }
+            </ul>
+          </div>
+          <div class="repair-diff-preview">
+            <span class="preview-label">Repaired Output Preview:</span>
+            <pre class="diff-preview-code"><code>{{ result()?.repairedJson }}</code></pre>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="action-btn btn-secondary" (click)="closeRepairModal()">Cancel</button>
+          <button class="action-btn btn-primary" (click)="applyFixes()">Apply Fixes</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
