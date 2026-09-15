@@ -11,7 +11,7 @@ Then read `uireference.md` whenever the task involves UI, UX, components, stylin
 Also inspect relevant documentation under:
 
 ```text
-A:\Acklet\docs\Acklet Vault\Acklet
+docs/Acklet Vault/Acklet
 ```
 
 These instructions are mandatory.

@@ -217,10 +217,18 @@ export class ToolsComponent implements OnInit {
   ngOnInit(): void {
     this.route.queryParams.subscribe(params => {
       if (params['category']) {
-        const cat = this.toolsSvc.getCategoryBySlug(params['category']);
-        if (cat) this.activeCategoryId.set(cat.id);
+        const paramVal = params['category'];
+        const cat = this.toolsSvc.getCategoryBySlug(paramVal) || this.toolsSvc.getCategoryById(paramVal);
+        if (cat) {
+          this.activeCategoryId.set(cat.id);
+        } else {
+          this.activeCategoryId.set(paramVal);
+        }
+      } else {
+        this.activeCategoryId.set(null);
       }
       if (params['filter']) this.activeQuickFilter.set(params['filter']);
+      if (params['q']) this.searchQuery = params['q'];
       this.applyFilters();
     });
   }
@@ -249,9 +257,20 @@ export class ToolsComponent implements OnInit {
         else if (qf === 'new') tools = tools.filter(t => t.isNew);
         else if (qf === 'popular') tools = tools.filter(t => t.isPopular || (t.usageCount && t.usageCount > 50));
 
+        // Sort items
+        if (this.sortBy === 'popular') {
+          tools = [...tools].sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0));
+        } else if (this.sortBy === 'rating') {
+          tools = [...tools].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        } else if (this.sortBy === 'newest') {
+          tools = [...tools].sort((a, b) => ((b.isNew ? 1 : 0) - (a.isNew ? 1 : 0)));
+        } else if (this.sortBy === 'name') {
+          tools = [...tools].sort((a, b) => a.name.localeCompare(b.name));
+        }
+
         this.filteredTools.set(tools);
-        this.totalElements.set(pageData.totalElements);
-        this.totalPages.set(pageData.totalPages || 1);
+        this.totalElements.set(qf ? tools.length : pageData.totalElements);
+        this.totalPages.set(qf ? (Math.ceil(tools.length / this.pageSize) || 1) : (pageData.totalPages || 1));
         this.isLoading.set(false);
       },
       error: () => {

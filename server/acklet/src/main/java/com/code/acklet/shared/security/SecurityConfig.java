@@ -38,7 +38,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(requestHandler)
-                .ignoringRequestMatchers("/api/v1/auth/**", "/api/v1/github/webhooks", "/.well-known/**", "/api/v1/publish/**")
+                .ignoringRequestMatchers("/api/v1/auth/**", "/api/v1/github/webhooks", "/.well-known/**", "/api/v1/publish/**", "/api/v1/airvault/**", "/ws/airvault/**")
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
@@ -46,6 +46,8 @@ public class SecurityConfig {
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/.well-known/**").permitAll()
                 // Public auth endpoints
                 .requestMatchers("/api/v1/auth/**").permitAll()
+                // Public airvault clipboard endpoints & WebSocket gateway
+                .requestMatchers("/api/v1/airvault/**", "/ws/airvault/**").permitAll()
                 // Public tools retrieval
                 .requestMatchers(HttpMethod.GET, "/api/v1/tools/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
@@ -65,7 +67,7 @@ public class SecurityConfig {
                 .contentTypeOptions(contentType -> {})
                 .referrerPolicy(referrer -> referrer.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                 .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000))
-                .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:8080 https://accounts.google.com https://challenges.cloudflare.com"))
+                .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:8080 ws://localhost:8080 ws: wss: https://accounts.google.com https://challenges.cloudflare.com"))
                 .permissionsPolicy(permissions -> permissions.policy("camera=(), microphone=(), geolocation=()"))
             )
             .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
@@ -79,12 +81,26 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "X-Correlation-ID", "X-XSRF-TOKEN", "X-Turnstile-Token"));
+        // Cache-Control and Pragma are sent by polling GETs (signal poll, presence poll).
+        // They must be explicitly allowed or the preflight returns HeaderDisallowedByPreflightResponse.
+        configuration.setAllowedHeaders(List.of(
+                "Authorization", "Content-Type", "X-Requested-With",
+                "Accept", "Origin",
+                "Cache-Control", "Pragma",
+                "X-Correlation-ID", "X-XSRF-TOKEN", "X-Turnstile-Token",
+                "X-Device-Id"
+        ));
         configuration.setExposedHeaders(List.of("Authorization", "X-Correlation-ID", "X-XSRF-TOKEN", "Retry-After"));
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L); // 1-hour preflight cache — stops OPTIONS spam on every poll
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    @Bean
+    public org.springframework.security.crypto.password.PasswordEncoder passwordEncoder() {
+        return new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
     }
 }

@@ -1,0 +1,509 @@
+<!-- ── Chat Stream Area (scrollable, items as chat bubbles) ──── -->
+<div class="chat-stream-area" #streamArea>
+  <!-- Cross-Device Continue On Handoff Banner -->
+  <app-airvault-handoff-banner [draft]="remoteDraft()" [isVisible]="showHandoffBanner()"
+    (continueDraft)="onContinueDraft($event)" (dismiss)="onDismissDraftHandoff()">
+  </app-airvault-handoff-banner>
+
+  @if (largeFileWarning()) {
+  <div class="large-file-warning-banner">
+    <div class="banner-content">
+      <app-icon name="alert-triangle" class="icon-xs text-amber"></app-icon>
+      <span>{{ largeFileWarning() }}</span>
+    </div>
+    <button class="banner-dismiss-btn" (click)="dismissLargeFileWarning()" data-tooltip="Dismiss notice">
+      <app-icon name="x" class="icon-xs"></app-icon>
+    </button>
+  </div>
+  }
+
+  <!-- Empty watermark (shows when no items exist) -->
+  @if (vaultItems().length === 0 && !isDragging()) {
+  <div class="composer-watermark" aria-hidden="true">
+    <div class="watermark-icon-box">
+      <app-icon name="upload-cloud" class="icon-md"></app-icon>
+    </div>
+    <div class="watermark-title">Drop files, folders, or start typing</div>
+    <div class="watermark-sub">
+      Encrypted client-side with Web Crypto (AES-GCM-256) · P2P Synced across your devices · 7-day auto-purge retention
+    </div>
+    <div class="watermark-pills">
+      <button class="sample-pill" (click)="loadSample('code')" data-tooltip="Load code sample">
+        <app-icon name="code" class="icon-xs"></app-icon>
+        <span>Code Snippet</span>
+      </button>
+      <button class="sample-pill" (click)="loadSample('json')" data-tooltip="Load JSON sample">
+        <app-icon name="file-json" class="icon-xs"></app-icon>
+        <span>JSON Payload</span>
+      </button>
+      <button class="sample-pill" (click)="loadSample('url')" data-tooltip="Load URL sample">
+        <app-icon name="link" class="icon-xs"></app-icon>
+        <span>URL Link</span>
+      </button>
+      <button class="sample-pill" (click)="loadSample('phone')" data-tooltip="Load phone number sample">
+        <app-icon name="phone" class="icon-xs"></app-icon>
+        <span>Phone Number</span>
+      </button>
+    </div>
+  </div>
+  }
+
+  <!-- Masonry / Responsive Card Grid (auto-fit columns, cards sized to content) -->
+  <div class="vault-card-grid">
+    @for (item of displayedVaultItems(); track item.id) {
+    <div class="vault-card-cell">
+      <app-airvault-card [item]="item" (openPreview)="uiStore.openPreview($event)" (cancelUpload)="cancelUpload($event)"
+        (retryUpload)="retryUpload($event)" (togglePin)="storageService.togglePin($event)"
+        (toggleReveal)="storageService.toggleReveal($event)" (deleteItem)="deleteItem.emit($event)"
+        (resendItem)="resendItem.emit($event)" (triggerToast)="uiStore.triggerToast($event)">
+      </app-airvault-card>
+    </div>
+    }
+  </div>
+
+  @if (hasMoreRailItems()) {
+  <div class="stream-loading-indicator">
+    <app-icon name="loader" class="icon-xs spin-anim text-accent"></app-icon>
+    <span>Loading older entries ({{ displayedVaultItems().length }}/{{ vaultItems().length }})...</span>
+  </div>
+  }
+</div>
+
+<!-- ── Redesigned Smart Composer Input Bar (Bottom-Anchored) ── -->
+<div class="chat-composer-bar" [class.is-expanded]="isExpanded()">
+
+  <!-- Floating Inline Attribution Blame Tooltip -->
+  @if (hoveredAttribution()?.tooltip) {
+  <div class="editor-attribution-floating-tooltip" [style.top.px]="attributionTooltipTop()"
+    [style.left.px]="attributionTooltipLeft()" role="tooltip">
+    <div class="attribution-tooltip-pill">
+      <span class="attribution-tooltip-dot" [style.backgroundColor]="hoveredAttribution()!.color"></span>
+      <span class="attribution-tooltip-text">{{ hoveredAttribution()!.tooltip }}</span>
+    </div>
+  </div>
+  }
+
+  @if (isLargePayload() && !forceFullFidelity()) {
+  <app-large-input-notice [title]="'Large payload detected (' + formattedPayloadSize() + ')'"
+    [message]="'Deep regex & AST scanning paused to prevent input lag. Payload is ready to beam immediately.'"
+    [actionLabel]="'Enable Deep Analysis'" (enableFullProcessing)="enableFullProcessing()">
+  </app-large-input-notice>
+  }
+
+  <!-- Ghost text suggestion dock (Placed cleanly above composer row) -->
+  @if (ghostSuggestion()) {
+  <div class="ghost-floating-dock" role="region" aria-label="Clipboard suggestion">
+    <div class="ghost-dock-pill">
+      <div class="ghost-dock-lead">
+        <app-icon name="clipboard" class="icon-xs text-cyan"></app-icon>
+        <span class="ghost-dock-tag">Clipboard Ready:</span>
+      </div>
+      <span class="ghost-dock-preview" [title]="fullPendingClipText || ghostSuggestion()">"{{ ghostSuggestion() }}"</span>
+      <button type="button" class="ghost-dock-action-btn" (click)="acceptGhostSuggestion()"
+        title="Insert into composer (Tab)">
+        <span>Insert</span>
+        <kbd>Tab</kbd>
+      </button>
+      <button type="button" class="ghost-dock-close-btn" (click)="dismissGhostSuggestion()"
+        title="Dismiss suggestion (Esc)">
+        <app-icon name="x" class="icon-xs"></app-icon>
+      </button>
+    </div>
+  </div>
+  }
+
+  <!-- Composer Row with Left Clear Button + Smart Input Capsule -->
+  <div class="chat-composer-outer-row">
+
+    <!-- Standalone Clear Clipboard Button on Left -->
+    <button
+      type="button"
+      class="composer-standalone-clear-btn"
+      (click)="clearActiveClipboard.emit()"
+      data-tooltip="Clear active clipboard (this device)"
+      [disabled]="storageService.items().length === 0"
+      aria-label="Clear active clipboard items">
+      <app-icon name="eraser" class="icon-sm"></app-icon>
+    </button>
+
+    <!-- Smart Composer Container (Pill when collapsed, softer rect when expanded) -->
+    <div class="chat-composer-capsule" [class.expanded]="isExpanded()" (mousemove)="onMouseMove($event)">
+
+      <!-- Top-Right Expand/Collapse Corner Toggle — only shown when content >= 5 lines -->
+      @if (composerLineCount() >= 5 || isManualExpanded()) {
+      <button type="button" class="composer-corner-expand-btn" (click)="toggleManualExpand()"
+        [attr.aria-label]="isManualExpanded() ? 'Collapse composer' : 'Expand composer'">
+        <app-icon [name]="isManualExpanded() ? 'minimize-2' : 'maximize-2'" class="icon-xs"></app-icon>
+      </button>
+      }
+
+      <!-- Active metadata chips if any in expanded mode -->
+      @if (isExpanded() && (currentTag() || perItemRetentionTtl() !== null)) {
+      <div class="composer-expanded-header">
+        <div class="composer-expanded-status">
+          @if (currentTag()) {
+          <span class="composer-active-tag-chip">
+            <app-icon name="tag" class="icon-xs"></app-icon>
+            <span>#{{ currentTag() }}</span>
+            <button class="tag-chip-remove-btn" (click)="removeTag($event)" title="Remove tag">
+              <app-icon name="x" class="icon-xs"></app-icon>
+            </button>
+          </span>
+          }
+          @if (perItemRetentionTtl() !== null) {
+          <span class="composer-active-retention-chip">
+            <app-icon name="hourglass" class="icon-xs"></app-icon>
+            <span>{{ getRetentionLabel(perItemRetentionTtl()) }}</span>
+          </span>
+          }
+        </div>
+      </div>
+      }
+
+      <!-- Main Workspace Row: Left Attach Tool, Center Input & Right Controls -->
+      <div class="composer-main-row" [class.is-expanded-row]="isExpanded()">
+
+        <!-- LEFT INSIDE: Plus / Attach Media, Files, Zip, and Folders -->
+        <div class="composer-popover-anchor composer-left-attach-anchor" (click)="$event.stopPropagation()">
+          <button type="button" class="composer-tool-btn composer-plus-attach-btn" [class.active]="uploadMenuOpen()"
+            (click)="uploadMenuOpen.set(!uploadMenuOpen())" data-tooltip="Add file, image, zip or folder"
+            aria-label="Add file, image, or folder">
+            <app-icon name="plus" class="icon-sm"></app-icon>
+          </button>
+
+          @if (uploadMenuOpen()) {
+          <div class="chat-attach-popover" (click)="$event.stopPropagation()">
+            <!-- Upload Generic Files -->
+            <label class="attach-popover-item" 
+              (click)="uploadMenuOpen.set(false)">
+              <input type="file" (change)="onFileInput($event)" hidden multiple />
+              <app-icon name="file" class="icon-sm text-blue"></app-icon>
+              <span>Upload Document / File</span>
+            </label>
+
+            <!-- Upload Photos & Images -->
+            <label class="attach-popover-item" 
+              (click)="uploadMenuOpen.set(false)">
+              <input type="file" accept="image/*" (change)="onFileInput($event)" hidden multiple />
+              <app-icon name="image" class="icon-sm text-amber"></app-icon>
+              <span>Upload Image / Photo</span>
+            </label>
+
+            <!-- Upload Zip Archives -->
+            <label class="attach-popover-item" 
+              (click)="uploadMenuOpen.set(false)">
+              <input type="file" accept=".zip,application/zip" (change)="onFileInput($event)" hidden />
+              <app-icon name="folder-archive" class="icon-sm text-cyan"></app-icon>
+              <span>Upload ZIP Archive</span>
+            </label>
+
+            <!-- Upload Folder (.zip) -->
+            <button type="button" class="attach-popover-item"
+              (click)="onFolderButtonClick(folderInput); uploadMenuOpen.set(false)"
+             >
+              <input #folderInput type="file" webkitdirectory directory multiple
+                (change)="onFolderInputSelected($event)" hidden />
+              <app-icon name="folder" class="icon-sm text-indigo"></app-icon>
+              <span>Upload Folder (.zip)</span>
+            </button>
+          </div>
+          }
+        </div>
+
+        <!-- CENTER: Auto-expanding Text Input with Layered Backdrops -->
+        <div class="capsule-input-area" [class.is-expanded-area]="isExpanded()">
+          <!-- Layer 1: Attribution backdrop -->
+          <div class="composer-highlights-backdrop" [style.transform]="'translateY(' + (-editorScrollTop()) + 'px)'">
+            @for (span of inlineAttributionSpans(); track $index) {<span class="av-inline-attribution-span"
+              [class.has-attribution]="span.hasAttribution" [class.active-peer]="hoveredAuthorKey() === span.authorKey"
+              [style.--av-author-bg]="span.bgHighlight" [style.--av-author-border]="span.borderHighlight"
+              (mouseenter)="onSpanMouseEnter(span, $event)" (mouseleave)="onSpanMouseLeave()">@for (part of
+              getHighlightParts(span.text, searchHighlightQuery(), span.startOffset); track $index) {@if (part.isMatch)
+              {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{
+              part.text }}}}</span>}</div>
+
+          <!-- Layer 2: Live entity-detection highlight backdrop -->
+          @if (composerMatches().length > 0) {
+          <div class="composer-detection-backdrop" [style.transform]="'translateY(' + (-editorScrollTop()) + 'px)'">
+            @for (seg of composerBackdropSegments(); track $index) {
+            @if (seg.isMatch && seg.match) {
+            <span class="av-detection-span" [attr.data-detect-type]="seg.match.shortcut.detectedType"
+              (mouseenter)="onComposerMatchHover(seg.match, $event)" (mouseleave)="onComposerMatchLeave($event)">{{
+              seg.text }}</span>
+            } @else {
+            <span class="av-detection-gap">{{ seg.text }}</span>
+            }
+            }
+          </div>
+          }
+
+          <!-- Action Popover anchored to the hovered detection span -->
+          @if (activePopoverMatch()) {
+          <div class="composer-action-popover-anchor" [style.top.px]="composerPopoverPos().top"
+            [style.left.px]="composerPopoverPos().left" (mouseenter)="onComposerPopoverEnter()"
+            (mouseleave)="onComposerPopoverLeave()">
+            <app-airvault-action-popover [shortcut]="activePopoverMatch()!.shortcut"
+              [rawContent]="activePopoverMatch()!.matchedText" (actionExecuted)="activePopoverMatch.set(null)">
+            </app-airvault-action-popover>
+          </div>
+          }
+
+          <!-- Active tag pill inside collapsed input if attached -->
+          @if (!isExpanded() && currentTag()) {
+          <span class="composer-inline-tag-badge" (click)="toggleTagInput($event)" data-tooltip="Click to edit tag">
+            <app-icon name="tag" class="icon-xs"></app-icon>
+            <span>#{{ currentTag() }}</span>
+            <button class="inline-tag-remove" (click)="removeTag($event)">
+              <app-icon name="x" class="icon-xs"></app-icon>
+            </button>
+          </span>
+          }
+
+          <!-- Floating Text Selection Formatting Toolbar (Bold, Italic, Text Type, Link) -->
+          @if (showSelectionToolbar()) {
+          <div class="composer-selection-toolbar" [style.top.px]="selectionToolbarPos().top"
+            [style.left.px]="selectionToolbarPos().left" (click)="$event.stopPropagation()">
+            
+            <!-- Link input mode (Image 4) -->
+            @if (showLinkInput()) {
+            <div class="selection-link-input-row">
+              <input type="text" class="selection-link-field" placeholder="Type or paste a link"
+                [ngModel]="linkUrlDraft()" (ngModelChange)="linkUrlDraft.set($event)"
+                (keydown.enter)="applyLink()" (keydown.escape)="showLinkInput.set(false)" autofocus />
+              <button type="button" class="selection-link-confirm-btn" (click)="applyLink()"
+                [disabled]="!linkUrlDraft().trim()" data-tooltip="Apply link (↵)">
+                <app-icon name="check" class="icon-xs"></app-icon>
+              </button>
+            </div>
+            } @else {
+            <!-- Standard Formatting Toolbar (Image 3) -->
+            <div class="selection-format-buttons">
+              <button type="button" class="selection-format-btn" (mousedown)="$event.preventDefault()" (click)="toggleLinkInput()" data-tooltip="Add link">
+                <app-icon name="link" class="icon-xs"></app-icon>
+              </button>
+              <button type="button" class="selection-format-btn" (mousedown)="$event.preventDefault()" (click)="applyFormat('bold')" data-tooltip="Bold (⌘B)">
+                <app-icon name="bold" class="icon-xs"></app-icon>
+              </button>
+              <button type="button" class="selection-format-btn" (mousedown)="$event.preventDefault()" (click)="applyFormat('italic')" data-tooltip="Italic (⌘I)">
+                <app-icon name="italic" class="icon-xs"></app-icon>
+              </button>
+              
+              <!-- Text Type Dropdown Trigger -->
+              <div class="selection-heading-anchor">
+                <button type="button" class="selection-format-btn selection-type-btn"
+                  (mousedown)="$event.preventDefault()"
+                  (click)="showHeadingMenu.set(!showHeadingMenu())">
+                  <span>Text</span>
+                  <app-icon name="chevron-down" class="icon-xxs"></app-icon>
+                </button>
+
+                <!-- Text Style / Heading Dropdown Menu -->
+                @if (showHeadingMenu()) {
+                <div class="selection-heading-dropdown" (click)="$event.stopPropagation()">
+                  <button type="button" class="heading-dropdown-item" (mousedown)="$event.preventDefault()" (click)="applyHeading(0)">
+                    <span class="heading-item-title">Text</span>
+                    <span class="heading-item-shortcut">⌥⌘0</span>
+                  </button>
+                  <button type="button" class="heading-dropdown-item font-h1" (mousedown)="$event.preventDefault()" (click)="applyHeading(1)">
+                    <span class="heading-item-title">Heading 1</span>
+                    <span class="heading-item-shortcut">⌥⌘1</span>
+                  </button>
+                  <button type="button" class="heading-dropdown-item font-h2" (mousedown)="$event.preventDefault()" (click)="applyHeading(2)">
+                    <span class="heading-item-title">Heading 2</span>
+                    <span class="heading-item-shortcut">⌥⌘2</span>
+                  </button>
+                  <button type="button" class="heading-dropdown-item font-h3" (mousedown)="$event.preventDefault()" (click)="applyHeading(3)">
+                    <span class="heading-item-title">Heading 3</span>
+                    <span class="heading-item-shortcut">⌥⌘3</span>
+                  </button>
+                  <button type="button" class="heading-dropdown-item" (mousedown)="$event.preventDefault()" (click)="applyHeading('ordered')">
+                    <span class="heading-item-title">Numbered list</span>
+                    <span class="heading-item-shortcut">⌥⌘4</span>
+                  </button>
+                  <button type="button" class="heading-dropdown-item" (mousedown)="$event.preventDefault()" (click)="applyHeading('bullet')">
+                    <span class="heading-item-title">Bulleted list</span>
+                    <span class="heading-item-shortcut">⌥⌘5</span>
+                  </button>
+                </div>
+                }
+              </div>
+            </div>
+            }
+          </div>
+          }
+
+          <textarea #textareaRef class="chat-composer-textarea" [(ngModel)]="payloadText"
+            (ngModelChange)="onTextChange()" (input)="onComposerInput($event)" (focus)="onInputFocus()"
+            (blur)="onInputBlur()" (keydown)="onKeyDown($event)" (click)="onInputClick()" (keyup)="onCursorMove()"
+            (select)="onComposerSelect($event)" (mouseup)="onComposerSelect($event)"
+            (scroll)="onEditorScroll($event)" (paste)="onPaste($event)"
+            placeholder="Drop files, folders, or start typing..." [rows]="1"
+            aria-label="Composer input field"></textarea>
+        </div>
+
+        <!-- RIGHT SIDE: Tools (paste → retention → code/JSON → tag) + Send at end -->
+        <div class="composer-right-controls" (click)="$event.stopPropagation()">
+
+          <!-- 1. Paste from Clipboard Button -->
+          <button type="button" class="composer-tool-btn" (click)="pasteFromClipboardDirectly($event)"
+            data-tooltip="Paste from clipboard" aria-label="Paste from clipboard">
+            <app-icon name="clipboard" class="icon-sm"></app-icon>
+          </button>
+
+          <!-- 2. Set Retention Popover Trigger -->
+          <div class="composer-popover-anchor">
+            <button type="button" class="composer-tool-btn" [class.active]="perItemRetentionTtl() !== null"
+              (click)="toggleRetentionPopover($event)"
+              [attr.data-tooltip]="perItemRetentionTtl() !== null ? ('Retention: ' + getRetentionLabel(perItemRetentionTtl())) : 'Set retention for this item'"
+              aria-label="Set retention for this item">
+              <app-icon name="hourglass" class="icon-sm"
+                [class.text-accent]="perItemRetentionTtl() !== null"></app-icon>
+              @if (perItemRetentionTtl() !== null) {
+              <span class="retention-active-dot"></span>
+              }
+            </button>
+
+            <!-- Retention Popover Dropdown -->
+            @if (retentionPopoverOpen()) {
+            <div class="composer-retention-popover" (click)="$event.stopPropagation()">
+              <div class="popover-header">
+                <span class="popover-header-title">Item Retention Policy</span>
+                <span class="popover-header-sub">Overrides global default for this item only</span>
+              </div>
+              <div class="popover-options-list">
+                <button type="button" class="popover-option-item" [class.selected]="perItemRetentionTtl() === null"
+                  (click)="setPerItemRetention(null, $event)">
+                  <span class="opt-label">Default (7 Days)</span>
+                  <span class="opt-desc">Standard auto-purge retention</span>
+                  @if (perItemRetentionTtl() === null) {
+                  <app-icon name="check" class="icon-xs text-accent"></app-icon>
+                  }
+                </button>
+                <button type="button" class="popover-option-item"
+                  [class.selected]="perItemRetentionTtl() === 24 * 60 * 60 * 1000"
+                  (click)="setPerItemRetention(24 * 60 * 60 * 1000, $event)">
+                  <span class="opt-label">24 Hours</span>
+                  <span class="opt-desc">Single-day developer memory</span>
+                  @if (perItemRetentionTtl() === 24 * 60 * 60 * 1000) {
+                  <app-icon name="check" class="icon-xs text-accent"></app-icon>
+                  }
+                </button>
+                <button type="button" class="popover-option-item"
+                  [class.selected]="perItemRetentionTtl() === 60 * 60 * 1000"
+                  (click)="setPerItemRetention(60 * 60 * 1000, $event)">
+                  <span class="opt-label">1 Hour</span>
+                  <span class="opt-desc">Clean up after short task</span>
+                  @if (perItemRetentionTtl() === 60 * 60 * 1000) {
+                  <app-icon name="check" class="icon-xs text-accent"></app-icon>
+                  }
+                </button>
+                <button type="button" class="popover-option-item"
+                  [class.selected]="perItemRetentionTtl() === 15 * 60 * 1000"
+                  (click)="setPerItemRetention(15 * 60 * 1000, $event)">
+                  <span class="opt-label">15 Minutes</span>
+                  <span class="opt-desc">Maximum transient privacy</span>
+                  @if (perItemRetentionTtl() === 15 * 60 * 1000) {
+                  <app-icon name="check" class="icon-xs text-accent"></app-icon>
+                  }
+                </button>
+                <button type="button" class="popover-option-item" [class.selected]="perItemRetentionTtl() === 0"
+                  (click)="setPerItemRetention(0, $event)">
+                  <span class="opt-label">Never Expire</span>
+                  <span class="opt-desc">Permanent persistent item</span>
+                  @if (perItemRetentionTtl() === 0) {
+                  <app-icon name="check" class="icon-xs text-accent"></app-icon>
+                  }
+                </button>
+                <!-- Burn-after-read: only applies to resources/files -->
+                <button type="button" class="popover-option-item burn-option"
+                  [class.selected]="perItemRetentionTtl() === -1" (click)="setPerItemRetention(-1, $event)">
+                  <span class="opt-label">🔥 Burn After Read</span>
+                  <span class="opt-desc">Destroys immediately upon first view (Files/Resources only)</span>
+                  @if (perItemRetentionTtl() === -1) {
+                  <app-icon name="check" class="icon-xs text-danger"></app-icon>
+                  }
+                </button>
+              </div>
+            </div>
+            }
+          </div>
+
+          <!-- 3. Mark as Code/JSON Button -->
+          <button type="button" class="composer-tool-btn" [class.active]="isCodeJsonHintActive()"
+            (click)="toggleCodeJsonHint($event)"
+            [attr.data-tooltip]="isCodeJsonHintActive() ? 'Code/JSON hint active (syntax highlighted)' : 'Mark as code/JSON'"
+            aria-label="Mark as code or JSON format hint">
+            <app-icon name="code" class="icon-sm" [class.text-accent]="isCodeJsonHintActive()"></app-icon>
+          </button>
+
+          <!-- 4. Add Tag Button + Inline Input Popover with Preset Tag Examples -->
+          <div class="composer-popover-anchor">
+            <button type="button" class="composer-tool-btn" [class.active]="!!currentTag()"
+              (click)="toggleTagInput($event)"
+              [attr.data-tooltip]="currentTag() ? ('Tag: #' + currentTag()) : 'Add tag'" aria-label="Add tag to item">
+              <app-icon name="tag" class="icon-sm" [class.text-accent]="!!currentTag()"></app-icon>
+            </button>
+
+            <!-- Tag Input Popover with Examples -->
+            @if (tagInputOpen()) {
+            <div class="composer-tag-popover" (click)="$event.stopPropagation()">
+              <div class="tag-input-row">
+                <span class="tag-hash-prefix">#</span>
+                <input #tagInputRef type="text" class="tag-inline-input" placeholder="tag (e.g. work, temp)"
+                  [(ngModel)]="tagDraft" (keydown.enter)="saveTagFromDraft()" (keydown.escape)="tagInputOpen.set(false)"
+                  maxlength="24" />
+                <button class="tag-save-btn" (click)="saveTagFromDraft()" data-tooltip="Save tag (↵)">
+                  <app-icon name="check" class="icon-xs"></app-icon>
+                </button>
+                @if (currentTag()) {
+                <button class="tag-clear-btn" (click)="removeTag($event)" data-tooltip="Remove tag">
+                  <app-icon name="trash-2" class="icon-xs"></app-icon>
+                </button>
+                }
+              </div>
+
+              <!-- Popular Preset Tag Suggestions -->
+              <div class="tag-presets-row">
+                <span class="tag-presets-label">Examples:</span>
+                <div class="tag-presets-chips">
+                  @for (t of popularTags; track t) {
+                  <button type="button" class="tag-preset-chip" (click)="selectPresetTag(t)">
+                    #{{ t }}
+                  </button>
+                  }
+                </div>
+              </div>
+            </div>
+            }
+          </div>
+
+          <!-- 5. Send / Beam Action Button (At the End of Right Controls) -->
+          <button
+            type="button"
+            class="composer-send-circle-btn"
+            (click)="triggerBeam($event)"
+            [disabled]="!payloadText.trim()"
+            [attr.data-tooltip]="payloadText.trim() ? 'Beam item to vault (↵ / ⌘↵)' : 'Enter text or drop files to beam'"
+            aria-label="Beam item to AirVault">
+            <app-icon name="arrow-up" class="icon-sm"></app-icon>
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Pointer / Cursor-Anchored Inline Paste Loader -->
+  @if (isProcessingPaste()) {
+  <div class="pointer-paste-loader" [style.left.px]="pasteLoaderPos().x" [style.top.px]="pasteLoaderPos().y">
+    <span class="paste-loader-spinner spin-anim"></span>
+    <div class="paste-loader-info">
+      <span class="paste-loader-title">Processing {{ pasteLoaderSize() }}…</span>
+      <span class="paste-loader-sub">Chunked AES encryption · {{ pasteProgress() }}%</span>
+    </div>
+  </div>
+  }
+</div>

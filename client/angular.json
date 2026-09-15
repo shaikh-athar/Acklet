@@ -23,11 +23,19 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*",
+                "input": "src/tools/airvault/resource",
+                "output": "assets/airvault"
               }
             ],
             "styles": [
               "node_modules/devicon/devicon.min.css",
               "src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "jszip"
             ]
           },
           "configurations": {
@@ -56,6 +64,10 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.json",
+            "allowedHosts": ["all", "melvin-operose-disconsolately.ngrok-free.dev", ".ngrok-free.dev", ".ngrok.io", ".ngrok-free.app"]
+          },
           "configurations": {
             "production": {
               "buildTarget": "platform-client:build:production"

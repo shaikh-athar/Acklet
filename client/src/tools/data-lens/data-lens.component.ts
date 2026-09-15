@@ -8,7 +8,6 @@ import { FormatOperationsService, OperationDefinition } from './services/format-
 
 import { IconComponent } from '../../app/shared/components/icon/icon';
 import { JsonLensToolbarComponent } from './components/data-lens-toolbar.component';
-import { JsonLensErrorPanelComponent } from './components/data-lens-error-panel.component';
 import { JsonLensEditorComponent } from './components/data-lens-editor.component';
 import { JsonLensInspectorComponent } from './components/data-lens-inspector.component';
 import { JsonLensPrivacyModalComponent } from './components/data-lens-privacy-modal.component';
@@ -31,7 +30,6 @@ import { FeedbackModalComponent } from '../../app/shared/components/feedback-mod
     FormsModule,
     IconComponent,
     JsonLensToolbarComponent,
-    JsonLensErrorPanelComponent,
     JsonLensEditorComponent,
     JsonLensInspectorComponent,
     JsonLensDiffComponent,

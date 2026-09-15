@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input, output, signal, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, signal, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IconComponent } from '../icon/icon';
@@ -10,15 +10,15 @@ import { FeedbackService } from '../../../core/services/feedback.service';
   imports: [CommonModule, FormsModule, IconComponent],
   template: `
     @if (isOpen()) {
-      <div class="feedback-modal-overlay" (click)="closeModal.emit()">
-        <div class="feedback-modal" (click)="$event.stopPropagation()">
+      <div class="feedback-modal-overlay" [class.closing]="isClosing()" (click)="onClose()">
+        <div class="feedback-modal" [class.closing]="isClosing()" (click)="$event.stopPropagation()">
           <!-- Modal Header -->
           <div class="feedback-modal-header">
             <div class="header-title-box">
               <app-icon name="message-square" class="icon-sm text-accent"></app-icon>
               <h3>Share Tool Feedback</h3>
             </div>
-            <button class="close-btn" (click)="closeModal.emit()" title="Close">
+            <button class="close-btn" (click)="onClose()" title="Close (Esc)">
               <app-icon name="x" class="icon-xs"></app-icon>
             </button>
           </div>
@@ -32,7 +32,7 @@ import { FeedbackService } from '../../../core/services/feedback.service';
                 </div>
                 <h4>Thank You for Your Feedback!</h4>
                 <p>Your input helps us improve Acklet tools and build better experiences.</p>
-                <button class="feedback-btn-primary" (click)="closeModal.emit()">Done</button>
+                <button class="feedback-btn-primary" (click)="onClose()">Done</button>
               </div>
             } @else {
               <!-- Star Rating Selection -->
@@ -106,7 +106,7 @@ import { FeedbackService } from '../../../core/services/feedback.service';
           <!-- Modal Footer -->
           @if (!submittedSuccess()) {
             <div class="feedback-modal-footer">
-              <button class="feedback-btn-secondary" (click)="closeModal.emit()">Cancel</button>
+              <button class="feedback-btn-secondary" (click)="onClose()">Cancel</button>
               <button
                 class="feedback-btn-primary"
                 [disabled]="!message().trim() || isSubmitting()"
@@ -121,7 +121,7 @@ import { FeedbackService } from '../../../core/services/feedback.service';
       </div>
     }
   `,
-  styleUrls: ['../../../../tools/data-lens/data-lens.component.css'],
+  styleUrls: ['./feedback-modal.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FeedbackModalComponent {
@@ -133,6 +133,7 @@ export class FeedbackModalComponent {
 
   private readonly feedbackService = inject(FeedbackService);
 
+  isClosing = signal<boolean>(false);
   rating = signal<number>(5);
   category = signal<'general' | 'bug' | 'feature_request' | 'usability' | 'performance'>('general');
   message = signal<string>('');
@@ -149,6 +150,26 @@ export class FeedbackModalComponent {
     { id: 'usability', label: 'Usability' },
     { id: 'performance', label: 'Performance' }
   ] as const;
+
+  onClose() {
+    if (this.isClosing()) return;
+    this.isClosing.set(true);
+    setTimeout(() => {
+      this.closeModal.emit();
+      this.isClosing.set(false);
+      this.submittedSuccess.set(false);
+    }, 220);
+  }
+
+  @HostListener('window:keydown.escape', ['$event'])
+  onEscapeKey(e: any) {
+    if (!this.isOpen()) return;
+    if (e) {
+      e.preventDefault?.();
+      e.stopPropagation?.();
+    }
+    this.onClose();
+  }
 
   getRatingLabel(r: number): string {
     switch (r) {

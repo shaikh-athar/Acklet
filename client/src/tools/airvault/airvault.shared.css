@@ -1,0 +1,935 @@
+/* ==========================================================================
+   AirVault Shared Design System — imported by every AirVault component
+   This file owns: icon sizes, button variants, tooltip, and color tokens.
+   ========================================================================== */
+
+/* ── Color Tokens (Light) ─────────────────────────────────────────── */
+:host {
+  --av-bg-canvas:         #F7F8FA;
+  --av-surface-primary:   #FFFFFF;
+  --av-surface-secondary: #F1F3F6;
+  --av-surface-elevated:  #FFFFFF;
+  --av-border:            #E4E7EC;
+  --av-border-strong:     #D0D5DD;
+  --av-border-subtle:     #EEF0F3;
+  --av-text-primary:      #101828;
+  --av-text-muted:        #667085;
+  --av-text-faint:        #98A2B3;
+  --av-accent:            #2196F3;
+  --av-accent-hover:      #1976D2;
+  --av-accent-soft:       rgba(33, 150, 243, 0.09);
+  --av-danger:            #E5484D;
+  --av-danger-soft:       rgba(229, 72, 77, 0.08);
+  --av-font-ui:   -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --av-font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --av-clipboard-font-family: var(--av-custom-font-family, inherit);
+  --av-clipboard-font-size: calc(13px * var(--av-custom-font-scale, 1));
+  --av-radius-sm:   6px;
+  --av-radius-md:   8px;
+  --av-radius-lg:   12px;
+  --av-radius-pill: 9999px;
+  --av-shadow-sm:   0 1px 2px rgba(16, 24, 40, 0.04);
+  --av-shadow-md:   0 2px 6px rgba(16, 24, 40, 0.06);
+  --av-shadow-lg:   0 12px 32px rgba(16, 24, 40, 0.10);
+  --av-text-heading: 14px;
+  --av-text-body:    13px;
+  --av-text-label:   11.5px;
+  /* Tooltip: dark bg even in light mode (industry standard) */
+  --av-tooltip-bg:   #101828;
+  --av-tooltip-text: #FFFFFF;
+}
+
+/* Dark Theme */
+:host-context([data-theme="dark"]) {
+  --av-bg-canvas:         #0B0D10;
+  --av-surface-primary:   #111419;
+  --av-surface-secondary: #171B21;
+  --av-surface-elevated:  #1A1F26;
+  --av-border:            #252B33;
+  --av-border-strong:     #363D47;
+  --av-border-subtle:     #1C2128;
+  --av-text-primary:      #F0F3F6;
+  --av-text-muted:        #8B949E;
+  --av-text-faint:        #6E7681;
+  --av-shadow-sm:   0 1px 2px rgba(0,0,0,0.2);
+  --av-shadow-md:   0 2px 6px rgba(0,0,0,0.3);
+  --av-shadow-lg:   0 12px 32px rgba(0,0,0,0.45);
+  /* Tooltip stays dark in dark mode */
+  --av-tooltip-bg:   #1C2128;
+  --av-tooltip-text: #F0F3F6;
+}
+
+/* ── Icon Sizes (Two canonical sizes + one large for empty states) ── */
+.icon-xxs {
+  width: 11px !important;
+  height: 11px !important;
+  min-width: 11px !important;
+  min-height: 11px !important;
+  flex-shrink: 0 !important;
+}
+
+.icon-xs {
+  width: 13px !important;
+  height: 13px !important;
+  min-width: 13px !important;
+  min-height: 13px !important;
+  flex-shrink: 0 !important;
+}
+
+.icon-sm {
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
+  min-height: 15px !important;
+  flex-shrink: 0 !important;
+}
+
+.icon-md {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  flex-shrink: 0 !important;
+}
+
+/* ── Button System — 3 variants, nothing else ────────────────────── */
+
+/* V1: Primary CTA — solid blue, white text, ONE per screen */
+.av-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 12px;
+  background: #2196F3;
+  color: #FFFFFF;
+  border: 1px solid #2196F3;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: var(--av-font-ui);
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  transition: background 0.12s ease;
+}
+.av-btn-primary:hover:not([disabled]) { background: #1976D2; border-color: #1976D2; }
+.av-btn-primary[disabled]             { opacity: 0.45; cursor: not-allowed; }
+
+/* V2: Secondary — neutral surface, for regular actions */
+.av-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  background: var(--av-surface-secondary);
+  color: var(--av-text-muted);
+  border: 1px solid var(--av-border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--av-font-ui);
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.av-btn-secondary:hover { background: var(--av-border); border-color: var(--av-border-strong); color: var(--av-text-primary); }
+.av-btn-secondary.active { background: rgba(33,150,243,0.09); border-color: #2196F3; color: #2196F3; }
+.av-btn-secondary.danger:hover { background: var(--av-danger-soft); border-color: var(--av-danger); color: var(--av-danger); }
+
+/* V3: Icon-only — 26×26 square, no text */
+.av-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: transparent;
+  color: var(--av-text-muted);
+  border: 1px solid var(--av-border);
+  border-radius: 6px;
+  cursor: pointer;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.av-btn-icon:hover { background: var(--av-surface-secondary); color: var(--av-text-primary); border-color: var(--av-border-strong); }
+.av-btn-icon.active { background: rgba(33,150,243,0.09); color: #2196F3; border-color: #2196F3; }
+.av-btn-icon.danger:hover { background: var(--av-danger-soft); color: var(--av-danger); border-color: var(--av-danger); }
+
+/* ── Tooltip (upward for footer, downward everywhere else) ────────── */
+[data-tooltip] { position: relative; }
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 4px 8px;
+  background: var(--av-tooltip-bg, #101828);
+  color: var(--av-tooltip-text, #fff);
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--av-font-ui);
+  line-height: 1.3;
+  white-space: nowrap;
+  border-radius: 5px;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 3000;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+[data-tooltip]:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Right-aligned footer elements: shift tooltip left so it stays inside viewport/container */
+[data-tooltip-pos="left"]::after,
+.card-footer-actions [data-tooltip]::after {
+  left: auto;
+  right: 0;
+  transform: translateX(0) translateY(4px);
+}
+[data-tooltip-pos="left"]:hover::after,
+.card-footer-actions [data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(0) translateY(0);
+}
+
+/* Left-aligned elements close to screen edge: anchor tooltip to the left so it opens rightward */
+[data-tooltip-pos="right"]::after {
+  left: 0;
+  right: auto;
+  transform: translateX(0) translateY(4px);
+}
+[data-tooltip-pos="right"]:hover::after {
+  opacity: 1;
+  transform: translateX(0) translateY(0);
+}
+
+/* Card header top actions: open tooltip downward so it is never clipped by top container */
+.card-actions [data-tooltip]::after {
+  bottom: auto;
+  top: calc(100% + 6px);
+  left: auto;
+  right: 0;
+  transform: translateX(0) translateY(-4px);
+}
+.card-actions [data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(0) translateY(0);
+}
+
+/* ── Live Auto-Sync Status Badge ─────────────────────────────────── */
+.auto-sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--av-accent, #2196F3);
+  background: var(--av-accent-soft, rgba(33, 150, 243, 0.09));
+  padding: 5px 9px;
+  border-radius: 6px;
+  border: 1px solid rgba(33, 150, 243, 0.2);
+}
+
+/* ── Full Rotate 360-Degree Refresh Animation ──────────────────── */
+.spin-anim,
+.spinning app-icon,
+button.spinning app-icon,
+[class*="spin-anim"] {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  animation: av-full-rotate 0.65s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  transform-origin: 50% 50%;
+}
+
+.spin-anim svg,
+.spinning app-icon svg,
+button.spinning app-icon svg {
+  transform-origin: 50% 50%;
+}
+
+@keyframes av-full-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Per-Line Blame Gutter (GitHub Blame-Style Attribution) ───────── */
+.blame-lines-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.blame-line-row {
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  min-height: 19px;
+  line-height: 1.5;
+  padding: 1px 0;
+  border-radius: 3px;
+  transition: background-color 0.12s ease;
+}
+
+.blame-line-row:hover {
+  background-color: var(--av-surface-hover, rgba(255, 255, 255, 0.04));
+}
+
+.line-gutter-tick {
+  width: 3.5px;
+  min-height: 17px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-right: 8px;
+  margin-top: 2px;
+  opacity: 0.85;
+  transition: opacity 0.15s ease, width 0.12s ease;
+  cursor: help;
+}
+
+.blame-line-row:hover .line-gutter-tick {
+  opacity: 1;
+  width: 5px;
+}
+
+.line-text {
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  min-width: 0;
+}
+
+.line-blame-tooltip {
+  position: absolute;
+  left: 14px;
+  top: -26px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--av-surface-overlay, #1e293b);
+  border: 1px solid var(--av-border, rgba(255, 255, 255, 0.12));
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--av-text-main, #f8fafc);
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  animation: blameTooltipFade 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.blame-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+@keyframes blameTooltipFade {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Global Search Match & Pulse Highlighting ─────────────────── */
+mark.av-search-match {
+  background: rgba(234, 179, 8, 0.28);
+  color: inherit;
+  font-weight: 600;
+  border-radius: 3px;
+  padding: 1px 3px;
+  border-bottom: none;
+  box-shadow: none;
+  transition: background-color 0.15s ease;
+}
+
+mark.av-search-match.current-match {
+  background: rgba(249, 115, 22, 0.55);
+  color: inherit;
+  font-weight: 700;
+  border-bottom: none;
+  box-shadow: none;
+  filter: none;
+}
+
+:host-context([data-theme="dark"]) mark.av-search-match {
+  background: rgba(234, 179, 8, 0.35);
+  color: #FEF08A;
+  border-bottom: none;
+  box-shadow: none;
+}
+
+:host-context([data-theme="dark"]) mark.av-search-match.current-match {
+  background: rgba(249, 115, 22, 0.65);
+  color: #FFEDD5;
+  border-bottom: none;
+  box-shadow: none;
+}
+
+.av-pulse-highlight {
+  animation: avCardGlowPulse 2.4s ease-out forwards;
+  z-index: 10;
+}
+
+@keyframes avCardGlowPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7), 0 0 16px rgba(33, 150, 243, 0.5);
+    border-color: #2196F3;
+    transform: scale(1.02);
+  }
+  30% {
+    box-shadow: 0 0 0 6px rgba(33, 150, 243, 0.4), 0 0 24px rgba(33, 150, 243, 0.45);
+    border-color: #2196F3;
+    transform: scale(1.02);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(33, 150, 243, 0.15), 0 0 12px rgba(33, 150, 243, 0.2);
+    border-color: #2196F3;
+    transform: scale(1.01);
+  }
+  100% {
+    box-shadow: none;
+    border-color: var(--av-border);
+    transform: scale(1);
+  }
+}
+
+/* ── Expandable In-Place Search Bar Group ── */
+.navbar-search-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  background: var(--av-surface-secondary);
+  border: 1px solid var(--av-border);
+  border-radius: var(--av-radius-sm, 6px);
+  box-sizing: border-box;
+  position: relative;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, width 0.15s ease;
+  width: 280px;
+  max-width: 100%;
+}
+
+.navbar-search-group.focused {
+  border-color: var(--av-accent, #2196F3);
+  background: var(--av-surface-primary);
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.15);
+}
+
+.search-icon-prefix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--av-text-muted);
+  line-height: 1;
+}
+
+.navbar-search-input {
+  flex: 1;
+  min-width: 40px;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 11.5px;
+  font-family: var(--av-font-ui);
+  line-height: 1.4;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  color: var(--av-text-primary);
+  box-shadow: none;
+}
+
+.navbar-search-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.navbar-search-input::placeholder {
+  color: var(--av-text-faint);
+  font-size: 11px;
+}
+
+.navbar-search-spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2px;
+}
+
+.navbar-search-nav-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.navbar-search-match-pill {
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--av-font-mono, monospace);
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--av-surface-primary);
+  border: 1px solid var(--av-border);
+  color: var(--av-text-muted);
+  white-space: nowrap;
+}
+
+.navbar-search-match-pill.has-matches {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #D97706;
+}
+
+.navbar-search-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  border: 1px solid var(--av-border);
+  background: var(--av-surface-primary);
+  color: var(--av-text-muted);
+  cursor: pointer;
+  transition: all 0.1s ease;
+  padding: 0;
+}
+
+.navbar-search-nav-btn:hover:not(:disabled) {
+  background: var(--av-surface-secondary);
+  color: var(--av-text-primary);
+}
+
+.navbar-search-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.navbar-search-clear-btn,
+.navbar-search-close-btn {
+  background: transparent;
+  border: none;
+  padding: 2px;
+  color: var(--av-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  transition: color 0.12s, background 0.12s;
+}
+
+.navbar-search-clear-btn:hover,
+.navbar-search-close-btn:hover {
+  color: var(--av-text-primary);
+  background: var(--av-surface-secondary);
+}
+
+/* ── Interactive Search Results Dropdown Menu ── */
+.navbar-search-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 380px;
+  max-width: 90vw;
+  background: var(--av-surface-primary);
+  border: 1px solid var(--av-border);
+  border-radius: var(--av-radius-md, 8px);
+  box-shadow: var(--av-shadow-lg, 0 10px 30px rgba(16, 24, 40, 0.16));
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: avDropdownFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--av-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--av-surface-secondary);
+  border-bottom: 1px solid var(--av-border);
+}
+
+.dropdown-keyboard-hint {
+  font-size: 10px;
+  text-transform: none;
+  letter-spacing: normal;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  opacity: 0.8;
+}
+
+.dropdown-keyboard-hint kbd,
+.footer-kbd {
+  display: inline-block;
+  padding: 1px 4px;
+  font-size: 9.5px;
+  font-family: var(--av-font-mono, monospace);
+  line-height: 1.2;
+  color: var(--av-text-muted);
+  background: var(--av-surface-primary);
+  border: 1px solid var(--av-border);
+  border-radius: 3px;
+  box-shadow: 0 1px 0 var(--av-border);
+}
+
+.dropdown-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
+  font-size: 12px;
+  color: var(--av-text-muted);
+  text-align: center;
+}
+
+.dropdown-results-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 4px;
+  gap: 2px;
+}
+
+.dropdown-result-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--av-radius-sm, 6px);
+  cursor: pointer;
+  transition: all 0.1s ease;
+  border: 1px solid transparent;
+}
+
+.dropdown-result-row:hover,
+.dropdown-result-row.selected-row {
+  background: var(--av-surface-secondary);
+  border-color: var(--av-border);
+}
+
+.dropdown-result-row.selected-row {
+  background: rgba(33, 150, 243, 0.08);
+  border-color: rgba(33, 150, 243, 0.3);
+}
+
+.dropdown-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  border: 1px solid transparent;
+}
+
+.type-amber { background: rgba(245, 158, 11, 0.14); color: #D97706; border-color: rgba(245, 158, 11, 0.25); }
+.type-blue { background: rgba(33, 150, 243, 0.14); color: #2196F3; border-color: rgba(33, 150, 243, 0.25); }
+.type-indigo { background: rgba(99, 102, 241, 0.14); color: #6366F1; border-color: rgba(99, 102, 241, 0.25); }
+.type-emerald { background: rgba(16, 185, 129, 0.14); color: #10B981; border-color: rgba(16, 185, 129, 0.25); }
+.type-cyan { background: rgba(6, 182, 212, 0.14); color: #0891B2; border-color: rgba(6, 182, 212, 0.25); }
+.type-muted { background: var(--av-surface-secondary); color: var(--av-text-muted); border-color: var(--av-border); }
+
+.dropdown-content-box {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dropdown-title-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.dropdown-title-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--av-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.dropdown-file-size {
+  font-size: 10px;
+  font-family: var(--av-font-mono, monospace);
+  color: var(--av-text-muted);
+  flex-shrink: 0;
+}
+
+.dropdown-type-pill {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--av-surface-secondary);
+  border: 1px solid var(--av-border);
+  color: var(--av-text-muted);
+  flex-shrink: 0;
+}
+
+.dropdown-type-pill.active-pill {
+  background: rgba(33, 150, 243, 0.1);
+  border-color: rgba(33, 150, 243, 0.3);
+  color: #2196F3;
+}
+
+.dropdown-snippet-text {
+  font-size: 11px;
+  color: var(--av-text-muted);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-all;
+}
+
+.dropdown-meta-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--av-text-muted);
+  margin-top: 1px;
+}
+
+.dropdown-actor {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.dropdown-action-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--av-text-muted);
+  opacity: 0.5;
+  padding-top: 4px;
+  flex-shrink: 0;
+}
+
+.dropdown-result-row:hover .dropdown-action-hint,
+.dropdown-result-row.selected-row .dropdown-action-hint {
+  opacity: 1;
+  color: var(--av-accent);
+}
+
+.dropdown-footer {
+  padding: 4px 6px;
+  background: var(--av-surface-secondary);
+  border-top: 1px solid var(--av-border);
+}
+
+.dropdown-footer-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--av-accent);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.dropdown-footer-btn:hover {
+  background: rgba(33, 150, 243, 0.08);
+}
+
+@keyframes avDropdownFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+:host-context([data-theme="dark"]) .dropdown-result-row.selected-row {
+  background: rgba(33, 150, 243, 0.15);
+  border-color: rgba(33, 150, 243, 0.4);
+}
+
+:host-context([data-theme="dark"]) .dropdown-title-text {
+  color: #F0F3F6;
+}
+
+:host-context([data-theme="dark"]) .dropdown-keyboard-hint kbd,
+:host-context([data-theme="dark"]) .footer-kbd {
+  background: #111419;
+  border-color: #252B33;
+  color: #98A2B3;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   AirVault Shared Animation System
+   Canonical keyframes shared across all AirVault components.
+   All component-local motion should reuse these where possible.
+   Timings: 150–250ms  ·  Easing: cubic-bezier(0.16, 1, 0.3, 1)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Enter: Opacity fade ──────────────────────────────────────── */
+@keyframes avFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Enter: Scale + fade (modals, cards, popovers) ───────────── */
+@keyframes avScaleIn {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+
+/* ── Enter: Slide up + fade (list items, cards appearing in feed) */
+@keyframes avSlideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* ── Enter: Slide in from right (drawers, side panels) ───────── */
+@keyframes avSlideRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+
+/* ── Status dot: subtle pop for online/offline badge changes ─── */
+@keyframes avDotPop {
+  0%   { transform: scale(0.6); opacity: 0.4; }
+  60%  { transform: scale(1.25); }
+  100% { transform: scale(1);   opacity: 1;   }
+}
+
+/* ── Badge: highlight flash on value change ─────────────────── */
+@keyframes avBadgeFlash {
+  0%, 100% { opacity: 1; }
+  40%       { opacity: 0.45; }
+}
+
+/* ── Utility classes that components can apply directly ──────── */
+.av-anim-fade-in   { animation: avFadeIn   0.18s ease-out both; }
+.av-anim-scale-in  { animation: avScaleIn  0.2s  cubic-bezier(0.16, 1, 0.3, 1) both; }
+.av-anim-slide-up  { animation: avSlideUp  0.2s  cubic-bezier(0.16, 1, 0.3, 1) both; }
+.av-anim-slide-right { animation: avSlideRight 0.2s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   AirVault Universal Dynamic Scrollbar System
+   - Scrollbar track is completely transparent or matches component background
+   - Scrollbar thumb is sleek, subtle, and adapts to Light & Dark theme
+   - Never introduces harsh grey/white tracks over surfaces
+   ═══════════════════════════════════════════════════════════════════ */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--av-border-strong, rgba(208, 213, 221, 0.6)) transparent;
+}
+
+:host-context([data-theme="dark"]) * {
+  scrollbar-color: var(--av-border-strong, rgba(54, 61, 71, 0.6)) transparent;
+}
+
+/* WebKit Scrollbar Rules */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background: transparent;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--av-border-strong, rgba(208, 213, 221, 0.6));
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--av-text-muted, rgba(102, 112, 133, 0.8));
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+:host-context([data-theme="dark"]) ::-webkit-scrollbar-thumb {
+  background: var(--av-border-strong, rgba(54, 61, 71, 0.6));
+}
+
+:host-context([data-theme="dark"]) ::-webkit-scrollbar-thumb:hover {
+  background: var(--av-text-muted, rgba(139, 148, 158, 0.8));
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ── Respect user preference for reduced motion ──────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration:   0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration:  0.01ms !important;
+  }
+}
+
+

@@ -6,13 +6,12 @@ import { Subscription } from 'rxjs';
 import { ToolsService } from '../../../core/services/tools.service';
 import { ToolCardComponent } from '../../../shared/components/tool-card/tool-card';
 import { IconComponent } from '../../../shared/components/icon/icon';
-import { SpotlightDirective } from '../../../shared/directives/spotlight.directive';
 import { Tool } from '../../../core/models/tool.model';
 
 @Component({
   selector: 'app-tools-search-results',
   standalone: true,
-  imports: [CommonModule, RouterLink, ToolCardComponent, IconComponent, SpotlightDirective],
+  imports: [CommonModule, RouterLink, ToolCardComponent, IconComponent],
   template: `
     <div class="search-results-page page-enter">
       <!-- Page Header -->

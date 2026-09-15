@@ -480,13 +480,13 @@ If the answer is unclear, keep the component local.
 All shared UI dependencies must be installed inside:
 
 ```text
-A:\Acklet\client\
+client/
 ```
 
 Package manifest:
 
 ```text
-A:\Acklet\client\package.json
+client/package.json
 ```
 
 Do not install frontend dependencies at the repository root unless the architecture explicitly requires it.

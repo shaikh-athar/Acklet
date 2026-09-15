@@ -112,6 +112,7 @@ client/src/tools/data-lens/
 │   └── inspector-empty-state.component.ts # Contextual empty fallback states
 └── services/
     ├── data-lens.service.ts             # Core AST parser, formatters, stats, converters & graph builder
+    ├── data-lens.worker.ts              # Off-thread Web Worker for async formatting, validation & diffing
     ├── data-lens-diff.service.ts        # Word/line tokenization, structural diff & hunk builder
     ├── data-lens-history.service.ts     # IndexedDB persistence & snapshot retention manager
     ├── format-registry.service.ts       # Format registry & capability declaration provider

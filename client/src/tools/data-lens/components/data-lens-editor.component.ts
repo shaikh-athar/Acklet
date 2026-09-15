@@ -3,12 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { JsonLensResult, DataLensService } from '../services/data-lens.service';
 import { IconComponent } from '../../../app/shared/components/icon/icon';
-import { FallbackStateComponent } from '../../../app/shared/components/fallback-state/fallback-state.component';
 
 @Component({
   selector: 'app-json-lens-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent, FallbackStateComponent],
+  imports: [CommonModule, FormsModule, IconComponent],
   template: `
     <div
       class="panel input-panel"

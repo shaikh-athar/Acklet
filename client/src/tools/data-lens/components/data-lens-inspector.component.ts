@@ -3,13 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { JsonLensResult, JsonStats, DataLensService, GraphNode } from '../services/data-lens.service';
 import { IconComponent } from '../../../app/shared/components/icon/icon';
-import { FallbackStateComponent } from '../../../app/shared/components/fallback-state/fallback-state.component';
 import { InspectorEmptyStateComponent } from './inspector-empty-state.component';
 
 @Component({
   selector: 'app-json-lens-inspector',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent, FallbackStateComponent, InspectorEmptyStateComponent],
+  imports: [CommonModule, FormsModule, IconComponent, InspectorEmptyStateComponent],
   template: `
     <div class="panel output-panel">
       <!-- Dedicated Inspector Sub-Navbar Tab Bar with Horizontal Scroll -->

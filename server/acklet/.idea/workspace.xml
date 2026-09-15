@@ -5,41 +5,52 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8cc24f72-cf76-4714-94a5-20cada12dd6d" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../../.agents/AGENTS.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../.agents/AGENTS.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../.agents/rules/UI-FOUNDATION.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../.agents/rules/UI-FOUNDATION.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/rules/security.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../.agents/rules/security.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/rules/tools.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../.agents/rules/tools.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/workflows/tools.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../.agents/workflows/tools.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/angular.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/angular.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/package-lock.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/src/app/app.routes.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/app.routes.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/app/app.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/app.spec.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/services/seo.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/services/seo.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/interceptors/auth.interceptor.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/interceptors/auth.interceptor.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/mock-data/tools.data.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/mock-data/tools.data.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/services/tools.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/services/tools.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/services/workspace-state.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/services/workspace-state.service.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/src/app/core/tool-registry/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/tool-registry/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/tool-detail/tool-detail.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/tool-detail/tool-detail.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/app/shared/components/fallback-state/fallback-state.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/shared/components/fallback-state/fallback-state.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/layout/shell/shell.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/layout/shell/shell.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/blog/article-details/article-details.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/blog/article-details/article-details.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/categories/categories.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/categories/categories.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/community/features/features.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/community/features/features.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/community/help/help.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/community/help/help.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/community/showcase/showcase.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/community/showcase/showcase.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/tools/new-releases/new-releases.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/tools/new-releases/new-releases.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/tools/search-results/search-results.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/tools/search-results/search-results.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/tools/tools.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/tools/tools.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/tools/trending/trending.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/tools/trending/trending.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/workspace/ai-jobs/ai-jobs.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/workspace/ai-jobs/ai-jobs.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/workspace/analytics/analytics.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/workspace/analytics/analytics.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/workspace/history/history.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/workspace/history/history.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/workspace/tools/tools.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/workspace/tools/tools.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/shared/components/feedback-modal/feedback-modal.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/shared/components/feedback-modal/feedback-modal.component.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/src/app/shared/components/icon/icon.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/shared/components/icon/icon.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/src/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/styles.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-command-palette.component.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-drag-overlay.component.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-editor.component.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-error-panel.component.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-history-drawer.component.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-inspector.component.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-privacy-modal.component.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-seo-footer.component.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-settings-drawer.component.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-share-modal.component.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-toast-container.component.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/components/json-lens-toolbar.component.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/json-lens.component.css" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/json-lens.component.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/json-lens.component.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/services/json-lens-history.service.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/tools/json-lens/services/json-lens.service.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../docker-compose.yml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Architecture/UI-FOUNDATION.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Architecture/UI-FOUNDATION.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/json-lens/README.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/json-lens/description.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/json-lens/feature.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../docs/build-configuration.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/data-lens/components/data-lens-editor.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/tools/data-lens/components/data-lens-editor.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/data-lens/components/data-lens-inspector.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/tools/data-lens/components/data-lens-inspector.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/tools/data-lens/data-lens.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/tools/data-lens/data-lens.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/data-lens/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/data-lens/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/AckletApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/AckletApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/exception/GlobalExceptionHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/exception/GlobalExceptionHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/security/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/security/SecurityConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/application.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/workspaces/athar-taj_Athar-Portfolio" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -65,23 +76,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Application.Acklet.executor&quot;: &quot;Run&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;Spring Boot.AckletApplication.executor&quot;: &quot;Run&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;tools/json-formatter&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;/Applications/IntelliJ IDEA.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Application.Acklet.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "Spring Boot.AckletApplication.executor": "Run",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "tools/air-vault",
+    "kotlin-language-version-configured": "true",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "ts.external.directory.path": "/Applications/IntelliJ IDEA.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RunManager">
     <configuration name="Acklet" type="Application" factoryName="Application">
       <option name="MAIN_CLASS_NAME" value="com.code.acklet.AckletApplication" />

@@ -1,0 +1,713 @@
+package com.code.acklet.airvault.service;
+
+import com.code.acklet.airvault.config.AirVaultRabbitMqConfig;
+import com.code.acklet.airvault.dto.UploadSessionDtos.*;
+import com.code.acklet.airvault.entity.ClipboardFile;
+import com.code.acklet.airvault.entity.UploadSession;
+import com.code.acklet.airvault.repository.ClipboardFileRepository;
+import com.code.acklet.airvault.repository.UploadSessionRepository;
+import com.code.acklet.shared.exception.BadRequestException;
+import com.code.acklet.shared.exception.ResourceNotFoundException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class AirVaultUploadService {
+
+    public static final long MAX_CLIPBOARD_CAP_BYTES = 1L * 1024L * 1024L * 1024L; // 1 GB Max Total Storage
+    public static final long MAX_SINGLE_FILE_SIZE_BYTES = 500L * 1024L * 1024L; // 500 MB Max Single File
+    public static final long RETENTION_PERIOD_DAYS = 7L; // 7 Days Retention Policy
+
+    private final UploadSessionRepository uploadSessionRepository;
+    private final ClipboardFileRepository clipboardFileRepository;
+    private final RabbitTemplate rabbitTemplate;
+    private final AirVaultRedisTracker redisTracker;
+    private final AirVaultAuditService auditService;
+
+    // In-memory SSE connections map keyed by clipboardId
+    private final Map<String, List<SseEmitter>> clipboardEmitters = new ConcurrentHashMap<>();
+
+    private final Path storageRoot = Paths.get(System.getProperty("java.io.tmpdir"), "acklet_airvault_uploads");
+
+    private synchronized void initStorage() {
+        try {
+            if (!Files.exists(storageRoot)) {
+                Files.createDirectories(storageRoot);
+            }
+        } catch (IOException e) {
+            log.error("[AirVault Storage] Failed to initialize storage root: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Authoritative Cap Check & Session Initiation
+     */
+    @Transactional
+    public InitiateUploadResponse initiateUpload(String clipboardId, InitiateUploadRequest req) {
+        initStorage();
+
+        // 0. Single file size validation (500 MB limit)
+        if (req.getDeclaredSize() > MAX_SINGLE_FILE_SIZE_BYTES) {
+            log.warn("[AirVault Upload] ⛔ REJECTED: File size ({} B) exceeds maximum single file limit ({} B)",
+                    req.getDeclaredSize(), MAX_SINGLE_FILE_SIZE_BYTES);
+            throw new BadRequestException("File size exceeds maximum supported single file limit of 500 MB.");
+        }
+
+        // 1. Authoritative DB query for actual stored bytes
+        Long currentTotalBytes = clipboardFileRepository.sumTotalBytesByClipboardId(clipboardId);
+        if (currentTotalBytes == null) currentTotalBytes = 0L;
+
+        Long activeUploadsBytes = uploadSessionRepository.sumActiveUploadsSizeByClipboardId(clipboardId);
+        if (activeUploadsBytes == null) activeUploadsBytes = 0L;
+
+        long effectiveUsage = currentTotalBytes + activeUploadsBytes;
+        long remaining = Math.max(0, MAX_CLIPBOARD_CAP_BYTES - effectiveUsage);
+
+        log.info("[AirVault Upload] Init session for clipboard={}: currentUsage={} B, file={} ({} B), remaining={} B",
+                clipboardId, effectiveUsage, req.getFileName(), req.getDeclaredSize(), remaining);
+
+        if (req.getDeclaredSize() > remaining) {
+            log.warn("[AirVault Upload] ⛔ REJECTED: File size ({} B) exceeds remaining capacity ({} B)",
+                    req.getDeclaredSize(), remaining);
+            throw new BadRequestException("Storage cap exceeded. Adding this file would exceed the 1 GB clipboard limit.");
+        }
+
+        // 2. Check if a session already exists for this fileId (idempotent resume/init)
+        Optional<UploadSession> existingOpt = uploadSessionRepository.findByFileId(req.getFileId());
+        UploadSession session;
+        if (existingOpt.isPresent()) {
+            session = existingOpt.get();
+            session.setStatus("UPLOADING");
+            if (req.getBatchId() != null) {
+                session.setBatchId(req.getBatchId());
+            }
+        } else {
+            session = UploadSession.builder()
+                    .clipboardId(clipboardId)
+                    .fileId(req.getFileId())
+                    .fileName(req.getFileName())
+                    .category(req.getCategory() != null ? req.getCategory() : "file")
+                    .declaredSize(req.getDeclaredSize())
+                    .chunkSize(req.getChunkSize())
+                    .totalChunks(req.getTotalChunks())
+                    .receivedBytes(0L)
+                    .chunksReceivedCount(0)
+                    .receivedChunkIndices("")
+                    .status("UPLOADING")
+                    .previewUrl(req.getPreviewUrl())
+                    .batchId(req.getBatchId())
+                    .storagePath(storageRoot.resolve(req.getFileId()).toString())
+                    .build();
+        }
+
+        session = uploadSessionRepository.save(session);
+
+        // Record audit event: upload_started
+        auditService.recordEvent(
+                "upload_started",
+                null,
+                req.getSenderDeviceName(),
+                req.getSenderDeviceId(),
+                null,
+                session.getFileId(),
+                "SUCCESS",
+                null,
+                session.getFileName(),
+                Map.of("category", session.getCategory(), "declaredSize", session.getDeclaredSize(), "totalChunks", session.getTotalChunks())
+        );
+
+        // Notify subscribers
+        broadcastEvent(clipboardId, "upload_initiated", Map.of(
+                "fileId", session.getFileId(),
+                "fileName", session.getFileName(),
+                "declaredSize", session.getDeclaredSize(),
+                "status", session.getStatus()
+        ));
+
+        return InitiateUploadResponse.builder()
+                .uploadSessionId(session.getId())
+                .fileId(session.getFileId())
+                .fileName(session.getFileName())
+                .declaredSize(session.getDeclaredSize())
+                .currentClipboardBytes(effectiveUsage)
+                .remainingCapBytes(remaining - req.getDeclaredSize())
+                .status(session.getStatus())
+                .build();
+    }
+
+    /**
+     * Idempotent Chunk Storage (Non-blocking file writing + Redis state tracking)
+     */
+    @Transactional
+    public ChunkUploadResponse storeChunk(UUID sessionId, int chunkIndex, byte[] chunkData) {
+        UploadSession session = uploadSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Upload session not found: " + sessionId));
+
+        if ("COMPLETED".equalsIgnoreCase(session.getStatus()) || "ASSEMBLING".equalsIgnoreCase(session.getStatus())) {
+            return buildChunkResponse(session, chunkIndex);
+        }
+
+        Path chunkDir = storageRoot.resolve("chunks_" + session.getId().toString());
+        Path chunkFile = chunkDir.resolve("chunk_" + chunkIndex);
+
+        try {
+            if (!Files.exists(chunkDir)) {
+                Files.createDirectories(chunkDir);
+            }
+
+            // Write chunk independently without thread locking
+            if (!Files.exists(chunkFile)) {
+                Files.write(chunkFile, chunkData, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+                session.setReceivedBytes(session.getReceivedBytes() + chunkData.length);
+            }
+
+            // Record chunk arrival in Redis Set
+            redisTracker.recordChunkReceived(sessionId, chunkIndex, chunkData.length);
+
+            Set<Integer> receivedIndices = parseIndices(session.getReceivedChunkIndices());
+            receivedIndices.add(chunkIndex);
+            session.setReceivedChunkIndices(serializeIndices(receivedIndices));
+            session.setChunksReceivedCount(redisTracker.getReceivedChunksCount(sessionId));
+            session.setStatus("UPLOADING");
+
+            session = uploadSessionRepository.save(session);
+
+            log.debug("[AirVault Upload] Chunk {}/{} received for session={} (bytes: {})",
+                    chunkIndex + 1, session.getTotalChunks(), sessionId, chunkData.length);
+        } catch (IOException e) {
+            log.error("[AirVault Upload] Failed to write chunk {}: {}", chunkIndex, e.getMessage());
+            throw new BadRequestException("Failed to persist chunk on server storage");
+        }
+
+        ChunkUploadResponse resp = buildChunkResponse(session, chunkIndex);
+
+        // Broadcast live progress to all connected devices on this clipboard
+        broadcastEvent(session.getClipboardId(), "upload_progress", resp);
+
+        return resp;
+    }
+
+    /**
+     * Query Missing Chunks for Resumable Upload (Powered by Redis)
+     */
+    @Transactional(readOnly = true)
+    public UploadSessionStatusResponse getSessionStatus(UUID sessionId) {
+        UploadSession session = uploadSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Upload session not found: " + sessionId));
+
+        List<Integer> missing = redisTracker.getMissingChunks(sessionId, session.getTotalChunks());
+        int receivedCount = redisTracker.getReceivedChunksCount(sessionId);
+        if (receivedCount == 0 && session.getChunksReceivedCount() > 0) {
+            receivedCount = session.getChunksReceivedCount();
+        }
+
+        double percent = session.getTotalChunks() > 0 ? (double) receivedCount / session.getTotalChunks() * 100.0 : 0.0;
+
+        return UploadSessionStatusResponse.builder()
+                .uploadSessionId(session.getId())
+                .fileId(session.getFileId())
+                .fileName(session.getFileName())
+                .status(session.getStatus())
+                .totalChunks(session.getTotalChunks())
+                .chunksReceived(receivedCount)
+                .missingChunkIndices(missing)
+                .receivedBytes(session.getReceivedBytes())
+                .progressPercent(Math.round(percent * 10.0) / 10.0)
+                .build();
+    }
+
+    /**
+     * Finalize & Queue Asynchronous Background Assembly via RabbitMQ
+     */
+    @Transactional
+    public CompleteUploadResponse completeUpload(UUID sessionId, CompleteUploadRequest req) {
+        UploadSession session = uploadSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Upload session not found: " + sessionId));
+
+        // 1. Guard: count-based check (Redis + DB fallback)
+        int receivedCount = redisTracker.getReceivedChunksCount(sessionId);
+        if (receivedCount < session.getTotalChunks() && session.getChunksReceivedCount() < session.getTotalChunks()) {
+            throw new BadRequestException("Cannot complete upload: missing chunks (" +
+                    Math.max(receivedCount, session.getChunksReceivedCount()) + "/" + session.getTotalChunks() + " received)");
+        }
+
+        // 2. Guard: filesystem existence check — the count may be correct but chunk files
+        //    must physically exist on disk before we publish the assembly job.
+        //    Files.write() inside storeChunk() is not transactional; the DB count can be
+        //    consistent while the OS write hasn't flushed yet.
+        Path chunkDir = storageRoot.resolve("chunks_" + sessionId);
+        List<Integer> missingOnDisk = new ArrayList<>();
+        for (int i = 0; i < session.getTotalChunks(); i++) {
+            if (!Files.exists(chunkDir.resolve("chunk_" + i))) {
+                missingOnDisk.add(i);
+            }
+        }
+        if (!missingOnDisk.isEmpty()) {
+            log.warn("[AirVault Upload] ⚠️ completeUpload: chunks {} not yet on disk for session={} — aborting finalize",
+                    missingOnDisk, sessionId);
+            throw new BadRequestException("Cannot complete upload: chunk files not yet fully written to disk (indices: " + missingOnDisk + ")");
+        }
+
+        session.setStatus("ASSEMBLING");
+        if (req.getChecksum() != null) session.setChecksum(req.getChecksum());
+        if (req.getPreviewUrl() != null) session.setPreviewUrl(req.getPreviewUrl());
+        uploadSessionRepository.save(session);
+        redisTracker.setSessionStatus(sessionId, "ASSEMBLING");
+
+        // Publish event to RabbitMQ for asynchronous background worker assembly & compression
+        try {
+            rabbitTemplate.convertAndSend(
+                    AirVaultRabbitMqConfig.AIRVAULT_UPLOAD_EXCHANGE,
+                    AirVaultRabbitMqConfig.ROUTING_KEY_UPLOAD_COMPLETED,
+                    Map.of(
+                            "uploadSessionId", sessionId.toString(),
+                            "clipboardId", session.getClipboardId(),
+                            "fileName", session.getFileName()
+                    )
+            );
+            log.info("[AirVault Upload] 📤 Dispatched assembly job to RabbitMQ for uploadSessionId: {}", sessionId);
+        } catch (Exception rmqErr) {
+            log.warn("[AirVault Upload] RabbitMQ dispatch warning: {}. Running synchronous fallback.", rmqErr.getMessage());
+            // Synchronous fallback if broker temporarily offline
+            assembleSynchronously(session);
+        }
+
+        return CompleteUploadResponse.builder()
+                .uploadSessionId(session.getId())
+                .fileId(session.getFileId())
+                .fileName(session.getFileName())
+                .category(session.getCategory())
+                .finalByteSize(session.getReceivedBytes())
+                .checksum(session.getChecksum())
+                .status("ASSEMBLING")
+                .previewUrl(session.getPreviewUrl())
+                .build();
+    }
+
+    private void assembleSynchronously(UploadSession session) {
+        Path sessionChunkDir = storageRoot.resolve("chunks_" + session.getId().toString());
+        Path finalStorageDir = storageRoot.resolve("files");
+        Path finalFile = finalStorageDir.resolve(session.getFileId() + ".bin");
+
+        try {
+            if (!Files.exists(finalStorageDir)) Files.createDirectories(finalStorageDir);
+
+            try (OutputStream fileOut = Files.newOutputStream(finalFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+                 BufferedOutputStream bufferedOut = new BufferedOutputStream(fileOut)) {
+                for (int i = 0; i < session.getTotalChunks(); i++) {
+                    Path chunkPath = sessionChunkDir.resolve("chunk_" + i);
+                    if (Files.exists(chunkPath)) {
+                        bufferedOut.write(Files.readAllBytes(chunkPath));
+                    }
+                }
+                bufferedOut.flush();
+            }
+
+            ClipboardFile file = ClipboardFile.builder()
+                    .clipboardId(session.getClipboardId())
+                    .fileId(session.getFileId())
+                    .fileName(session.getFileName())
+                    .category(session.getCategory())
+                    .byteSize(session.getReceivedBytes())
+                    .checksum(session.getChecksum())
+                    .storagePath(finalFile.toAbsolutePath().toString())
+                    .previewUrl(session.getPreviewUrl())
+                    .batchId(session.getBatchId())
+                    .build();
+            clipboardFileRepository.save(file);
+
+            session.setStatus("COMPLETED");
+            uploadSessionRepository.save(session);
+            redisTracker.setSessionStatus(session.getId(), "READY");
+
+            broadcastEvent(session.getClipboardId(), "upload_complete", Map.of(
+                    "fileId", session.getFileId(),
+                    "fileName", session.getFileName(),
+                    "category", session.getCategory(),
+                    "byteSize", session.getReceivedBytes(),
+                    "previewUrl", session.getPreviewUrl() != null ? session.getPreviewUrl() : ""
+            ));
+
+            // Clean up temporary chunk files immediately after successful assembly
+            try (var stream = Files.walk(sessionChunkDir)) {
+                stream.sorted(Comparator.reverseOrder())
+                      .map(Path::toFile)
+                      .forEach(File::delete);
+            } catch (IOException ignored) {}
+
+            auditService.recordEvent(
+                    "upload_finalized",
+                    null,
+                    null,
+                    null,
+                    null,
+                    session.getFileId(),
+                    "SUCCESS",
+                    null,
+                    session.getFileName(),
+                    Map.of("byteSize", session.getReceivedBytes(), "category", session.getCategory())
+            );
+        } catch (Exception e) {
+            log.error("[AirVault Upload] Synchronous assembly fallback failed: {}", e.getMessage());
+            auditService.recordEvent(
+                    "upload_failed",
+                    null,
+                    null,
+                    null,
+                    null,
+                    session.getFileId(),
+                    "FAILURE",
+                    null,
+                    null,
+                    Map.of("error", e.getMessage() != null ? e.getMessage() : "Assembly failure")
+            );
+        }
+    }
+
+    /**
+     * Get aggregate batch status & per-file statuses
+     */
+    @Transactional(readOnly = true)
+    public BatchStatusResponse getBatchStatus(String clipboardId, String batchId) {
+        List<UploadSession> sessions = uploadSessionRepository.findAllByClipboardIdAndBatchId(clipboardId, batchId);
+        List<ClipboardFile> completedFiles = clipboardFileRepository.findAllByClipboardIdAndBatchId(clipboardId, batchId);
+
+        Map<String, ClipboardFile> completedMap = completedFiles.stream()
+                .collect(Collectors.toMap(ClipboardFile::getFileId, f -> f, (a, b) -> a));
+
+        List<BatchFileStatusDto> fileDtos = new ArrayList<>();
+        int totalCount = sessions.size();
+        int completedCount = 0;
+        int failedCount = 0;
+        long totalBytes = 0L;
+        long receivedBytes = 0L;
+
+        for (UploadSession s : sessions) {
+            totalBytes += s.getDeclaredSize() != null ? s.getDeclaredSize() : 0L;
+            receivedBytes += s.getReceivedBytes() != null ? s.getReceivedBytes() : 0L;
+
+            boolean isDone = "COMPLETED".equalsIgnoreCase(s.getStatus()) || completedMap.containsKey(s.getFileId());
+            boolean isFailed = "FAILED".equalsIgnoreCase(s.getStatus());
+
+            if (isDone) completedCount++;
+            if (isFailed) failedCount++;
+
+            double progress = s.getTotalChunks() > 0 ? (double) s.getChunksReceivedCount() / s.getTotalChunks() * 100.0 : (isDone ? 100.0 : 0.0);
+
+            fileDtos.add(BatchFileStatusDto.builder()
+                    .fileId(s.getFileId())
+                    .fileName(s.getFileName())
+                    .category(s.getCategory())
+                    .byteSize(s.getDeclaredSize() != null ? s.getDeclaredSize() : 0L)
+                    .status(isDone ? "COMPLETED" : (isFailed ? "FAILED" : s.getStatus()))
+                    .progressPercent(Math.round(progress * 10.0) / 10.0)
+                    .previewUrl(s.getPreviewUrl())
+                    .build());
+        }
+
+        String batchStatus = "PENDING";
+        if (totalCount > 0 && completedCount == totalCount) {
+            batchStatus = "COMPLETED";
+        } else if (failedCount == totalCount && totalCount > 0) {
+            batchStatus = "FAILED";
+        } else if (failedCount > 0) {
+            batchStatus = "PARTIAL_FAILURE";
+        } else if (receivedBytes > 0) {
+            batchStatus = "UPLOADING";
+        }
+
+        double aggProgress = totalBytes > 0 ? ((double) receivedBytes / totalBytes) * 100.0 : 0.0;
+
+        return BatchStatusResponse.builder()
+                .batchId(batchId)
+                .clipboardId(clipboardId)
+                .totalFiles(totalCount)
+                .completedFiles(completedCount)
+                .failedFiles(failedCount)
+                .totalBytes(totalBytes)
+                .receivedBytes(receivedBytes)
+                .aggregateProgressPercent(Math.round(aggProgress * 10.0) / 10.0)
+                .status(batchStatus)
+                .files(fileDtos)
+                .build();
+    }
+
+    /**
+     * Stream server-side ZIP archive containing all files in a batch
+     */
+    @Transactional(readOnly = true)
+    public void streamBatchZip(String clipboardId, String batchId, OutputStream out) throws IOException {
+        List<ClipboardFile> files = clipboardFileRepository.findAllByClipboardIdAndBatchId(clipboardId, batchId);
+        if (files.isEmpty()) {
+            throw new ResourceNotFoundException("No completed files found for batch " + batchId);
+        }
+
+        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(out)) {
+            Set<String> entryNames = new HashSet<>();
+            for (ClipboardFile file : files) {
+                if (file.getStoragePath() == null) continue;
+                Path p = Paths.get(file.getStoragePath());
+                if (!Files.exists(p)) continue;
+
+                String entryName = file.getFileName();
+                int suffix = 1;
+                while (entryNames.contains(entryName)) {
+                    int dotIdx = file.getFileName().lastIndexOf('.');
+                    if (dotIdx > 0) {
+                        entryName = file.getFileName().substring(0, dotIdx) + "_" + suffix + file.getFileName().substring(dotIdx);
+                    } else {
+                        entryName = file.getFileName() + "_" + suffix;
+                    }
+                    suffix++;
+                }
+                entryNames.add(entryName);
+
+                java.util.zip.ZipEntry zipEntry = new java.util.zip.ZipEntry(entryName);
+                zos.putNextEntry(zipEntry);
+                Files.copy(p, zos);
+                zos.closeEntry();
+            }
+            zos.finish();
+        }
+    }
+
+    /**
+     * Stream single raw file binary directly to output stream (zero in-memory buffering for 1GB scale)
+     */
+    @Transactional(readOnly = true)
+    public ClipboardFile getFileMetadata(String fileId) {
+        return clipboardFileRepository.findByFileId(fileId)
+                .orElseThrow(() -> new ResourceNotFoundException("File resource not found: " + fileId));
+    }
+
+    @Transactional(readOnly = true)
+    public void streamRawFile(String fileId, OutputStream out) throws IOException {
+        ClipboardFile file = getFileMetadata(fileId);
+        if (file.getStoragePath() == null) {
+            throw new ResourceNotFoundException("File storage path missing for: " + fileId);
+        }
+        Path path = Paths.get(file.getStoragePath());
+        if (!Files.exists(path)) {
+            throw new ResourceNotFoundException("Physical file missing on server storage: " + fileId);
+        }
+        try (InputStream in = Files.newInputStream(path);
+             BufferedInputStream bufIn = new BufferedInputStream(in)) {
+            byte[] buffer = new byte[65536]; // 64KB streaming chunk
+            int bytesRead;
+            while ((bytesRead = bufIn.read(buffer)) != -1) {
+                out.write(buffer, 0, bytesRead);
+            }
+            out.flush();
+        }
+    }
+
+    /**
+     * Authoritative Usage Endpoint
+     */
+    @Transactional(readOnly = true)
+    public ClipboardUsageResponse getClipboardUsage(String clipboardId) {
+        Long totalBytes = clipboardFileRepository.sumTotalBytesByClipboardId(clipboardId);
+        if (totalBytes == null) totalBytes = 0L;
+
+        List<ClipboardFile> files = clipboardFileRepository.findAllByClipboardIdOrderByCreatedAtDesc(clipboardId);
+
+        double percent = Math.min(100.0, ((double) totalBytes / MAX_CLIPBOARD_CAP_BYTES) * 100.0);
+        long remaining = Math.max(0, MAX_CLIPBOARD_CAP_BYTES - totalBytes);
+
+        return ClipboardUsageResponse.builder()
+                .clipboardId(clipboardId)
+                .totalBytes(totalBytes)
+                .maxCapBytes(MAX_CLIPBOARD_CAP_BYTES)
+                .usedPercent(Math.round(percent * 10.0) / 10.0)
+                .remainingBytes(remaining)
+                .totalFilesCount(files.size())
+                .build();
+    }
+
+    /**
+     * Resets all stored files, chunks, and sessions for a clipboard (idempotent)
+     */
+    @Transactional
+    public void resetClipboard(String clipboardId) {
+        log.info("[AirVault Storage] 🧹 Resetting clipboard storage for clipboardId: {}", clipboardId);
+
+        // 1. Delete physical files on disk
+        List<ClipboardFile> files = clipboardFileRepository.findAllByClipboardId(clipboardId);
+        for (ClipboardFile file : files) {
+            try {
+                if (file.getStoragePath() != null) {
+                    Files.deleteIfExists(Paths.get(file.getStoragePath()));
+                }
+            } catch (IOException e) {
+                log.warn("[AirVault Storage] Failed to delete disk file {}: {}", file.getStoragePath(), e.getMessage());
+            }
+        }
+
+        // 2. Delete chunks for uncompleted upload sessions
+        List<UploadSession> sessions = uploadSessionRepository.findAllByClipboardId(clipboardId);
+        for (UploadSession session : sessions) {
+            Path sessionChunkDir = storageRoot.resolve("chunks_" + session.getId().toString());
+            try {
+                if (Files.exists(sessionChunkDir)) {
+                    try (var stream = Files.walk(sessionChunkDir)) {
+                        stream.sorted(Comparator.reverseOrder()).forEach(p -> {
+                            try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                        });
+                    }
+                }
+            } catch (IOException ignored) {}
+        }
+
+        // 3. Purge DB records
+        clipboardFileRepository.deleteAllByClipboardId(clipboardId);
+        uploadSessionRepository.deleteAllByClipboardId(clipboardId);
+
+        // 4. Broadcast usage reset event via SSE
+        broadcastEvent(clipboardId, "clipboard_reset", Map.of(
+                "clipboardId", clipboardId,
+                "totalBytes", 0L,
+                "totalFilesCount", 0
+        ));
+
+        log.info("[AirVault Storage] ✅ Clipboard storage successfully reset to 0 bytes for: {}", clipboardId);
+    }
+
+    /**
+     * Real-time SSE subscription
+     */
+    public SseEmitter subscribeClipboardEvents(String clipboardId) {
+        SseEmitter emitter = new SseEmitter(180_000L); // 3 minutes timeout
+        List<SseEmitter> list = clipboardEmitters.computeIfAbsent(clipboardId, k -> Collections.synchronizedList(new ArrayList<>()));
+        list.add(emitter);
+
+        emitter.onCompletion(() -> list.remove(emitter));
+        emitter.onTimeout(() -> list.remove(emitter));
+        emitter.onError((e) -> list.remove(emitter));
+
+        try {
+            emitter.send(SseEmitter.event().name("connected").data("Connected to clipboard: " + clipboardId));
+        } catch (IOException ignored) {}
+
+        return emitter;
+    }
+
+    public void broadcastEvent(String clipboardId, String eventName, Object data) {
+        List<SseEmitter> list = clipboardEmitters.get(clipboardId);
+        if (list == null || list.isEmpty()) return;
+
+        List<SseEmitter> deadEmitters = new ArrayList<>();
+        for (SseEmitter emitter : list) {
+            try {
+                emitter.send(SseEmitter.event().name(eventName).data(data));
+            } catch (Exception e) {
+                deadEmitters.add(emitter);
+            }
+        }
+        list.removeAll(deadEmitters);
+    }
+
+    private ChunkUploadResponse buildChunkResponse(UploadSession s, int chunkIndex) {
+        double percent = s.getTotalChunks() > 0 ? (double) s.getChunksReceivedCount() / s.getTotalChunks() * 100.0 : 0.0;
+        return ChunkUploadResponse.builder()
+                .uploadSessionId(s.getId())
+                .fileId(s.getFileId())
+                .chunkIndex(chunkIndex)
+                .totalChunks(s.getTotalChunks())
+                .chunksReceived(s.getChunksReceivedCount())
+                .receivedBytes(s.getReceivedBytes())
+                .progressPercent(Math.round(percent * 10.0) / 10.0)
+                .status(s.getStatus())
+                .build();
+    }
+
+    private Set<Integer> parseIndices(String raw) {
+        if (raw == null || raw.isBlank()) return new HashSet<>();
+        return Arrays.stream(raw.split(","))
+                .filter(s -> !s.isBlank())
+                .map(Integer::parseInt)
+                .collect(Collectors.toSet());
+    }
+
+    private String serializeIndices(Set<Integer> set) {
+        return set.stream().map(String::valueOf).collect(Collectors.joining(","));
+    }
+
+    /**
+     * Hourly purge of files older than 7 days per defined retention policy.
+     * Also removes stale uncompleted upload sessions older than 24 hours.
+     */
+    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 3600000)
+    @Transactional
+    public void cleanupExpiredFiles() {
+        java.time.Instant cutoff = java.time.Instant.now().minus(RETENTION_PERIOD_DAYS, java.time.temporal.ChronoUnit.DAYS);
+        List<ClipboardFile> expiredFiles = clipboardFileRepository.findAllByCreatedAtBefore(cutoff);
+        if (!expiredFiles.isEmpty()) {
+            log.info("[AirVault Cleanup] Found {} expired files (> 7 days old) to purge", expiredFiles.size());
+            for (ClipboardFile file : expiredFiles) {
+                try {
+                    if (file.getStoragePath() != null) {
+                        Files.deleteIfExists(Paths.get(file.getStoragePath()));
+                    }
+                } catch (IOException e) {
+                    log.warn("[AirVault Cleanup] Failed to delete disk file: {}", file.getStoragePath());
+                }
+                clipboardFileRepository.delete(file);
+                log.info("[AirVault Cleanup] Permanently purged expired file: {} ({})", file.getFileName(), file.getFileId());
+            }
+        }
+
+        // Stale incomplete sessions cleanup (> 24 hours)
+        java.time.Instant sessionCutoff = java.time.Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS);
+        List<UploadSession> staleSessions = uploadSessionRepository.findAllByCreatedAtBefore(sessionCutoff);
+        for (UploadSession session : staleSessions) {
+            if (!"COMPLETED".equalsIgnoreCase(session.getStatus())) {
+                try {
+                    if (session.getStoragePath() != null) {
+                        Files.deleteIfExists(Paths.get(session.getStoragePath()));
+                    }
+                    Path chunkDir = storageRoot.resolve("chunks_" + session.getId().toString());
+                    if (Files.exists(chunkDir)) {
+                        try (var stream = Files.walk(chunkDir)) {
+                            stream.sorted(Comparator.reverseOrder())
+                                  .map(Path::toFile)
+                                  .forEach(File::delete);
+                        }
+                    }
+                } catch (IOException ignored) {}
+                uploadSessionRepository.delete(session);
+                log.info("[AirVault Cleanup] Purged stale upload session and chunks: {}", session.getFileId());
+            }
+        }
+
+        // Cleanup any orphaned chunk_* directories older than 24 hours on disk
+        try (var ds = Files.newDirectoryStream(storageRoot, "chunks_*")) {
+            long nowMs = System.currentTimeMillis();
+            long twentyFourHoursMs = 24 * 60 * 60 * 1000L;
+            for (Path orphanChunkDir : ds) {
+                try {
+                    long lastModified = Files.getLastModifiedTime(orphanChunkDir).toMillis();
+                    if (nowMs - lastModified > twentyFourHoursMs) {
+                        try (var stream = Files.walk(orphanChunkDir)) {
+                            stream.sorted(Comparator.reverseOrder())
+                                  .map(Path::toFile)
+                                  .forEach(File::delete);
+                        }
+                        log.info("[AirVault Cleanup] Purged orphaned chunk directory: {}", orphanChunkDir.getFileName());
+                    }
+                } catch (IOException ignored) {}
+            }
+        } catch (IOException ignored) {}
+    }
+}

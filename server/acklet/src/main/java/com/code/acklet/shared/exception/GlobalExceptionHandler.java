@@ -35,7 +35,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationException(MethodArgumentNotValidException ex) {
-        log.warn("Validation failed [traceId={}]: {} errors", getTraceId(), ex.getBindingResult().getErrorCount());
+        log.warn("Validation failed [traceId={}]: {} errors -> {} ", getTraceId(), ex.getBindingResult().getErrorCount(),ex.getMessage());
         
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
@@ -71,7 +71,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleAllUncaughtException(Exception ex) {
-        log.error("Unhandled exception caught [traceId={}]:", getTraceId(), ex);
+        log.error("Unhandled exception caught [traceId={}]: ", getTraceId(), ex);
         ApiResponse<Void> response = ApiResponse.error("An unexpected error occurred. Please contact support.", getTraceId());
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }

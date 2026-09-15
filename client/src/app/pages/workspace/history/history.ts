@@ -1,9 +1,7 @@
 // client/src/app/pages/workspace/history/history.ts
 import { Component, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../../../shared/components/icon/icon';
-import { SpotlightDirective } from '../../../shared/directives/spotlight.directive';
 
 interface LogItem {
   id: string;
@@ -17,7 +15,7 @@ interface LogItem {
 @Component({
   selector: 'app-workspace-history',
   standalone: true,
-  imports: [RouterLink, CommonModule, IconComponent, SpotlightDirective],
+  imports: [CommonModule, IconComponent],
   template: `
     <div class="history-root page-enter">
       <header class="header-row mb-8">

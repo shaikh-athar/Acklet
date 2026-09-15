@@ -6,9 +6,10 @@ Welcome to the **Acklet Tools Documentation Hub**. This directory documents the 
 
 ## Tool Directory Index
 
-| Tool Name | Directory Path | Category | Primary Formats | Status |
+| Tool Name | Directory Path | Category | Primary Formats / Focus | Status |
 | :--- | :--- | :--- | :--- | :--- |
 | **DataLens** | [data-lens/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/data-lens/README.md) | Structured Data Workbench & Inspector | JSON, YAML, XML, CSV, TOML, cURL | **Production Ready** |
+| **AirVault** | [airvault/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/README.md) | Cross-Device Clipboard & Sync Platform | Text, Code, URLs, Images, Files, E2EE | **Production Ready** |
 
 ---
 
@@ -20,15 +21,19 @@ Welcome to the **Acklet Tools Documentation Hub**. This directory documents the 
 - **Component Root**: [client/src/tools/data-lens/](file:///Users/ayaz/Acklet/client/src/tools/data-lens/)
 - **Documentation Root**: [data-lens/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/data-lens/README.md)
 
-### Key Capabilities
-1. **Multi-Format Ingestion & Conversion**: Real-time parsing, validation, formatting, minification, and conversion across JSON, YAML, XML, CSV, TOML, cURL, and stringified payloads.
-2. **Interactive Inspector Suite**: Formatted Editor, Expandable AST Tree with JSONPath extraction, Sortable & Filterable Table with HTML/CSV exports, Interactive Pan/Zoom Graph Canvas, In-depth 12-Metric Stats Dashboard, and Multi-Language Code Generation.
-3. **Advanced Data Diffing Engine**: Side-by-side split and unified diff comparison with word-level tokenization, AST structural diff, array key matching, numeric tolerance, and sensitive data masking.
-4. **100% Client-Side Privacy**: All parsing, AST transformations, formatting, conversions, and history operations execute entirely in-browser using Web APIs, Workers, and IndexedDB without sending payload bytes to remote servers.
+---
+
+## 2. AirVault Overview
+
+**AirVault by Acklet** is a real-time, peer-to-peer cross-device clipboard synchronization platform with zero-knowledge End-to-End Encryption (E2EE), smart content classification, device pairing, and GSAP motion choreography.
+
+- **Primary URL**: `/tools/airvault`
+- **Component Root**: [client/src/tools/airvault/](file:///Users/ayaz/Acklet/client/src/tools/airvault/)
+- **Documentation Root**: [airvault/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/README.md)
 
 ---
 
-## 2. Related Platform Architecture
+## 3. Related Platform Architecture
 
 - [UI-FOUNDATION.md](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Architecture/UI-FOUNDATION.md) — Acklet UI component foundation & architectural principles.
 - [defination.md](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/defination.md) — Acklet platform glossary and terminology definitions.
