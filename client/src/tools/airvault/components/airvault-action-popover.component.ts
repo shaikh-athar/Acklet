@@ -86,39 +86,84 @@ export interface ActionButtonDefinition {
       left: 0;
       z-index: 100;
       pointer-events: auto;
-      animation: popoverSpringIn 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      animation: popoverFluidSpring 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      will-change: transform, opacity;
     }
 
-    @keyframes popoverSpringIn {
+    @keyframes popoverFluidSpring {
       0% {
         opacity: 0;
-        transform: scale(0.92);
+        transform: scale(0.88) translateY(6px);
+        filter: blur(4px);
       }
       100% {
         opacity: 1;
-        transform: scale(1);
+        transform: scale(1) translateY(0);
+        filter: blur(0px);
       }
     }
 
     .action-popover-container {
-      background: var(--av-surface-elevated, #181b22);
-      border: 1px solid var(--av-border-strong, rgba(255, 255, 255, 0.18));
+      position: relative;
+      background: rgba(18, 22, 31, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.16);
       border-radius: 9999px;
-      box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.5), 0 2px 6px -1px rgba(0, 0, 0, 0.3);
-      padding: 3px 5px;
+      box-shadow: 
+        0 16px 36px -4px rgba(0, 0, 0, 0.65), 
+        0 4px 12px -2px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(59, 130, 246, 0.25),
+        0 0 20px -2px rgba(59, 130, 246, 0.22);
+      padding: 3px 6px;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       white-space: nowrap;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      transition: box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s ease;
+    }
+
+    .action-popover-container::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: 9999px;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.6), rgba(168, 85, 247, 0.4), rgba(16, 185, 129, 0.35));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      opacity: 0.85;
+      transition: opacity 0.3s ease;
+    }
+
+    .action-popover-container:hover {
+      box-shadow: 
+        0 20px 42px -4px rgba(0, 0, 0, 0.75), 
+        0 6px 16px -2px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(59, 130, 246, 0.4),
+        0 0 26px 2px rgba(59, 130, 246, 0.35);
+    }
+
+    .action-popover-container:hover::before {
+      opacity: 1;
     }
 
     :host-context([data-theme="light"]) .action-popover-container,
     [data-theme="light"] .action-popover-container {
-      background: #ffffff;
-      border-color: rgba(0, 0, 0, 0.14);
-      box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.12), 0 2px 6px -1px rgba(0, 0, 0, 0.06);
+      background: rgba(255, 255, 255, 0.94);
+      border-color: rgba(0, 0, 0, 0.08);
+      box-shadow: 
+        0 14px 32px -4px rgba(0, 0, 0, 0.14), 
+        0 4px 12px -2px rgba(0, 0, 0, 0.06),
+        0 0 0 1px rgba(37, 99, 235, 0.2),
+        0 0 20px -2px rgba(37, 99, 235, 0.16);
+    }
+
+    :host-context([data-theme="light"]) .action-popover-container::before,
+    [data-theme="light"] .action-popover-container::before {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.5), rgba(147, 51, 234, 0.35), rgba(5, 150, 105, 0.3));
     }
 
     :host-context([data-theme="light"]) .action-pill-btn,
@@ -131,7 +176,7 @@ export interface ActionButtonDefinition {
     :host-context([data-theme="light"]) .action-pill-btn:hover,
     [data-theme="light"] .action-pill-btn:hover {
       background: rgba(0, 0, 0, 0.08);
-      border-color: rgba(0, 0, 0, 0.15);
+      border-color: rgba(0, 0, 0, 0.16);
       color: #0f172a;
     }
 
@@ -140,6 +185,7 @@ export interface ActionButtonDefinition {
       background: #2563eb;
       border-color: #2563eb;
       color: #ffffff;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
     }
 
     :host-context([data-theme="light"]) .action-pill-primary:hover,
@@ -147,6 +193,7 @@ export interface ActionButtonDefinition {
       background: #1d4ed8;
       border-color: #1d4ed8;
       color: #ffffff;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.5);
     }
 
     :host-context([data-theme="light"]) .overflow-dropdown-menu,

@@ -141,39 +141,6 @@ export class AirVaultSyncService {
   // Sync Telemetry Log store for observability
   public syncTelemetryLogs = signal<SyncTelemetryLog[]>([]);
 
-  // Active typing tracking per device (sidebar typing indicator)
-  public typingDeviceIds = signal<Set<string>>(new Set<string>());
-  private typingTimers = new Map<string, any>();
-
-  public setDeviceTyping(deviceId: string, isTyping: boolean) {
-    if (!deviceId) return;
-    if (this.typingTimers.has(deviceId)) {
-      clearTimeout(this.typingTimers.get(deviceId));
-      this.typingTimers.delete(deviceId);
-    }
-
-    this.typingDeviceIds.update(set => {
-      const next = new Set(set);
-      if (isTyping) {
-        next.add(deviceId);
-      } else {
-        next.delete(deviceId);
-      }
-      return next;
-    });
-
-    if (isTyping) {
-      const timer = setTimeout(() => {
-        this.setDeviceTyping(deviceId, false);
-      }, 2500);
-      this.typingTimers.set(deviceId, timer);
-    }
-  }
-
-  public isDeviceTyping(deviceId: string): boolean {
-    return this.typingDeviceIds().has(deviceId);
-  }
-
   // Deduplication set for processed packet IDs (prevents echo loops: A -> B -> C -> A)
   private processedPacketIds = new Set<string>();
 
@@ -345,6 +312,7 @@ export class AirVaultSyncService {
   }
 
   private initWebSocketListener() {
+    this.ngZone.runOutsideAngular(() => {
     this.wsTransport.onMessage$.subscribe((msg: AirVaultWsMessage) => {
       if (!msg || !msg.type) return;
 
@@ -494,7 +462,8 @@ export class AirVaultSyncService {
           AirVaultLogger.debug(`[AirVault WS Sync] Error handling incoming ${msg.type}`, err);
         }
       }
-    });
+    }); // end subscribe
+    }); // end runOutsideAngular
   }
 
   private sendSyncPacket(packet: EncryptedPacket, targetDeviceId: string, syncId?: string) {
@@ -569,6 +538,7 @@ export class AirVaultSyncService {
         batchId: it.batchId || it.id,
         batchTotalCount: it.batchTotalCount || it.batchFiles.length,
         batchTotalBytes: it.batchTotalBytes || 0,
+        raw: it.content?.raw,
         batchFiles: it.batchFiles.map(bf => ({
           id: bf.id,
           content: bf.content,
@@ -775,9 +745,14 @@ export class AirVaultSyncService {
     if (isBatch) {
       const count = batchData.batchTotalCount || batchData.batchFiles?.length || 0;
       const bytes = batchData.batchTotalBytes || 0;
+      const existingParent = existingItemId ? this.storageService.allItems().find(i => i.id === existingItemId) : null;
+      const resolvedRaw = (batchData.raw && batchData.raw.trim()) 
+        ? batchData.raw 
+        : (existingParent?.content?.raw && !/^Batch of \d+ files/i.test(existingParent.content.raw) ? existingParent.content.raw : `Batch of ${count} files (${((bytes || 0) / 1024 / 1024).toFixed(1)} MB)`);
+
       classified = {
         category: 'archive',
-        raw: `Batch of ${count} files (${((bytes || 0) / 1024 / 1024).toFixed(1)} MB)`,
+        raw: resolvedRaw,
         filename: `${count} Files Batch`,
         byteSize: bytes,
         isSensitive: false,
@@ -788,6 +763,7 @@ export class AirVaultSyncService {
         batchId: batchData.batchId || existingItemId,
         batchTotalCount: count,
         batchTotalBytes: bytes,
+        raw: resolvedRaw,
         batchFiles: batchData.batchFiles || [],
         originDeviceId: curDevice.id,
         originDeviceName: curDevice.name
@@ -814,7 +790,7 @@ export class AirVaultSyncService {
       if (!classified.previewUrl && classified.category === 'image' && classified.raw) {
         classified.previewUrl = classified.raw;
       }
-      const isText = ['text', 'code', 'json', 'url'].includes(classified.category);
+      const isText = ['text', 'code', 'json', 'url', 'markdown'].includes(classified.category);
       if (isText) {
         const curAuthor = curDevice.username ? `@${curDevice.username}` : (curDevice.name || 'User');
         const curColor = this.colorService.getColorForIdentity(curDevice.username || curDevice.id, curDevice.accentColor);
@@ -1123,7 +1099,7 @@ export class AirVaultSyncService {
           const isManuallyOff = this.deviceService.isManuallyDisconnected(existing.id);
           if (!isManuallyOff) {
             const wasInactive = existing.status !== 'active';
-            this.deviceService.setDeviceStatus(existing.id, 'active');
+            this.ngZone.run(() => this.deviceService.setDeviceStatus(existing.id, 'active'));
             if (wasInactive) {
               AirVaultLogger.info(`[AirVault Sync] ✅ Peer ${existing.id} (@${existing.username || existing.name}) transitioned to ONLINE. Syncing.`);
               this.flushOutboxForDevice(existing.id);
@@ -1131,8 +1107,10 @@ export class AirVaultSyncService {
             }
           }
         } else if (senderDev.username && cur.username && senderDev.username.toLowerCase().replace(/^@/, '') === cur.username.toLowerCase().replace(/^@/, '')) {
-          this.deviceService.addPairedDevice(senderDev);
-          this.deviceService.setDeviceStatus(senderDev.id, 'active');
+          this.ngZone.run(() => {
+            this.deviceService.addPairedDevice(senderDev);
+            this.deviceService.setDeviceStatus(senderDev.id, 'active');
+          });
           this.initiateDeviceSync(senderDev);
         }
       }
@@ -1141,7 +1119,7 @@ export class AirVaultSyncService {
       const senderDev = msg.senderDevice || msg.payload?.senderDevice;
       if (senderDev && senderDev.id !== cur.id) {
         AirVaultLogger.info(`[AirVault Sync] 📴 Peer ${senderDev.id} (@${senderDev.username || senderDev.name}) went offline.`);
-        this.deviceService.setDeviceStatus(senderDev.id, 'offline');
+        this.ngZone.run(() => this.deviceService.setDeviceStatus(senderDev.id, 'offline'));
       }
       return;
     }
@@ -1228,7 +1206,7 @@ export class AirVaultSyncService {
     } else if (msg.type === 'SYNC_ACK' && msg.packetId) {
       AirVaultLogger.debug(`[AirVault Sync] 📬 Delivery confirmed for packet ${msg.packetId} by device ${msg.senderDevice.id}`);
       this.storageService.updateDeliveryStatus(msg.packetId, 'delivered');
-      this.onDeliveryConfirmed.emit({ packetId: msg.packetId, targetDeviceId: msg.senderDevice.id });
+      this.ngZone.run(() => this.onDeliveryConfirmed.emit({ packetId: msg.packetId, targetDeviceId: msg.senderDevice.id }));
     } else if (msg.type === 'ITEM_DELETE' && msg.itemId) {
       if (msg.senderDevice && msg.senderDevice.id === cur.id) return;
       const senderDev = msg.senderDevice;
@@ -1248,50 +1226,55 @@ export class AirVaultSyncService {
       );
 
       if (isBurn || localItem?.burnAfterRead) {
-        this.onItemBurned.emit({ itemId: msg.itemId });
+        this.ngZone.run(() => this.onItemBurned.emit({ itemId: msg.itemId }));
       }
 
       // Execute global deletion on this device (moves to 30-day Restorable History or permanently purges if burn-after-read)
       const deleterWithBurn = isBurn ? { ...senderDev, burnAfterRead: true } : senderDev;
       this.storageService.deleteItemGlobally(msg.itemId, deleterWithBurn);
       if (localItem && !localItem.isDeletedFromActive) {
-        if (isBurn || localItem.burnAfterRead) {
-          this.uiStore.triggerToast(`🔥 Item viewed & burned by ${senderHandle}`);
-        } else {
-          this.uiStore.triggerToast(`🗑️ Resource deleted from all devices by ${senderHandle}`);
-        }
+        this.ngZone.run(() => {
+          if (isBurn || localItem.burnAfterRead) {
+            this.uiStore.triggerToast(`🔥 Item viewed & burned by ${senderHandle}`);
+          } else {
+            this.uiStore.triggerToast(`🗑️ Resource deleted from all devices by ${senderHandle}`);
+          }
+        });
       }
     } else if (msg.type === 'LIVE_CLIPBOARD_SYNC' && msg.liveText !== undefined) {
       if (msg.senderDevice && msg.senderDevice.id === cur.id) return;
       if (!this.isPairedAndAuthorized(msg.senderDevice)) return;
 
-      // Filter out any lines authored by non-paired 3rd parties
+      // Filter out any lines authored by non-paired 3rd parties (pure computation, outside zone)
       const filtered = this.blameService.filterAuthorizedLines(
         msg.liveText,
         msg.lineBlameMap,
         cur,
         this.deviceService.pairedDevices()
       );
-      this.onLiveTextReceived.emit({ text: filtered.text, senderDevice: msg.senderDevice, lineBlameMap: filtered.blame });
+      // Re-enter zone only for the emit that drives template-bound state
+      this.ngZone.run(() => this.onLiveTextReceived.emit({ text: filtered.text, senderDevice: msg.senderDevice, lineBlameMap: filtered.blame }));
     } else if (msg.type === 'DRAFT_ACTIVITY' && (msg.draftActivity || msg.payload)) {
       if (msg.senderDevice && msg.senderDevice.id === cur.id) return;
       if (!this.isPairedAndAuthorized(msg.senderDevice)) return;
       const draft: DraftActivityPayload = msg.draftActivity || msg.payload;
       if (draft && draft.deviceId !== cur.id) {
-        this.setDeviceTyping(draft.deviceId, true);
-        this.onDraftActivity.emit({ draft, senderDevice: msg.senderDevice });
+        this.ngZone.run(() => {
+          this.onDraftActivity.emit({ draft, senderDevice: msg.senderDevice });
+        });
       }
     } else if (msg.type === 'DRAFT_FINALIZED') {
       const devId = msg.payload?.deviceId || msg.senderDevice?.id;
       if (devId && devId !== cur.id) {
-        this.setDeviceTyping(devId, false);
-        this.onDraftFinalized.emit({ deviceId: devId });
+        this.ngZone.run(() => {
+          this.onDraftFinalized.emit({ deviceId: devId });
+        });
       }
     } else if (msg.type === 'DRAFT_REQUEST') {
       const targetId = msg.targetDeviceId || msg.payload?.targetDeviceId;
       if (targetId === cur.id && msg.senderDevice) {
         const reqId = msg.payload?.requestId || (msg as any).packetId || '';
-        this.onDraftRequest.emit({ senderDevice: msg.senderDevice, requestId: reqId });
+        this.ngZone.run(() => this.onDraftRequest.emit({ senderDevice: msg.senderDevice, requestId: reqId }));
       }
     } else if (msg.type === 'DRAFT_RESPONSE') {
       const targetId = msg.targetDeviceId || msg.payload?.targetDeviceId;
@@ -1299,16 +1282,18 @@ export class AirVaultSyncService {
         const reqId = msg.payload?.requestId || '';
         const fullContent = msg.payload?.fullContent || '';
         const lineBlameMap = msg.payload?.lineBlameMap;
-        this.onDraftResponse.emit({ senderDevice: msg.senderDevice, requestId: reqId, fullContent, lineBlameMap });
+        this.ngZone.run(() => this.onDraftResponse.emit({ senderDevice: msg.senderDevice, requestId: reqId, fullContent, lineBlameMap }));
       }
     } else if (msg.type === 'USERNAME_UPDATED' && msg.payload) {
       const { deviceId, newUsername } = msg.payload;
       if (deviceId && newUsername) {
         AirVaultLogger.info(`[AirVault Sync] 🏷️ Received USERNAME_UPDATED for device ${deviceId} -> @${newUsername}`);
-        this.deviceService.pairedDevices.update(list =>
-          list.map(d => (d.id === deviceId ? { ...d, username: newUsername, name: `@${newUsername}` } : d))
-        );
-        this.deviceService.saveStoredDevices();
+        this.ngZone.run(() => {
+          this.deviceService.pairedDevices.update(list =>
+            list.map(d => (d.id === deviceId ? { ...d, username: newUsername, name: `@${newUsername}` } : d))
+          );
+          this.deviceService.saveStoredDevices();
+        });
       }
     } else if (msg.type === 'DEVICE_DISCONNECT') {
       const targetId = (msg as any).targetDeviceId || (msg as any).payload?.targetDeviceId;
@@ -1485,9 +1470,13 @@ export class AirVaultSyncService {
         batchTotalBytes = parsed.batchTotalBytes || calculatedBytes;
         const firstFile = batchFiles.length > 0 ? batchFiles[0] : null;
 
+        const incomingBatchRaw = (parsed.raw && typeof parsed.raw === 'string' && parsed.raw.trim()) 
+          ? parsed.raw 
+          : `Batch of ${batchTotalCount} files (${((batchTotalBytes || 0) / 1024 / 1024).toFixed(1)} MB)`;
+
         classified = {
           category: 'archive',
-          raw: `Batch of ${batchTotalCount} files (${((batchTotalBytes || 0) / 1024 / 1024).toFixed(1)} MB)`,
+          raw: incomingBatchRaw,
           previewUrl: firstFile?.content?.previewUrl,
           filename: `${batchTotalCount} Files Batch`,
           byteSize: batchTotalBytes || 0,
@@ -1727,7 +1716,6 @@ export class AirVaultSyncService {
    */
   broadcastDraftActivity(contentPreview: string, lastKeystrokeAt: number = Date.now()) {
     const cur = this.deviceService.currentDevice();
-    this.setDeviceTyping(cur.id, true);
     const paired = this.deviceService.pairedDevices().filter(d => d.syncEnabled !== false && d.status === 'active');
     if (paired.length === 0) return;
 
@@ -1757,7 +1745,6 @@ export class AirVaultSyncService {
    */
   broadcastDraftFinalized() {
     const cur = this.deviceService.currentDevice();
-    this.setDeviceTyping(cur.id, false);
     const msg: SyncMessage = {
       type: 'DRAFT_FINALIZED',
       payload: { deviceId: cur.id },

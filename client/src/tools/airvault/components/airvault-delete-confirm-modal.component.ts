@@ -346,6 +346,7 @@ export class AirVaultDeleteConfirmModalComponent {
       case 'url': return 'link';
       case 'code': return 'code-2';
       case 'json': return 'braces';
+      case 'markdown': return 'file-text';
       case 'image': return 'image';
       case 'video': return 'film';
       case 'file': return 'file';

@@ -109,8 +109,14 @@ export class AirVaultComponent implements OnInit, OnDestroy {
   /** Counter tracks nested dragenter/dragleave events so the overlay stays stable. */
   private _dragEnterCount = 0;
 
+  private lastFocusRefresh = 0;
+
   @HostListener('window:focus')
   async onWindowFocus() {
+    const now = Date.now();
+    // Throttle window focus refreshes to at most once every 10 seconds
+    if (now - this.lastFocusRefresh < 10000) return;
+    this.lastFocusRefresh = now;
     // Re-verify pairing state and storage on window re-focus
     await this.storageService.refreshFromStorage();
   }
@@ -166,13 +172,27 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     this.deviceStore.pairedDevices().filter(d => d.status === 'active').length
   );
 
-  async ngOnInit() {
-    this.storageService.loadAuditLogs();
+  // Initial bootstrap & setup loader state (prevents main-thread freeze during startup)
+  isInitializing = signal<boolean>(true);
 
-    // Check if this browser has made an identity choice (Guest vs Existing Identity)
-    if (!this.deviceService.hasChosenIdentity()) {
-      this.uiStore.showIdentityOnboardingModal.set(true);
-    }
+  async ngOnInit() {
+    // Non-blocking setup pipeline: render lightweight workspace shell immediately
+    // and defer background store hydration and WebSocket connection to idle/post-paint
+    setTimeout(async () => {
+      try {
+        this.storageService.loadAuditLogs();
+
+        // Check if this browser has made an identity choice (Guest vs Existing Identity)
+        if (!this.deviceService.hasChosenIdentity()) {
+          this.uiStore.showIdentityOnboardingModal.set(true);
+        }
+
+        // Initialize persistent WebSocket transport foundation
+        this.wsTransport.connect();
+      } finally {
+        this.isInitializing.set(false);
+      }
+    }, 150);
 
     // Listen for incoming synced items
     this.subs.push(
@@ -222,9 +242,6 @@ export class AirVaultComponent implements OnInit, OnDestroy {
 
     // Notify host shell that tool is mounted and ready
     this.sdk.ready({ version: '1.0.0', capabilities: ['e2ee', 'p2p', 'clipboard'] });
-
-    // Initialize persistent WebSocket transport foundation
-    this.wsTransport.connect();
   }
 
   ngOnDestroy() {
@@ -288,8 +305,11 @@ export class AirVaultComponent implements OnInit, OnDestroy {
 
   async onResendItem(item: AirVaultItem) {
     const title = item.content?.filename || item.content?.category || 'item';
-    this.uiStore.triggerToast(`⚡ Resending "${title}" to connected devices...`);
-    await this.syncService.broadcastItem(item);
+    const updated = this.storageService.incrementResendCount(item.id);
+    const count = updated?.resendCount || (item.resendCount || 0) + 1;
+    const countLabel = count === 1 ? 'once' : `${count} times`;
+    this.uiStore.triggerToast(`⚡ Resent "${title}" (${countLabel}) to connected devices`);
+    await this.syncService.broadcastItem(updated || item);
   }
 
   onLiveTextChange(event: { text: string; lineBlameMap?: LineBlameEntry[] } | string) {
@@ -492,6 +512,7 @@ export class AirVaultComponent implements OnInit, OnDestroy {
 
   filterCategories = [
     { id: 'text', label: 'Plain Text', icon: 'align-left' },
+    { id: 'markdown', label: 'Markdown', icon: 'file-text' },
     { id: 'code', label: 'Code Snippets', icon: 'code-2' },
     { id: 'json', label: 'JSON Data', icon: 'braces' },
     { id: 'url', label: 'URLs & Links', icon: 'link' },
@@ -513,12 +534,41 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     { id: 'large', label: 'Large (> 1 MB)' },
   ];
 
-  toggleFilterPopover() {
-    this.showFilterPopover.update(v => !v);
+  isFilterClosing = signal<boolean>(false);
+
+  toggleFilterPopover(e?: Event) {
+    if (e) e.stopPropagation();
+    if (this.showFilterPopover() && !this.isFilterClosing()) {
+      this.closeFilterPopover();
+    } else {
+      this.isFilterClosing.set(false);
+      this.showFilterPopover.set(true);
+    }
   }
 
-  closeFilterPopover() {
-    this.showFilterPopover.set(false);
+  closeFilterPopover(immediate = false) {
+    if (!this.showFilterPopover() || this.isFilterClosing()) return;
+    if (immediate) {
+      this.showFilterPopover.set(false);
+      this.isFilterClosing.set(false);
+      return;
+    }
+    this.isFilterClosing.set(true);
+    setTimeout(() => {
+      this.showFilterPopover.set(false);
+      this.isFilterClosing.set(false);
+    }, 500);
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(e: MouseEvent) {
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+    if (this.showFilterPopover() && !this.isFilterClosing()) {
+      if (!target.closest('.av-filter-popover') && !target.closest('.filter-popover-anchor') && !target.closest('.filter-trigger-btn')) {
+        this.closeFilterPopover();
+      }
+    }
   }
 
   toggleCategoryFilter(cat: string) {

@@ -390,6 +390,7 @@ export class AirVaultToastComponent {
       case 'spreadsheet': return 'table';
       case 'archive': return 'archive';
       case 'code': return 'code';
+      case 'markdown': return 'file-text';
       case 'url': return 'link';
       default: return 'file';
     }

@@ -1,5 +1,6 @@
 import { Component, ChangeDetectionStrategy, signal, computed, input, output, inject, effect, OnInit, OnDestroy, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { IconComponent } from '../../../app/shared/components/icon/icon';
 import { AirVaultItem, AirVaultStorageService } from '../services/airvault-storage.service';
 import { AirVaultUIStore } from '../services/airvault-ui.store';
@@ -10,6 +11,7 @@ import { AirVaultColorService } from '../services/airvault-color.service';
 import { AirVaultBlameService } from '../services/airvault-blame.service';
 import { AirVaultSyncService } from '../services/airvault-sync.service';
 import { detectUrlsAsync, isValidHttpUrl, normalizeUrlForNavigation, formatDisplayUrl, DetectedUrlSpan } from '../services/airvault-url-detector';
+import { renderMarkdownToSafeHtml, renderPlainTextToSafeHtml, looksLikeMarkdown } from '../services/airvault-markdown.util';
 import { AirVaultActionPopoverComponent } from './airvault-action-popover.component';
 import { Subscription } from 'rxjs';
 
@@ -49,13 +51,15 @@ interface TextSegment {
         </app-airvault-action-popover>
       }
 
-      <!-- Header: Sender Badge (top-left) + Timestamp & Actions (top-right) -->
+      <!-- Header: Sender Badge + Timestamp (top-left) & Actions (top-right) -->
       <div class="card-header">
         <div class="card-header-left">
           <span class="sender-badge" [attr.data-tooltip]="'Content from ' + getDisplayOwner()">
             <span class="sender-accent-dot" [style.background]="getAuthorColor()"></span>
             <span class="sender-name">{{ getDisplayOwner() }}</span>
           </span>
+          <span><b> · </b></span>
+          <span class="card-timestamp">{{ relativeTime(item().timestamp) }} ago</span>
           @if ((item().copyCount || 1) > 1) {
             <span class="copy-count-badge" [attr.data-tooltip]="'Copied ' + item().copyCount + ' times'">
               <app-icon name="repeat" class="icon-3xs"></app-icon>
@@ -65,11 +69,9 @@ interface TextSegment {
         </div>
         
         <div class="card-header-right">
-          <span class="card-timestamp">{{ relativeTime(item().timestamp) }}</span>
-
           <!-- Actions (visible on card hover) -->
           <div class="card-actions hover-reveal">
-            <button class="card-action-btn" (click)="onResend($event)" data-tooltip="Resend to connected devices" aria-label="Resend item">
+            <button class="card-action-btn" (click)="onResend($event)" [attr.data-tooltip]="getResendTooltip(item().resendCount, item().lastResentAt) || 'Resend to connected devices'" aria-label="Resend item">
               <app-icon name="repeat" class="icon-xs"></app-icon>
             </button>
             @if (item().content?.isSensitive) {
@@ -90,9 +92,9 @@ interface TextSegment {
 
       <!-- Body -->
       <div class="card-body" (click)="onCardClick($event)">
-        <!-- Multi-File Batch Parent View -->
+        <!-- Multi-File Batch Parent View (Mixed Text + Resources or Multi-File Batch) -->
         @if (item().isBatchParent) {
-          <div class="batch-surface">
+          <div class="batch-surface" [class.mixed-batch-surface]="hasMixedBatchText()">
             <!-- Aggregate Batch Upload Progress Bar (while uploading) -->
             @if (item().processingState === 'processing') {
               <div class="batch-uploading-box">
@@ -108,26 +110,47 @@ interface TextSegment {
               </div>
             }
 
-            <!-- Collapsed Stacked-Card Batch Thumbnail Preview (3-Layer Depth Effect matching Reference) -->
+            <!-- Collapsed View: Compact top resource thumbnail preview (or card stack) + rich text snippet -->
             @if (!isBatchExpanded()) {
-              <div class="batch-stacked-container" (click)="openPreview.emit(item())">
-                <div class="batch-card-stack">
-                  <!-- Back Sheet 2 (Bottom layer, rotated -3.5deg) -->
-                  <div class="stack-sheet stack-sheet-back-2"></div>
-                  <!-- Back Sheet 1 (Middle layer, rotated +3deg) -->
-                  <div class="stack-sheet stack-sheet-back-1"></div>
-                  <div class="stack-sheet stack-sheet-front">
+              @if (hasMixedBatchText()) {
+                <!-- Mixed Item: Small Resource Bar on Top -->
+                <div class="mixed-resource-header" (click)="openPreview.emit(item())">
+                  <div class="mixed-thumb-box" [ngClass]="getBatchFileBgClass(firstBatchFile())">
                     @if (firstBatchFile()?.content?.previewUrl || (firstBatchFile()?.content?.category === 'image' && firstBatchFile()?.content?.raw) || item().content?.previewUrl) {
-                      <img [src]="firstBatchFile()?.content?.previewUrl || (firstBatchFile()?.content?.category === 'image' ? firstBatchFile()?.content?.raw : '') || item().content?.previewUrl" class="stacked-front-img" alt="Batch preview" />
+                      <img [src]="firstBatchFile()?.content?.previewUrl || (firstBatchFile()?.content?.category === 'image' ? firstBatchFile()?.content?.raw : '') || item().content?.previewUrl" class="mixed-thumb-img" alt="" />
                     } @else {
-                      <div class="stacked-front-fallback" [ngClass]="getBatchFileBgClass(firstBatchFile())">
-                        <app-icon [name]="getCategoryIcon(firstBatchFile()?.content?.category || 'file')" class="icon-lg" [ngClass]="getBatchFileIconClass(firstBatchFile())"></app-icon>
-                        <span class="stacked-front-filename">{{ firstBatchFile()?.content?.filename || 'Batch file' }}</span>
-                      </div>
+                      <app-icon [name]="getCategoryIcon(firstBatchFile()?.content?.category || 'file')" class="icon-xs" [ngClass]="getBatchFileIconClass(firstBatchFile())"></app-icon>
                     }
                   </div>
+                  <span class="mixed-resource-filename">{{ firstBatchFile()?.content?.filename || 'Attachment' }}</span>
+                  @if ((item().batchFiles?.length || item().batchTotalCount || 0) > 1) {
+                    <span class="mixed-resource-count">+{{ (item().batchFiles?.length || item().batchTotalCount || 0) - 1 }}</span>
+                  }
                 </div>
-              </div>
+
+                <!-- Rich text content preview below thumbnail -->
+                <div class="mixed-text-snippet">
+                  <div class="av-rich-snippet" [innerHTML]="safeFormattedSnippet()"></div>
+                </div>
+              } @else {
+                <!-- Pure Multi-File Stacked-Card Batch Thumbnail (3-Layer Depth Effect) -->
+                <div class="batch-stacked-container" (click)="openPreview.emit(item())">
+                  <div class="batch-card-stack">
+                    <div class="stack-sheet stack-sheet-back-2"></div>
+                    <div class="stack-sheet stack-sheet-back-1"></div>
+                    <div class="stack-sheet stack-sheet-front">
+                      @if (firstBatchFile()?.content?.previewUrl || (firstBatchFile()?.content?.category === 'image' && firstBatchFile()?.content?.raw) || item().content?.previewUrl) {
+                        <img [src]="firstBatchFile()?.content?.previewUrl || (firstBatchFile()?.content?.category === 'image' ? firstBatchFile()?.content?.raw : '') || item().content?.previewUrl" class="stacked-front-img" alt="Batch preview" />
+                      } @else {
+                        <div class="stacked-front-fallback" [ngClass]="getBatchFileBgClass(firstBatchFile())">
+                          <app-icon [name]="getCategoryIcon(firstBatchFile()?.content?.category || 'file')" class="icon-lg" [ngClass]="getBatchFileIconClass(firstBatchFile())"></app-icon>
+                          <span class="stacked-front-filename">{{ firstBatchFile()?.content?.filename || 'Batch file' }}</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
             } @else {
               <!-- Expanded View: Individual Files Grid / List with per-file actions & retry -->
               <div class="batch-expanded-list">
@@ -152,6 +175,9 @@ interface TextSegment {
                           <app-icon name="rotate-cw" class="icon-xs text-amber"></app-icon>
                         </button>
                       }
+                      <button class="subfile-btn" (click)="onCopySingleSubFile(subFile, $event)" data-tooltip="Copy" aria-label="Copy file">
+                        <app-icon name="copy" class="icon-xs"></app-icon>
+                      </button>
                       <button class="subfile-btn" (click)="onDownloadSingleSubFile(subFile, $event)" data-tooltip="Download" aria-label="Download">
                         <app-icon name="download" class="icon-xs"></app-icon>
                       </button>
@@ -352,13 +378,14 @@ interface TextSegment {
             }
             @default {
               <div class="preview-surface">
-                @if (textSegments().length === 0 || !item().content?.raw?.trim()) {
+                @if (!item().content?.raw?.trim()) {
                   <div class="empty-preview-placeholder">
                     <app-icon name="file-text" class="icon-xs text-muted"></app-icon>
                     <span>Empty text content</span>
                   </div>
                 } @else {
-                  <p class="text-preview">@for (seg of textSegments(); track $index) {@if (seg.isUrl) {<span class="url-detected-span" (mouseenter)="setActiveHoverUrl(seg.text)" (mouseleave)="clearActiveHoverUrl()"><a [href]="normalizeUrl(seg.text)" target="_blank" rel="noopener noreferrer" class="url-anchor-text" (click)="$event.stopPropagation()">@for (part of getHighlightParts(seg.text, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</a>@if (activeHoverUrl() === seg.text) {<span class="url-hover-popover" (click)="$event.stopPropagation()"><span class="url-popover-resolved">{{ seg.text }}</span><button class="popover-btn" (click)="onCopyDetectedUrl(seg.text, $event)">Copy</button><button class="popover-btn" (click)="onOpenDetectedUrl(seg.text, $event)">Open</button></span>}</span>} @else {@for (part of getHighlightParts(seg.text, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}} }}}</p>
+                  <!-- Rich Formatted Snippet with preserved bold, italic, headings, lists, code, links -->
+                  <div class="av-rich-snippet" [innerHTML]="safeFormattedSnippet()"></div>
                   @if (isLongPreview()) {
                     <div class="show-more-pill" (click)="openPreview.emit(item())">
                       <app-icon name="maximize-2" class="icon-xs"></app-icon>
@@ -404,6 +431,11 @@ interface TextSegment {
         <div class="card-footer-actions">
           <!-- Multi-File Batch Actions -->
           @if (item().isBatchParent) {
+            @if (hasMixedBatchText()) {
+              <button class="copy-btn-icon" [class.copy-btn-done]="copied()" (click)="onCopy($event)" [attr.data-tooltip]="copied() ? 'Copied Notes!' : 'Copy Notes'" data-tooltip-pos="left" aria-label="Copy notes to clipboard">
+                <app-icon [name]="copied() ? 'check' : 'copy'" class="icon-xs"></app-icon>
+              </button>
+            }
             <button class="batch-footer-btn" (click)="toggleBatchExpand($event)" [attr.aria-label]="isBatchExpanded() ? 'Collapse batch' : 'Expand batch'">
               <app-icon [name]="isBatchExpanded() ? 'chevron-up' : 'chevron-down'" class="icon-xs"></app-icon>
               <span>{{ isBatchExpanded() ? 'Collapse' : 'Files (' + (item().batchFiles?.length || item().batchTotalCount || 0) + ')' }}</span>
@@ -414,11 +446,11 @@ interface TextSegment {
           } @else {
             <!-- Single Item Download & Copy Actions -->
             @if (item().content.category === 'image' || item().content.category === 'file' || item().content.category === 'video' || item().content.raw) {
-              <button class="copy-btn-icon" (click)="onDownload($event)" aria-label="Download resource">
+              <button class="copy-btn-icon" (click)="onDownload($event)" data-tooltip="Download" data-tooltip-pos="left" aria-label="Download resource">
                 <app-icon name="download" class="icon-xs"></app-icon>
               </button>
             }
-            <button class="copy-btn-icon" [class.copy-btn-done]="copied()" (click)="onCopy($event)" aria-label="Copy to clipboard">
+            <button class="copy-btn-icon" [class.copy-btn-done]="copied()" (click)="onCopy($event)" [attr.data-tooltip]="copied() ? 'Copied!' : 'Copy'" data-tooltip-pos="left" aria-label="Copy to clipboard">
               <app-icon [name]="copied() ? 'check' : 'copy'" class="icon-xs"></app-icon>
             </button>
           }
@@ -428,9 +460,9 @@ interface TextSegment {
   `,
   styles: [`
     .av-card {
-      height: auto;
-      min-height: 84px;
-      max-height: 400px;
+      height: 200px;
+      min-height: 200px;
+      max-height: 200px;
       width: 100%;
       min-width: 0;
       background: var(--av-surface-primary);
@@ -936,8 +968,74 @@ interface TextSegment {
       flex-direction: column;
       height: 100%;
       min-height: 0;
-      gap: 4px;
+      gap: 0;
       overflow: hidden;
+    }
+    .mixed-batch-surface {
+      gap: 0;
+    }
+    .mixed-resource-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      background: var(--av-surface-secondary);
+      border-bottom: 1px solid var(--av-border-subtle);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.12s ease;
+    }
+    .mixed-resource-header:hover {
+      background: var(--av-surface-tertiary, var(--av-border-subtle));
+    }
+    .mixed-thumb-box {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .mixed-thumb-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .mixed-resource-filename {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--av-text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      min-width: 0;
+    }
+    .mixed-resource-count {
+      font-size: 10px;
+      font-weight: 700;
+      color: #6366F1;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: 4px;
+      padding: 1px 5px;
+      flex-shrink: 0;
+    }
+    .mixed-text-snippet {
+      padding: 8px 10px;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      box-sizing: border-box;
+      background: var(--av-surface-primary);
+    }
+    .batch-text-caption {
+      padding: 8px 12px 4px 12px;
+      background: var(--av-surface-secondary);
+      border-bottom: 1px solid var(--av-border-subtle);
     }
     .batch-uploading-box {
       display: flex;
@@ -1190,12 +1288,45 @@ interface TextSegment {
 
 
     /* Footer */
-    .card-footer { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; gap: 4px; min-height: 26px; }
-    .card-footer-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .byte-chip { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; color: var(--av-text-faint); font-family: var(--av-font-mono); }
-    .delivered-chip { color: #10B981; }
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 10px;
+      gap: 6px;
+      height: 30px;
+      min-height: 30px;
+      max-height: 30px;
+      flex-shrink: 0;
+      box-sizing: border-box;
+      border-top: 1px solid var(--av-border-subtle);
+      background: var(--av-surface-primary);
+      overflow: visible;
+      white-space: nowrap;
+      position: relative;
+    }
+    .card-footer-meta {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: nowrap;
+      overflow: hidden;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .byte-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      color: var(--av-text-faint);
+      font-family: var(--av-font-mono);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .delivered-chip { color: #10B981; flex-shrink: 0; }
     .delivered-chip app-icon { color: #10B981; }
-    .permanent-chip { color: #06B6D4; }
+    .permanent-chip { color: #06B6D4; flex-shrink: 0; }
     .permanent-chip app-icon { color: #06B6D4; }
     .burn-chip {
       color: #F59E0B;
@@ -1207,9 +1338,17 @@ interface TextSegment {
       display: inline-flex;
       align-items: center;
       gap: 3px;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .burn-chip app-icon { color: #F59E0B; }
-    .expiry-chip { color: var(--av-text-faint); }
+    .expiry-chip {
+      color: var(--av-text-faint);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 1;
+    }
     .expiry-chip.expiring-soon {
       color: #D97706;
       font-weight: 600;
@@ -1218,6 +1357,7 @@ interface TextSegment {
       border-radius: 3px;
       border: 1px solid rgba(245, 158, 11, 0.35);
       animation: warnPulse 2s infinite ease-in-out;
+      flex-shrink: 0;
     }
     @keyframes warnPulse {
       0%, 100% { opacity: 1; }
@@ -1225,12 +1365,68 @@ interface TextSegment {
     }
     .text-amber { color: #F59E0B !important; }
     .text-cyan { color: #06B6D4 !important; }
-    .card-footer-actions { display: flex; align-items: center; margin-left: auto; }
+    .resend-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      font-family: var(--av-font-mono);
+      color: var(--av-text-secondary, #94a3b8);
+      background: var(--av-surface-secondary, rgba(255, 255, 255, 0.05));
+      border: 1px solid var(--av-border-subtle, rgba(255, 255, 255, 0.08));
+      padding: 1px 5px;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+      cursor: default;
+    }
+    .resend-badge app-icon {
+      color: var(--av-text-secondary, #94a3b8);
+    }
+    .resend-badge:hover,
+    .resend-badge:focus-visible {
+      color: var(--av-accent, #2196F3);
+      border-color: rgba(33, 150, 243, 0.35);
+      background: rgba(33, 150, 243, 0.08);
+      outline: none;
+    }
+    .resend-badge:hover app-icon,
+    .resend-badge:focus-visible app-icon {
+      color: var(--av-accent, #2196F3);
+    }
+    :host-context([data-theme="light"]) .resend-badge {
+      background: #f1f5f9;
+      border-color: #e2e8f0;
+      color: #64748b;
+    }
+    :host-context([data-theme="light"]) .resend-badge app-icon {
+      color: #64748b;
+    }
+    :host-context([data-theme="light"]) .resend-badge:hover,
+    :host-context([data-theme="light"]) .resend-badge:focus-visible {
+      color: #2563EB;
+      background: rgba(37, 99, 235, 0.08);
+      border-color: rgba(37, 99, 235, 0.25);
+    }
+    :host-context([data-theme="light"]) .resend-badge:hover app-icon,
+    :host-context([data-theme="light"]) .resend-badge:focus-visible app-icon {
+      color: #2563EB;
+    }
+    .card-footer-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
     .copy-btn-icon {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      margin-right: 4px;
+      margin-left: 2px;
+      margin-right: 0;
       width: 22px;
       height: 22px;
       padding: 0;
@@ -1241,6 +1437,7 @@ interface TextSegment {
       cursor: pointer;
       box-sizing: border-box;
       transition: all 0.12s ease;
+      flex-shrink: 0;
     }
     .copy-btn-icon:hover { background: var(--av-border); color: var(--av-text-primary); }
     .copy-btn-icon.copy-btn-done { background: #10B981; border-color: #10B981; color: #fff; }
@@ -1250,6 +1447,7 @@ interface TextSegment {
 })
 export class AirVaultCardComponent implements OnInit, OnDestroy {
   elementRef = inject(ElementRef);
+  sanitizer = inject(DomSanitizer);
   motion = inject(AirVaultMotionService);
   storageService = inject(AirVaultStorageService);
   clipboardService = inject(AirVaultClipboardService);
@@ -1265,6 +1463,30 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
 
   effectiveAccentColor = computed(() => {
     return this.accentColor() || this.bubbleAccentColor() || this.getAuthorColor();
+  });
+
+  safeFormattedSnippet = computed<SafeHtml>(() => {
+    const raw = this.item().content?.raw || '';
+    if (!raw) return '';
+    const cat = this.item().content?.category;
+    let safeHtml: string;
+    if (cat === 'markdown') {
+      safeHtml = renderMarkdownToSafeHtml(raw, true);
+    } else {
+      // Plain text snippet: truncate and escape without Markdown interpretation
+      const preview = raw.length > 300 ? raw.slice(0, 300) + '…' : raw;
+      safeHtml = renderPlainTextToSafeHtml(preview);
+    }
+    return this.sanitizer.bypassSecurityTrustHtml(safeHtml);
+  });
+
+  hasMixedBatchText = computed<boolean>(() => {
+    const it = this.item();
+    if (!it.isBatchParent) return false;
+    const raw = it.content?.raw?.trim();
+    if (!raw) return false;
+    // Batch of X files default auto-generated caption indicates a pure multi-file upload without user text notes
+    return !/^Batch of \d+ files/i.test(raw);
   });
 
   togglePin = output<string>();
@@ -1495,8 +1717,7 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
     const cur = this.deviceService.currentDevice();
     const isSelf = this.isCurrentDevice();
     if (isSelf) {
-      const u = cur.username ? `@${cur.username.replace(/^@/, '')}` : (cur.name?.startsWith('@') ? cur.name : `@${cur.name || 'chr'}`);
-      return `${u} (this device)`;
+      return cur.username ? `@${cur.username.replace(/^@/, '')}` : (cur.name?.startsWith('@') ? cur.name : `@${cur.name || 'chr'}`);
     }
     if (it.originOwnerId && it.originOwnerId !== 'MacBook' && !it.originOwnerId.startsWith('dev-')) {
       return it.originOwnerId.startsWith('@') ? it.originOwnerId : `@${it.originOwnerId}`;
@@ -1515,7 +1736,7 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
     const it = this.item();
     if (it.isBatchParent) return false;
     const cat = it.content?.category;
-    return cat === 'text' || cat === 'code' || cat === 'json' || cat === 'url';
+    return cat === 'text' || cat === 'markdown' || cat === 'code' || cat === 'json' || cat === 'url';
   }
 
   copied = signal(false);
@@ -1746,6 +1967,16 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
     this.resendItem.emit(this.item());
   }
 
+  getResendTooltip(count?: number, lastResentAt?: number): string {
+    const num = count || 0;
+    if (num <= 0) return '';
+    const label = num === 1 ? 'Resent once' : `Resent ${num} times`;
+    if (lastResentAt) {
+      return `${label} · ${this.relativeTime(lastResentAt)} ago`;
+    }
+    return label;
+  }
+
   onTogglePin(e?: Event) {
     if (e) this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
     this.togglePin.emit(this.item().id);
@@ -1786,6 +2017,7 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
       font: 'type',
       file: 'file-text',
       json: 'braces',
+      markdown: 'file-text',
       text: 'align-left'
     };
     return m[c] ?? 'file-text';
@@ -1805,6 +2037,7 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
       font: 'Font',
       file: 'File',
       json: 'JSON',
+      markdown: 'Markdown',
       text: 'Text'
     };
     return m[c] ?? 'Text';
@@ -1816,6 +2049,7 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
       url: '#3B82F6',
       json: '#10B981',
       code: '#8B5CF6',
+      markdown: '#06B6D4',
       image: '#F59E0B',
       video: '#EF4444',
       audio: '#8B5CF6',
@@ -1854,6 +2088,7 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
       case 'pdf': return 'cat-bg-red';
       case 'spreadsheet': return 'cat-bg-emerald';
       case 'archive': return 'cat-bg-cyan';
+      case 'markdown': return 'cat-bg-cyan';
       case 'code': return 'cat-bg-indigo';
       default: return 'cat-bg-blue';
     }
@@ -1868,6 +2103,7 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
       case 'pdf': return 'text-red';
       case 'spreadsheet': return 'text-emerald';
       case 'archive': return 'text-cyan';
+      case 'markdown': return 'text-cyan';
       case 'code': return 'text-indigo';
       default: return 'text-blue';
     }
@@ -1926,6 +2162,19 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
     } catch (err) {
       console.error('[AirVault] Client-side batch zip failed:', err);
       this.triggerToast.emit('⛔ Failed to package batch zip');
+    }
+  }
+
+  async onCopySingleSubFile(subFile: AirVaultItem, e: Event) {
+    e.stopPropagation();
+    try {
+      const cat = subFile.content.category;
+      const success = await this.clipboardService.copyResource(subFile.content);
+      if (success) {
+        this.triggerToast.emit(cat === 'image' ? 'Image copied to clipboard' : 'Copied to clipboard');
+      }
+    } catch {
+      this.triggerToast.emit('Failed to copy file');
     }
   }
 

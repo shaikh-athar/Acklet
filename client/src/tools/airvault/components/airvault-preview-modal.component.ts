@@ -1,5 +1,6 @@
-import { Component, ChangeDetectionStrategy, input, output, inject, signal, computed, ViewChild, ElementRef, HostListener, OnInit, OnDestroy, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, inject, signal, computed, ViewChild, ElementRef, HostListener, OnInit, OnDestroy, effect, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { IconComponent } from '../../../app/shared/components/icon/icon';
 import { AirVaultStorageService, AirVaultItem } from '../services/airvault-storage.service';
 import { AirVaultUIStore } from '../services/airvault-ui.store';
@@ -9,6 +10,7 @@ import { AirVaultClipboardService } from '../services/airvault-clipboard.service
 import { AirVaultDeviceService } from '../services/airvault-device.service';
 import { AirVaultSyncService } from '../services/airvault-sync.service';
 import { AirVaultFilePreviewComponent } from './airvault-file-preview.component';
+import { renderMarkdownToSafeHtml, renderPlainTextToSafeHtml, looksLikeMarkdown } from '../services/airvault-markdown.util';
 import { Subscription } from 'rxjs';
 
 export interface PreviewToolbarAction {
@@ -22,87 +24,21 @@ export interface PreviewToolbarAction {
 @Component({
   selector: 'app-airvault-preview-modal',
   standalone: true,
-  imports: [CommonModule, IconComponent, AirVaultFilePreviewComponent],
+  imports: [CommonModule, IconComponent, AirVaultFilePreviewComponent, forwardRef(() => AirVaultPreviewModalComponent)],
   styleUrls: ['../airvault.shared.css'],
   template: `
-    <div class="modal-backdrop" (click)="close.emit()" (keydown.escape)="close.emit()">
-      <div class="preview-modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-backdrop" [class.is-closing]="isClosing()" (click)="requestClose()" (keydown.escape)="requestClose()">
+      <div class="preview-modal-box" [class.is-closing]="isClosing()" (click)="$event.stopPropagation()">
         <!-- Header -->
         <div class="preview-modal-header">
-          <!-- Top Left Actions: Contextual File-Type Aware Toolbar -->
+          <!-- Top Left Actions: Contextual File-Type / Text Aware Toolbar -->
           <div class="preview-header-left">
-            <!-- 1. Image Actions -->
-            @if (resolvedCategory() === 'image') {
-              <button class="av-btn-icon" (click)="zoomIn()" [disabled]="zoomLevel() >= 3.0" data-tooltip="Zoom in (+)" aria-label="Zoom in">
-                <app-icon name="zoom-in" class="icon-xs"></app-icon>
-              </button>
-              <button class="av-btn-icon" (click)="zoomOut()" [disabled]="zoomLevel() <= 0.4" data-tooltip="Zoom out (-)" aria-label="Zoom out">
-                <app-icon name="zoom-out" class="icon-xs"></app-icon>
-              </button>
-              <button class="av-btn-icon" (click)="resetZoom()" [disabled]="zoomLevel() === 1.0" data-tooltip="Reset Zoom (100%)" aria-label="Reset zoom">
-                <app-icon name="rotate-ccw" class="icon-xs"></app-icon>
-              </button>
-              <span class="zoom-indicator">{{ (zoomLevel() * 100).toFixed(0) }}%</span>
-            }
-
-            <!-- 2. PDF Actions -->
-            @else if (resolvedCategory() === 'pdf') {
-              <button class="av-btn-icon" (click)="zoomIn()" [disabled]="zoomLevel() >= 3.0" data-tooltip="Zoom in (+)" aria-label="Zoom in">
-                <app-icon name="zoom-in" class="icon-xs"></app-icon>
-              </button>
-              <button class="av-btn-icon" (click)="zoomOut()" [disabled]="zoomLevel() <= 0.4" data-tooltip="Zoom out (-)" aria-label="Zoom out">
-                <app-icon name="zoom-out" class="icon-xs"></app-icon>
-              </button>
-              <button class="av-btn-icon" (click)="resetZoom()" [disabled]="zoomLevel() === 1.0" data-tooltip="Reset Zoom" aria-label="Reset zoom">
-                <app-icon name="rotate-ccw" class="icon-xs"></app-icon>
-              </button>
-              <button class="av-btn-icon" (click)="onOpenExternal()" data-tooltip="Open in Browser PDF Viewer" aria-label="Open PDF in new tab">
-                <app-icon name="external-link" class="icon-xs"></app-icon>
-              </button>
-            }
-
-            <!-- 3. Video Actions -->
-            @else if (resolvedCategory() === 'video') {
-              <button class="av-btn-icon" (click)="toggleMediaPlay()" [attr.data-tooltip]="isPlaying() ? 'Pause' : 'Play'" [attr.aria-label]="isPlaying() ? 'Pause' : 'Play'">
-                <app-icon [name]="isPlaying() ? 'pause' : 'play'" class="icon-xs"></app-icon>
-              </button>
-              <button class="av-btn-icon" (click)="toggleMute()" [attr.data-tooltip]="isMuted() ? 'Unmute' : 'Mute'" [attr.aria-label]="isMuted() ? 'Unmute' : 'Mute'">
-                <app-icon [name]="isMuted() ? 'volume-x' : 'volume-2'" class="icon-xs"></app-icon>
-              </button>
-              <button class="av-btn-icon" (click)="toggleFullscreen()" data-tooltip="Fullscreen" aria-label="Toggle fullscreen">
-                <app-icon name="maximize-2" class="icon-xs"></app-icon>
-              </button>
-            }
-
-            <!-- 4. Audio Actions -->
-            @else if (resolvedCategory() === 'audio') {
-              <button class="av-btn-icon" (click)="toggleMediaPlay()" [attr.data-tooltip]="isPlaying() ? 'Pause' : 'Play'" [attr.aria-label]="isPlaying() ? 'Pause' : 'Play'">
-                <app-icon [name]="isPlaying() ? 'pause' : 'play'" class="icon-xs"></app-icon>
-              </button>
-              <button class="av-btn-icon" (click)="toggleMute()" [attr.data-tooltip]="isMuted() ? 'Unmute' : 'Mute'" [attr.aria-label]="isMuted() ? 'Unmute' : 'Mute'">
-                <app-icon [name]="isMuted() ? 'volume-x' : 'volume-2'" class="icon-xs"></app-icon>
-              </button>
-            }
-
-            <!-- 5. Spreadsheets (CSV/TSV) Actions -->
-            @else if (resolvedCategory() === 'spreadsheet' && isCsvFormat()) {
-              <button class="av-btn-icon" (click)="onCopyText()" aria-label="Copy CSV">
-                <app-icon name="copy" class="icon-xs"></app-icon>
-              </button>
-              <button class="av-btn-icon" (click)="zoomIn()" [disabled]="zoomLevel() >= 2.0"  aria-label="Increase text size">
-                <app-icon name="zoom-in" class="icon-xs"></app-icon>
-              </button>
-              <button class="av-btn-icon" (click)="zoomOut()" [disabled]="zoomLevel() <= 0.8"  aria-label="Decrease text size">
-                <app-icon name="zoom-out" class="icon-xs"></app-icon>
-              </button>
-            }
-
-            <!-- 6. Code & Text Actions -->
-            @else if (resolvedCategory() === 'code' || resolvedCategory() === 'json' || resolvedCategory() === 'text' || isTextDoc()) {
+            <!-- Case A: Base Mixed Item (Text + Attached Resources) — Show dedicated Text/Code/Note operations -->
+            @if (hasMixedBatchText()) {
               <button class="av-btn-icon" (click)="toggleWrap()" [class.active]="isWrapped()" [attr.data-tooltip]="isWrapped() ? 'Disable Word Wrap' : 'Enable Word Wrap'" aria-label="Toggle line wrapping">
                 <app-icon name="wrap-text" class="icon-xs"></app-icon>
               </button>
-              <button class="av-btn-icon" [class.active]="isCopied()" (click)="onCopyText()" data-tooltip="Copy Content" aria-label="Copy text to clipboard">
+              <button class="av-btn-icon" [class.active]="isCopied()" (click)="onCopyText()" data-tooltip="Copy Text Content" aria-label="Copy text to clipboard">
                 <app-icon [name]="isCopied() ? 'check' : 'copy'" class="icon-xs"></app-icon>
               </button>
               <button class="av-btn-icon" (click)="zoomIn()" [disabled]="zoomLevel() >= 2.0" data-tooltip="Increase font size" aria-label="Increase text size">
@@ -111,17 +47,108 @@ export interface PreviewToolbarAction {
               <button class="av-btn-icon" (click)="zoomOut()" [disabled]="zoomLevel() <= 0.8" data-tooltip="Decrease font size" aria-label="Decrease text size">
                 <app-icon name="zoom-out" class="icon-xs"></app-icon>
               </button>
+              <button class="av-btn-icon" (click)="resetZoom()" [disabled]="zoomLevel() === 1.0" data-tooltip="Reset font size" aria-label="Reset font size">
+                <app-icon name="rotate-ccw" class="icon-xs"></app-icon>
+              </button>
+              <button class="av-btn-icon download-btn" (click)="onDownloadText()" data-tooltip="Download Notes (.txt)" aria-label="Download text notes">
+                <app-icon name="download" class="icon-xs"></app-icon>
+              </button>
             }
 
-            <!-- Universal Action: Always Available for All Formats -->
-            <button class="av-btn-icon download-btn" (click)="onDownload()" data-tooltip="Download File" aria-label="Download file">
-              <app-icon name="download" class="icon-xs"></app-icon>
-            </button>
+            <!-- Case B: Standalone Pure Resource Items (Image, PDF, Video, Audio, Spreadsheet, Code) -->
+            @else {
+              <!-- 1. Image Actions -->
+              @if (resolvedCategory() === 'image') {
+                <button class="av-btn-icon" (click)="zoomIn()" [disabled]="zoomLevel() >= 3.0" data-tooltip="Zoom in (+)" aria-label="Zoom in">
+                  <app-icon name="zoom-in" class="icon-xs"></app-icon>
+                </button>
+                <button class="av-btn-icon" (click)="zoomOut()" [disabled]="zoomLevel() <= 0.4" data-tooltip="Zoom out (-)" aria-label="Zoom out">
+                  <app-icon name="zoom-out" class="icon-xs"></app-icon>
+                </button>
+                <button class="av-btn-icon" (click)="resetZoom()" [disabled]="zoomLevel() === 1.0" data-tooltip="Reset Zoom (100%)" aria-label="Reset zoom">
+                  <app-icon name="rotate-ccw" class="icon-xs"></app-icon>
+                </button>
+                <span class="zoom-indicator">{{ (zoomLevel() * 100).toFixed(0) }}%</span>
+              }
+
+              <!-- 2. PDF Actions -->
+              @else if (resolvedCategory() === 'pdf') {
+                <button class="av-btn-icon" (click)="zoomIn()" [disabled]="zoomLevel() >= 3.0" data-tooltip="Zoom in (+)" aria-label="Zoom in">
+                  <app-icon name="zoom-in" class="icon-xs"></app-icon>
+                </button>
+                <button class="av-btn-icon" (click)="zoomOut()" [disabled]="zoomLevel() <= 0.4" data-tooltip="Zoom out (-)" aria-label="Zoom out">
+                  <app-icon name="zoom-out" class="icon-xs"></app-icon>
+                </button>
+                <button class="av-btn-icon" (click)="resetZoom()" [disabled]="zoomLevel() === 1.0" data-tooltip="Reset Zoom" aria-label="Reset zoom">
+                  <app-icon name="rotate-ccw" class="icon-xs"></app-icon>
+                </button>
+                <button class="av-btn-icon" (click)="onOpenExternal()" data-tooltip="Open in Browser PDF Viewer" aria-label="Open PDF in new tab">
+                  <app-icon name="external-link" class="icon-xs"></app-icon>
+                </button>
+              }
+
+              <!-- 3. Video Actions -->
+              @else if (resolvedCategory() === 'video') {
+                <button class="av-btn-icon" (click)="toggleMediaPlay()" [attr.data-tooltip]="isPlaying() ? 'Pause' : 'Play'" [attr.aria-label]="isPlaying() ? 'Pause' : 'Play'">
+                  <app-icon [name]="isPlaying() ? 'pause' : 'play'" class="icon-xs"></app-icon>
+                </button>
+                <button class="av-btn-icon" (click)="toggleMute()" [attr.data-tooltip]="isMuted() ? 'Unmute' : 'Mute'" [attr.aria-label]="isMuted() ? 'Unmute' : 'Mute'">
+                  <app-icon [name]="isMuted() ? 'volume-x' : 'volume-2'" class="icon-xs"></app-icon>
+                </button>
+                <button class="av-btn-icon" (click)="toggleFullscreen()" data-tooltip="Fullscreen" aria-label="Toggle fullscreen">
+                  <app-icon name="maximize-2" class="icon-xs"></app-icon>
+                </button>
+              }
+
+              <!-- 4. Audio Actions -->
+              @else if (resolvedCategory() === 'audio') {
+                <button class="av-btn-icon" (click)="toggleMediaPlay()" [attr.data-tooltip]="isPlaying() ? 'Pause' : 'Play'" [attr.aria-label]="isPlaying() ? 'Pause' : 'Play'">
+                  <app-icon [name]="isPlaying() ? 'pause' : 'play'" class="icon-xs"></app-icon>
+                </button>
+                <button class="av-btn-icon" (click)="toggleMute()" [attr.data-tooltip]="isMuted() ? 'Unmute' : 'Mute'" [attr.aria-label]="isMuted() ? 'Unmute' : 'Mute'">
+                  <app-icon [name]="isMuted() ? 'volume-x' : 'volume-2'" class="icon-xs"></app-icon>
+                </button>
+              }
+
+              <!-- 5. Spreadsheets (CSV/TSV) Actions -->
+              @else if (resolvedCategory() === 'spreadsheet' && isCsvFormat()) {
+                <button class="av-btn-icon" (click)="onCopyText()" aria-label="Copy CSV">
+                  <app-icon name="copy" class="icon-xs"></app-icon>
+                </button>
+                <button class="av-btn-icon" (click)="zoomIn()" [disabled]="zoomLevel() >= 2.0"  aria-label="Increase text size">
+                  <app-icon name="zoom-in" class="icon-xs"></app-icon>
+                </button>
+                <button class="av-btn-icon" (click)="zoomOut()" [disabled]="zoomLevel() <= 0.8"  aria-label="Decrease text size">
+                  <app-icon name="zoom-out" class="icon-xs"></app-icon>
+                </button>
+              }
+
+              <!-- 6. Code & Text Actions -->
+              @else if (resolvedCategory() === 'code' || resolvedCategory() === 'json' || resolvedCategory() === 'text' || isTextDoc()) {
+                <button class="av-btn-icon" (click)="toggleWrap()" [class.active]="isWrapped()" [attr.data-tooltip]="isWrapped() ? 'Disable Word Wrap' : 'Enable Word Wrap'" aria-label="Toggle line wrapping">
+                  <app-icon name="wrap-text" class="icon-xs"></app-icon>
+                </button>
+                <button class="av-btn-icon" [class.active]="isCopied()" (click)="onCopyText()" data-tooltip="Copy Content" aria-label="Copy text to clipboard">
+                  <app-icon [name]="isCopied() ? 'check' : 'copy'" class="icon-xs"></app-icon>
+                </button>
+                <button class="av-btn-icon" (click)="zoomIn()" [disabled]="zoomLevel() >= 2.0" data-tooltip="Increase font size" aria-label="Increase text size">
+                  <app-icon name="zoom-in" class="icon-xs"></app-icon>
+                </button>
+                <button class="av-btn-icon" (click)="zoomOut()" [disabled]="zoomLevel() <= 0.8" data-tooltip="Decrease font size" aria-label="Decrease text size">
+                  <app-icon name="zoom-out" class="icon-xs"></app-icon>
+                </button>
+              }
+
+              <!-- Universal Action: Download Resource -->
+              <button class="av-btn-icon download-btn" (click)="onDownload()" data-tooltip="Download File" aria-label="Download file">
+                <app-icon name="download" class="icon-xs"></app-icon>
+              </button>
+            }
           </div>
 
           <!-- Top Center: Category badge & Filename -->
           <div class="preview-header-center">
-            @if (hasBatchGallery()) {
+            @if (hasBatchGallery() && !hasMixedBatchText()) {
               <div class="gallery-nav-box">
                 <button class="gallery-nav-btn" (click)="onPrevBatchItem()" [disabled]="currentBatchIndex() <= 0" title="Previous item (Left Arrow)">
                   <app-icon name="chevron-left" class="icon-xs"></app-icon>
@@ -133,10 +160,10 @@ export interface PreviewToolbarAction {
               </div>
             }
             <span class="preview-cat-badge">
-              <app-icon [name]="getCategoryIcon(resolvedCategory())" class="icon-xs"></app-icon>
-              <span>{{ getCategoryLabel(resolvedCategory()) | uppercase }}</span>
+              <app-icon [name]="hasMixedBatchText() ? 'align-left' : getCategoryIcon(resolvedCategory())" class="icon-xs"></app-icon>
+              <span>{{ (hasMixedBatchText() ? 'Notes & Attachments' : getCategoryLabel(resolvedCategory())) | uppercase }}</span>
             </span>
-            @if (currentDisplayItem().content.filename) {
+            @if (!hasMixedBatchText() && currentDisplayItem().content.filename) {
               <span class="preview-filename">@for (part of getHighlightParts(currentDisplayItem().content.filename!, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
             }
           </div>
@@ -163,7 +190,7 @@ export interface PreviewToolbarAction {
             }
 
             <!-- Close -->
-            <button class="av-btn-icon" (click)="close.emit()" aria-label="Close preview" data-tooltip="Close (Esc)">
+            <button class="av-btn-icon" (click)="requestClose()" aria-label="Close preview" data-tooltip="Close (Esc)">
               <app-icon name="x" class="icon-xs"></app-icon>
             </button>
           </div>
@@ -178,7 +205,7 @@ export interface PreviewToolbarAction {
               <p class="burned-sub">Burn-after-read policy executed · Purged permanently across all paired devices</p>
             </div>
           }
-          @if (hasBatchGallery()) {
+          @if (hasBatchGallery() && (!hasMixedBatchText() || isResourceViewerOpen())) {
             <button
               class="stage-nav-arrow stage-nav-prev"
               (click)="onPrevBatchItem()"
@@ -196,15 +223,81 @@ export interface PreviewToolbarAction {
               <app-icon name="chevron-right" class="icon-sm"></app-icon>
             </button>
           }
-          <app-airvault-file-preview #previewRef 
-            [item]="currentDisplayItem()" 
-            [zoomLevel]="zoomLevel()" 
-            [isWrapped]="isWrapped()"
-            (playingChange)="onPlayingChange($event)"
-            (mutedChange)="onMutedChange($event)">
-          </app-airvault-file-preview>
+          <div class="modal-content-flow" 
+               [class.mixed-flow]="hasMixedBatchText()"
+               [class.slide-nav-next]="slideDirection() === 'next'"
+               [class.slide-nav-prev]="slideDirection() === 'prev'">
+            @if (hasMixedBatchText()) {
+              <!-- Mixed Item: Resource Capsule(s) Bar & Interactive Pills + Standalone Toggleable Viewer -->
+              <div class="mixed-preview-container">
+                <!-- Attached Resource Capsules Grid / Tiles -->
+                <div class="mixed-capsules-section">
+                  <div class="mixed-capsules-header">
+                    <span class="capsules-section-title">
+                      <app-icon name="paperclip" class="icon-xs text-muted"></app-icon>
+                      <span>Attached Resources ({{ item().batchFiles?.length || 1 }})</span>
+                    </span>
+                    @if (isResourceViewerOpen()) {
+                      <button class="capsules-collapse-viewer-btn" (click)="toggleResourceViewer()" data-tooltip="Hide Media Preview" data-tooltip-pos="left">
+                        <app-icon name="chevron-up" class="icon-xs"></app-icon>
+                        <span>Hide Preview</span>
+                      </button>
+                    }
+                  </div>
+
+                  <div class="mixed-capsules-grid">
+                    @for (subFile of item().batchFiles || [item()]; track subFile.id; let idx = $index) {
+                      <div class="mixed-resource-capsule-card" 
+                           (click)="openDedicatedResourceModal(subFile)">
+                        <div class="capsule-thumb-box" [ngClass]="getBatchFileBgClass(subFile)">
+                          @if (subFile.content?.previewUrl || (subFile.content?.category === 'image' && subFile.content?.raw)) {
+                            <img [src]="subFile.content?.previewUrl || (subFile.content?.category === 'image' ? subFile.content?.raw : '')" class="capsule-thumb-img" alt="" />
+                          } @else {
+                            <app-icon [name]="getCategoryIcon(subFile.content?.category || 'file')" class="icon-xs" [ngClass]="getBatchFileIconClass(subFile)"></app-icon>
+                          }
+                        </div>
+                        <div class="capsule-meta-info">
+                          <span class="capsule-filename" [title]="subFile.content?.filename">{{ subFile.content?.filename || 'Attachment' }}</span>
+                          <span class="capsule-size">{{ formatBytes(subFile.content?.byteSize || 0) }}</span>
+                        </div>
+                        <div class="capsule-action-badge" data-tooltip="Open full preview">
+                          <app-icon name="maximize-2" class="icon-xs"></app-icon>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Complete Rich Text Content Document View -->
+                <div class="mixed-preview-text-section">
+                  <div class="mixed-text-section-header">
+                    <app-icon name="align-left" class="icon-xs text-muted"></app-icon>
+                    <span>Content & Notes</span>
+                  </div>
+                  <div class="av-rich-document-preview" [style.font-size.px]="14 * zoomLevel()" [innerHTML]="safeFormattedMixedText()"></div>
+                </div>
+              </div>
+            } @else {
+              <!-- Pure Resource / File Standalone Viewer -->
+              <app-airvault-file-preview #previewRef 
+                [item]="currentDisplayItem()" 
+                [zoomLevel]="zoomLevel()" 
+                [isWrapped]="isWrapped()"
+                (playingChange)="onPlayingChange($event)"
+                (mutedChange)="onMutedChange($event)">
+              </app-airvault-file-preview>
+            }
+          </div>
         </div>
       </div>
+
+      <!-- Dedicated Standalone Child Resource Preview Modal (Opens on top when clicking an attachment capsule) -->
+      @if (selectedResourceItem()) {
+        <app-airvault-preview-modal
+          [item]="selectedResourceItem()!"
+          (close)="closeDedicatedResourceModal()">
+        </app-airvault-preview-modal>
+      }
     </div>
   `,
   styles: [`
@@ -212,19 +305,46 @@ export interface PreviewToolbarAction {
       position: fixed;
       inset: 0;
       background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(6px);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       z-index: 1000;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 24px;
       box-sizing: border-box;
-      animation: fadeIn 0.16s ease;
+      animation: avBackdropIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
+    .modal-backdrop.is-closing {
+      animation: avBackdropOut 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      pointer-events: none;
+    }
+
+    @keyframes avBackdropIn {
+      0% {
+        opacity: 0;
+        backdrop-filter: blur(0px);
+        -webkit-backdrop-filter: blur(0px);
+      }
+      100% {
+        opacity: 1;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+    }
+
+    @keyframes avBackdropOut {
+      0% {
+        opacity: 1;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+      100% {
+        opacity: 0;
+        backdrop-filter: blur(0px);
+        -webkit-backdrop-filter: blur(0px);
+      }
     }
 
     .preview-modal-box {
@@ -234,17 +354,78 @@ export interface PreviewToolbarAction {
       background: var(--av-surface-primary);
       border: 1px solid var(--av-border-strong);
       border-radius: var(--av-radius-lg);
-      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 24px 64px -12px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
       display: flex;
       flex-direction: column;
       overflow: hidden;
       box-sizing: border-box;
-      animation: scaleIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      animation: avModalOpen 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      transform-origin: center center;
+      will-change: transform, opacity;
     }
 
-    @keyframes scaleIn {
-      from { transform: scale(0.96); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
+    .preview-modal-box.is-closing {
+      animation: avModalClose 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      pointer-events: none;
+    }
+
+    @keyframes avModalOpen {
+      0% {
+        opacity: 0;
+        transform: scale(0.92) translateY(16px);
+        filter: blur(4px);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        filter: blur(0px);
+      }
+    }
+
+    @keyframes avModalClose {
+      0% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        filter: blur(0px);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(0.94) translateY(12px);
+        filter: blur(4px);
+      }
+    }
+
+    /* 0.5s Next / Previous Carousel Item Slide & Fade Animations */
+    .modal-content-flow.slide-nav-next {
+      animation: avSlideNext 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      will-change: transform, opacity;
+    }
+
+    .modal-content-flow.slide-nav-prev {
+      animation: avSlidePrev 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      will-change: transform, opacity;
+    }
+
+    @keyframes avSlideNext {
+      0% {
+        opacity: 0;
+        transform: translateX(42px) scale(0.98);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+      }
+    }
+
+    @keyframes avSlidePrev {
+      0% {
+        opacity: 0;
+        transform: translateX(-42px) scale(0.98);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+      }
     }
 
     /* Header */
@@ -366,6 +547,244 @@ export interface PreviewToolbarAction {
       max-height: calc(88vh - 65px);
       box-sizing: border-box;
       width: 100%;
+      position: relative;
+    }
+
+    .modal-content-flow {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+    }
+    .modal-content-flow.mixed-flow {
+      height: auto;
+      min-height: 100%;
+    }
+
+    .mixed-preview-container {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .mixed-capsules-section {
+      padding: 16px 24px;
+      background: var(--av-surface-secondary);
+      border-bottom: 1px solid var(--av-border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-sizing: border-box;
+    }
+
+    .mixed-capsules-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .capsules-section-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--av-text-secondary);
+    }
+
+    .capsules-collapse-viewer-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--av-text-muted);
+      background: var(--av-surface-primary);
+      border: 1px solid var(--av-border);
+      border-radius: var(--av-radius-sm, 6px);
+      cursor: pointer;
+      transition: all 0.14s ease;
+      position: relative;
+    }
+
+    .capsules-collapse-viewer-btn:hover {
+      background: var(--av-surface-tertiary, rgba(255, 255, 255, 0.08));
+      color: var(--av-text-primary);
+    }
+
+    .capsules-collapse-viewer-btn[data-tooltip]::after {
+      bottom: auto;
+      top: calc(100% + 6px);
+      left: auto;
+      right: 0;
+      transform: translateY(-4px);
+      z-index: 99999;
+    }
+
+    .capsules-collapse-viewer-btn[data-tooltip]:hover::after {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .mixed-capsules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 10px;
+      width: 100%;
+    }
+
+    .mixed-resource-capsule-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: var(--av-surface-primary);
+      border: 1px solid var(--av-border);
+      border-radius: var(--av-radius-md, 8px);
+      cursor: pointer;
+      transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      position: relative;
+    }
+
+    .mixed-resource-capsule-card:hover {
+      border-color: var(--av-accent, #2196F3);
+      background: var(--av-surface-secondary);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(33, 150, 243, 0.12);
+    }
+
+    .mixed-resource-capsule-card.active-capsule {
+      border-color: var(--av-accent, #2196F3);
+      background: var(--av-accent-soft, rgba(33, 150, 243, 0.08));
+      box-shadow: 0 0 0 1px var(--av-accent, #2196F3);
+    }
+
+    .capsule-thumb-box {
+      width: 34px;
+      height: 34px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 1px solid var(--av-border-subtle);
+    }
+
+    .capsule-thumb-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .capsule-meta-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .capsule-filename {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--av-text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .capsule-size {
+      font-size: 10.5px;
+      color: var(--av-text-muted);
+      font-family: var(--av-font-mono);
+    }
+
+    .capsule-action-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border-radius: 6px;
+      color: var(--av-accent, #2196F3);
+      background: rgba(33, 150, 243, 0.1);
+      border: 1px solid rgba(33, 150, 243, 0.2);
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+
+    .mixed-resource-capsule-card:hover .capsule-action-badge {
+      background: var(--av-accent, #2196F3);
+      color: #FFFFFF;
+    }
+
+    .mixed-expanded-viewer-card {
+      border-bottom: 1px solid var(--av-border);
+      background: var(--av-surface-primary);
+      position: relative;
+      animation: expandAnim 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes expandAnim {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .cat-bg-amber { background: #FEF3C7 !important; color: #D97706 !important; }
+    .cat-bg-blue { background: #DBEAFE !important; color: #2563EB !important; }
+    .cat-bg-purple { background: #EDE9FE !important; color: #7C3AED !important; }
+    .cat-bg-cyan { background: #CFFAFE !important; color: #0891B2 !important; }
+    .cat-bg-red { background: #FEE2E2 !important; color: #DC2626 !important; }
+    .cat-bg-emerald { background: #D1FAE5 !important; color: #059669 !important; }
+    .cat-bg-indigo { background: #E0E7FF !important; color: #4F46E5 !important; }
+
+    :host-context([data-theme="dark"]) .cat-bg-amber { background: rgba(245, 158, 11, 0.16) !important; color: #FBBF24 !important; }
+    :host-context([data-theme="dark"]) .cat-bg-blue { background: rgba(59, 130, 246, 0.16) !important; color: #60A5FA !important; }
+    :host-context([data-theme="dark"]) .cat-bg-purple { background: rgba(139, 92, 246, 0.16) !important; color: #A78BFA !important; }
+    :host-context([data-theme="dark"]) .cat-bg-cyan { background: rgba(6, 182, 212, 0.16) !important; color: #22D3EE !important; }
+    :host-context([data-theme="dark"]) .cat-bg-red { background: rgba(239, 68, 68, 0.16) !important; color: #F87171 !important; }
+    :host-context([data-theme="dark"]) .cat-bg-emerald { background: rgba(16, 185, 129, 0.16) !important; color: #34D399 !important; }
+    :host-context([data-theme="dark"]) .cat-bg-indigo { background: rgba(99, 102, 241, 0.16) !important; color: #818CF8 !important; }
+
+    .text-amber { color: #F59E0B !important; }
+    .text-red { color: #EF4444 !important; }
+    .text-purple { color: #8B5CF6 !important; }
+    .text-emerald { color: #10B981 !important; }
+    .text-cyan { color: #06B6D4 !important; }
+    .text-indigo { color: #6366F1 !important; }
+    .text-blue { color: #3B82F6 !important; }
+
+    .mixed-preview-text-section {
+      border-top: none;
+      background: var(--av-surface-primary);
+      padding: 24px 32px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .mixed-text-section-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--av-text-muted);
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--av-border-subtle);
     }
 
     app-airvault-file-preview {
@@ -373,6 +792,7 @@ export interface PreviewToolbarAction {
       flex: 1 1 auto;
       width: 100%;
       height: 100%;
+      min-height: 300px;
     }
 
     /* Image viewer */
@@ -672,6 +1092,7 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
   @ViewChild('previewRef') previewRef?: AirVaultFilePreviewComponent;
   @ViewChild('stageContainer') stageContainer?: ElementRef<HTMLElement>;
 
+  sanitizer = inject(DomSanitizer);
   motion = inject(AirVaultMotionService);
   clipboardService = inject(AirVaultClipboardService);
   deviceService = inject(AirVaultDeviceService);
@@ -683,7 +1104,18 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
   close = output<void>();
 
   isBurnedMessageVisible = signal<boolean>(false);
+  isClosing = signal<boolean>(false);
+  slideDirection = signal<'prev' | 'next' | null>(null);
+  private slideTimer?: any;
   private burnSub?: Subscription;
+
+  requestClose(): void {
+    if (this.isClosing()) return;
+    this.isClosing.set(true);
+    setTimeout(() => {
+      this.close.emit();
+    }, 480);
+  }
 
   constructor() {
     effect(() => {
@@ -712,6 +1144,9 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.burnSub) {
       this.burnSub.unsubscribe();
+    }
+    if (this.slideTimer) {
+      clearTimeout(this.slideTimer);
     }
   }
 
@@ -759,6 +1194,14 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      if (this.selectedResourceItem()) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.closeDedicatedResourceModal();
+        return;
+      }
+    }
     if (!this.hasBatchGallery()) return;
     if (e.key === 'ArrowLeft') {
       this.onPrevBatchItem();
@@ -790,17 +1233,125 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
     return it;
   });
 
+  isResourceViewerOpen = signal<boolean>(false);
+  selectedResourceItem = signal<AirVaultItem | null>(null);
+
+  hasMixedBatchText = computed<boolean>(() => {
+    const it = this.item();
+    if (!it.isBatchParent) return false;
+    const raw = it.content?.raw?.trim();
+    if (!raw) return false;
+    return !/^Batch of \d+ files/i.test(raw);
+  });
+
+  safeFormattedMixedText = computed<SafeHtml>(() => {
+    const raw = this.item().content?.raw || '';
+    if (!raw) return '';
+    const cat = this.item().content?.category;
+    let safeHtml: string;
+    if (cat === 'markdown') {
+      safeHtml = renderMarkdownToSafeHtml(raw, false);
+    } else {
+      safeHtml = renderPlainTextToSafeHtml(raw);
+    }
+    return this.sanitizer.bypassSecurityTrustHtml(safeHtml);
+  });
+
+  openDedicatedResourceModal(subFile: AirVaultItem) {
+    this.selectedResourceItem.set(subFile);
+  }
+
+  closeDedicatedResourceModal() {
+    this.selectedResourceItem.set(null);
+  }
+
+  onDownloadText() {
+    const text = this.item().content?.raw || '';
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `airvault_notes_${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+
+  onSelectCapsuleResource(index: number) {
+    if (this.isResourceViewerOpen() && this.currentBatchIndex() === index) {
+      // Clicking already open capsule toggles it closed
+      this.isResourceViewerOpen.set(false);
+    } else {
+      this.activeBatchIndex.set(index);
+      this.isResourceViewerOpen.set(true);
+      this.resetZoom();
+    }
+  }
+
+  toggleResourceViewer() {
+    this.isResourceViewerOpen.update(v => !v);
+  }
+
+  getBatchFileBgClass(subFile?: AirVaultItem | null): string {
+    const cat = subFile?.content?.category;
+    switch (cat) {
+      case 'image': return 'cat-bg-amber';
+      case 'video': return 'cat-bg-red';
+      case 'audio': return 'cat-bg-purple';
+      case 'pdf': return 'cat-bg-red';
+      case 'spreadsheet': return 'cat-bg-emerald';
+      case 'archive': return 'cat-bg-cyan';
+      case 'markdown': return 'cat-bg-cyan';
+      case 'code': return 'cat-bg-indigo';
+      default: return 'cat-bg-blue';
+    }
+  }
+
+  getBatchFileIconClass(subFile?: AirVaultItem | null): string {
+    const cat = subFile?.content?.category;
+    switch (cat) {
+      case 'image': return 'text-amber';
+      case 'video': return 'text-red';
+      case 'audio': return 'text-purple';
+      case 'pdf': return 'text-red';
+      case 'spreadsheet': return 'text-emerald';
+      case 'archive': return 'text-cyan';
+      case 'markdown': return 'text-cyan';
+      case 'code': return 'text-indigo';
+      default: return 'text-blue';
+    }
+  }
+
   onPrevBatchItem() {
     if (this.currentBatchIndex() > 0) {
-      this.activeBatchIndex.update(idx => idx - 1);
-      this.resetZoom();
+      if (this.slideTimer) clearTimeout(this.slideTimer);
+      this.slideDirection.set(null);
+      // Small tick to re-trigger CSS keyframe animation cleanly
+      requestAnimationFrame(() => {
+        this.slideDirection.set('prev');
+        this.activeBatchIndex.update(idx => idx - 1);
+        this.resetZoom();
+        this.slideTimer = setTimeout(() => {
+          this.slideDirection.set(null);
+        }, 500);
+      });
     }
   }
 
   onNextBatchItem() {
     if (this.currentBatchIndex() < this.batchTotal() - 1) {
-      this.activeBatchIndex.update(idx => idx + 1);
-      this.resetZoom();
+      if (this.slideTimer) clearTimeout(this.slideTimer);
+      this.slideDirection.set(null);
+      // Small tick to re-trigger CSS keyframe animation cleanly
+      requestAnimationFrame(() => {
+        this.slideDirection.set('next');
+        this.activeBatchIndex.update(idx => idx + 1);
+        this.resetZoom();
+        this.slideTimer = setTimeout(() => {
+          this.slideDirection.set(null);
+        }, 500);
+      });
     }
   }
 
@@ -963,7 +1514,8 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
   }
 
   onOpenExternal() {
-    const raw = this.item().content.previewUrl || this.item().content.raw;
+    const disp = this.currentDisplayItem();
+    const raw = disp.content.previewUrl || disp.content.raw;
     if (raw.startsWith('http') || raw.startsWith('blob:')) {
       window.open(raw, '_blank');
     } else if (raw.startsWith('data:')) {
@@ -984,16 +1536,8 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
   async onCopyText(e?: Event) {
     if (e) this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
     try {
-      await navigator.clipboard.writeText(this.item().content.raw);
-      this.isCopied.set(true);
-      setTimeout(() => this.isCopied.set(false), 2000);
-    } catch {}
-  }
-
-  async onCopy(e?: Event) {
-    if (e) this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
-    try {
-      const success = await this.clipboardService.copyResource(this.item().content);
+      const disp = this.currentDisplayItem();
+      const success = await this.clipboardService.copyResource(disp.content);
       if (success) {
         this.isCopied.set(true);
         setTimeout(() => this.isCopied.set(false), 2000);
@@ -1001,10 +1545,22 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
     } catch {}
   }
 
-  onDownload() {
-    const raw = this.item().content.previewUrl || this.item().content.raw;
-    const cat = this.item().content.category;
-    let filename = this.item().content.filename;
+  async onCopy(e?: Event) {
+    if (e) this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
+    try {
+      const disp = this.currentDisplayItem();
+      const success = await this.clipboardService.copyResource(disp.content);
+      if (success) {
+        this.isCopied.set(true);
+        setTimeout(() => this.isCopied.set(false), 2000);
+      }
+    } catch {}
+  }
+
+  async onDownload() {
+    const disp = this.currentDisplayItem();
+    const cat = disp.content.category;
+    let filename = disp.content.filename;
 
     if (!filename) {
       if (cat === 'image') filename = `airvault_image_${Date.now()}.png`;
@@ -1014,30 +1570,49 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
       else filename = `airvault_file_${Date.now()}.bin`;
     }
 
-    let downloadUrl = '';
-    if (raw.startsWith('data:')) {
-      try {
-        const parts = raw.split(',');
-        const mimeMatch = parts[0].match(/:(.*?);/);
-        const mime = mimeMatch ? mimeMatch[1] : (filename.endsWith('.zip') ? 'application/zip' : 'application/octet-stream');
-        const bstr = atob(parts[1]);
-        const n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        for (let i = 0; i < n; i++) {
-          u8arr[i] = bstr.charCodeAt(i);
-        }
-        const blob = new Blob([u8arr], { type: mime });
-        downloadUrl = URL.createObjectURL(blob);
-      } catch {
-        downloadUrl = raw;
-      }
-    } else if (raw.startsWith('blob:') || raw.startsWith('http')) {
-      downloadUrl = raw;
+    // 1. Try to fetch full original payload first (from LRU cache, IndexedDB, or server stream)
+    let downloadBlob: Blob | null = null;
+    const cached = this.storageService.resourceCache.get(disp.id);
+    if (cached?.blob) {
+      downloadBlob = cached.blob;
     } else {
-      const isBinaryExt = /\.(zip|png|jpe?g|gif|webp|pdf|mp4|mov|tar|gz|7z|bin|dmg)$/i.test(filename);
-      const mimeType = cat === 'json' ? 'application/json' : (isBinaryExt ? 'application/octet-stream' : 'text/plain');
-      const blob = new Blob([raw], { type: mimeType });
-      downloadUrl = URL.createObjectURL(blob);
+      try {
+        const res = await this.storageService.fetchResourcePayload(disp);
+        if (res?.blob) {
+          downloadBlob = res.blob;
+        }
+      } catch {}
+    }
+
+    let downloadUrl = '';
+    if (downloadBlob) {
+      downloadUrl = URL.createObjectURL(downloadBlob);
+    } else {
+      const raw = disp.content.raw || disp.content.previewUrl || '';
+      if (raw.startsWith('data:')) {
+        try {
+          const parts = raw.split(',');
+          const mimeMatch = parts[0].match(/:(.*?);/);
+          const mime = mimeMatch ? mimeMatch[1] : (filename.endsWith('.zip') ? 'application/zip' : 'application/octet-stream');
+          const bstr = atob(parts[1]);
+          const n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          for (let i = 0; i < n; i++) {
+            u8arr[i] = bstr.charCodeAt(i);
+          }
+          const blob = new Blob([u8arr], { type: mime });
+          downloadUrl = URL.createObjectURL(blob);
+        } catch {
+          downloadUrl = raw;
+        }
+      } else if (raw.startsWith('blob:') || raw.startsWith('http')) {
+        downloadUrl = raw;
+      } else {
+        const isBinaryExt = /\.(zip|png|jpe?g|gif|webp|pdf|mp4|mov|tar|gz|7z|bin|dmg)$/i.test(filename);
+        const mimeType = cat === 'json' ? 'application/json' : (isBinaryExt ? 'application/octet-stream' : 'text/plain');
+        const blob = new Blob([raw], { type: mimeType });
+        downloadUrl = URL.createObjectURL(blob);
+      }
     }
 
     const a = document.createElement('a');
@@ -1064,6 +1639,7 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
       font: 'type',
       file: 'file-text',
       json: 'braces',
+      markdown: 'file-text',
       text: 'align-left'
     };
     return m[cat] ?? 'file-text';
@@ -1082,9 +1658,10 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
       font: 'Font',
       file: 'File',
       json: 'JSON',
+      markdown: 'Markdown',
       text: 'Text'
     };
-    return m[cat] ?? 'File';
+    return m[cat] ?? 'Text';
   }
 
   formatBytes(b: number): string {

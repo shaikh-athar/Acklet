@@ -44,7 +44,10 @@ class AirVaultAuthServiceTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
-    private AirVaultSyncController syncController;
+    private com.code.acklet.airvault.websocket.AirVaultWebSocketHandler webSocketHandler;
+
+    @Mock
+    private AirVaultSyncRelayService syncRelayService;
 
     @Mock
     private AirVaultAuditService auditService;
@@ -132,9 +135,10 @@ class AirVaultAuthServiceTest {
         verify(identityRepository, atLeastOnce()).save(identityA);
         verify(identityRepository, atLeastOnce()).save(identityB);
 
-        // Assert dual PAIR_CONFIRM events dispatched via syncController
+        // Assert dual PAIR_CONFIRM events dispatched via syncRelayService and webSocketHandler
         ArgumentCaptor<SignalMessageDto> signalCaptor = ArgumentCaptor.forClass(SignalMessageDto.class);
-        verify(syncController, times(2)).dispatchDirectSignal(signalCaptor.capture());
+        verify(syncRelayService, times(2)).publishSyncEvent(signalCaptor.capture());
+        verify(webSocketHandler, times(2)).sendToDevice(anyString(), any());
 
         java.util.List<SignalMessageDto> dispatchedSignals = signalCaptor.getAllValues();
         assertEquals(2, dispatchedSignals.size());

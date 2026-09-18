@@ -41,8 +41,26 @@
 
 ---
 
-## 4. UI Components
+## 4. End-to-End Pipeline Profiling & Telemetry Tracing
+
+To isolate microsecond bottlenecks across multi-device synchronizations:
+- **Frontend Sender Profiling ([`airvault-send-tracer.ts`](file:///Users/ayaz/Acklet/client/src/tools/airvault/services/airvault-send-tracer.ts))**:
+  - Profiles `composer.prepare`: Text extraction & metadata formatting.
+  - Profiles `crypto.encrypt`: Web Crypto AES-GCM-256 payload encryption.
+  - Profiles `ws.send`: WebSocket JSON serialization and transmission.
+  - Profiles `ack.roundtrip`: Full round-trip time from send to remote peer delivery acknowledgment.
+- **Backend WebSocket Profiling ([`WsOperationTimer.java`](file:///Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/diagnostic/WsOperationTimer.java))**:
+  - Profiles `json.deserialize`: Payload parsing on Netty/Tomcat worker threads.
+  - Profiles `redis.record_presence`: Fast session status writes in Redis.
+  - Profiles `rabbitmq.publish`: Event emission onto topic exchange.
+  - Profiles `audit.record`: Asynchronous DB event logging.
+  - Profiles `ws.session.send`: Non-blocking socket write per target peer session.
+
+---
+
+## 5. UI Components
 
 - **Header Activity Button**: [`AirVaultComponent`](file:///Users/ayaz/Acklet/client/src/tools/airvault/airvault.component.html) header icon (`activity`).
 - **Telemetry Modal**: [`AirVaultDiagnosticsModalComponent`](file:///Users/ayaz/Acklet/client/src/tools/airvault/components/airvault-diagnostics-modal.component.ts).
 - **Feedback Integration**: Native `FeedbackModalComponent` for submitting bug reports or suggestions.
+

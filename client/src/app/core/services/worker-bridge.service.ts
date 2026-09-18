@@ -50,6 +50,17 @@ export class WorkerBridgeService {
 
       worker.onerror = (err) => {
         console.error('WebWorker runtime error:', err);
+        // Clear and reject all pending tasks so UI does not hang or freeze
+        this.pendingCallbacks.forEach((cb, taskId) => {
+          clearTimeout(cb.timer);
+          cb.reject(new Error('WebWorker crashed or failed'));
+        });
+        this.pendingCallbacks.clear();
+        // Remove dead worker instance so subsequent tasks spawn a fresh healthy worker
+        this.workers.delete(scriptKey);
+        try {
+          worker?.terminate();
+        } catch {}
       };
 
       this.workers.set(scriptKey, worker);

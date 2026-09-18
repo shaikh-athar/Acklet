@@ -516,7 +516,34 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: avDropdownFadeIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: avFilterPopoverIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.av-filter-popover.is-closing {
+  animation: avFilterPopoverOut 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes avFilterPopoverIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes avFilterPopoverOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
 }
 
 :host-context([data-theme="light"]) .av-filter-popover,
@@ -1486,4 +1513,81 @@ app-airvault-staging {
   background: var(--av-surface-secondary);
   border: 1px solid var(--av-border);
   color: var(--av-text-muted);
+}
+
+/* ── Initial Setup & Bootstrap Loader Overlay ─────────────────── */
+.av-initial-loader-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--av-bg-canvas) 85%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: avFadeIn 0.2s ease-out both;
+}
+
+@keyframes avFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.av-initial-loader-capsule {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 22px;
+  background: var(--av-surface-primary);
+  border: 1px solid var(--av-border);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  animation: avScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes avScaleIn {
+  from { transform: scale(0.96); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+:host-context([data-theme="light"]) .av-initial-loader-capsule {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 8px 28px rgba(16, 24, 40, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+.av-initial-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(33, 150, 243, 0.2);
+  border-top-color: #2196F3;
+  animation: avSpin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes avSpin {
+  to { transform: rotate(360deg); }
+}
+
+.av-initial-loader-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.av-loader-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--av-text-primary);
+  font-family: var(--av-font-ui);
+  line-height: 1.2;
+}
+
+.av-loader-sub {
+  font-size: 11px;
+  color: var(--av-text-muted);
+  font-family: var(--av-font-ui);
+  line-height: 1.2;
 }

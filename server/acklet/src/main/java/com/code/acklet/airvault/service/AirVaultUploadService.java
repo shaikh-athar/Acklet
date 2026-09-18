@@ -26,8 +26,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AirVaultUploadService {
 
-    public static final long MAX_CLIPBOARD_CAP_BYTES = 1L * 1024L * 1024L * 1024L; // 1 GB Max Total Storage
-    public static final long MAX_SINGLE_FILE_SIZE_BYTES = 500L * 1024L * 1024L; // 500 MB Max Single File
+    public static final long MAX_CLIPBOARD_CAP_BYTES = 5L * 1024L * 1024L * 1024L; // 5 GB Max Total Storage
+    public static final long MAX_SINGLE_FILE_SIZE_BYTES = 1024L * 1024L * 1024L; // 1 GB Max Single File
     public static final long RETENTION_PERIOD_DAYS = 7L; // 7 Days Retention Policy
 
     private final UploadSessionRepository uploadSessionRepository;
@@ -62,7 +62,7 @@ public class AirVaultUploadService {
         if (req.getDeclaredSize() > MAX_SINGLE_FILE_SIZE_BYTES) {
             log.warn("[AirVault Upload] ⛔ REJECTED: File size ({} B) exceeds maximum single file limit ({} B)",
                     req.getDeclaredSize(), MAX_SINGLE_FILE_SIZE_BYTES);
-            throw new BadRequestException("File size exceeds maximum supported single file limit of 500 MB.");
+            throw new BadRequestException("File size exceeds maximum supported single file limit of 1 GB.");
         }
 
         // 1. Authoritative DB query for actual stored bytes

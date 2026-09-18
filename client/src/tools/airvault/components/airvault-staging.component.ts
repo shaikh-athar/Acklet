@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal, input, output, inject, OnDestroy, AfterViewInit, computed, ViewChild, ElementRef, NgZone, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, input, output, inject, OnDestroy, AfterViewInit, computed, ViewChild, ElementRef, NgZone, effect, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -21,23 +21,64 @@ import { maskSensitivePreview, ComposerMatch, scanAllMatches } from '../services
 import { AirVaultActionPopoverComponent } from './airvault-action-popover.component';
 import { getAirVaultApiUrl } from '../services/airvault-api.util';
 import { checkInputThreshold, formatByteSize } from '../../../app/core/config/tool-thresholds';
-
 import { AirVaultDocSyncService } from '../services/airvault-doc-sync.service';
 import { WordUndoManager } from '../services/airvault-undo.manager';
 import { AirVaultPreferencesService } from '../services/airvault-preferences.service';
 import { AirVaultLogger } from '../services/airvault-sync-debug.service';
+import { AirVaultOperationStateService } from '../services/airvault-operation-state.service';
+import {
+  sendLog, markStart, markEnd, getMeasureMs,
+  countStage, resetCounters, getExecutionCounts,
+  watchdogStart, watchdogClear,
+  snapshotComposer, snapshotMemory,
+  checkDivergence,
+  logFileStart, logFileValidated, logUploadInitStart, logUploadInitEnd,
+  logWorkerPost, logWorkerMessage, logResourceCreated, logResourcePersisted, logResourceReady,
+  measureSync, logSignalWrite,
+  recordWorkerPostTime, getWorkerPostElapsedMs, clearWorkerPostTime,
+  logRequestStart, logRequestEnd, logRequestFailed,
+  logBroadcastStart, logBroadcastDeviceStart, logBroadcastDeviceEnd, logBroadcastComplete,
+  auditEffect, resetEffectRegistry,
+  createRun, recordStage, finaliseRun,
+  installLongTaskObserver, installGlobalExporter, isSendTracerEnabled,
+} from '../services/airvault-send-tracer';
+import { AirvaultRichEditorService } from '../services/airvault-rich-editor.service';
+import { isHtmlContent } from '../services/airvault-markdown.util';
+
+export type ResourceStatus = 'SELECTED' | 'PREPARING' | 'UPLOADING' | 'PROCESSING' | 'READY' | 'FAILED';
+
+export interface StagedAttachment {
+  id: string;
+  file: File;
+  name: string;
+  sizeFormatted: string;
+  previewUrl?: string;
+  isImage: boolean;
+  iconName: string;
+  status: ResourceStatus;
+  progressPercent: number;
+  uploadedBytes?: number;
+  totalBytes?: number;
+  errorMessage?: string;
+  resourceId?: string;
+  verifiedObjectUrl?: string;
+}
 
 @Component({
   selector: 'app-airvault-staging',
   standalone: true,
   imports: [CommonModule, FormsModule, IconComponent, LargeInputNoticeComponent, AirVaultCardComponent, AirVaultHandoffBannerComponent, AirVaultActionPopoverComponent],
+  providers: [AirvaultRichEditorService],
   templateUrl: './airvault-staging.component.html',
   styleUrls: ['../airvault.shared.css', './airvault-staging.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
-  @ViewChild('textareaRef') textareaRef?: ElementRef<HTMLTextAreaElement>;
+  /** Reference to the contenteditable Tiptap editor host element */
+  @ViewChild('editorRef') editorRef?: ElementRef<HTMLDivElement>;
   @ViewChild('streamArea') streamAreaRef?: ElementRef<HTMLDivElement>;
+
+  public richEditor = inject(AirvaultRichEditorService);
 
   public clipboard = inject(AirVaultClipboardService);
   public clipboardStore = inject(AirVaultClipboardStore);
@@ -51,6 +92,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   public uiStore = inject(AirVaultUIStore);
   public cryptoService = inject(AirVaultCryptoService);
   public prefService = inject(AirVaultPreferencesService);
+  public operationState = inject(AirVaultOperationStateService);
   private ngZone = inject(NgZone);
   motion = inject(AirVaultMotionService);
 
@@ -59,6 +101,8 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   searchHighlightQuery = computed(() => this.uiStore.searchHighlightQuery());
   activeSearchMatchIndex = computed(() => this.uiStore.activeMatchIndex());
   editorScrollTop = signal<number>(0);
+  isEditorScrolledTop = signal<boolean>(false);
+  isEditorScrolledBottom = signal<boolean>(false);
 
   /**
    * Precomputes global search match offsets across the staged document
@@ -312,13 +356,29 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   }
 
   onEditorScroll(e: Event) {
-    const textarea = e.target as HTMLTextAreaElement;
-    if (textarea) {
-      this.editorScrollTop.set(textarea.scrollTop);
+    const el = e.target as HTMLElement;
+    if (el) {
+      this.editorScrollTop.set(el.scrollTop);
+      this.updateEditorScrollState(el);
     }
     if (this.hoveredAttribution()) {
       this.hoveredAttribution.set(null);
       this.hoveredAuthorKey.set(null);
+    }
+  }
+
+  updateEditorScrollState(el?: HTMLElement) {
+    const target = el ?? this.editorRef?.nativeElement;
+    if (!target) return;
+    const hasScrollableContent = target.scrollHeight > target.clientHeight + 4;
+    const canScrollUp = hasScrollableContent && target.scrollTop > 4;
+    const canScrollDown = hasScrollableContent && (target.scrollTop + target.clientHeight < target.scrollHeight - 4);
+
+    if (this.isEditorScrolledTop() !== canScrollUp) {
+      this.isEditorScrolledTop.set(canScrollUp);
+    }
+    if (this.isEditorScrolledBottom() !== canScrollDown) {
+      this.isEditorScrolledBottom.set(canScrollDown);
     }
   }
 
@@ -333,6 +393,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   /** Filter categories metadata */
   filterCategories = [
     { id: 'text', label: 'Plain Text', icon: 'align-left' },
+    { id: 'markdown', label: 'Markdown', icon: 'file-text' },
     { id: 'code', label: 'Code Snippets', icon: 'code-2' },
     { id: 'json', label: 'JSON Data', icon: 'braces' },
     { id: 'url', label: 'URLs & Links', icon: 'link' },
@@ -549,6 +610,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     const type = (item.type || item.entryType || item.category || '').toLowerCase();
     if (type.includes('image')) return 'type-amber';
     if (type.includes('file') || type.includes('pdf')) return 'type-blue';
+    if (type.includes('markdown') || type.includes('md')) return 'type-cyan';
     if (type.includes('url') || type.includes('link')) return 'type-blue';
     if (type.includes('code')) return 'type-indigo';
     if (type.includes('json')) return 'type-emerald';
@@ -560,6 +622,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     const type = (item.type || item.entryType || item.category || '').toLowerCase();
     if (type.includes('image')) return 'image';
     if (type.includes('file') || type.includes('pdf')) return 'file-text';
+    if (type.includes('markdown') || type.includes('md')) return 'file-text';
     if (type.includes('url') || type.includes('link')) return 'link';
     if (type.includes('code')) return 'code';
     if (type.includes('json')) return 'file-json';
@@ -655,6 +718,8 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   isManualExpanded = signal<boolean>(false);
   /** Line count tracked on each keystroke — drives expand-button visibility (hidden < 5 lines) */
   composerLineCount = signal<number>(1);
+  /** Show expand icon only when content exceeds 4 lines and composer isn't already expanded */
+  showExpandIcon = computed(() => !this.isExpanded() && this.composerLineCount() >= 5);
   isCodeJsonHintActive = signal<boolean>(false);
   perItemRetentionTtl = signal<number | null>(null);
   retentionPopoverOpen = signal<boolean>(false);
@@ -662,21 +727,418 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   currentTag = signal<string>('');
   tagDraft = signal<string>('');
 
+  /** Tracks briefly clicked toolbar button to trigger lively pulse feedback */
+  clickedButtonId = signal<string | null>(null);
+  private clickPulseTimer: any = null;
+
+  onPlusHover() {
+    console.log('[TOOLTIP] show (+ button hover)', performance.now());
+  }
+
+  onPlusLeave() {
+    console.log('[TOOLTIP] hide fired (+ button leave)', performance.now());
+  }
+
+  triggerClickPulse(id: string) {
+    this.clickedButtonId.set(id);
+    if (this.clickPulseTimer) clearTimeout(this.clickPulseTimer);
+    this.clickPulseTimer = setTimeout(() => {
+      if (this.clickedButtonId() === id) {
+        this.clickedButtonId.set(null);
+      }
+    }, 500);
+  }
+
+  /** Computed signal that strictly gates the Send button until all staged attachments are fully READY */
+  canSend = computed(() => {
+    const atts = this.stagedAttachments();
+    const text = this.stagedText();
+    const hasText = text.trim().length > 0;
+    if (atts.length === 0) return hasText;
+    const allReady = atts.every(a => a.status === 'READY');
+    return allReady && (hasText || atts.length > 0);
+  });
+
+  /** Staged file attachments waiting to be beamed with the message */
+  stagedAttachments = signal<StagedAttachment[]>([]);
+
+  /** Adds one or more files to the composer staged attachments row and begins background preparation/upload */
+  stageFiles(files: File[]) {
+    if (!files || files.length === 0) return;
+    const current = this.stagedAttachments();
+    const newItems: StagedAttachment[] = [];
+
+    for (const file of files) {
+      if (file.size > MAX_SINGLE_FILE_SIZE_BYTES) {
+        this.uiStore.triggerToast(`⛔ "${file.name}" exceeds single file limit of 1 GB.`);
+        continue;
+      }
+      const isImg = file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(file.name);
+      const isPdf = file.type === 'application/pdf' || file.name.endsWith('.pdf');
+      const isZip = file.type === 'application/zip' || file.name.endsWith('.zip');
+      const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov)$/i.test(file.name);
+
+      let icon = 'file';
+      if (isImg) icon = 'image';
+      else if (isPdf) icon = 'file-text';
+      else if (isZip) icon = 'folder-archive';
+      else if (isVideo) icon = 'film';
+
+      let previewUrl: string | undefined;
+      if (isImg && typeof URL !== 'undefined') {
+        previewUrl = URL.createObjectURL(file);
+      }
+
+      const attId = `att_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const attachmentItem: StagedAttachment = {
+        id: attId,
+        file,
+        name: file.name,
+        sizeFormatted: this.formatBytes(file.size),
+        previewUrl,
+        isImage: isImg,
+        iconName: icon,
+        status: 'SELECTED',
+        progressPercent: 0,
+        uploadedBytes: 0,
+        totalBytes: file.size
+      };
+
+      newItems.push(attachmentItem);
+
+      AirVaultLogger.debug('[AirVault Staging] 📎 Resource attached:', {
+        name: file.name,
+        type: file.type || 'unknown',
+        size: file.size,
+        id: attId
+      });
+    }
+
+    if (newItems.length > 0) {
+      const updatedList = [...current, ...newItems];
+      this.stagedAttachments.set(updatedList);
+      this.autoResizeTextarea();
+      this.uiStore.triggerToast(`📎 Attached ${newItems.length} file${newItems.length > 1 ? 's' : ''}`);
+
+      AirVaultLogger.debug('[AirVault Staging] 📦 Total composer attachments count:', updatedList.length);
+
+      // Immediately process background upload/storage for each newly staged attachment
+      for (const item of newItems) {
+        this.processStagedAttachmentUpload(item);
+      }
+    }
+  }
+
+  /** Background upload, crypto chunking, and persistence pipeline for a staged attachment */
+  async processStagedAttachmentUpload(item: StagedAttachment) {
+    const file = item.file;
+    const attId = item.id;
+    const operationId = `stage_up_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const startTime = performance.now();
+
+    // Transition to PREPARING
+    this.updateStagedAttachmentStatus(attId, { status: 'PREPARING', progressPercent: 0 });
+
+    // Step 1: Storage quota checks
+    const currentUsage = this.storageService.totalBytes();
+    const currentCap = this.storageService.totalStorageCapBytes();
+    const remainingStorage = currentCap - currentUsage;
+
+    if (file.size > remainingStorage) {
+      const capGB = (currentCap / (1024 * 1024 * 1024)).toFixed(0);
+      const err = `Storage quota exceeded (${(currentUsage / 1024 / 1024).toFixed(0)} MB / ${capGB} GB)`;
+      this.updateStagedAttachmentStatus(attId, { status: 'FAILED', errorMessage: err });
+      this.uiStore.triggerToast(`⛔ "${file.name}": ${err}`);
+      return;
+    }
+
+    const curDev = this.deviceService.currentDevice();
+    const curUserName = curDev.username ? `@${curDev.username}` : (curDev.name || 'User');
+
+    // Step 2: Request server upload session (if server is available)
+    let uploadSessionId: string | undefined = undefined;
+    try {
+      const initRes = await fetch(getAirVaultApiUrl('/api/v1/airvault/clipboards/default/uploads'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Operation-Id': operationId },
+        body: JSON.stringify({
+          fileId: attId,
+          fileName: file.name,
+          category: file.type.startsWith('image/') ? 'image' : (file.type.startsWith('video/') ? 'video' : 'file'),
+          declaredSize: file.size,
+          chunkSize: 4 * 1024 * 1024,
+          totalChunks: Math.max(1, Math.ceil(file.size / (4 * 1024 * 1024))),
+          senderDeviceId: curDev.id,
+          senderDeviceName: curUserName
+        })
+      });
+
+      if (initRes.ok) {
+        const initData = await initRes.json();
+        uploadSessionId = initData.data?.uploadSessionId;
+      } else if (initRes.status === 400) {
+        const uploadInitBodyText = await initRes.text().catch(() => '');
+        const errJson = (() => { try { return JSON.parse(uploadInitBodyText); } catch { return {}; } })();
+        const msg = errJson.message || `File size exceeds server clipboard cap`;
+        this.updateStagedAttachmentStatus(attId, { status: 'FAILED', errorMessage: msg });
+        this.uiStore.triggerToast(`⛔ ${msg}`);
+        return;
+      }
+    } catch {
+      // Backend unreachable - graceful client-side fallback
+    }
+
+    // Step 3: Transition to UPLOADING and execute chunked upload via Web Worker (or inline fallback)
+    this.updateStagedAttachmentStatus(attId, { status: 'UPLOADING', progressPercent: 1 });
+
+    try {
+      if (typeof Worker !== 'undefined') {
+        const worker = new Worker(new URL('../services/airvault.worker', import.meta.url), { type: 'module' });
+        const encryptionKey = await this.cryptoService.exportRawKey();
+        const remainingCapBytes = CLIPBOARD_STORAGE_CAP_BYTES - this.storageService.totalBytes();
+
+        worker.onmessage = (event: MessageEvent) => {
+          const { type, payload, success, result, error } = event.data;
+
+          if (type === 'FILE_PROGRESS' || type === 'PROGRESS') {
+            const percent = payload?.progressPercent ?? payload?.percent ?? 0;
+            const bytes = payload?.bytesProcessed ?? Math.round((percent / 100) * file.size);
+            const status: ResourceStatus = percent >= 100 ? 'PROCESSING' : 'UPLOADING';
+            this.updateStagedAttachmentStatus(attId, {
+              status,
+              progressPercent: Math.min(100, percent),
+              uploadedBytes: bytes,
+              totalBytes: file.size
+            });
+          } else if (type === 'DONE' || (success && result)) {
+            const data = payload || result;
+            const verifiedObjUrl = this.storageService.resourceCache.put(attId, file);
+            this.storageService.savePayloadToIndexedDb(attId, file);
+
+            const uploadDuration = ((performance.now() - startTime) / 1000).toFixed(2);
+            AirVaultLogger.debug('[AirVault Staging] ✅ Resource READY:', {
+              resourceId: attId,
+              filename: file.name,
+              size: file.size,
+              duration: `${uploadDuration}s`,
+              verifiedObjectUrl: verifiedObjUrl
+            });
+
+            this.updateStagedAttachmentStatus(attId, {
+              status: 'READY',
+              progressPercent: 100,
+              uploadedBytes: file.size,
+              totalBytes: file.size,
+              previewUrl: item.previewUrl || verifiedObjUrl,
+              verifiedObjectUrl: verifiedObjUrl,
+              resourceId: attId
+            });
+
+            // Automatically place pointer directly in new next line in composer
+            this.richEditor.focusOnNewLine();
+
+            worker.terminate();
+          } else if (type === 'ERROR' || error || success === false) {
+            const err = error || 'Upload or processing failed';
+            this.updateStagedAttachmentStatus(attId, { status: 'FAILED', errorMessage: String(err) });
+            worker.terminate();
+          }
+        };
+
+        worker.onerror = (err) => {
+          console.warn('[AirVault Staging] Worker failed, running inline:', err);
+          worker.terminate();
+          this.executeInlineStagedUpload(item, uploadSessionId, startTime);
+        };
+
+        worker.postMessage({
+          type: 'PROCESS_FILE_CHUNKED',
+          id: attId,
+          operationId,
+          payload: {
+            itemId: attId,
+            fileId: attId,
+            file,
+            filename: file.name,
+            chunkSize: 4 * 1024 * 1024,
+            byteSize: file.size,
+            encryptionKey,
+            uploadSessionId,
+            remainingCapBytes
+          }
+        });
+      } else {
+        await this.executeInlineStagedUpload(item, uploadSessionId, startTime);
+      }
+    } catch (workerErr) {
+      console.warn('[AirVault Staging] Worker initialization error, running inline fallback:', workerErr);
+      await this.executeInlineStagedUpload(item, uploadSessionId, startTime);
+    }
+  }
+
+  /** Inline chunked upload fallback for staged attachments */
+  private async executeInlineStagedUpload(item: StagedAttachment, uploadSessionId?: string, startTime: number = performance.now()) {
+    const file = item.file;
+    const attId = item.id;
+    const CHUNK_SIZE = 4 * 1024 * 1024;
+    const totalBytes = file.size;
+    let bytesProcessed = 0;
+    let chunkIndex = 0;
+
+    try {
+      while (bytesProcessed < totalBytes) {
+        const nextEnd = Math.min(bytesProcessed + CHUNK_SIZE, totalBytes);
+        const chunkBlob = file.slice(bytesProcessed, nextEnd);
+        const chunkBuffer = await chunkBlob.arrayBuffer();
+
+        if (uploadSessionId) {
+          try {
+            await fetch(getAirVaultApiUrl(`/api/v1/airvault/uploads/${uploadSessionId}/chunks/${chunkIndex}`), {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/octet-stream' },
+              body: chunkBuffer
+            });
+          } catch { }
+        }
+
+        bytesProcessed = nextEnd;
+        chunkIndex++;
+        const percent = Math.min(100, Math.round((bytesProcessed / totalBytes) * 100));
+        const status: ResourceStatus = percent >= 100 ? 'PROCESSING' : 'UPLOADING';
+        this.updateStagedAttachmentStatus(attId, {
+          status,
+          progressPercent: percent,
+          uploadedBytes: bytesProcessed,
+          totalBytes
+        });
+
+        await new Promise(r => setTimeout(r, 16));
+      }
+
+      if (uploadSessionId) {
+        try {
+          await fetch(getAirVaultApiUrl(`/api/v1/airvault/uploads/${uploadSessionId}/complete`), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ previewUrl: item.previewUrl })
+          });
+        } catch { }
+      }
+
+      const verifiedObjUrl = this.storageService.resourceCache.put(attId, file);
+      this.storageService.savePayloadToIndexedDb(attId, file);
+
+      this.updateStagedAttachmentStatus(attId, {
+        status: 'READY',
+        progressPercent: 100,
+        uploadedBytes: totalBytes,
+        totalBytes,
+        previewUrl: item.previewUrl || verifiedObjUrl,
+        verifiedObjectUrl: verifiedObjUrl,
+        resourceId: attId
+      });
+
+      // Automatically place pointer directly in new next line in composer
+      this.richEditor.focusOnNewLine();
+    } catch (err) {
+      this.updateStagedAttachmentStatus(attId, { status: 'FAILED', errorMessage: 'Upload failed' });
+    }
+  }
+
+  /** Updates specific fields of a staged attachment by ID */
+  private updateStagedAttachmentStatus(id: string, updates: Partial<StagedAttachment>) {
+    this.stagedAttachments.update(list =>
+      list.map(att => att.id === id ? { ...att, ...updates } : att)
+    );
+  }
+
+  /** Retries upload for a failed staged attachment */
+  retryStagedUpload(attId: string, e?: Event) {
+    if (e) e.stopPropagation();
+    const item = this.stagedAttachments().find(a => a.id === attId);
+    if (!item) return;
+    this.processStagedAttachmentUpload(item);
+  }
+
+  /** Removes a staged attachment before sending */
+  removeStagedAttachment(id: string, e?: Event) {
+    if (e) e.stopPropagation();
+    const item = this.stagedAttachments().find(a => a.id === id);
+    if (item?.previewUrl && item.previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(item.previewUrl);
+    }
+    this.stagedAttachments.update(list => list.filter(a => a.id !== id));
+    this.autoResizeTextarea();
+  }
+
+  /** Opens full-screen preview modal for any staged image, media, or file attachment */
+  previewStagedAttachment(att: StagedAttachment, e?: Event) {
+    if (e) e.stopPropagation();
+    const curDev = this.deviceService.currentDevice();
+    const category = att.isImage ? 'image' : (att.iconName === 'film' ? 'video' : (att.iconName === 'file-text' ? 'pdf' : (att.iconName === 'folder-archive' ? 'archive' : 'file')));
+    const effectiveUrl = att.verifiedObjectUrl || att.previewUrl || (att.file ? URL.createObjectURL(att.file) : '');
+    const mockItem: AirVaultItem = {
+      id: att.id,
+      senderDeviceId: curDev.id,
+      senderDeviceName: curDev.name || 'This Device',
+      senderDeviceAccent: curDev.accentColor,
+      senderDeviceType: curDev.type,
+      processingState: att.status === 'READY' ? 'done' : (att.status === 'FAILED' ? 'failed' : 'processing'),
+      progressPercent: att.progressPercent,
+      errorMessage: att.errorMessage,
+      content: {
+        category,
+        raw: effectiveUrl || att.name,
+        previewUrl: effectiveUrl,
+        filename: att.name,
+        byteSize: att.file.size,
+        isSensitive: false
+      },
+      timestamp: Date.now(),
+      isPinned: false
+    };
+    this.uiStore.openPreview(mockItem);
+  }
+
   @ViewChild('tagInputRef') tagInputRef?: ElementRef<HTMLInputElement>;
 
+  isRetentionClosing = signal<boolean>(false);
+  isTagClosing = signal<boolean>(false);
+  isUploadMenuClosing = signal<boolean>(false);
+
   toggleRetentionPopover(e?: Event) {
-    if (e) e.stopPropagation();
-    this.retentionPopoverOpen.update(v => !v);
-    if (this.retentionPopoverOpen()) {
-      this.tagInputOpen.set(false);
-      this.uploadMenuOpen.set(false);
+    if (e) {
+      e.stopPropagation();
+      this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
     }
+    if (this.retentionPopoverOpen() && !this.isRetentionClosing()) {
+      this.closeRetentionPopover();
+    } else {
+      this.isRetentionClosing.set(false);
+      this.retentionPopoverOpen.set(true);
+      this.closeTagInput(true);
+      this.closeUploadMenu(true);
+    }
+  }
+
+  closeRetentionPopover(immediate = false) {
+    if (!this.retentionPopoverOpen() || this.isRetentionClosing()) return;
+    if (immediate) {
+      this.retentionPopoverOpen.set(false);
+      this.isRetentionClosing.set(false);
+      return;
+    }
+    this.isRetentionClosing.set(true);
+    setTimeout(() => {
+      this.retentionPopoverOpen.set(false);
+      this.isRetentionClosing.set(false);
+    }, 500);
   }
 
   setPerItemRetention(ttl: number | null, e?: Event) {
     if (e) e.stopPropagation();
     this.perItemRetentionTtl.set(ttl);
-    this.retentionPopoverOpen.set(false);
+    this.closeRetentionPopover();
     const label = this.getRetentionLabel(ttl);
     this.uiStore.triggerToast(`🔒 Item retention set to ${label}`);
   }
@@ -705,25 +1167,45 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
   selectPresetTag(tag: string) {
     this.currentTag.set(tag);
-    this.tagInputOpen.set(false);
+    this.closeTagInput();
     this.uiStore.triggerToast(`🏷️ Tag "#${tag}" attached to item`);
   }
 
   toggleTagInput(e?: Event) {
-    if (e) e.stopPropagation();
-    this.tagInputOpen.update(v => !v);
-    if (this.tagInputOpen()) {
-      this.retentionPopoverOpen.set(false);
-      this.uploadMenuOpen.set(false);
+    if (e) {
+      e.stopPropagation();
+      this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
+    }
+    if (this.tagInputOpen() && !this.isTagClosing()) {
+      this.closeTagInput();
+    } else {
+      this.isTagClosing.set(false);
+      this.closeRetentionPopover(true);
+      this.closeUploadMenu(true);
       this.tagDraft.set(this.currentTag());
+      this.tagInputOpen.set(true);
       setTimeout(() => this.tagInputRef?.nativeElement?.focus(), 60);
     }
+  }
+
+  closeTagInput(immediate = false) {
+    if (!this.tagInputOpen() || this.isTagClosing()) return;
+    if (immediate) {
+      this.tagInputOpen.set(false);
+      this.isTagClosing.set(false);
+      return;
+    }
+    this.isTagClosing.set(true);
+    setTimeout(() => {
+      this.tagInputOpen.set(false);
+      this.isTagClosing.set(false);
+    }, 500);
   }
 
   saveTagFromDraft() {
     const raw = this.tagDraft().trim().replace(/^#+/, '');
     this.currentTag.set(raw);
-    this.tagInputOpen.set(false);
+    this.closeTagInput();
     if (raw) {
       this.uiStore.triggerToast(`🏷️ Tag "#${raw}" attached to item`);
     }
@@ -733,49 +1215,143 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     if (e) e.stopPropagation();
     this.currentTag.set('');
     this.tagDraft.set('');
-    this.tagInputOpen.set(false);
+    this.closeTagInput();
   }
 
-  toggleManualExpand() {
-    const el = this.textareaRef?.nativeElement;
-    if (this.isExpanded()) {
-      this.isExpanded.set(false);
-      this.isManualExpanded.set(false);
-      if (el) {
-        el.style.overflow = 'hidden';
-        const LINE_HEIGHT = 19;
-        const COLLAPSED_MAX = LINE_HEIGHT * 5 + 8;
-        el.style.height = 'auto';
-        const capped = Math.min(el.scrollHeight, COLLAPSED_MAX);
-        el.style.height = capped + 'px';
-      }
+  toggleUploadMenu(e?: Event) {
+    if (e) {
+      e.stopPropagation();
+      this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
+    }
+    if (this.uploadMenuOpen() && !this.isUploadMenuClosing()) {
+      this.closeUploadMenu();
     } else {
-      this.isExpanded.set(true);
-      this.isManualExpanded.set(true);
-      if (el) {
-        const LINE_HEIGHT = 19;
-        const EXPANDED_MAX = LINE_HEIGHT * 18 + 8;
-        el.style.height = 'auto';
-        const scrollH = el.scrollHeight;
-        const capped = Math.min(scrollH, EXPANDED_MAX);
-        el.style.height = capped + 'px';
-        el.style.overflow = scrollH > EXPANDED_MAX ? 'auto' : 'hidden';
+      this.isUploadMenuClosing.set(false);
+      this.uploadMenuOpen.set(true);
+      this.closeRetentionPopover(true);
+      this.closeTagInput(true);
+    }
+  }
+
+  closeUploadMenu(immediate = false) {
+    if (!this.uploadMenuOpen() || this.isUploadMenuClosing()) return;
+    if (immediate) {
+      this.uploadMenuOpen.set(false);
+      this.isUploadMenuClosing.set(false);
+      return;
+    }
+    this.isUploadMenuClosing.set(true);
+    setTimeout(() => {
+      this.uploadMenuOpen.set(false);
+      this.isUploadMenuClosing.set(false);
+    }, 500);
+  }
+
+  @HostListener('document:click', ['$event'])
+  onGlobalClickOutsidePopovers(e: MouseEvent) {
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+
+    // 1. Retention popover click outside
+    if (this.retentionPopoverOpen() && !this.isRetentionClosing()) {
+      if (!target.closest('.composer-retention-popover') && !target.closest('.composer-active-retention-chip') && !target.closest('[aria-label="Set retention for this item"]')) {
+        this.closeRetentionPopover();
       }
     }
+
+    // 2. Tag popover click outside
+    if (this.tagInputOpen() && !this.isTagClosing()) {
+      if (!target.closest('.composer-tag-popover') && !target.closest('.composer-active-tag-chip') && !target.closest('[aria-label="Add tag to item"]')) {
+        this.closeTagInput();
+      }
+    }
+
+    // 3. Upload menu click outside
+    if (this.uploadMenuOpen() && !this.isUploadMenuClosing()) {
+      if (!target.closest('.chat-attach-popover') && !target.closest('.composer-plus-attach-btn')) {
+        this.closeUploadMenu();
+      }
+    }
+  }
+
+
+  toggleManualExpand() {
+    const wasExpanded = this.isManualExpanded();
+    const nextState = !wasExpanded;
+    this.isManualExpanded.set(nextState);
+    this.isExpanded.set(nextState);
+
+    // Defer resize to next frame so [class.expanded] is applied before measuring scrollHeight
+    requestAnimationFrame(() => this.autoResizeTextarea());
   }
 
   collapseToPill() {
     this.isExpanded.set(false);
     this.isManualExpanded.set(false);
-    const el = this.textareaRef?.nativeElement;
+    // Clear inline height immediately so CSS collapsed max-height takes over on next frame
+    const el = this.editorRef?.nativeElement;
+    if (el) el.style.height = '';
+    requestAnimationFrame(() => this.autoResizeTextarea());
+  }
+
+  checkAndApplyAutoExpand(text: string, scrollH?: number, lineH?: number) {
+    // Use the ProseMirror div inside the editorRef host for accurate scroll height
+    const host = this.editorRef?.nativeElement;
+    const el = host?.querySelector('.ProseMirror') as HTMLElement | null ?? host;
+    let visualLines = 1;
     if (el) {
-      el.style.overflow = 'hidden';
-      const LINE_HEIGHT = 19;
-      const COLLAPSED_MAX = LINE_HEIGHT * 5 + 8;
-      el.style.height = 'auto';
-      const capped = Math.min(el.scrollHeight, COLLAPSED_MAX);
-      el.style.height = capped + 'px';
+      const style = getComputedStyle(host!);
+      const lh = lineH ?? (parseFloat(style.lineHeight) || 19);
+      const sh = scrollH ?? el.scrollHeight;
+      const padTop = parseFloat(style.paddingTop) || 0;
+      const padBot = parseFloat(style.paddingBottom) || 0;
+      const contentH = Math.max(lh, sh - padTop - padBot);
+      visualLines = Math.max(1, Math.round(contentH / lh));
+    } else {
+      visualLines = Math.max(1, (text || '').split('\n').length);
     }
+    if (this.composerLineCount() !== visualLines) {
+      this.composerLineCount.set(visualLines);
+    }
+  }
+
+  onComposerInput(event: Event): void {
+    this.autoResizeTextarea();
+  }
+
+  private isTextareaResizing = false;
+
+  autoResizeTextarea(): void {
+    if (this.isTextareaResizing) return; // re-entrancy guard
+    this.isTextareaResizing = true;
+
+    const host = this.editorRef?.nativeElement as HTMLElement | undefined;
+    // Measure the inner ProseMirror element for accurate content height
+    const prose = host?.querySelector('.ProseMirror') as HTMLElement | null;
+    const el = prose ?? host;
+    if (!el || !host) { this.isTextareaResizing = false; return; }
+
+    // Reset host height so the inner element can report natural scroll height
+    host.style.height = '';
+    const style = getComputedStyle(host);
+    const scrollH = el.scrollHeight;
+    const lineH = parseFloat(style.lineHeight) || 19;
+
+    // Track line count for showExpandIcon (>= 5 lines)
+    this.checkAndApplyAutoExpand(this.richEditor.getText(), scrollH, lineH);
+
+    if (this.isExpanded()) {
+      // Expanded: grow host to content height (capped by CSS max-height)
+      host.style.height = scrollH + 'px';
+    }
+    // Collapsed: height stays '' → CSS min-height/max-height take over
+
+    this.updateEditorScrollState(host);
+
+    requestAnimationFrame(() => {
+      this.isTextareaResizing = false;
+      this.updateEditorScrollState(host);
+    });
   }
 
   async pasteFromClipboardDirectly(e?: Event) {
@@ -796,8 +1372,8 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
                 const blob = await item.getType(type);
                 const ext = type === 'application/zip' ? 'zip' : (type.split('/')[1] || 'bin');
                 const file = new File([blob], `clipboard_${Date.now()}.${ext}`, { type });
-                this.handleFile(file);
-                this.uiStore.triggerToast(`📋 Pasted file (${this.formatBytes(file.size)})`);
+                this.stageFiles([file]);
+                this.uiStore.triggerToast(`📋 Staged file (${this.formatBytes(file.size)}) into composer`);
                 return;
               }
             }
@@ -815,56 +1391,26 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       }
 
       const cur = this.payloadText || '';
-      const el = this.textareaRef?.nativeElement;
-      const start = el ? el.selectionStart : cur.length;
-      const end = el ? el.selectionEnd : cur.length;
-      const newText = cur.slice(0, start) + text + cur.slice(end);
+      // With Tiptap, insert the pasted text at the current cursor position
+      this.richEditor.editor?.commands.insertContent(text);
+      const newText = this.richEditor.getText();
 
-      this.payloadText = newText;
       this.dismissGhostSuggestion();
       this.recordHistory(newText, true, 'paste');
 
       const res = await this.clipboard.classifyAsync(newText);
       this.classified.set(res);
       this.onTextChange(false);
-      this.checkAndApplyAutoExpand(newText);
+      // Tiptap manages cursor position natively
+      this.richEditor.focus('end');
 
-      setTimeout(() => {
-        if (el) {
-          const newPos = start + text.length;
-          el.selectionStart = newPos;
-          el.selectionEnd = newPos;
-          el.focus();
-        }
-      }, 0);
-
-      this.uiStore.triggerToast('📋 Content pasted from clipboard');
+      this.uiStore.triggerToast('📋 Content pasted into composer');
     } catch (err) {
       this.uiStore.triggerToast('⚠️ Clipboard access denied by browser');
     }
   }
 
-  checkAndApplyAutoExpand(text: string) {
-    const el = this.textareaRef?.nativeElement;
-    // Count visual lines using scrollHeight vs line-height
-    let visualLines = 1;
-    if (el) {
-      const lineH = parseFloat(getComputedStyle(el).lineHeight) || 19;
-      visualLines = Math.round(el.scrollHeight / lineH);
-    } else {
-      visualLines = (text || '').split('\n').length;
-    }
-    this.composerLineCount.set(visualLines);
 
-    if (this.isManualExpanded()) return;
-    // Threshold: 5 lines triggers expand icon; auto-expand state at 5+
-    const isLong = visualLines >= 5;
-    if (isLong && !this.isExpanded()) {
-      this.isExpanded.set(true);
-    } else if (!isLong && this.isExpanded()) {
-      this.isExpanded.set(false);
-    }
-  }
 
   /**
    * Returns true if the vault item originates from the current device.
@@ -940,43 +1486,28 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     return this.getSenderAccent(item);
   }
 
-  /**
-   * Auto-grows the chat composer textarea to fit content and adjusts expand state.
-   */
-  onComposerInput(event: Event): void {
-    this.autoResizeTextarea();
-  }
 
-  autoResizeTextarea(): void {
-    const el = this.textareaRef?.nativeElement;
-    if (!el) return;
-    // Reset to auto to measure true scrollHeight
-    el.style.overflow = 'hidden';
-    el.style.height = 'auto';
-    const scrollH = el.scrollHeight;
-    const LINE_HEIGHT = 19; // ~13px font * 1.45 line-height
-    // 5 lines cap = 95px; 18 lines cap = 342px (+ padding)
-    const COLLAPSED_MAX = LINE_HEIGHT * 5 + 8;  // ~103px
-    const EXPANDED_MAX  = LINE_HEIGHT * 18 + 8; // ~350px
-    if (this.isManualExpanded()) {
-      const capped = Math.min(scrollH, EXPANDED_MAX);
-      el.style.height = capped + 'px';
-      // Only allow scroll inside textarea once we hit absolute max
-      el.style.overflow = scrollH > EXPANDED_MAX ? 'auto' : 'hidden';
-    } else {
-      const capped = Math.min(scrollH, COLLAPSED_MAX);
-      el.style.height = capped + 'px';
-      el.style.overflow = 'hidden'; // never scroll in collapsed mode
-    }
-    this.checkAndApplyAutoExpand(el.value);
-  }
 
 
   stagedText = signal<string>(this.loadInitialStagedText());
-  get payloadText(): string { return this.stagedText(); }
+  /**
+   * Convenience accessor — now backed by the Tiptap editor's plain text
+   * for read operations, and setHTML/setText for write operations.
+   *
+   * READ:  returns plain text (for search, line count, sync diff checks, byte size)
+   * WRITE: if value looks like HTML, sets as HTML; otherwise sets as plain text
+   */
+  get payloadText(): string {
+    return this.richEditor.getText();
+  }
   set payloadText(v: string) {
-    this.stagedText.set(v || '');
-    this.clipboardStore.stagedText.set(v || '');
+    if (!v) {
+      this.richEditor.clear();
+      this.stagedText.set('');
+      return;
+    }
+    this.richEditor.setContent(v);
+    this.stagedText.set(this.richEditor.getText());
   }
   isDragging = signal<boolean>(false);
   classified = signal<ClassifiedContent | null>(null);
@@ -991,6 +1522,18 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   pasteLoaderSize = signal<string>('');
   pasteProgress = signal<number>(0);
   private lastPointerPos = { x: 120, y: 80 };
+
+  // Synchronous Send / In-flight Beam States & Retry Affordance
+  isSending = signal<boolean>(false);
+  sendError = signal<string | null>(null);
+  lastFailedPayload = signal<{ text: string; attachments: StagedAttachment[]; targetDevId?: string; blame: LineBlameEntry[]; options?: any } | null>(null);
+
+  // In-flight Async Detection & Paste Queue
+  inFlightDetectId = signal<string | null>(null);
+  inFlightDetectDescription = signal<string>('Detecting format & metadata…');
+  inFlightDetectCounter = signal<string>('');
+  private pasteDropQueue: Array<{ rawText?: string; files?: File[]; isInstant?: boolean }> = [];
+  private isProcessingPasteDropQueue = false;
 
   // Ghost Text / Inline Clipboard Suggestion (Tab-to-Insert)
   ghostSuggestion = signal<string>('');
@@ -1095,8 +1638,12 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
    * This is NOT synced to other devices — it is purely local crash/refresh recovery.
    */
   private saveStagedText(text: string) {
-    // Fire-and-forget: async IndexedDB write, non-blocking
-    this.storageService.saveDraft(text);
+    // Fire-and-forget: async IndexedDB write/delete, non-blocking
+    if (!text || !text.trim()) {
+      this.storageService.clearDraft();
+    } else {
+      this.storageService.saveDraft(text);
+    }
   }
 
   onStartResize(e: MouseEvent) {
@@ -1126,11 +1673,50 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   private remoteSyncDebounceTimer: any;
 
   ngAfterViewInit() {
-    // Initialization complete
+    // ── Forensic instrumentation: install long-task observer + export helper (§14) ──
+    installLongTaskObserver();
+    installGlobalExporter();
+
+    const el = this.editorRef?.nativeElement;
+    if (el) {
+      this.richEditor.init(el);
+      // Subscribe to content changes from Tiptap — runs inside Angular zone (from service)
+      this.subs.push(
+        this.richEditor.content$.subscribe(html => {
+          // Update stagedText (plain text for search/sync/size) from the editor
+          const plain = this.richEditor.getText();
+          this.stagedText.set(plain);
+          // Trigger the existing text-change pipeline (detection, sync, draft save)
+          this.onTextChange(true);
+          // Resize the editor host element
+          this.autoResizeTextarea();
+        })
+      );
+      // Subscribe to selection changes to position floating bubble toolbar above selected text
+      this.subs.push(
+        this.richEditor.selection$.subscribe(({ empty }) => {
+          this.handleSelectionUpdate(empty);
+        })
+      );
+      // Subscribe to transactions (format toggles, cursor updates) to keep active toolbar signals reactive
+      this.subs.push(
+        this.richEditor.transaction$.subscribe(() => {
+          this.updateActiveFormattingStates();
+        })
+      );
+      // Restore any pre-filled draft text
+      setTimeout(() => {
+        if (this.payloadText.trim()) {
+          this.onTextChange(false);
+        }
+        this.autoResizeTextarea();
+      }, 0);
+    }
   }
 
   ngOnDestroy() {
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
+    if (this.clickPulseTimer) clearTimeout(this.clickPulseTimer);
     if (this.remoteSyncDebounceTimer) clearTimeout(this.remoteSyncDebounceTimer);
     if (this.draftAutoDismissTimer) clearTimeout(this.draftAutoDismissTimer);
     if (this.draftBroadcastThrottleTimer) clearTimeout(this.draftBroadcastThrottleTimer);
@@ -1146,6 +1732,8 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     this.subs = [];
     this.activeWorkers.forEach(w => w.terminate());
     this.activeWorkers.clear();
+    // Destroy the Tiptap editor instance
+    this.richEditor.destroy();
   }
 
   loadSample(type: 'code' | 'json' | 'url' | 'phone') {
@@ -1345,18 +1933,27 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   /**
    * Scans the current composer text for all recognizable entity spans
    * (URL, phone, address) and updates composerMatches.
-   * For texts ≤ 10 KB, runs synchronously on the main thread (instant).
-   * For larger texts, delegates to the airvault worker off-thread.
-   * Does NOT duplicate detection logic — imports scanAllMatches() from
-   * airvault-action-detector.ts which is the single source of truth.
+   *
+   * SCOPE RESTRICTION:
+   * To guarantee zero corruption and prevent performance degradation on long-form,
+   * multiline, or markdown/code documents, live inline highlight decoration is
+   * strictly restricted to SHORT, single-line clipboard content (< 500 chars, single line).
+   * For multiline/markdown/code content, entity detection is handled in read-only preview.
    */
   private runComposerDetection(text: string) {
     if (!text || !text.trim()) {
       this.composerMatches.set([]);
       return;
     }
-    // scanAllMatches() gates itself at 50 KB — sync is fast enough for all
-    // typical clipboard payloads. No separate worker invocation needed.
+
+    // Only run live composer entity detection on short single-line content
+    const isSingleLine = !text.includes('\n');
+    const isShort = text.length < 500;
+    if (!isSingleLine || !isShort) {
+      this.composerMatches.set([]);
+      return;
+    }
+
     const matches = scanAllMatches(text);
     this.composerMatches.set(matches);
   }
@@ -1533,8 +2130,8 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     type: 'paste' | 'cut' | 'suggestion' | 'delete' = 'paste',
     authorDevice?: AirVaultDevice
   ) {
-    const el = this.textareaRef?.nativeElement;
-    const cursorPos = el ? el.selectionStart : currentText.length;
+    // With Tiptap, cursor position is tracked internally — use text length as approximation
+    const cursorPos = this.richEditor.getText().length;
     const targetDev = authorDevice || this.deviceService.currentDevice();
     const isOwner = targetDev.isCurrent || targetDev.id === this.deviceService.currentDevice().id;
     const curId = targetDev.username || targetDev.id;
@@ -1598,9 +2195,22 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     this.canRedo.set(this.undoManager.canRedo());
   }
 
-  enableFullProcessing() {
+  async enableFullProcessing() {
     this.forceFullFidelity.set(true);
-    this.onTextChange();
+    const text = this.payloadText || '';
+    if (!text.trim()) return;
+
+    // Clear debounce timer and run deep analysis immediately
+    if (this.debounceTimer) clearTimeout(this.debounceTimer);
+
+    try {
+      const res = await this.clipboard.classifyAsync(text);
+      this.classified.set(res);
+      this.runComposerDetection(text);
+      this.uiStore.triggerToast(`⚡ Deep analysis complete: detected ${res.category.toUpperCase()}`);
+    } catch {
+      this.onTextChange(false);
+    }
   }
 
   onMouseMove(e: MouseEvent) {
@@ -1626,11 +2236,8 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
                 const blob = await item.getType(type);
                 const ext = type === 'application/zip' ? 'zip' : (type.split('/')[1] || 'bin');
                 const file = new File([blob], `clipboard_${Date.now()}.${ext}`, { type });
-                this.pasteLoaderPos.set({ x: 120, y: 80 });
-                this.pasteLoaderSize.set(this.formatBytes(file.size));
-                this.pasteProgress.set(10);
-                this.isProcessingPaste.set(true);
-                this.handleFile(file);
+                this.stageFiles([file]);
+                this.uiStore.triggerToast(`📋 Staged file (${this.formatBytes(file.size)}) into composer`);
                 return;
               }
             }
@@ -1646,50 +2253,20 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
       if (!text || !text.trim()) return;
 
-      // If large text/bytecode (>5 KB), offload to Web Worker with pointer progress bar
-      if (text.length > 5000) {
-        const byteSize = new Blob([text]).size;
-        this.pasteLoaderSize.set(this.formatBytes(byteSize));
-        this.pasteProgress.set(15);
-        this.pasteLoaderPos.set({ x: 140, y: 70 });
-        this.isProcessingPaste.set(true);
+      // Insert plain/formatted text at cursor via Tiptap
+      this.richEditor.editor?.commands.insertContent(text);
+      const newText = this.richEditor.getText();
 
-        const isZipBytecode = text.startsWith('PK') || text.startsWith('data:application/zip');
-        const filename = isZipBytecode ? `pasted_archive_${Date.now()}.zip` : `pasted_payload_${Date.now()}.txt`;
-        const file = new File([text], filename, {
-          type: isZipBytecode ? 'application/zip' : 'text/plain'
-        });
-        this.handleFile(file);
-        return;
-      }
-
-      const el = this.textareaRef?.nativeElement;
-      const current = this.payloadText || '';
-      const start = el ? el.selectionStart : current.length;
-      const end = el ? el.selectionEnd : current.length;
-      const newText = current.slice(0, start) + text + current.slice(end);
-
-      this.payloadText = newText;
       this.dismissGhostSuggestion();
       this.recordHistory(newText, true, 'paste');
 
       const res = await this.clipboard.classifyAsync(newText);
       this.classified.set(res);
       this.onTextChange(false);
+      this.richEditor.focus('end');
+      this.uiStore.triggerToast('📋 Content pasted into composer');
 
-      if (this.prefService.prefs().instantBeamOnPaste) {
-        this.triggerBeam();
-        return;
-      }
-
-      setTimeout(() => {
-        if (el) {
-          const newPos = start + text.length;
-          el.selectionStart = newPos;
-          el.selectionEnd = newPos;
-          el.focus();
-        }
-      }, 0);
+      this.richEditor.focus('end');
     } catch {
       // Permission denied
     }
@@ -1712,11 +2289,31 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     }, 300);
   }
 
-  onInputClick() {
-    // Dismiss suggestion on explicit mouse click/cursor move
+  onCapsuleClick(e: MouseEvent) {
+    const target = e.target as HTMLElement | null;
+    // Don't intercept clicks that occurred on interactive buttons, popovers, chips, toolbar, or inputs
+    if (target?.closest('button') || target?.closest('.composer-tool-btn') || target?.closest('.composer-popover-anchor') ||
+      target?.closest('.composer-label-chip-group') || target?.closest('.staged-attachment-tile') ||
+      target?.closest('.chat-attach-popover') || target?.closest('.composer-selection-toolbar') ||
+      target?.closest('input')) {
+      return;
+    }
     if (this.ghostSuggestion()) {
       this.dismissGhostSuggestion();
     }
+    // If the click is inside the ProseMirror editor element, let ProseMirror natively place the caret!
+    if (target?.closest('.ProseMirror') || target?.closest('.chat-composer-textarea')) {
+      return;
+    }
+    // Only if clicking on the background container outside the text area, focus editor at end
+    this.richEditor.focus('end');
+  }
+
+  onInputClick(e?: MouseEvent) {
+    if (this.ghostSuggestion()) {
+      this.dismissGhostSuggestion();
+    }
+    // Do NOT force focus('end') on input click; allow user's cursor/range selection to stay intact.
   }
 
   onKeyDown(e: KeyboardEvent) {
@@ -1826,40 +2423,16 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     const suggestion = this.fullPendingClipText || this.ghostSuggestion();
     if (!suggestion) return;
 
-    const el = this.textareaRef?.nativeElement;
-    const currentText = this.payloadText || '';
-    const start = el ? el.selectionStart : currentText.length;
-    const end = el ? el.selectionEnd : currentText.length;
+    this.richEditor.editor?.commands.insertContent(suggestion);
+    const newText = this.richEditor.getText();
 
-    const textBefore = currentText.slice(0, start);
-    const textAfter = currentText.slice(end);
-
-    // If there is preceding text that doesn't end with a newline, and cursor is at end of line
-    const needsLeadingNewline = textBefore.length > 0 && !textBefore.endsWith('\n') && !suggestion.startsWith('\n');
-    const insertedText = (needsLeadingNewline ? '\n' : '') + suggestion;
-
-    // Insert suggestion at cursor position
-    const newText = textBefore + insertedText + textAfter;
-    this.payloadText = newText;
     this.dismissGhostSuggestion();
     this.recordHistory(newText, true, 'suggestion');
-
-    // Trigger normal tile creation pipeline
     this.onTextChange(false);
 
-    if (this.prefService.prefs().instantBeamOnPaste) {
-      this.triggerBeam();
-      return;
-    }
-
-    setTimeout(() => {
-      if (el) {
-        const newPos = start + insertedText.length;
-        el.selectionStart = newPos;
-        el.selectionEnd = newPos;
-        el.focus();
-      }
-    }, 0);
+    this.richEditor.focus('end');
+    this.dismissGhostSuggestion();
+    this.uiStore.triggerToast('📋 Auto-captured clipboard content into composer');
   }
 
   dismissGhostSuggestion() {
@@ -1889,25 +2462,69 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
   clearText(e?: Event) {
     if (e) this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
-    this.payloadText = '';
-    if (this.textareaRef?.nativeElement) {
-      this.textareaRef.nativeElement.value = '';
-      this.textareaRef.nativeElement.style.height = 'auto';
-    }
+    this.richEditor.clear();
+    this.stagedText.set('');
     this.classified.set(null);
     this.liveBlameMap.set([]);
     this.saveStagedText('');
     this.undoManager.reset('', []);
     this.updateUndoRedoSignals();
     this.onTextChange(false);
+    // Reset composer height
+    const el = this.editorRef?.nativeElement;
+    if (el) el.style.height = '';
+    this.isExpanded.set(false);
+    this.isManualExpanded.set(false);
   }
 
   triggerBeam(e?: Event) {
-    if (!this.payloadText.trim()) return;
+    // ── §12 Duplicate execution counter ─────────────────────────────────────
+    resetCounters();
+    const execCount = countStage('SEND_HANDLER');
+
+    const textToBeam = this.richEditor.isEmpty() ? '' : this.richEditor.getHTML();
+    const plainText = this.richEditor.getText();
+    const attachments = this.stagedAttachments();
+    if (!plainText.trim() && attachments.length === 0) return;
     if (e) this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
-    const textToBeam = this.payloadText;
     const blameToBeam = this.liveBlameMap();
     const targetDevId = this.selectedTargetId();
+
+    // ── §1 Correlation ID — threads through every layer ──────────────────────
+    const operationId = crypto.randomUUID();
+    const connectedDeviceCount = this.deviceService.pairedDevices().filter(d => d.status !== 'revoked' && d.syncEnabled !== false).length;
+
+    // ── §14 Memory snapshot before any send work begins ─────────────────────
+    const memBefore = snapshotMemory('BEFORE_SEND');
+
+    // ── §16 Create structured test run record ────────────────────────────────
+    const run = createRun(operationId, attachments.length, connectedDeviceCount, attachments.reduce((s, a) => s + (a.file?.size ?? 0), 0));
+    run.duplicateExecutionDetected = execCount > 1;
+    run.memoryBefore = memBefore;
+
+    // ── §13 Reset effect audit registry for a clean per-run window ───────────
+    resetEffectRegistry();
+
+    markStart(operationId, 'SEND_TOTAL');
+    watchdogStart(operationId, 'PREPARING');
+
+    // ── §3 Composer snapshot BEFORE any mutation ─────────────────────────────
+    const snapBefore = snapshotComposer(
+      operationId, 'BEFORE_SEND',
+      plainText.length,
+      attachments as any,
+      connectedDeviceCount
+    );
+    run.composerSnapshotBefore = snapBefore;
+
+    sendLog(operationId, 'SEND_CLICK', {
+      execCount,
+      textLength: plainText.length,
+      attachmentCount: attachments.length,
+      attachments: attachments.map(a => ({ id: a.id, name: a.name, sizeBytes: a.file.size, type: a.file.type })),
+      connectedDeviceCount,
+      targetDevId,
+    });
 
     const beamOpts = {
       tag: this.currentTag() || undefined,
@@ -1915,6 +2532,63 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       retentionTtlMs: this.perItemRetentionTtl() !== null ? this.perItemRetentionTtl()! : undefined
     };
 
+    // ── §5 Divergence check: what user sees vs what we're about to send ───────
+    const composerIds = attachments.map(a => a.id);
+    // For pure text sends payloadResourceIds is empty — divergence only matters when attachments exist
+    if (attachments.length > 0) {
+      checkDivergence(operationId, composerIds, composerIds); // pre-send: IDs should match themselves
+    }
+
+    markStart(operationId, 'VALIDATE');
+    recordStage(run, 'validation', getMeasureMs(operationId, 'VALIDATE'), 'ok');
+    markEnd(operationId, 'VALIDATE');
+
+    // ── §4 FILE PIPELINE ─────────────────────────────────────────────────────
+    if (attachments.length > 0) {
+      markStart(operationId, 'FILE_COLLECTION');
+      sendLog(operationId, 'FILE_COLLECTION_START', { count: attachments.length });
+      countStage('FILE_HANDLER');
+
+      const files = attachments.map(a => a.file);
+
+      // ── §3 Snapshot the moment we pass files to handler, BEFORE clearing ──
+      sendLog(operationId, 'PRE_CLEAR_STATE', {
+        attachmentCount: attachments.length,
+        stagedAttachmentCount: this.stagedAttachments().length,
+        t: performance.now(),
+      });
+      markEnd(operationId, 'FILE_COLLECTION');
+      recordStage(run, 'resourceCollection', getMeasureMs(operationId, 'FILE_COLLECTION'), 'ok');
+
+      watchdogStart(operationId, 'WORKER');
+      // Store operationId on the component so the worker handler can pick it up
+      (this as any)._activeOperationId = operationId;
+      (this as any)._activeRun = run;
+
+      markStart(operationId, 'WORKER');
+      const richContentToSend = plainText.trim() ? (this.richEditor.getMarkdown() || plainText) : undefined;
+      if (files.length === 1 && !richContentToSend) {
+        this.handleFile(files[0]);
+      } else {
+        this.handleBatchFiles(files, richContentToSend);
+      }
+
+      // ── §3 Snapshot IMMEDIATELY after handleFile is called (sync part only) ─
+      sendLog(operationId, 'POST_HANDLE_FILE_CALL', { t: performance.now(), uploadQueueLength: this.uploadQueue.length });
+
+      attachments.forEach(a => { if (a.previewUrl) URL.revokeObjectURL(a.previewUrl); });
+
+      // ── §3 Snapshot the stagedAttachments.set([]) mutation ───────────────
+      const tBeforeClear = performance.now();
+      this.stagedAttachments.set([]);
+      sendLog(operationId, 'STAGED_ATTACHMENTS_CLEARED', {
+        t: tBeforeClear,
+        clearedCount: attachments.length,
+        noteForReview: 'SUSPECTED_ISSUE: composer cleared before async worker/upload resolves',
+      });
+    }
+
+    // ── §3 Snapshot per-item setting clears ──────────────────────────────────
     // Reset per-item settings immediately (transient per item)
     this.currentTag.set('');
     this.tagDraft.set('');
@@ -1925,22 +2599,61 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     this.isExpanded.set(false);
     this.isManualExpanded.set(false);
 
-    // Clear composer input and draft immediately
-    this.clearText();
-    if (this.textareaRef?.nativeElement) {
-      this.textareaRef.nativeElement.style.height = 'auto';
-    }
+    // Capture the contentToBeam BEFORE clearText() clears the rich editor!
+    const contentToBeam = plainText.trim() ? (this.richEditor.getMarkdown() || plainText) : '';
 
-    this.syncService.broadcastDraftFinalized();
-    this.beamPayload.emit({
-      text: textToBeam,
-      targetDeviceId: targetDevId,
-      lineBlameMap: blameToBeam,
-      options: beamOpts
+    // ── §3 Snapshot text clearance — note timestamp vs async resolution ───────
+    const tBeforeTextClear = performance.now();
+    this.clearText();
+    sendLog(operationId, 'TEXT_CLEARED', {
+      t: tBeforeTextClear,
+      hadText: plainText.length > 0,
+      noteForReview: 'Text cleared synchronously before async file pipeline completes',
     });
+
+    const el = this.editorRef?.nativeElement;
+    if (el) el.style.height = '';
+
+    markStart(operationId, 'TEXT_BEAM');
+    // Only fire standalone TEXT_BEAM if there were no attachments (if attachments existed, text was bundled as caption)
+    if (plainText.trim() && attachments.length === 0) {
+      sendLog(operationId, 'TEXT_BEAM_START', { textLength: plainText.length });
+      countStage('BROADCAST');
+      this.syncService.broadcastDraftFinalized();
+      this.beamPayload.emit({
+        text: contentToBeam,
+        targetDeviceId: targetDevId,
+        lineBlameMap: blameToBeam,
+        options: beamOpts
+      });
+      sendLog(operationId, 'TEXT_BEAM_END', { textLength: plainText.length });
+    }
+    markEnd(operationId, 'TEXT_BEAM');
+    recordStage(run, 'textBeam', getMeasureMs(operationId, 'TEXT_BEAM'), 'ok');
+    watchdogClear(operationId);
+
+    // ── §3 Snapshot after all synchronous send logic ──────────────────────────
+    const snapAfter = snapshotComposer(
+      operationId, 'AFTER_SEND_SYNC',
+      this.richEditor.getText().length,
+      this.stagedAttachments() as any,
+      connectedDeviceCount
+    );
+    run.composerSnapshotAfter = snapAfter;
+    sendLog(operationId, 'SEND_SYNC_COMPLETE', {
+      attachmentsRemainingInComposer: snapAfter.attachmentCount,
+      textRemainingInComposer: snapAfter.textLength,
+    });
+
     // Clear the local IndexedDB draft now that this content has been committed as a Beam
     this.storageService.clearDraft();
     this.uiStore.triggerToast('⚡ Beamed entry to connected devices');
+
+    // Note: run.finalise() is called by the async worker/beam pipeline when DONE
+    // If it's a text-only send, finalise here
+    if (attachments.length === 0) {
+      finaliseRun(run);
+    }
   }
 
   // Upload / File Processing Queue & Concurrency Management
@@ -1953,11 +2666,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     const fileList = (e.target as HTMLInputElement).files;
     if (fileList && fileList.length > 0) {
       const files = Array.from(fileList);
-      if (files.length === 1) {
-        this.handleFile(files[0]);
-      } else {
-        this.handleBatchFiles(files);
-      }
+      this.stageFiles(files);
       (e.target as HTMLInputElement).value = '';
     }
   }
@@ -1967,59 +2676,84 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     if (e.clipboardData?.files.length) {
       e.preventDefault();
       const files = Array.from(e.clipboardData.files);
-      if (files.length === 1) {
-        this.handleFile(files[0]);
-      } else {
-        this.handleBatchFiles(files);
-      }
+      this.enqueuePasteDrop({ files });
       return;
     }
 
+    // MANDATORY PIPELINE RULE: Always extract plain text from the clipboard.
+    // Never allow text/html from clipboard to inject arbitrary HTML elements or entities into the composer.
     const pastedText = e.clipboardData?.getData('text/plain') || '';
     if (!pastedText || !pastedText.trim()) return;
 
-    // If pasted text/bytecode is large (> 5 KB or > 5,000 chars), offload immediately to Web Worker with pointer loader
-    if (pastedText.length > 5000) {
-      e.preventDefault();
-      const byteSize = new Blob([pastedText]).size;
-      this.pasteLoaderPos.set({ ...this.lastPointerPos });
-      this.pasteLoaderSize.set(this.formatBytes(byteSize));
-      this.pasteProgress.set(15);
-      this.isProcessingPaste.set(true);
-
-      const isZipBytecode = pastedText.startsWith('PK') || pastedText.startsWith('data:application/zip');
-      const filename = isZipBytecode ? `pasted_archive_${Date.now()}.zip` : `pasted_payload_${Date.now()}.txt`;
-      const file = new File([pastedText], filename, {
-        type: isZipBytecode ? 'application/zip' : 'text/plain'
-      });
-      this.handleFile(file);
-      return;
-    }
-
-    // Regular text paste: insert and record atomic operation
+    // Route pasted text into composer queue as raw canonical text
     e.preventDefault();
-    const el = this.textareaRef?.nativeElement;
-    const current = this.payloadText || '';
-    const start = el ? el.selectionStart : current.length;
-    const end = el ? el.selectionEnd : current.length;
-    const newText = current.slice(0, start) + pastedText + current.slice(end);
+    this.enqueuePasteDrop({ rawText: pastedText });
+  }
 
-    this.payloadText = newText;
-    this.recordHistory(newText, true, 'paste');
-    this.onTextChange(false);
+  private enqueuePasteDrop(item: { rawText?: string; files?: File[] }) {
+    this.pasteDropQueue.push(item);
+    if (!this.isProcessingPasteDropQueue) {
+      this.processNextPasteDropQueue();
+    } else {
+      this.updatePasteQueueCounter();
+    }
+  }
 
-    if (this.prefService.prefs().instantBeamOnPaste) {
-      this.triggerBeam();
+  private updatePasteQueueCounter() {
+    const total = this.pasteDropQueue.length + (this.isProcessingPasteDropQueue ? 1 : 0);
+    if (total > 1) {
+      const currentIdx = 1;
+      this.inFlightDetectCounter.set(`Processing ${currentIdx} of ${total}`);
+    } else {
+      this.inFlightDetectCounter.set('');
+    }
+  }
+
+  private async processNextPasteDropQueue() {
+    if (this.pasteDropQueue.length === 0) {
+      this.isProcessingPasteDropQueue = false;
+      this.inFlightDetectId.set(null);
+      this.inFlightDetectCounter.set('');
       return;
     }
 
-    setTimeout(() => {
-      if (el) {
-        const newPos = start + pastedText.length;
-        el.selectionStart = newPos;
-        el.selectionEnd = newPos;
+    this.isProcessingPasteDropQueue = true;
+    const item = this.pasteDropQueue.shift()!;
+    this.updatePasteQueueCounter();
+
+    const opId = `detect_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    this.inFlightDetectId.set(opId);
+    this.inFlightDetectDescription.set(item.files ? `Staging ${item.files.length} file(s)…` : 'Detecting format & metadata…');
+
+    // 1. Register "detect" operation in AirVaultOperationStateService
+    this.operationState.registerOperation(opId, 'composer', 'detect', 0, this.inFlightDetectDescription());
+
+    try {
+      if (item.files && item.files.length > 0) {
+        this.stageFiles(item.files);
+        this.operationState.completeOperation(opId);
+      } else if (item.rawText) {
+        const rawText = item.rawText;
+        // Offload detection off-thread
+        this.operationState.updateProgress(opId, 30, 'Running AST classification…');
+        const classified = await this.clipboard.classifyAsync(rawText);
+        this.operationState.updateProgress(opId, 80, 'Applying to composer…');
+
+        this.richEditor.editor?.commands.insertContent(rawText);
+        const newText = this.richEditor.getText();
+        this.recordHistory(newText, true, 'paste');
+        this.onTextChange(false);
+
+        this.operationState.completeOperation(opId);
       }
-    }, 0);
+    } catch (err: any) {
+      this.operationState.failOperation(opId, err?.message || 'Detection failed');
+      this.uiStore.triggerToast('⚠️ Clipboard parsing encountered an issue');
+    } finally {
+      this.inFlightDetectId.set(null);
+      // Process next in queue sequentially
+      this.processNextPasteDropQueue();
+    }
   }
 
   onDragOver(e: DragEvent) {
@@ -2078,7 +2812,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
       const zipFile = new File([zipBlob], `${rootFolderName}.zip`, { type: 'application/zip' });
       this.uiStore.triggerToast(`✓ Folder archived as ${zipFile.name} (${(zipFile.size / 1024 / 1024).toFixed(1)} MB)`);
-      this.handleFile(zipFile);
+      this.stageFiles([zipFile]);
     } catch (err) {
       AirVaultLogger.error('[AirVault] Failed to zip folder handle:', err);
       this.uiStore.triggerToast(`⛔ Failed to compress folder "${rootFolderName}"`);
@@ -2113,7 +2847,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
       const zipFile = new File([zipBlob], `${rootFolderName}.zip`, { type: 'application/zip' });
       this.uiStore.triggerToast(`✓ Folder archived as ${zipFile.name} (${(zipFile.size / 1024 / 1024).toFixed(1)} MB)`);
-      this.handleFile(zipFile);
+      this.stageFiles([zipFile]);
       input.value = '';
     } catch (err) {
       AirVaultLogger.error('[AirVault] Failed to archive folder:', err);
@@ -2142,11 +2876,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       }
 
       const files = Array.from(e.dataTransfer.files);
-      if (files.length === 1) {
-        this.handleFile(files[0]);
-      } else {
-        this.handleBatchFiles(files);
-      }
+      this.stageFiles(files);
       return;
     }
 
@@ -2175,7 +2905,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
       const zipFile = new File([zipBlob], `${dirEntry.name}.zip`, { type: 'application/zip' });
       this.uiStore.triggerToast(`✓ Folder archived as ${zipFile.name} (${(zipFile.size / 1024 / 1024).toFixed(1)} MB)`);
-      this.handleFile(zipFile);
+      this.stageFiles([zipFile]);
     } catch (err) {
       AirVaultLogger.error('[AirVault] Failed to zip folder:', err);
       this.uiStore.triggerToast(`⛔ Failed to compress folder "${dirEntry.name}"`);
@@ -2215,11 +2945,11 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   }
 
   /**
-   * Multi-file Batch Upload Handler
+   * Multi-file Batch Upload Handler (supports standalone file batches and mixed text + file payloads)
    * Enforces max 20 files per batch and total combined storage cap before starting.
    * Creates a single parent batch item containing individual items.
    */
-  private async handleBatchFiles(files: File[]) {
+  private async handleBatchFiles(files: File[], richTextCaption?: string) {
     if (!files || files.length === 0) return;
 
     // 1. Enforce batch item count limit (max 20)
@@ -2232,7 +2962,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     let totalBatchBytes = 0;
     for (const f of files) {
       if (f.size > MAX_SINGLE_FILE_SIZE_BYTES) {
-        this.uiStore.triggerToast(`⛔ "${f.name}" (${(f.size / 1024 / 1024).toFixed(1)} MB) exceeds single file limit of 500 MB.`);
+        this.uiStore.triggerToast(`⛔ "${f.name}" (${(f.size / 1024 / 1024).toFixed(1)} MB) exceeds single file limit of 1 GB.`);
         return;
       }
       totalBatchBytes += f.size;
@@ -2284,6 +3014,8 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       };
     });
 
+    const captionText = richTextCaption && richTextCaption.trim() ? richTextCaption : `Batch of ${files.length} files (${(totalBatchBytes / 1024 / 1024).toFixed(1)} MB)`;
+
     // Create collapsed parent batch item
     const parentBatchItem: AirVaultItem = {
       id: batchId,
@@ -2310,7 +3042,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       progressPercent: 0,
       content: {
         category: 'archive',
-        raw: `Batch of ${files.length} files (${(totalBatchBytes / 1024 / 1024).toFixed(1)} MB)`,
+        raw: captionText,
         filename: `${files.length} Files Batch`,
         byteSize: totalBatchBytes,
         isSensitive: false,
@@ -2320,7 +3052,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
     // Save batch parent tile to UI & storage
     this.storageService.addItem(parentBatchItem);
-    this.uiStore.triggerToast(`📦 Uploading batch of ${files.length} files...`);
+    this.uiStore.triggerToast(`📦 Uploading ${files.length} resource${files.length > 1 ? 's' : ''}...`);
 
     // Queue all child files with batchId linked
     for (let i = 0; i < files.length; i++) {
@@ -2335,9 +3067,9 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
     AirVaultLogger.debug('[upload] file received:', file.name, file.size);
 
-    // 0. Strict 500 MB Single File Limit Guard
+    // 0. Strict 1 GB Single File Limit Guard
     if (file.size > MAX_SINGLE_FILE_SIZE_BYTES) {
-      this.uiStore.triggerToast(`⛔ File size (${(file.size / 1024 / 1024).toFixed(1)} MB) exceeds the maximum single file upload limit of 500 MB.`);
+      this.uiStore.triggerToast(`⛔ File size (${(file.size / 1024 / 1024).toFixed(1)} MB) exceeds the maximum single file upload limit of 1 GB.`);
       return;
     }
 
@@ -2355,7 +3087,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       }
     }
 
-    // 1. Dynamic Storage Cap Guard (1 GB + 1 GB per connected device)
+    // 1. Dynamic Storage Cap Guard (5 GB base + 5 GB per connected device)
     const currentUsage = this.storageService.totalBytes();
     const currentCap = this.storageService.totalStorageCapBytes();
     const remainingStorage = currentCap - currentUsage;
@@ -2366,6 +3098,12 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       return;
     }
 
+    // ── §1 Forensic: pick up correlation ID threaded from triggerBeam ────────
+    const operationId: string = (this as any)._activeOperationId || 'no-op-id';
+    const _fileHandleStartT = performance.now();
+    logFileStart(operationId, file.name, file.size, file.type, 'main');
+    countStage('FILE_HANDLER');
+
     // 2. Large File Notification (> 5 MB has lifetime retention, > 50 MB triggers chunked encryption note)
     if (file.size > 50 * 1024 * 1024) {
       this.largeFileWarning.set(`⚠️ Large resource detected (${(file.size / 1024 / 1024).toFixed(1)} MB). Off-thread chunked AES-GCM encryption started. Large resources (>5 MB) are retained for clipboard lifetime.`);
@@ -2375,13 +3113,19 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     const curDev = this.deviceService.currentDevice();
     const curUserName = curDev.username ? `@${curDev.username}` : (curDev.name || 'User');
 
+    // ── §4 FILE_VALIDATED checkpoint (all guards passed) ─────────────────────
+    logFileValidated(operationId, file.name, performance.now() - _fileHandleStartT);
+
     // 3. Authoritative Server Cap Check & Session Initiation
     let uploadSessionId: string | undefined = undefined;
     const itemId = explicitItemId || `av_file_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const uploadInitStart = performance.now();
+    logUploadInitStart(operationId, itemId, file.size);
+    logRequestStart(operationId, '/api/v1/airvault/clipboards/default/uploads', file.size);
     try {
       const initRes = await fetch(getAirVaultApiUrl('/api/v1/airvault/clipboards/default/uploads'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Operation-Id': operationId },
         body: JSON.stringify({
           fileId: itemId,
           fileName: file.name,
@@ -2395,19 +3139,30 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
         })
       });
 
+      const uploadInitDuration = performance.now() - uploadInitStart;
       if (initRes.ok) {
         const initData = await initRes.json();
         uploadSessionId = initData.data?.uploadSessionId;
+        logUploadInitEnd(operationId, itemId, uploadInitDuration, initRes.status, !!uploadSessionId);
+        logRequestEnd(operationId, '/api/v1/airvault/clipboards/default/uploads', uploadInitDuration, initRes.status);
       } else if (initRes.status === 400) {
-        const errJson = await initRes.json().catch(() => ({}));
+        const uploadInitBodyText = await initRes.text().catch(() => '');
+        const errJson = (() => { try { return JSON.parse(uploadInitBodyText); } catch { return {}; } })();
         const msg = errJson.message || `File size (${(file.size / 1024 / 1024).toFixed(1)} MB) exceeds server clipboard cap`;
+        logUploadInitEnd(operationId, itemId, uploadInitDuration, initRes.status, false);
+        logRequestEnd(operationId, '/api/v1/airvault/clipboards/default/uploads', uploadInitDuration, initRes.status, uploadInitBodyText);
         this.uiStore.triggerToast(`⛔ ${msg}`);
         return;
       } else {
         // Backend returned 502/504/404 (offline or unreachable) - continue gracefully with 100% client-side local storage & P2P sync
+        logUploadInitEnd(operationId, itemId, uploadInitDuration, initRes.status, false);
+        logRequestEnd(operationId, '/api/v1/airvault/clipboards/default/uploads', uploadInitDuration, initRes.status);
         AirVaultLogger.debug(`[AirVault] Backend upload initiation returned HTTP ${initRes.status}. Continuing client-side.`);
       }
-    } catch {
+    } catch (networkErr) {
+      const uploadInitDuration = performance.now() - uploadInitStart;
+      logUploadInitEnd(operationId, itemId, uploadInitDuration, 0, false);
+      logRequestFailed(operationId, '/api/v1/airvault/clipboards/default/uploads', String(networkErr), uploadInitDuration);
       // Backend completely offline - seamless client-side fallback
     }
 
@@ -2444,6 +3199,8 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
       AirVaultLogger.debug('[upload] bytes added to clipboard total:', file.size);
 
+      // §6 §9: Log signal write — carries full items list, potential CD pressure
+      logSignalWrite(operationId, 'storageService.allItems (pendingItem prepend)', this.storageService.allItems().length + 1);
       // Save single pending tile to UI storage
       this.storageService.allItems.update(list => [pendingItem, ...list]);
     }
@@ -2462,6 +3219,11 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     this.activeUploadsCount++;
     this.storageService.updateItemProcessingState(itemId, 'processing');
 
+    // Retrieve correlation ID set by triggerBeam (§1 — ID threads through every layer)
+    const operationId: string = (this as any)._activeOperationId || 'no-op-id';
+    countStage('UPLOAD');
+    sendLog(operationId, 'QUEUE_DEQUEUE', { itemId, fileSize: file.size, fileType: file.type, queueRemaining: this.uploadQueue.length });
+
     // Run heavy reading, thumbnailing, and AES-GCM crypto chunking inside Web Worker
     try {
       if (typeof Worker === 'undefined') {
@@ -2475,6 +3237,18 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       const remainingCapBytes = CLIPBOARD_STORAGE_CAP_BYTES - this.storageService.totalBytes();
 
       worker.onmessage = (event: MessageEvent) => {
+        // ── §4/§7: postMessage queue delay = main-thread saturation indicator ──
+        const _workerMsgT = performance.now();
+        const _queueDelayMs = getWorkerPostElapsedMs(itemId); // ms from postMessage call to THIS handler
+        const _workerRoundTripMs = _workerMsgT - workerPostT;
+        logWorkerMessage(operationId, itemId, event.data?.type ?? 'unknown', _queueDelayMs); // §4 WORKER_MESSAGE
+        sendLog(operationId, 'WORKER_MSG_RECEIVED', {
+          itemId,
+          msgType: event.data?.type,
+          queueDelayMs: _queueDelayMs.toFixed(2),       // §7: postMessage fire → handler start
+          workerRoundTripMs: _workerRoundTripMs.toFixed(2), // §7: total round-trip
+        });
+
         const { type, payload, success, result, error } = event.data;
 
         if (type === 'FILE_PROGRESS' || type === 'PROGRESS') {
@@ -2487,6 +3261,24 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
           this.isProcessingPaste.set(false);
           // Finished successfully - update the existing tile in place
           const data = payload || result;
+
+          // ── §6/§7 Measure raw content size coming back from worker (§2 base64 suspect)
+          const rawContentBytes = typeof data.raw === 'string' ? data.raw.length : (typeof data.rawContent === 'string' ? data.rawContent.length : 0);
+          const previewUrlBytes = typeof data.previewUrl === 'string' ? data.previewUrl.length : 0;
+          markEnd(operationId, 'WORKER');
+          watchdogClear(operationId);
+          sendLog(operationId, 'WORKER_DONE', {
+            itemId,
+            rawContentBytes,
+            previewUrlBytes,
+            workerTotalMs: getMeasureMs(operationId, 'WORKER').toFixed(2),
+            category: data.category,
+            fileSize: data.byteSize || data.finalSize,
+            noteForReview: rawContentBytes > 500_000
+              ? '⚠️ LARGE_BASE64_TRANSFER: rawContent exceeds 500KB — this is the worker→main thread base64 transfer suspect'
+              : 'raw content size acceptable',
+          });
+
           const classified: ClassifiedContent = {
             category: data.category,
             raw: data.rawContent || data.raw,
@@ -2510,7 +3302,22 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
             }
           }
 
+          const _resourceCreatedT = performance.now();
+          logResourceCreated(operationId, itemId, _workerRoundTripMs, data.category, data.byteSize || data.finalSize || file.size); // §4 RESOURCE_CREATED
+          markStart(operationId, 'STATE_UPDATE');
+          // Cache and persist original file/blob for high-res preview & downloads
+          if (file) {
+            this.storageService.resourceCache.put(itemId, file);
+            this.storageService.savePayloadToIndexedDb(itemId, file);
+          }
           this.storageService.updateItemProcessingState(itemId, 'done', classified);
+          markEnd(operationId, 'STATE_UPDATE');
+          const _persistMs = getMeasureMs(operationId, 'STATE_UPDATE');
+          logResourcePersisted(operationId, itemId, _persistMs); // §4 RESOURCE_PERSISTED
+          sendLog(operationId, 'STATE_UPDATE_DONE', {
+            itemId, stateUpdateMs: _persistMs.toFixed(2),
+          });
+          clearWorkerPostTime(itemId); // §7: clean up timing map
           this.storageService.fetchServerUsage('default');
           this.cleanupWorker(itemId);
 
@@ -2525,6 +3332,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
                 batchId: parentBatch.id,
                 batchTotalCount: parentBatch.batchFiles?.length || 0,
                 batchTotalBytes: parentBatch.batchTotalBytes,
+                raw: parentBatch.content?.raw,
                 batchFiles: parentBatch.batchFiles?.map(bf => ({
                   id: bf.id,
                   content: bf.content,
@@ -2534,8 +3342,25 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
               this.beamPayload.emit({ text: batchPayload, targetDeviceId: this.selectedTargetId(), filename: `${parentBatch.batchFiles?.length || 0} Files Batch`, existingItemId: parentBatch.id });
             }
           } else {
+            // ── §4 Log individual file beam before emit ──────────────────────────────────
+            logResourceReady(operationId, itemId, _workerRoundTripMs + _persistMs); // §4 RESOURCE_READY
+            sendLog(operationId, 'FILE_BEAM_EMIT', {
+              itemId, filename: classified.filename, category: classified.category,
+              rawBytes: typeof classified.raw === 'string' ? classified.raw.length : 0,
+            });
+            countStage('BROADCAST');
             // Broadcast standard individual file payload to paired peer devices
             this.beamPayload.emit({ text: classified.raw, targetDeviceId: this.selectedTargetId(), filename: classified.filename, existingItemId: itemId });
+            // §4/§16 Finalise the run record
+            const activeRun: any = (this as any)._activeRun;
+            if (activeRun) {
+              markEnd(operationId, 'SEND_TOTAL');
+              recordStage(activeRun, 'worker', getMeasureMs(operationId, 'WORKER'), 'ok');
+              recordStage(activeRun, 'stateUpdate', _persistMs, 'ok');
+              recordStage(activeRun, 'api', getMeasureMs(operationId, 'VALIDATE'), 'ok', 'upload-init included');
+              finaliseRun(activeRun);
+              (this as any)._activeRun = null;
+            }
           }
         } else if (type === 'ERROR' || error || success === false) {
           this.isProcessingPaste.set(false);
@@ -2555,10 +3380,17 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
         this.processFileInline(file, itemId, uploadSessionId, batchId);
       };
 
+      // ── §4/§7: Measure structured-clone cost + queue delay ─────────────────
+      const workerPostT = performance.now();
+      recordWorkerPostTime(itemId);       // §7: store t₀ for postMessage→onmessage gap calc
+      markStart(operationId, `WORKER_POST_${itemId}`);
+      logWorkerPost(operationId, itemId, file.size, file.type); // §4 WORKER_POST
+      countStage('PERSIST');
       // Protocol START / PROCESS_FILE_CHUNKED message with server session ID
       worker.postMessage({
         type: 'PROCESS_FILE_CHUNKED',
         id: itemId,
+        operationId,             // ─ thread operationId into worker for echo-back
         payload: {
           itemId,
           fileId: itemId,
@@ -2570,6 +3402,13 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
           uploadSessionId,
           remainingCapBytes
         }
+      });
+      markEnd(operationId, `WORKER_POST_${itemId}`);
+      const _postMsgDurationMs = getMeasureMs(operationId, `WORKER_POST_${itemId}`);
+      sendLog(operationId, 'WORKER_POST_DONE', {
+        itemId,
+        postMessageDurationMs: _postMsgDurationMs.toFixed(2),
+        note: 'High duration = structured-clone serialization cost on main thread (§7 suspect)',
       });
     } catch (err: unknown) {
       AirVaultLogger.warn('[AirVault Worker] Worker instantiation failed, executing inline fallback.');
@@ -2694,6 +3533,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
             batchId: parentBatch.id,
             batchTotalCount: parentBatch.batchFiles?.length || 0,
             batchTotalBytes: parentBatch.batchTotalBytes,
+            raw: parentBatch.content?.raw,
             batchFiles: parentBatch.batchFiles?.map(bf => ({
               id: bf.id,
               content: bf.content,
@@ -2758,6 +3598,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       case 'archive': return 'folder-archive';
       case 'font': return 'type';
       case 'json': return 'braces';
+      case 'markdown': return 'file-text';
       case 'file': return 'file-text';
       default: return 'align-left';
     }
@@ -2779,178 +3620,170 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   }
 
   // ── Floating Text Selection Formatting Toolbar ──
+  // ── Rich-Text Toolbar (Tiptap-delegating, replaces markdown string-splice approach) ──
+
   showSelectionToolbar = signal(false);
   selectionToolbarPos = signal<{ top: number; left: number }>({ top: 0, left: 0 });
   showHeadingMenu = signal(false);
+  showFontSizeMenu = signal(false);
   showLinkInput = signal(false);
-  linkUrlDraft = signal('');
-  selectedFormatText = signal('');
-  private selectionRange = { start: 0, end: 0 };
-  private toolbarDismissTimer: any = null;
+  linkUrlDraft = signal<string>('');
+  // Active formatting state signals (driven by editor transactions and selection changes)
+  isBoldActive = signal<boolean>(false);
+  isItalicActive = signal<boolean>(false);
+  isUnderlineActive = signal<boolean>(false);
+  isCodeActive = signal<boolean>(false);
+  isBlockquoteActive = signal<boolean>(false);
+  isLinkActive = signal<boolean>(false);
+  activeHeadingLevel = signal<number | 'ordered' | 'bullet' | 'quote' | 0>(0);
 
-  onComposerSelect(e?: Event) {
-    this.updateSelectionToolbar();
+  activeHeadingLabel = computed(() => {
+    const lvl = this.activeHeadingLevel();
+    if (lvl === 1) return 'H1';
+    if (lvl === 2) return 'H2';
+    if (lvl === 3) return 'H3';
+    if (lvl === 'bullet') return 'Bullet';
+    if (lvl === 'ordered') return '123';
+    if (lvl === 'quote') return 'Quote';
+    return 'Text';
+  });
+
+  toggleHeadingMenu(): void {
+    this.showLinkInput.set(false);
+    this.showHeadingMenu.set(!this.showHeadingMenu());
   }
 
-  updateSelectionToolbar() {
-    const el = this.textareaRef?.nativeElement;
-    if (!el) {
-      this.showSelectionToolbar.set(false);
-      return;
+  updateActiveFormattingStates(): void {
+    this.isBoldActive.set(this.richEditor.isBoldActive());
+    this.isItalicActive.set(this.richEditor.isItalicActive());
+    this.isUnderlineActive.set(this.richEditor.isUnderlineActive());
+    this.isCodeActive.set(this.richEditor.isCodeActive());
+    this.isBlockquoteActive.set(this.richEditor.isBlockquoteActive());
+    this.isLinkActive.set(this.richEditor.isLinkActive());
+    if (this.richEditor.isOrderedListActive()) {
+      this.activeHeadingLevel.set('ordered');
+    } else if (this.richEditor.isBulletListActive()) {
+      this.activeHeadingLevel.set('bullet');
+    } else if (this.richEditor.isBlockquoteActive()) {
+      this.activeHeadingLevel.set('quote');
+    } else if (this.richEditor.isHeadingActive(1)) {
+      this.activeHeadingLevel.set(1);
+    } else if (this.richEditor.isHeadingActive(2)) {
+      this.activeHeadingLevel.set(2);
+    } else if (this.richEditor.isHeadingActive(3)) {
+      this.activeHeadingLevel.set(3);
+    } else {
+      this.activeHeadingLevel.set(0);
     }
+  }
 
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
+  handleSelectionUpdate(empty: boolean): void {
+    this.updateActiveFormattingStates();
 
-    if (start === end || (end - start) === 0) {
-      if (!this.showLinkInput() && !this.showHeadingMenu()) {
+    if (empty) {
+      if (this.showLinkInput()) {
+        this.showLinkInput.set(false);
+      }
+      if (!this.showHeadingMenu() && !this.showFontSizeMenu()) {
         this.showSelectionToolbar.set(false);
       }
       return;
     }
 
-    const selText = el.value.substring(start, end);
-    this.selectedFormatText.set(selText);
-    this.selectionRange = { start, end };
+    if (typeof window === 'undefined') return;
 
-    // Calculate approximate coordinates in container
-    const textareaRect = el.getBoundingClientRect();
-    const parentRect = el.parentElement?.getBoundingClientRect() || textareaRect;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) {
+      this.showSelectionToolbar.set(false);
+      return;
+    }
 
-    // Estimate cursor X / Y position
-    const textBefore = el.value.substring(0, start);
-    const lines = textBefore.split('\n');
-    const lineIndex = lines.length - 1;
-    const charIndex = lines[lineIndex].length;
+    const range = sel.getRangeAt(0);
+    const rangeRect = range.getBoundingClientRect();
+    if (!rangeRect || (rangeRect.width === 0 && rangeRect.height === 0)) {
+      this.showSelectionToolbar.set(false);
+      return;
+    }
 
-    const approxCharWidth = 7.5;
-    const lineHeight = 20;
+    const editorEl = this.editorRef?.nativeElement;
+    if (!editorEl) return;
 
-    let left = (charIndex * approxCharWidth) + 12;
-    let top = (lineIndex * lineHeight) - 44;
+    const parentArea = editorEl.closest('.capsule-input-area') as HTMLElement;
+    const parentRect = (parentArea || editorEl).getBoundingClientRect();
 
-    // Bounds checking
-    left = Math.max(10, Math.min(parentRect.width - 240, left));
-    if (top < -60) top = -50;
+    // Position bubble 38px above the top of the selected text range, centered on selection
+    const top = Math.max(0, rangeRect.top - parentRect.top - 40);
+    const left = Math.max(8, Math.min(parentRect.width - 240, (rangeRect.left + rangeRect.right) / 2 - parentRect.left - 120));
 
     this.selectionToolbarPos.set({ top, left });
     this.showSelectionToolbar.set(true);
   }
 
-  applyFormat(type: 'bold' | 'italic') {
-    const el = this.textareaRef?.nativeElement;
-    if (!el) return;
+  onComposerSelect(_e?: Event): void {
+    this.updateSelectionToolbar();
+  }
 
-    const { start, end } = this.selectionRange;
-    if (start === end) return;
+  updateSelectionToolbar(): void {
+    const editor = this.richEditor.editor;
+    if (editor) {
+      const { empty } = editor.state.selection;
+      this.handleSelectionUpdate(empty);
+    }
+  }
 
-    const val = el.value;
-    const selected = val.substring(start, end);
-    const wrap = type === 'bold' ? '**' : '*';
+  applyFormat(type: 'bold' | 'italic' | 'underline' | 'code' | 'codeBlock'): void {
+    if (type === 'bold') {
+      this.richEditor.toggleBold();
+    } else if (type === 'italic') {
+      this.richEditor.toggleItalic();
+    } else if (type === 'underline') {
+      this.richEditor.toggleUnderline();
+    } else if (type === 'code') {
+      this.richEditor.toggleCode();
+    } else if (type === 'codeBlock') {
+      this.richEditor.toggleCodeBlock();
+    }
+    this.updateActiveFormattingStates();
+  }
 
-    let nextVal: string;
-    let newStart: number;
-    let newEnd: number;
-
-    // Check if already wrapped
-    if (selected.startsWith(wrap) && selected.endsWith(wrap) && selected.length >= wrap.length * 2) {
-      const unwrapped = selected.slice(wrap.length, selected.length - wrap.length);
-      nextVal = val.slice(0, start) + unwrapped + val.slice(end);
-      newStart = start;
-      newEnd = start + unwrapped.length;
+  applyHeading(level: 0 | 1 | 2 | 3 | 'ordered' | 'bullet' | 'quote'): void {
+    if (level === 'ordered') {
+      this.richEditor.toggleOrderedList();
+    } else if (level === 'bullet') {
+      this.richEditor.toggleBulletList();
+    } else if (level === 'quote') {
+      this.richEditor.toggleBlockquote();
     } else {
-      const wrapped = `${wrap}${selected}${wrap}`;
-      nextVal = val.slice(0, start) + wrapped + val.slice(end);
-      newStart = start;
-      newEnd = start + wrapped.length;
+      this.richEditor.toggleHeading(level);
     }
-
-    this.payloadText = nextVal;
-    this.saveStagedText(nextVal);
-    this.onTextChange();
-
-    setTimeout(() => {
-      el.focus();
-      el.selectionStart = newStart;
-      el.selectionEnd = newEnd;
-      this.selectionRange = { start: newStart, end: newEnd };
-    }, 0);
+    this.showHeadingMenu.set(false);
+    this.updateActiveFormattingStates();
   }
 
-  applyHeading(level: 0 | 1 | 2 | 3 | 'ordered' | 'bullet') {
-    const el = this.textareaRef?.nativeElement;
-    if (!el) return;
-
-    const { start } = this.selectionRange;
-    const val = el.value;
-
-    // Find the start and end of the line containing start
-    const lineStart = val.lastIndexOf('\n', start - 1) + 1;
-    let lineEnd = val.indexOf('\n', start);
-    if (lineEnd === -1) lineEnd = val.length;
-
-    const currentLine = val.substring(lineStart, lineEnd);
-    // Strip existing markdown heading/list prefixes
-    const cleanLine = currentLine.replace(/^(\#{1,6}\s+|-\s+|\d+\.\s+)/, '');
-
-    let prefix = '';
-    if (level === 1) prefix = '# ';
-    else if (level === 2) prefix = '## ';
-    else if (level === 3) prefix = '### ';
-    else if (level === 'ordered') prefix = '1. ';
-    else if (level === 'bullet') prefix = '- ';
-    else prefix = ''; // normal text
-
-    const newLine = `${prefix}${cleanLine}`;
-    const nextVal = val.slice(0, lineStart) + newLine + val.slice(lineEnd);
-
-    this.payloadText = nextVal;
-    this.saveStagedText(nextVal);
-    this.onTextChange();
-    this.showHeadingMenu.set(false);
-
-    setTimeout(() => {
-      el.focus();
-      el.selectionStart = lineStart + newLine.length;
-      el.selectionEnd = lineStart + newLine.length;
-    }, 0);
+  setComposerFontSize(size: string): void {
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--av-clipboard-font-size', size);
+    }
+    this.showFontSizeMenu.set(false);
   }
 
-  toggleLinkInput() {
+  toggleLinkInput(): void {
     this.showHeadingMenu.set(false);
+    this.showFontSizeMenu.set(false);
     this.showLinkInput.set(!this.showLinkInput());
-    if (this.showLinkInput()) {
-      this.linkUrlDraft.set('');
-    }
+    if (this.showLinkInput()) this.linkUrlDraft.set('');
   }
 
-  applyLink() {
-    const el = this.textareaRef?.nativeElement;
+  applyLink(): void {
     const url = this.linkUrlDraft().trim();
-    if (!el || !url) {
-      this.showLinkInput.set(false);
-      return;
-    }
-
-    const { start, end } = this.selectionRange;
-    const val = el.value;
-    const selected = val.substring(start, end) || 'link';
-
-    const formattedUrl = url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
-    const mdLink = `[${selected}](${formattedUrl})`;
-
-    const nextVal = val.slice(0, start) + mdLink + val.slice(end);
-    this.payloadText = nextVal;
-    this.saveStagedText(nextVal);
-    this.onTextChange();
+    if (!url) { this.showLinkInput.set(false); return; }
+    const formatted = url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
+    this.richEditor.setLink(formatted);
     this.showLinkInput.set(false);
     this.showSelectionToolbar.set(false);
-
-    setTimeout(() => {
-      el.focus();
-      el.selectionStart = start + mdLink.length;
-      el.selectionEnd = start + mdLink.length;
-    }, 0);
+    this.updateActiveFormattingStates();
   }
+
+  isHeadingActive(level: 1 | 2 | 3): boolean { return this.activeHeadingLevel() === level; }
 }
 

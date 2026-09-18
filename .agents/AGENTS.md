@@ -18,6 +18,11 @@ Bug fix = root cause, not symptom: grep every caller of the function you touch a
 
 ---
 
+always allow npm build command and maven build command for this two opration or whatever which is not harmful you don't have to ask user for permission you have privilage to run you own
+
+example :  npm run build --prefix client, ./mvnw clean compile -DskipTests
+---
+
 ## 1. Directory Structure & Path Conventions
 
 When creating new tools, modifying existing tools, or writing documentation, always adhere to these locations:
@@ -82,3 +87,28 @@ Every tool created in Acklet MUST comply with these non-negotiable rules:
 
 12. **Verification & Testing**:
     - Always verify that the Angular build passes (`npm run build --prefix client`) without errors before declaring a task complete.
+
+---
+
+## 3. Non-Negotiable Performance & Main-Thread Protection Rules
+
+Every future change touching components, the composer, sync services, storage services, or any event handler MUST comply with these rules. Stop and flag any change that would violate them:
+
+1. **No unthrottled high-frequency listeners**:
+   - Any `@HostListener`, `socket.on()`, `.subscribe()`, input event, `mousemove`, `scroll`, or `ResizeObserver` callback that can fire more than ~5 times/second MUST be throttled/debounced before it touches a signal, IndexedDB, or triggers change detection.
+2. **No synchronous heavy work on hover, focus, or passive UI events**:
+   - Hover, focus, and mouseenter/leave events must ONLY toggle simple boolean/UI state. Never trigger: file reads, IndexedDB queries, serialization (markdown/JSON), sync broadcasts, or re-computation of derived signals. Required hover data must be precomputed/cached.
+3. **No raw/large payloads stored directly in reactive signals**:
+   - Any file, image, folder, or payload over ~50–100KB must be staged as lightweight metadata (name, size, type, thumbnail ref) in signals. Full content is loaded on-demand only when rendered or opened — never held in the reactive graph by default.
+4. **Every socket/subscription must have a matching cleanup**:
+   - Any `socket.on()`, `.subscribe()`, or `addEventListener()` added must have a corresponding `.off()` / `.unsubscribe()` / `removeEventListener()` in the component's destroy lifecycle (`ngOnDestroy` / `takeUntilDestroyed`), in the SAME commit.
+5. **No signal writes inside a reactive effect that reads what it writes**:
+   - Check every `effect()` for circular dependencies: writing signal X while reading signal X (directly or via a called function) is strictly prohibited.
+6. **Batch, never loop-and-write**:
+   - Processing multiple items (files, sync packets, history entries) must build the full result first, then write to the signal ONCE. Never call `.set()` / `.update()` inside a `.forEach()`/loop over incoming items.
+7. **Deduplicate anything that can echo**:
+   - Any P2P, WebSocket, or BroadcastChannel message must be checked against a processed-ID set before being applied.
+8. **Performance Observer check required for sign-off**:
+   - Before marking composer/sync/storage features 'done,' verify zero long tasks (>50ms) logged by the `PerformanceObserver` during typing, hover, drag-drop, and multi-device sync simulation.
+9. **Ask before implementing risky patterns**:
+   - If an agent is unsure whether a new event handler, computed signal, or lifecycle hook could cause main-thread latency, explicitly propose the safe pattern first.

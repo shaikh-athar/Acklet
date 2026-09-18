@@ -76,7 +76,7 @@ import { IconComponent } from '../../../app/shared/components/icon/icon';
           <!-- Font Size Selector Pill -->
           <div class="font-menu-container">
             <button class="footer-pill" (click)="toggleSizeMenu($event)" [attr.data-tooltip]="'Text Size: ' + currentSizeName()">
-              <app-icon name="type" class="icon-xs"></app-icon>
+              <app-icon name="a-large-small" class="icon-xs"></app-icon>
               <app-icon name="chevron-down" class="icon-xxs font-chevron"></app-icon>
             </button>
             @if (showSizeMenu()) {
@@ -121,7 +121,7 @@ import { IconComponent } from '../../../app/shared/components/icon/icon';
     </footer>
   `,
   styles: [`
-    :host { display: block; position: relative; z-index: 40; }
+    :host { display: block; position: relative; z-index: 100; }
 
     .av-footer {
       flex-shrink: 0;
@@ -133,7 +133,7 @@ import { IconComponent } from '../../../app/shared/components/icon/icon';
       box-sizing: border-box;
       position: relative;
       overflow: visible;
-      z-index: 40;
+      z-index: 100;
     }
 
     .av-footer-inner {
@@ -149,12 +149,13 @@ import { IconComponent } from '../../../app/shared/components/icon/icon';
       overflow: visible;
     }
 
-    /* Footer tooltips MUST open upwards so they don't clip off-screen */
+    /* Footer tooltips MUST open upwards and have top z-index so they never hide */
     .av-footer [data-tooltip]::after {
       bottom: calc(100% + 8px) !important;
       top: auto !important;
       left: 50%;
       transform: translateX(-50%) translateY(4px);
+      z-index: 5000 !important;
     }
     .av-footer [data-tooltip]:hover::after {
       transform: translateX(-50%) translateY(0);
@@ -167,6 +168,16 @@ import { IconComponent } from '../../../app/shared/components/icon/icon';
     }
     .footer-cluster > :first-child[data-tooltip]:hover::after {
       transform: translateY(0);
+    }
+
+    /* Right cluster buttons tooltips: right-anchored so they don't overflow viewport */
+    .footer-cluster:last-child [data-tooltip]::after {
+      left: auto;
+      right: 0;
+      transform: translateX(0) translateY(4px);
+    }
+    .footer-cluster:last-child [data-tooltip]:hover::after {
+      transform: translateX(0) translateY(0);
     }
 
     /* Left / Right clusters */
@@ -349,7 +360,7 @@ import { IconComponent } from '../../../app/shared/components/icon/icon';
       border-radius: 8px;
       padding: 6px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-      z-index: 100;
+      z-index: 500;
       animation: fadeIn 0.15s ease;
     }
     .font-popover-menu.size-menu {

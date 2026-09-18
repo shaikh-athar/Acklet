@@ -55,15 +55,15 @@ addEventListener('message', async (event: MessageEvent) => {
     try {
       const totalBytes = file.size;
 
-      // 0. Validate single file size limit (500 MB)
-      const MAX_SINGLE_FILE_SIZE = 500 * 1024 * 1024;
+      // 0. Validate single file size limit (1 GB)
+      const MAX_SINGLE_FILE_SIZE = 1024 * 1024 * 1024;
       if (totalBytes > MAX_SINGLE_FILE_SIZE) {
         postMessage({
           type: 'ERROR',
           payload: {
             fileId,
             stage: 'validation',
-            message: `File size (${(totalBytes / 1024 / 1024).toFixed(1)} MB) exceeds maximum single file limit of 500 MB`,
+            message: `File size (${(totalBytes / 1024 / 1024).toFixed(1)} MB) exceeds maximum single file limit of 1 GB`,
             recoverable: false
           }
         });

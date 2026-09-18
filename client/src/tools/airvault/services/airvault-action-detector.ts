@@ -17,10 +17,6 @@ export function detectActionShortcut(text: string): ContentActionShortcut | unde
   const phoneShortcut = detectPhoneShortcut(trimmed);
   if (phoneShortcut) return phoneShortcut;
 
-  // 3. Physical Address Detection
-  const addressShortcut = detectAddressShortcut(trimmed);
-  if (addressShortcut) return addressShortcut;
-
   return undefined;
 }
 
@@ -95,30 +91,6 @@ export function detectPhoneShortcut(text: string): ContentActionShortcut | undef
   return undefined;
 }
 
-export function detectAddressShortcut(text: string): ContentActionShortcut | undefined {
-  if (text.length < 12 || text.length > 300) return undefined;
-  if (text.startsWith('http') || text.includes('@') || text.includes('{') || text.includes('}')) return undefined;
-
-  const addressKeywords = /\b(street|st\.|road|rd\.|avenue|ave\.|boulevard|blvd\.|lane|ln\.|drive|dr\.|nagar|colony|sector|block|apartment|apt\.|flat|floor|suite|plot|pincode|pin code|zipcode|zip code|highway|chowk|marg|vihar|layout|enclave)\b/i;
-  const postalCodeRegex = /\b(\d{5,6}|\d{5}-\d{4}|[A-Z]\d[A-Z]\s?\d[A-Z]\d)\b/i;
-
-  const hasKeyword = addressKeywords.test(text);
-  const postalMatch = text.match(postalCodeRegex);
-  const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
-
-  if ((hasKeyword || postalMatch) && wordCount >= 3) {
-    return {
-      detectedType: 'address',
-      metadata: {
-        address: text,
-        postalCode: postalMatch ? postalMatch[1] : undefined
-      },
-      missingInfoHint: !postalMatch ? 'PIN / Postal code missing' : undefined
-    };
-  }
-
-  return undefined;
-}
 
 /**
  * Mask sensitive credentials and tokens for safe cross-device preview broadcasting (truncates to ~80 chars).
@@ -383,7 +355,6 @@ export function scanAllMatches(text: string): ComposerMatch[] {
       const raw = m[1];
       const start = m.index + (m[0].length - raw.length);
       const end = start + raw.length;
-      if (overlaps(start, end)) continue;
       try {
         const shortcut = detectPhoneShortcut(raw.trim());
         if (shortcut) {
@@ -391,24 +362,6 @@ export function scanAllMatches(text: string): ComposerMatch[] {
         }
       } catch { /* libphonenumber parse error — skip */ }
     }
-  }
-
-  // 6. Physical Addresses (Postal code or street/road lines)
-  const lines = text.split(/\r?\n/);
-  let lineOffset = 0;
-  for (const line of lines) {
-    const trimmedLine = line.trim();
-    if (trimmedLine.length >= 12 && trimmedLine.length <= 250) {
-      const start = text.indexOf(line, lineOffset);
-      const end = start + line.length;
-      if (start !== -1 && !overlaps(start, end)) {
-        const shortcut = detectAddressShortcut(trimmedLine);
-        if (shortcut) {
-          results.push({ start, end, matchedText: trimmedLine, shortcut });
-        }
-      }
-    }
-    lineOffset += line.length + 1;
   }
 
   // Sort by start offset for deterministic rendering order

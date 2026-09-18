@@ -12,8 +12,8 @@ export interface CachedResource {
   providedIn: 'root'
 })
 export class AirVaultResourceCacheService {
-  // Max in-memory cache budget: 50 MB
-  private readonly MAX_CACHE_BYTES = 50 * 1024 * 1024;
+  // Max in-memory cache budget: 1 GB (expanded from 500 MB)
+  private readonly MAX_CACHE_BYTES = 1024 * 1024 * 1024;
   private cache = new Map<string, CachedResource>();
   private currentCacheBytes = 0;
 

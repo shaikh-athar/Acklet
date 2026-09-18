@@ -16,7 +16,7 @@ export const ACKLET_TOOL_THRESHOLDS: Record<string, ToolThresholdConfig> = {
   airvault: {
     toolId: 'airvault',
     primaryThresholdBytes: 100 * 1024, // 100 KB
-    maxRecommendedBytes: 500 * 1024 * 1024, // 500 MB
+    maxRecommendedBytes: 1024 * 1024 * 1024, // 1 GB (Max single file)
     degradationDescription: 'Live regex and AST detection paused to prevent main-thread lag. Payload is ready to beam immediately.',
     optInLabel: 'Enable Deep Scanning Anyway'
   },

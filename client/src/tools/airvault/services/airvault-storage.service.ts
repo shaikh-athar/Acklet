@@ -53,6 +53,9 @@ export interface AirVaultItem {
   dedupKey?: string;
   copyCount?: number;
   lastCopiedAt?: number;
+  // Resend fields
+  resendCount?: number;
+  lastResentAt?: number;
   // Burn-After-Read fields
   burnAfterRead?: boolean;
   isBurned?: boolean;
@@ -220,7 +223,7 @@ export class AirVaultStorageService {
 
   /**
    * Authoritative Total Storage Quota:
-   * Base = 1 GB (for self device) + 1 GB per additional connected/active device
+   * Base = 5 GB (for self device) + 5 GB per additional connected/active device
    */
   totalStorageCapBytes = computed(() => {
     const activePeers = this.deviceService.pairedDevices().filter(d => d.status === 'active' && d.syncEnabled !== false);
@@ -334,7 +337,11 @@ export class AirVaultStorageService {
    */
   async saveDraft(text: string): Promise<void> {
     if (!this.db) return;
-    if (!text || text.length > 30000) return;
+    // If text is empty or only whitespace, remove the draft so it is not restored on reload
+    if (!text || !text.trim()) {
+      return this.clearDraft();
+    }
+    if (text.length > 30000) return;
     return new Promise<void>((resolve) => {
       try {
         const tx = this.db!.transaction(DRAFT_STORE_NAME, 'readwrite');
@@ -439,7 +446,7 @@ export class AirVaultStorageService {
   private toMetadataOnlyItem(item: AirVaultItem): AirVaultItem {
     if (!item || !item.content) return item;
     const cat = item.content.category;
-    const isHeavyResource = cat !== 'text' && cat !== 'code' && cat !== 'json' && cat !== 'url';
+    const isHeavyResource = !item.isBatchParent && cat !== 'text' && cat !== 'code' && cat !== 'json' && cat !== 'url';
     const isLargeRaw = typeof item.content.raw === 'string' && item.content.raw.length > 100_000;
 
     if (isHeavyResource || isLargeRaw) {
@@ -448,7 +455,7 @@ export class AirVaultStorageService {
         ...item,
         content: {
           ...item.content,
-          raw: '' // Strip payload from in-memory array
+          raw: item.isBatchParent ? (item.content.raw || '') : '' // Preserve batch caption/text for batch parents
         }
       };
     }
@@ -524,7 +531,13 @@ export class AirVaultStorageService {
         AirVaultLogger.warn(`[AirVault Storage] Could not stream resource ${fileId}:`, e);
       }
 
-      // 3. Fallback to existing previewUrl or raw text if available
+      // 3. Fallback to existing raw base64 or previewUrl if available
+      if (item.content?.raw && item.content.raw.startsWith('data:')) {
+        try {
+          const res = await fetch(item.content.raw);
+          return await res.blob();
+        } catch {}
+      }
       if (item.content?.previewUrl && item.content.previewUrl.startsWith('data:')) {
         try {
           const res = await fetch(item.content.previewUrl);
@@ -631,6 +644,34 @@ export class AirVaultStorageService {
     }
     return updatedItem;
   }
+
+  /**
+   * Increments the resendCount for an item, records lastResentAt, updates timestamp, and persists.
+   */
+  incrementResendCount(itemId: string): AirVaultItem | undefined {
+    let updatedItem: AirVaultItem | undefined;
+    const now = Date.now();
+    this.allItems.update(list => {
+      const idx = list.findIndex(i => i.id === itemId);
+      if (idx === -1) return list;
+      const current = list[idx];
+      const target: AirVaultItem = {
+        ...current,
+        timestamp: now,
+        lastResentAt: now,
+        resendCount: (current.resendCount || 0) + 1,
+        isDeletedFromActive: false
+      };
+      updatedItem = target;
+      const remaining = list.filter(i => i.id !== itemId);
+      return [target, ...remaining];
+    });
+    if (updatedItem) {
+      this.persistAll();
+    }
+    return updatedItem;
+  }
+
 
   /**
    * Adds an item to the vault with automatic deduplication.
@@ -787,9 +828,9 @@ export class AirVaultStorageService {
     const minutes = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
 
     if (days > 0) {
-      label = `${days}d ${hours}h left`;
+      label = `${days}d left`;
     } else if (hours > 0) {
-      label = `${hours}h ${minutes}m left`;
+      label = `${hours}h left`;
     } else if (minutes > 0) {
       label = `${minutes}m left`;
     } else {
@@ -1509,19 +1550,22 @@ export class AirVaultStorageService {
   private saveLocalStorage(list?: AirVaultItem[]) {
     try {
       const source = list || this.allItems();
-      const lightweightItems = source.slice(0, 30).map(item => {
-        if (item.content && item.content.raw && item.content.raw.length > 2000) {
+      // Store lightweight representations in localStorage without truncating or corrupting raw text
+      const fallbackItems = source.slice(0, 30).map(item => {
+        const cat = item.content?.category;
+        const isResource = !item.isBatchParent && cat !== 'text' && cat !== 'code' && cat !== 'json' && cat !== 'url';
+        if (isResource && item.content?.raw && item.content.raw.length > 50_000) {
           return {
             ...item,
             content: {
               ...item.content,
-              raw: item.content.raw.slice(0, 300) + '... [Full content in IndexedDB]'
+              raw: '' // Binary data stored in IndexedDB payload store
             }
           };
         }
         return item;
       });
-      localStorage.setItem('acklet_airvault_items', JSON.stringify(lightweightItems));
+      localStorage.setItem('acklet_airvault_items', JSON.stringify(fallbackItems));
     } catch {}
   }
 

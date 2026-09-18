@@ -13,14 +13,17 @@ Although clipboard contents are encrypted client-side with zero-knowledge keys, 
 ```text
 server/acklet/src/main/java/com/code/acklet/airvault/
 ├── config/
-│   └── AirVaultRabbitMqConfig.java     # Upload exchange, durable queues, DLQ dead-letter routing
+│   ├── AirVaultRabbitMqConfig.java     # Upload exchange, durable queues, DLQ dead-letter routing
+│   └── AirVaultExecutorConfig.java     # Dedicated thread-pool executor for WebSocket JSON & I/O offloading
+├── diagnostic/
+│   └── WsOperationTimer.java           # High-resolution microsecond latency profiling & timers
 ├── controller/
 │   ├── AirVaultDeviceController.java   # Device registration, heartbeats, rename, revoke, logout
 │   ├── AirVaultSyncController.java     # WebRTC signaling relay & direct/broadcast mailboxes
 │   └── AirVaultUploadController.java   # Chunked upload sessions, 500 MB limit, SSE & completion
 ├── websocket/
 │   ├── AirVaultWebSocketConfig.java    # Registers persistent WebSocket endpoint at /ws/airvault
-│   ├── AirVaultWebSocketHandler.java   # Session registry, keepalive PING/PONG, signal routing
+│   ├── AirVaultWebSocketHandler.java   # Session registry, keepalive PING/PONG, signal routing, slow client eviction
 │   ├── AirVaultHandshakeInterceptor.java # Device ID & JWT auth parameter verification
 │   └── dto/
 │       └── AirVaultWsMessage.java      # Typed WebSocket JSON envelope (CONNECT_ACK, PING, PONG, SIGNAL)
@@ -149,7 +152,7 @@ CREATE TABLE airvault_device_pairings (
 
 | Protocol / Method | Path | Summary | Description |
 | :--- | :--- | :--- | :--- |
-| `WebSocket` | `/ws/airvault` | Persistent real-time signaling transport | Handles bidirectional real-time communication for all peer signals (`SYNC_PACKET`, `SYNC_ACK`, `ITEM_DELETE`, `LIVE_CLIPBOARD_SYNC`, `PAIR_REQUEST`, `PAIR_CONFIRM`, `INITIAL_SYNC_*`, `DEVICE_*`, `DOC_OPERATION`, `DRAFT_*`). Authenticated via Spring Security cookie/bearer, tracks active sessions, and routes direct & broadcast messages in-memory with RabbitMQ relay. |
+| `WebSocket` | `/ws/airvault` | Persistent real-time signaling transport | Handles bidirectional real-time communication for all peer signals (`SYNC_PACKET`, `SYNC_ACK`, `ITEM_DELETE`, `LIVE_CLIPBOARD_SYNC`, `PAIR_REQUEST`, `PAIR_CONFIRM`, `INITIAL_SYNC_*`, `DEVICE_*`, `DOC_OPERATION`, `DRAFT_*`). Authenticated via Spring Security cookie/bearer, tracks active sessions, routes direct & broadcast messages in-memory with RabbitMQ relay, offloads JSON serialization & DB audits to a dedicated ThreadPoolTaskExecutor (`wsOffloadExecutor`), and enforces a 2-second timeout with slow-client eviction. |
 | `POST` | `/api/v1/airvault/sync/viewed` | Atomic burn-after-read confirmation | Atomically registers first-view via Compare-And-Swap (CAS) in MySQL, records audit log entry, purges remote metadata/payloads, and broadcasts deletion to connected WebSocket clients. |
 
 ---

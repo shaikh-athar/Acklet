@@ -1,6 +1,7 @@
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import type { ContentActionShortcut, DetectedContentType, ActionShortcutMetadata } from './airvault-clipboard.service';
 import { computeDedupKey, normalizeUrlForDedup, normalizeTextForDedup, sha256Hex, scanAllMatches } from './airvault-action-detector';
+import { isStrictCodeMarkup, looksLikeMarkdown } from './airvault-markdown.util';
 
 export interface ClassifyWorkerPayload {
   rawText: string;
@@ -9,7 +10,7 @@ export interface ClassifyWorkerPayload {
 }
 
 export interface ClassifiedContentResult {
-  category: 'code' | 'url' | 'image' | 'file' | 'text' | 'video' | 'audio' | 'pdf' | 'spreadsheet' | 'archive' | 'font' | 'json';
+  category: 'code' | 'url' | 'image' | 'file' | 'text' | 'video' | 'audio' | 'pdf' | 'spreadsheet' | 'archive' | 'font' | 'json' | 'markdown';
   raw: string;
   language?: string;
   isSensitive: boolean;
@@ -210,6 +211,7 @@ addEventListener('message', async (event: MessageEvent) => {
       const isSpreadsheet = /\.(csv|tsv|xlsx|xls)$/i.test(fname);
       const isArchive = /\.(zip|rar|7z|tar|gz|bz2)$/i.test(fname) || (file.type && file.type.startsWith('application/zip'));
       const isFont = /\.(ttf|otf|woff|woff2)$/i.test(fname);
+      const isMd = /\.(md|markdown)$/i.test(fname);
       const isCodeExt = /\.(js|ts|jsx|tsx|py|java|cpp|c|html|css|json|xml|sql|sh|yaml|yml|rs|go|php|dart|vue|svelte|rb|swift|kt)$/i.test(fname);
 
       if (isImg) detectedCategory = 'image';
@@ -219,6 +221,7 @@ addEventListener('message', async (event: MessageEvent) => {
       else if (isSpreadsheet) detectedCategory = 'spreadsheet';
       else if (isArchive) detectedCategory = 'archive';
       else if (isFont) detectedCategory = 'font';
+      else if (isMd) detectedCategory = 'markdown';
       else if (isCodeExt) detectedCategory = fname.endsWith('.json') ? 'json' : 'code';
 
       // 4. For binary and text payloads, preserve byte integrity without UTF-8 corruption
@@ -226,9 +229,7 @@ addEventListener('message', async (event: MessageEvent) => {
       const isBinary = isImg || isVid || isAud || isPdf || isArchive || isFont || /\.(docx?|xlsx?|pptx?|bin|iso|dmg|pkg|wasm|dylib|so|psd|ai|fig|sketch|xd|epub|mobi)$/i.test(fname) || (file.type && (file.type.startsWith('application/') || file.type.startsWith('image/') || file.type.startsWith('video/') || file.type.startsWith('audio/')));
 
       if (isBinary) {
-        if (previewUrl && isImg) {
-          rawContent = previewUrl;
-        } else if (totalBytes <= 50 * 1024 * 1024) {
+        if (totalBytes <= 50 * 1024 * 1024) {
           try {
             const fullBuf = await file.arrayBuffer();
             const bytes = new Uint8Array(fullBuf);
@@ -348,18 +349,18 @@ addEventListener('message', async (event: MessageEvent) => {
         return;
       }
 
-      // 5. Code Detection
-      const lang = detectCodeLanguage(text);
-      if (lang) {
-        const cat = lang === 'json' ? 'json' : 'code';
-        const dedupKey = await computeDedupKey(cat, text);
+      // 5. Explicit Markdown extension or Markdown syntax detection
+      const fname = (filename || '').toLowerCase();
+      if (/\.(md|markdown)$/i.test(fname) || looksLikeMarkdown(text)) {
+        const dedupKey = await computeDedupKey('markdown', text);
         postMessage({
           id,
           success: true,
           result: {
-            category: cat,
+            category: 'markdown',
             raw: text,
-            language: lang,
+            language: 'MARKDOWN',
+            filename,
             isSensitive: sensitive.isSensitive,
             sensitiveType: sensitive.sensitiveType,
             maskedSnippet: sensitive.maskedSnippet,
@@ -374,7 +375,34 @@ addEventListener('message', async (event: MessageEvent) => {
         return;
       }
 
-      // 6. Default Text / File
+      // 6. Code Detection
+      const lang = detectCodeLanguage(text);
+      if (lang) {
+        const cat = lang === 'json' ? 'json' : 'code';
+        const dedupKey = await computeDedupKey(cat, text);
+        postMessage({
+          id,
+          success: true,
+          result: {
+            category: cat,
+            raw: text,
+            language: lang,
+            filename,
+            isSensitive: sensitive.isSensitive,
+            sensitiveType: sensitive.sensitiveType,
+            maskedSnippet: sensitive.maskedSnippet,
+            byteSize,
+            actionShortcut: shortcut,
+            detectedType: shortcut?.detectedType,
+            metadata: shortcut?.metadata,
+            missingInfoHint: shortcut?.missingInfoHint,
+            dedupKey
+          }
+        });
+        return;
+      }
+
+      // 7. Default Text / File
       const cat = filename ? 'file' : 'text';
       const dedupKey = await computeDedupKey(cat, text);
       postMessage({
@@ -422,10 +450,6 @@ export function detectActionShortcut(text: string): ContentActionShortcut | unde
   // 2. Phone Number Detection via libphonenumber-js
   const phoneShortcut = detectPhoneShortcut(trimmed);
   if (phoneShortcut) return phoneShortcut;
-
-  // 3. Physical Address Detection
-  const addressShortcut = detectAddressShortcut(trimmed);
-  if (addressShortcut) return addressShortcut;
 
   return undefined;
 }
@@ -501,30 +525,6 @@ function detectPhoneShortcut(text: string): ContentActionShortcut | undefined {
   return undefined;
 }
 
-function detectAddressShortcut(text: string): ContentActionShortcut | undefined {
-  if (text.length < 12 || text.length > 300) return undefined;
-  if (text.startsWith('http') || text.includes('@') || text.includes('{') || text.includes('}')) return undefined;
-
-  const addressKeywords = /\b(street|st\.|road|rd\.|avenue|ave\.|boulevard|blvd\.|lane|ln\.|drive|dr\.|nagar|colony|sector|block|apartment|apt\.|flat|floor|suite|plot|pincode|pin code|zipcode|zip code|highway|chowk|marg|vihar|layout|enclave)\b/i;
-  const postalCodeRegex = /\b(\d{5,6}|\d{5}-\d{4}|[A-Z]\d[A-Z]\s?\d[A-Z]\d)\b/i;
-
-  const hasKeyword = addressKeywords.test(text);
-  const postalMatch = text.match(postalCodeRegex);
-  const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
-
-  if ((hasKeyword || postalMatch) && wordCount >= 3) {
-    return {
-      detectedType: 'address',
-      metadata: {
-        address: text,
-        postalCode: postalMatch ? postalMatch[1] : undefined
-      },
-      missingInfoHint: !postalMatch ? 'PIN / Postal code missing' : undefined
-    };
-  }
-
-  return undefined;
-}
 
 function detectSensitiveData(text: string): { isSensitive: boolean; sensitiveType?: string; maskedSnippet?: string } {
   if (/AKIA[0-9A-Z]{16}/.test(text)) {
@@ -549,7 +549,7 @@ function detectCodeLanguage(text: string): string | null {
   if (text.startsWith('[') && text.endsWith(']')) {
     try { JSON.parse(text); return 'json'; } catch {}
   }
-  if (/<([a-z]+)([^<]+)*(?:>(.*)<\/\1>|\s+\/>)/i.test(text)) return 'xml/html';
+  if (isStrictCodeMarkup(text)) return 'xml/html';
   if (/(function|const|let|var|import|export|class|=>)\s+[a-zA-Z0-9_]+/i.test(text)) return 'javascript';
   if (/(def\s+[a-zA-Z_]|import\s+[a-zA-Z_]|print\()/i.test(text)) return 'python';
   if (/(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE)\s+/i.test(text)) return 'sql';

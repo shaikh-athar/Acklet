@@ -1,3 +1,7 @@
+---
+description: Clipboard Sync
+---
+
 # Acklet AirVault: Multi-Device Clipboard Consistency Model & Synchronization Rules
 
 See authoritative specification in [.agents/clipboard-sync-rules.md](file:///Users/ayaz/Acklet/.agents/clipboard-sync-rules.md).

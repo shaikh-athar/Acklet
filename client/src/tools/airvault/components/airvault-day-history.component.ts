@@ -7,6 +7,7 @@ import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/
 import { IconComponent } from '../../../app/shared/components/icon/icon';
 import { AirVaultDeviceService } from '../services/airvault-device.service';
 import { AirVaultColorService } from '../services/airvault-color.service';
+import { isHtmlContent } from '../services/airvault-rich-editor.service';
 
 export interface DayGroup {
   dateLabel: string;
@@ -265,11 +266,17 @@ export interface SearchMatchLocation {
                               </div>
                               @if (item.content?.raw && !isImageItem(item) && !item.file_name) {
                                 <div class="entry-snippet">
-                                  @for (seg of getHighlightSegments(item.content.raw, getItemId(item), 'snippet'); track $index) {
-                                    @if (seg.isMatch) {
-                                      <mark class="av-search-match" [class.av-search-match-active]="seg.isActive" [id]="'av-match-' + seg.matchGlobalIndex">{{ seg.text }}</mark>
-                                    } @else {
-                                      <span>{{ seg.text }}</span>
+                                  @if (isHtmlContent(item.content.raw)) {
+                                    <!-- Rich-text item: render HTML directly -->
+                                    <div class="av-rich-snippet" [innerHTML]="item.content.raw"></div>
+                                  } @else {
+                                    <!-- Plain-text item: use existing highlight-segment loop -->
+                                    @for (seg of getHighlightSegments(item.content.raw, getItemId(item), 'snippet'); track $index) {
+                                      @if (seg.isMatch) {
+                                        <mark class="av-search-match" [class.av-search-match-active]="seg.isActive" [id]="'av-match-' + seg.matchGlobalIndex">{{ seg.text }}</mark>
+                                      } @else {
+                                        <span>{{ seg.text }}</span>
+                                      }
                                     }
                                   }
                                 </div>
@@ -1981,6 +1988,11 @@ export class AirVaultDayHistoryComponent implements OnInit, OnDestroy {
     const cat = (item.category || item.content?.category || '').toLowerCase();
     const name = (item.file_name || item.content?.filename || '').toLowerCase();
     return cat === 'image' || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png') || name.endsWith('.webp') || name.endsWith('.gif');
+  }
+
+  /** Returns true if the content.raw string is rich HTML (produced by Tiptap) */
+  isHtmlContent(raw: string): boolean {
+    return isHtmlContent(raw);
   }
 
   getItemThumbnail(item: any): string | null {

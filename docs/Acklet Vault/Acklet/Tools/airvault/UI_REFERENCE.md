@@ -33,11 +33,27 @@ AirVault follows the strict design discipline established by Acklet's DataLens t
     - **Sync Status Pill**: Interactive device connection indicator.
 - **Masonry / Responsive Card Grid Area**:
   - CSS Grid with `auto-fit` columns (`minmax(220px, 1fr)`, gap 12px), where each item is an independent browsable card sized to its own content.
-  - **In-Card Sender Badge**: Located in the top-left corner of each card (`[accent dot] @username`, or `@chr (this device)` for local items), with relative timestamp (`4m`, `2m`, `now`) in the top-right corner.
-  - **Card Content Rendering**: Rich syntax-highlighted code, text with entity detection pills (URLs, tracking numbers, phone numbers, addresses), image/file previews, expiration chips, and copy buttons.
+  - **In-Card Sender Badge**: Located in the top-left corner of each card (`[accent dot] @username`), with relative timestamp (`4m`, `2m`, `now`) in the top-right corner.
+  - **Card Content Rendering**: Rich syntax-highlighted code, HTML/markdown rich-text snippet with preserved formatting (headings, lists, bold/italic, code, links), image/file previews, expiration chips, and copy buttons.
+  - **Multi-Resource & Mixed Item Visual Architecture**:
+    AirVault natively supports mixed payloads containing rich markdown/text along with single or multiple attached media/files.
+    
+    1. **Card / Tile View**:
+       - Mixed payloads display a clean `.mixed-resource-header` top bar with a thumbnail icon/image and attachment count chip (`+1`, `+2`), followed by the rich-text snippet in `.mixed-text-snippet`.
+       - Pure multi-file batches without custom user notes display the 3-layer card depth stack (`.batch-stacked-container`).
+       
+    2. **Preview Modal Architecture**:
+       - Mixed items open into a capsule-first preview workflow:
+         - **Resource Capsules Section (`.mixed-capsules-section`)**: Renders compact capsule cards (`.mixed-resource-capsule-card`) for each attached file with thumbnail, name, byte size, and an interactive `Preview` action badge.
+         - **Standalone Media Viewer on Demand (`.mixed-expanded-viewer-card`)**: Clicking any resource capsule expands the standalone full-resolution media viewer directly above the notes, with zoom/controls for that file. Clicking again collapses it.
+         - **Rich Document View (`.mixed-preview-text-section`)**: Renders full markdown/HTML notes with full formatting below.
+       - Pure file payloads open directly into their dedicated standalone full-stage viewer (`<app-airvault-file-preview>`).
+    - **Full Preview Modal**: Renders the complete **Resource viewer/gallery first on top** (interactive image, video, audio player, PDF, or spreadsheet viewer), followed by a clear divider and the **complete formatted rich-text document view below it**.
   - **Current Device Visual Cue**: Local device cards receive a subtle blue accent border (`.is-self`), matching the wireframe specification.
   - **Empty Watermark**: Displays dropzone instructions, client-side encryption badges, and 1-click sample pills (`Code Snippet`, `JSON Payload`, `URL Link`).
-- **Composer Auto-Growth & Expansion Dimensions**:
+- **Composer Auto-Growth, Rich Formatting & Expansion Dimensions**:
+  - *Rich WYSIWYG Core*: Powered by headless TipTap editor with native Markdown/HTML bidirectional sync and multi-line line blame preservation.
+  - *Floating Formatting Bubble Toolbar*: Appears ~40px above selection with bounds-checking, offering Bold, Italic, Code, Link modal, Headings (H1/H2/H3), Lists (bulleted/numbered), and font-size selectors (12px, 13.5px, 15px, 17px).
   - *Default/Collapsed mode*: Auto-grows dynamically up to ~6–7 lines (~150px) to comfortably accommodate multi-sentence messages before internal scrolling or full expansion.
   - *Expanded mode*: Expands to accommodate ~15–18 lines (~280px–380px) with docked bottom controls for long-form scripts, markdown documentation, and complex multi-line snippets.
   - *Expand/Collapse Toggle*: Corner expansion button using `maximize-2` / `minimize-2` matching the modern composer standard.

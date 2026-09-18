@@ -2,7 +2,7 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { AirVaultStorageService, AirVaultItem } from './airvault-storage.service';
 import { AirVaultClipboardService, ClassifiedContent } from './airvault-clipboard.service';
 
-export type FilterTab = 'all' | 'pinned' | 'code' | 'url' | 'image' | 'file' | 'text';
+export type FilterTab = 'all' | 'pinned' | 'code' | 'url' | 'image' | 'file' | 'markdown' | 'text';
 
 @Injectable({
   providedIn: 'root'
@@ -25,6 +25,7 @@ export class AirVaultClipboardStore {
     { id: 'all', label: 'All Items', icon: 'layers' },
     { id: 'pinned', label: 'Pinned', icon: 'pin' },
     { id: 'code', label: 'Code', icon: 'code' },
+    { id: 'markdown', label: 'Markdown', icon: 'file-text' },
     { id: 'url', label: 'Links', icon: 'link' },
     { id: 'image', label: 'Images', icon: 'image' },
     { id: 'file', label: 'Files', icon: 'file-text' },
@@ -63,6 +64,7 @@ export class AirVaultClipboardStore {
       all: all.length,
       pinned: all.filter(i => i.isPinned).length,
       code: all.filter(i => i.content.category === 'code').length,
+      markdown: all.filter(i => i.content.category === 'markdown').length,
       url: all.filter(i => i.content.category === 'url').length,
       image: all.filter(i => i.content.category === 'image').length,
       file: all.filter(i => i.content.category === 'file').length,

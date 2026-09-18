@@ -800,44 +800,89 @@ export class AirVaultDeviceService {
     }
   }
 
-  private startPresenceHeartbeat() {
-    // Immediate first heartbeat
-    this.sendHeartbeat();
+  private heartbeatIntervalTimer: any = null;
+  private lastHeartbeatSentAt = 0;
 
-    // Trigger immediate presence heartbeat whenever WebSocket connects or reconnects
+  private startPresenceHeartbeat() {
+    // 1. One-time initial REST fallback registration on startup before WS is fully ready
+    this.sendInitialRestHeartbeatFallback();
+
+    // 2. Immediate WebSocket heartbeat whenever transport connects or reconnects
     this.wsTransport.onConnected$.subscribe(() => {
-      AirVaultLogger.debug('[AirVault Device] ⚡ WebSocket connected. Emitting presence heartbeat immediately...');
-      this.sendHeartbeat();
+      AirVaultLogger.debug('[AirVault Device] ⚡ WebSocket connected. Emitting WS presence heartbeat immediately...');
+      this.sendWsHeartbeat();
     });
 
-    setInterval(() => this.sendHeartbeat(), 15000);
+    // 3. Regular 5s application-level WebSocket heartbeat interval
+    this.heartbeatIntervalTimer = setInterval(() => {
+      this.sendWsHeartbeat();
+    }, 5000);
+
+    // 4. Page Visibility API: on tab return (visibilitychange to 'visible' or window focus),
+    // immediately send a heartbeat so throttled tab intervals never trigger false timeouts
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          AirVaultLogger.debug('[AirVault Device] 👁️ Tab became visible. Triggering immediate WS heartbeat...');
+          this.sendWsHeartbeat();
+        }
+      });
+      window.addEventListener('focus', () => {
+        const now = Date.now();
+        if (now - this.lastHeartbeatSentAt >= 1000) {
+          this.sendWsHeartbeat();
+        }
+      });
+    }
   }
 
-  private sendHeartbeat() {
+  /**
+   * One-time REST heartbeat fallback when WS isn't established yet on initial load.
+   */
+  private sendInitialRestHeartbeatFallback() {
     const cur = this.currentDevice();
-    this.currentDevice.update(d => ({ ...d, lastActive: Date.now() }));
     this.http.post(`${this.baseUrl}/${cur.id}/heartbeat`, {}).pipe(
       catchError(() => of(null))
     ).subscribe();
+  }
 
-    // Broadcast DEVICE_ONLINE so paired peers mark us active
+  /**
+   * Sends lightweight application-level HEARTBEAT message over the active WebSocket connection.
+   */
+  public sendHeartbeat() {
+    this.sendWsHeartbeat();
+  }
+
+  private sendWsHeartbeat() {
+    const cur = this.currentDevice();
+    const now = Date.now();
+    this.lastHeartbeatSentAt = now;
+    this.currentDevice.update(d => ({ ...d, lastActive: now }));
+
+    // Send lightweight app-level {"type":"HEARTBEAT"} frame over WebSocket
+    const sent = this.wsTransport.send({
+      type: 'HEARTBEAT',
+      senderDeviceId: cur.id,
+      timestamp: now
+    });
+
+    // Broadcast locally across open browser tabs via BroadcastChannel
     if (typeof BroadcastChannel !== 'undefined') {
       try {
         const ch = new BroadcastChannel('acklet_airvault_sync_channel');
         ch.postMessage({
           type: 'DEVICE_ONLINE',
           senderDevice: cur,
-          timestamp: Date.now()
+          timestamp: now
         });
       } catch { }
     }
-    this.wsTransport.send({
-      type: 'DEVICE_ONLINE',
-      senderDeviceId: cur.id,
-      targetDeviceId: 'broadcast',
-      payload: JSON.stringify({ deviceId: cur.id, senderDevice: cur }),
-      timestamp: Date.now()
-    });
+
+    // If WebSocket is not connected (e.g. startup / connection drop backoff),
+    // allow a one-time REST fallback call (throttled to at most once per 15s)
+    if (!sent) {
+      this.sendInitialRestHeartbeatFallback();
+    }
   }
 
   private getOrCreateDeviceId(): string {

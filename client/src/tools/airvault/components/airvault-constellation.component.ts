@@ -22,15 +22,7 @@ import { AirVaultSyncService } from '../services/airvault-sync.service';
           [attr.data-tooltip]="currentDevice().username ? ('@' + currentDevice().username + ' (You)') : ((currentDevice().name || 'Your Device') + ' (You)')"
         >
           <app-icon name="user" class="icon-sm"></app-icon>
-          @if (isDeviceTyping(currentDevice().id)) {
-            <span class="node-typing-pill" [attr.data-tooltip]="(currentDevice().username ? '@' + currentDevice().username : 'You') + ' is typing…'">
-              <span class="typing-dot" [style.background]="currentDevice().accentColor || '#2196F3'"></span>
-              <span class="typing-dot" [style.background]="currentDevice().accentColor || '#2196F3'"></span>
-              <span class="typing-dot" [style.background]="currentDevice().accentColor || '#2196F3'"></span>
-            </span>
-          } @else {
-            <span class="dot live" [style.background]="currentDevice().accentColor || '#2196F3'"></span>
-          }
+          <span class="dot live" [style.background]="currentDevice().accentColor || '#2196F3'"></span>
         </button>
       </div>
 
@@ -54,15 +46,7 @@ import { AirVaultSyncService } from '../services/airvault-sync.service';
             } @else {
               <app-icon [name]="getDeviceIcon(device.type)" class="icon-sm"></app-icon>
             }
-            @if (isDeviceTyping(device.id)) {
-              <span class="node-typing-pill" [attr.data-tooltip]="(device.username ? '@' + device.username : device.name) + ' is typing…'">
-                <span class="typing-dot" [style.background]="device.accentColor || '#10B981'"></span>
-                <span class="typing-dot" [style.background]="device.accentColor || '#10B981'"></span>
-                <span class="typing-dot" [style.background]="device.accentColor || '#10B981'"></span>
-              </span>
-            } @else {
-              <span class="dot" [class.live]="device.status === 'active' && device.syncEnabled !== false" [class.connecting]="device.status === 'connecting' || deviceService.isReconnecting(device.id)" [style.background]="device.accentColor || '#10B981'"></span>
-            }
+            <span class="dot" [class.live]="device.status === 'active' && device.syncEnabled !== false" [class.connecting]="device.status === 'connecting' || deviceService.isReconnecting(device.id)" [style.background]="device.accentColor || '#10B981'"></span>
           </button>
           <!-- Hover Context Menu Card -->
           <div class="device-hover-card">
@@ -293,37 +277,6 @@ import { AirVaultSyncService } from '../services/airvault-sync.service';
       border: 1.5px solid var(--av-surface-primary);
     }
     .dot.live { background: #2196F3; }
-
-    /* Typing indicator on device rail node */
-    .node-typing-pill {
-      position: absolute;
-      bottom: -4px;
-      right: -6px;
-      display: inline-flex;
-      align-items: center;
-      gap: 1.5px;
-      padding: 1.5px 3.5px;
-      background: var(--av-surface-primary);
-      border: 1px solid var(--av-border-strong);
-      border-radius: 9999px;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-      z-index: 10;
-      animation: av-pop-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .typing-dot {
-      width: 3px;
-      height: 3px;
-      border-radius: 50%;
-      animation: typingPulse 1.2s infinite ease-in-out;
-    }
-    .typing-dot:nth-child(1) { animation-delay: 0s; }
-    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-
-    @keyframes typingPulse {
-      0%, 80%, 100% { transform: scale(0.65); opacity: 0.4; }
-      40% { transform: scale(1.2); opacity: 1; }
-    }
 
     .rail-sep {
       width: 20px;
@@ -665,10 +618,6 @@ import { AirVaultSyncService } from '../services/airvault-sync.service';
 export class AirVaultConstellationComponent {
   public deviceService = inject(AirVaultDeviceService);
   public syncService = inject(AirVaultSyncService);
-
-  isDeviceTyping(id: string): boolean {
-    return this.syncService.isDeviceTyping(id);
-  }
 
   currentDevice = input.required<AirVaultDevice>();
   pairedDevices = input.required<AirVaultDevice[]>();

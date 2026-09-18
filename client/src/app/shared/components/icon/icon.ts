@@ -23,6 +23,11 @@ import {
   LucideLock,
   LucideLockKeyhole,
   LucideType,
+  LucideHeading,
+  LucideBaseline,
+  LucideLetterText,
+  LucideALargeSmall,
+  LucideRocket,
   LucideFilterX,
   LucideCaseSensitive,
   LucideCaseLower,
@@ -197,6 +202,7 @@ import {
   LucideSendHorizonal,
   LucideBold,
   LucideItalic,
+  LucideUnderline,
 } from '@lucide/angular';
 
 @Component({
@@ -493,6 +499,14 @@ export class IconComponent {
     'send-horizontal': LucideSendHorizonal,
     bold: LucideBold,
     italic: LucideItalic,
+    underline: LucideUnderline,
+    heading: LucideHeading,
+    baseline: LucideBaseline,
+    'letter-text': LucideLetterText,
+    'text-style': LucideType,
+    'text-size': LucideALargeSmall,
+    'a-large-small': LucideALargeSmall,
+    rocket: LucideRocket,
   };
 
   readonly lucideIconComponent = computed(() => {

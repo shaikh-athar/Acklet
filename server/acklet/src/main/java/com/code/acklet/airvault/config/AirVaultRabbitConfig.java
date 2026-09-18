@@ -61,4 +61,19 @@ public class AirVaultRabbitConfig {
                 .to(airvaultDeadLetterExchange)
                 .with(DLQ_ROUTING_KEY);
     }
+
+    @Bean
+    public Queue airvaultNodeBroadcastQueue() {
+        // Unique exclusive autodelete queue per node instance for horizontal cross-node fanout
+        return new AnonymousQueue();
+    }
+
+    @Bean
+    public Binding bindingNodeBroadcastQueue(Queue airvaultNodeBroadcastQueue, TopicExchange airvaultExchange) {
+        return BindingBuilder.bind(airvaultNodeBroadcastQueue)
+                .to(airvaultExchange)
+                .with(SYNC_ROUTING_KEY);
+    }
 }
+
+

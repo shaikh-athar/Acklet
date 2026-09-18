@@ -177,11 +177,11 @@
         </button>
 
         <!-- 3. Rich Icon Multi-Select Filter Button & Popover -->
-        <div class="filter-popover-anchor" (click)="$event.stopPropagation()">
+        <div class="filter-popover-anchor">
           <button
             class="av-btn-icon filter-trigger-btn"
             [class.active]="uiStore.activeFiltersCount() > 0"
-            (click)="toggleFilterPopover()"
+            (click)="toggleFilterPopover($event)"
             data-tooltip="Filter clipboard items">
             <app-icon name="filter" class="icon-xs"></app-icon>
             @if (uiStore.activeFiltersCount() > 0) {
@@ -191,7 +191,7 @@
 
           <!-- Filter Dropdown Popover Menu -->
           @if (showFilterPopover()) {
-            <div class="av-filter-popover" (click)="$event.stopPropagation()">
+            <div class="av-filter-popover" [class.is-closing]="isFilterClosing()" (click)="$event.stopPropagation()">
               <div class="filter-popover-header">
                 <div class="filter-header-left">
                   <app-icon name="filter" class="icon-xs text-accent"></app-icon>
@@ -430,6 +430,19 @@
       (settingsClick)="uiStore.showSettingsDrawer.set(true)"
       (feedbackClick)="uiStore.showFeedbackModal.set(true)">
     </app-airvault-footer>
+
+    <!-- ── Initial Bootstrap & Setup Loader (Non-blocking async initialization indicator) ── -->
+    @if (isInitializing()) {
+      <div class="av-initial-loader-overlay">
+        <div class="av-initial-loader-capsule">
+          <div class="av-initial-spinner"></div>
+          <div class="av-initial-loader-text">
+            <span class="av-loader-title">Initializing AirVault…</span>
+            <span class="av-loader-sub">Restoring local metadata & preparing secure session</span>
+          </div>
+        </div>
+      </div>
+    }
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════

@@ -3,8 +3,9 @@ import { WorkerBridgeService } from '../../../app/core/services/worker-bridge.se
 import { AirVaultPreferencesService } from './airvault-preferences.service';
 import { detectActionShortcut, computeDedupKeySync } from './airvault-action-detector';
 import { AirVaultSyncDebugLogger } from './airvault-sync-debug.service';
+import { isHtmlContent, isStrictCodeMarkup, looksLikeMarkdown, stripMarkdownToPlainText, renderMarkdownToSafeHtml } from './airvault-markdown.util';
 
-export type ContentCategory = 'code' | 'url' | 'image' | 'video' | 'audio' | 'pdf' | 'spreadsheet' | 'archive' | 'font' | 'file' | 'text' | 'json';
+export type ContentCategory = 'code' | 'url' | 'image' | 'video' | 'audio' | 'pdf' | 'spreadsheet' | 'archive' | 'font' | 'file' | 'text' | 'json' | 'markdown';
 export type CollapseState = 'expanded' | 'collapsed' | 'pending';
 
 export interface LineBlameSegment {
@@ -78,9 +79,9 @@ export interface ClassifiedContent {
   dedupKey?: string;
 }
 
-export const MAX_PAYLOAD_SIZE_BYTES = 510 * 1024 * 1024; // 500 MB Max single file
-export const MAX_SINGLE_FILE_SIZE_BYTES = 500 * 1024 * 1024; // 500 MB Max single file
-export const CLIPBOARD_STORAGE_CAP_BYTES = 1024 * 1024 * 1024; // 1 GB total vault cap
+export const MAX_PAYLOAD_SIZE_BYTES = 1024 * 1024 * 1024; // 1 GB Max single file
+export const MAX_SINGLE_FILE_SIZE_BYTES = 1024 * 1024 * 1024; // 1 GB Max single file
+export const CLIPBOARD_STORAGE_CAP_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB total vault cap
 export const LARGE_INPUT_THRESHOLD_BYTES = 100 * 1024; // 100 KB Threshold for graceful degradation
 /** Content is eligible for auto-collapse into tiles above 1,500 words only */
 export const COLLAPSE_WORD_THRESHOLD = 1500;
@@ -247,8 +248,21 @@ export class AirVaultClipboardService {
       };
     }
 
-    // 10. Explicit Code Extensions
-    if (/\.(js|ts|jsx|tsx|py|java|cpp|c|html|css|json|xml|sql|sh|yaml|yml|rs|go|php|dart|vue|svelte|rb|swift|kt)$/i.test(fname)) {
+    // 10. Explicit Code / Markdown Extensions
+    if (/\.(js|ts|jsx|tsx|py|java|cpp|c|html|css|json|xml|sql|sh|yaml|yml|rs|go|php|dart|vue|svelte|rb|swift|kt|md|markdown)$/i.test(fname)) {
+      if (/\.(md|markdown)$/i.test(fname)) {
+        return {
+          category: 'markdown',
+          raw: text,
+          language: 'MARKDOWN',
+          filename,
+          isSensitive: sensitive.isSensitive,
+          sensitiveType: sensitive.sensitiveType,
+          maskedSnippet: sensitive.maskedSnippet,
+          byteSize,
+          collapseState: 'pending'
+        };
+      }
       const isJson = fname.endsWith('.json');
       return {
         category: isJson ? 'json' : 'code',
@@ -292,7 +306,25 @@ export class AirVaultClipboardService {
       };
     }
 
-    // 13. Code Detection (heuristics for brackets, keywords, indentation, symbols)
+    // 13. Rich Formatted Text (HTML with semantic tags: h1-h6, p, ul, ol, table, etc.)
+    if (isHtmlContent(text) && !isStrictCodeMarkup(text)) {
+      const actionShortcut = detectActionShortcut(text);
+      return {
+        category: 'text',
+        raw: text,
+        isSensitive: sensitive.isSensitive,
+        sensitiveType: sensitive.sensitiveType,
+        maskedSnippet: sensitive.maskedSnippet,
+        byteSize,
+        collapseState: 'pending',
+        actionShortcut,
+        detectedType: actionShortcut?.detectedType,
+        metadata: actionShortcut?.metadata,
+        missingInfoHint: actionShortcut?.missingInfoHint
+      };
+    }
+
+    // 15. Code Detection (heuristics for brackets, keywords, indentation, symbols, strict code markup)
     const isCode = this.looksLikeCode(text);
     if (isCode) {
       return {
@@ -307,7 +339,7 @@ export class AirVaultClipboardService {
       };
     }
 
-    // 14. Plain Text
+    // 16. Plain Text
     const actionShortcut = detectActionShortcut(text);
     return {
       category: 'text',
@@ -360,8 +392,8 @@ export class AirVaultClipboardService {
   private looksLikeCode(text: string): boolean {
     if (!text || text.length < 5) return false;
 
-    // Check code constructs: imports, functions, classes, declarations, braces, HTML tags, SQL
-    if (/^\s*(<[a-zA-Z][\s\S]*>)\s*$/.test(text)) return true; // XML/HTML/JSX
+    // Check code constructs: imports, functions, classes, declarations, braces, strict markup, SQL
+    if (isStrictCodeMarkup(text)) return true; // XML/HTML document/SVG/JSX
     if (/^(import|export|const|let|var|function|class|def|public|private|interface|type|struct|fn|package|func)\s+/m.test(text)) return true;
     if (/SELECT\s+.*\s+FROM\s+/i.test(text) || /INSERT\s+INTO\s+/i.test(text)) return true;
     if (/[{};]\s*$/m.test(text) && (text.includes('(') || text.includes('='))) return true;
@@ -526,13 +558,46 @@ export class AirVaultClipboardService {
       }
     }
 
-    // 3. Default: write clean text / code / json / url
+    // 3. Default: write clean text / code / json / url / markdown
     try {
-      await navigator.clipboard.writeText(content.raw);
-      if (content.raw) {
-        this.registerSyncedText(content.raw);
-        this.lastCopiedText.set(content.raw);
-        this.onClipboardTextCopied.emit(content.raw);
+      const rawText = content.raw || '';
+      const isMd = cat === 'markdown';
+      const isHtml = isHtmlContent(rawText) && !isStrictCodeMarkup(rawText);
+
+      // If text is an explicit Markdown file or Rich HTML, write both text/html and clean preview text/plain
+      if ((isMd || isHtml) && typeof ClipboardItem !== 'undefined') {
+        try {
+          const plainPreviewText = stripMarkdownToPlainText(rawText);
+          const htmlContent = isHtml ? rawText : renderMarkdownToSafeHtml(rawText, false);
+
+          const plainBlob = new Blob([plainPreviewText], { type: 'text/plain' });
+          const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              'text/plain': plainBlob,
+              'text/html': htmlBlob
+            })
+          ]);
+
+          if (rawText) {
+            this.registerSyncedText(plainPreviewText);
+            this.lastCopiedText.set(plainPreviewText);
+            this.onClipboardTextCopied.emit(plainPreviewText);
+          }
+          return true;
+        } catch {
+          // Fallback if multi-mime ClipboardItem is not permitted
+        }
+      }
+
+      // Plain-text write fallback (if user pasted Markdown, copy clean stripped preview text)
+      const textToWrite = isMd ? stripMarkdownToPlainText(rawText) : rawText;
+      await navigator.clipboard.writeText(textToWrite);
+      if (textToWrite) {
+        this.registerSyncedText(textToWrite);
+        this.lastCopiedText.set(textToWrite);
+        this.onClipboardTextCopied.emit(textToWrite);
       }
       return true;
     } catch {
@@ -613,7 +678,7 @@ export class AirVaultClipboardService {
     if (text.startsWith('[') && text.endsWith(']')) {
       try { JSON.parse(text); return 'json'; } catch {}
     }
-    if (/<([a-z]+)([^<]+)*(?:>(.*)<\/\1>|\s+\/>)/i.test(text)) return 'xml/html';
+    if (isStrictCodeMarkup(text)) return 'xml/html';
     if (/(function|const|let|var|import|export|class|=>)\s+[a-zA-Z0-9_]+/i.test(text)) return 'javascript';
     if (/(def\s+[a-zA-Z_]|import\s+[a-zA-Z_]|print\()/i.test(text)) return 'python';
     if (/(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE)\s+/i.test(text)) return 'sql';

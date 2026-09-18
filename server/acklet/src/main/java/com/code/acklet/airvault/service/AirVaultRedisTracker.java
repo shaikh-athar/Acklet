@@ -161,34 +161,94 @@ public class AirVaultRedisTracker {
     }
 
     // ==========================================
-    // DEVICE PRESENCE (Online / Offline)
+    // DEVICE & SESSION PRESENCE (Online / Offline)
     // ==========================================
 
-    /** TTL-based presence: key expires 90s after last heartbeat → device considered offline. */
+    /** TTL-based presence: session key expires 25s after last heartbeat. */
+    private static final String PRESENCE_SESSION_PREFIX = "airvault:presence:session:";
+    private static final String PRESENCE_DEVICE_SESSIONS_PREFIX = "airvault:presence:device_sessions:";
     private static final String PRESENCE_PREFIX = "airvault:presence:";
-    private static final Duration PRESENCE_TTL = Duration.ofSeconds(90);
+    private static final Duration SESSION_PRESENCE_TTL = Duration.ofSeconds(25);
+    private static final Duration DEVICE_PRESENCE_TTL = Duration.ofSeconds(30);
 
     /**
-     * Mark a device as online. Called on every heartbeat.
-     * Key expires automatically after PRESENCE_TTL — no manual offline update needed.
+     * Mark a WebSocket session as online with timestamp.
+     * Also associates the session with the deviceId set in Redis.
+     */
+    public void recordSessionHeartbeat(String clientDeviceId, String sessionId) {
+        try {
+            long now = System.currentTimeMillis();
+            String sessionKey = PRESENCE_SESSION_PREFIX + sessionId;
+            redisTemplate.opsForValue().set(sessionKey, String.valueOf(now), SESSION_PRESENCE_TTL);
+
+            String deviceSessionsKey = PRESENCE_DEVICE_SESSIONS_PREFIX + clientDeviceId;
+            redisTemplate.opsForSet().add(deviceSessionsKey, sessionId);
+            redisTemplate.expire(deviceSessionsKey, DEVICE_PRESENCE_TTL);
+
+            // Maintain legacy/convenience device presence key
+            String deviceKey = PRESENCE_PREFIX + clientDeviceId;
+            redisTemplate.opsForValue().set(deviceKey, "online", DEVICE_PRESENCE_TTL);
+        } catch (Exception e) {
+            log.warn("[AirVault Redis] Failed to record session heartbeat for session {}: {}", sessionId, e.getMessage());
+        }
+    }
+
+    /**
+     * Removes a session from the device's active session set.
+     */
+    public void removeSessionPresence(String clientDeviceId, String sessionId) {
+        try {
+            redisTemplate.delete(PRESENCE_SESSION_PREFIX + sessionId);
+            String deviceSessionsKey = PRESENCE_DEVICE_SESSIONS_PREFIX + clientDeviceId;
+            redisTemplate.opsForSet().remove(deviceSessionsKey, sessionId);
+        } catch (Exception e) {
+            log.warn("[AirVault Redis] Failed to remove session presence for session {}: {}", sessionId, e.getMessage());
+        }
+    }
+
+    /**
+     * Mark a device as online (fallback/REST/initial).
      */
     public void recordDeviceOnline(String clientDeviceId) {
-        String key = PRESENCE_PREFIX + clientDeviceId;
-        redisTemplate.opsForValue().set(key, "online", PRESENCE_TTL);
+        try {
+            String key = PRESENCE_PREFIX + clientDeviceId;
+            redisTemplate.opsForValue().set(key, "online", DEVICE_PRESENCE_TTL);
+        } catch (Exception e) {
+            log.warn("[AirVault Redis] Failed to record device online for {}: {}", clientDeviceId, e.getMessage());
+        }
     }
 
     /**
      * Explicitly mark a device offline (e.g. clean browser close via sendBeacon).
      */
     public void recordDeviceOffline(String clientDeviceId) {
-        redisTemplate.delete(PRESENCE_PREFIX + clientDeviceId);
+        try {
+            redisTemplate.delete(PRESENCE_PREFIX + clientDeviceId);
+            redisTemplate.delete(PRESENCE_DEVICE_SESSIONS_PREFIX + clientDeviceId);
+        } catch (Exception e) {
+            log.warn("[AirVault Redis] Failed to record device offline for {}: {}", clientDeviceId, e.getMessage());
+        }
     }
 
     /**
-     * Returns true if the device has an active presence key (heartbeated within 90s).
+     * Returns true if the device has an active presence key or active session.
      */
     public boolean isDeviceOnline(String clientDeviceId) {
-        return Boolean.TRUE.equals(redisTemplate.hasKey(PRESENCE_PREFIX + clientDeviceId));
+        try {
+            String deviceSessionsKey = PRESENCE_DEVICE_SESSIONS_PREFIX + clientDeviceId;
+            Set<String> sessions = redisTemplate.opsForSet().members(deviceSessionsKey);
+            if (sessions != null && !sessions.isEmpty()) {
+                for (String sId : sessions) {
+                    if (Boolean.TRUE.equals(redisTemplate.hasKey(PRESENCE_SESSION_PREFIX + sId))) {
+                        return true;
+                    }
+                }
+            }
+            return Boolean.TRUE.equals(redisTemplate.hasKey(PRESENCE_PREFIX + clientDeviceId));
+        } catch (Exception e) {
+            log.warn("[AirVault Redis] Failed checking device online status for {}: {}", clientDeviceId, e.getMessage());
+            return false;
+        }
     }
 
     // ==========================================

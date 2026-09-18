@@ -57,7 +57,8 @@
 
 | Category | Detection Criteria | Handling & Rendering |
 | :--- | :--- | :--- |
-| **Formatted Code** | JSON, HTML/XML, JavaScript/TypeScript, Python, SQL, C++, Java, Rust syntax. | Preserves indentation, renders monospaced code block with language badge. |
+| **Rich Text & Formatted Documents** | TipTap rich editor HTML / Markdown (`<p>`, `<h1>`-`<h6>`, `<ul>/<ol>/<li>`, `<strong>`, `<em>`, `<a>`, `<pre>/<code>`). | Sanitized and safely rendered as live rich HTML (`[innerHTML]`) in both compact card tiles and full preview without tag exposure. |
+| **Formatted Code** | Strict programming markup (`<!DOCTYPE html>`, `<html>`, `<svg>`, JSX components), JSON, JavaScript/TypeScript, Python, SQL, C++, Java, Rust syntax. | Preserves indentation, renders monospaced code block with language badge in `<pre><code>`. |
 | **Rich URLs** | Valid HTTP/HTTPS web links. | Clickable 1-click external link navigation. |
 | **Images** | Base64 `data:image/*` or dragged image files (`PNG`, `JPEG`, `WebP`, `SVG`, `GIF`). | Off-thread thumbnail generation via `createImageBitmap` + `OffscreenCanvas` in `airvault.worker.ts`. |
 | **Files** | Arbitrary dropped files up to 500 MB (with 1.0 GB total clipboard storage cap and 7-day auto-expiry). | Shows filename, byte size, category badge, and formatted preview. |
@@ -80,7 +81,23 @@
 
 ---
 
-## 5. Controls & Configuration
+## 5. Rich WYSIWYG Composer, Safe HTML Sanitization & Rendering Pipeline
+
+- **Headless TipTap Integration**: Built on `@tiptap/core`, `@tiptap/starter-kit`, `@tiptap/extension-link`, and `@tiptap/extension-placeholder` ([`AirVaultRichEditorService`](file:///Users/ayaz/Acklet/client/src/tools/airvault/services/airvault-rich-editor.service.ts)).
+- **End-to-End Rich Text Fidelity Pipeline**:
+  - `COPY → COMPOSER → SEND → STORAGE → SYNC → TILE → PREVIEW` preserves full HTML structure (`<p>`, `<h1>...<h6>`, `<ul>/<ol>/<li>`, `<strong>`, `<em>`, `<a>`, `<pre>/<code>`).
+  - Strict classification separation via `isStrictCodeMarkup` ensures rich formatting is categorized as `category: 'text'` rather than raw XML/HTML code.
+  - Safe sanitization via [`renderMarkdownToSafeHtml`](file:///Users/ayaz/Acklet/client/src/tools/airvault/services/airvault-markdown.util.ts) securely strips scripts/iframes and applies `DomSanitizer.bypassSecurityTrustHtml` safely.
+- **Floating Selection Bubble**: Appears dynamically ~40px above active text selections with bounds-aware positioning, offering:
+  - Text formatting: **Bold** (`⌘B`), *Italic* (`⌘I`), `Code` (`⌘E`), Link insertion (`⌘K`).
+  - Structural formatting: Headings H1, H2, H3, Bulleted List (`- `), Numbered List (`1. `).
+  - Dynamic Font Size Capsule: `12px` (Small), `13.5px` (Default), `15px` (Comfortable), `17px` (Large).
+- **Bidirectional Markdown Serialization**: Two-way seamless conversion via `AirVaultMarkdownUtil` ensuring raw Markdown clipboard interchange and formatted visual display.
+- **Line Blame Preservation**: Preserves per-line author attribution during rich edits.
+
+---
+
+## 6. Controls & Configuration
 
 - **Auto-Capture Switch**: Toggle `ON / OFF` in staging composer header (persisted in `localStorage`).
 - **Paste Button**: 1-click `[📋 Paste]` button or standard keyboard shortcut (`⌘V` / `Ctrl+V`).
@@ -88,7 +105,7 @@
 
 ---
 
-## 6. Related Documentation
+## 7. Related Documentation
 
 - Master Overview: [README.md](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/README.md)
 - Web Worker Pipeline: [feature-13-web-workers-pipeline.md](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/feature-13-web-workers-pipeline.md)

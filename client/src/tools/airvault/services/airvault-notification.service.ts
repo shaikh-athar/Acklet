@@ -30,22 +30,26 @@ export class AirVaultNotificationService {
   private audioCtx: AudioContext | null = null;
   private originalDocumentTitle: string = typeof document !== 'undefined' ? document.title : 'AirVault | Acklet';
 
+  private ensureAudioContext() {
+    if (typeof window === 'undefined') return;
+    try {
+      if (!this.audioCtx) {
+        const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtxClass) {
+          this.audioCtx = new AudioCtxClass();
+        }
+      }
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume().catch(() => {});
+      }
+    } catch { }
+  }
+
   constructor() {
     if (typeof window !== 'undefined') {
-      // Pre-warm and unlock audio context / reusable audio element on first user gesture
       const unlockAudio = () => {
-        try {
-          if (!this.audioCtx) {
-            const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
-            if (AudioCtxClass) {
-              this.audioCtx = new AudioCtxClass();
-            }
-          }
-          if (this.audioCtx && this.audioCtx.state === 'suspended') {
-            this.audioCtx.resume();
-          }
-          this.getOrCreateAudio();
-        } catch { }
+        this.ensureAudioContext();
+        this.getOrCreateAudio();
       };
 
       window.addEventListener('click', unlockAudio, { once: true, passive: true });

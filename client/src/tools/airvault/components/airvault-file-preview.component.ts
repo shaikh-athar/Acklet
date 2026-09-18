@@ -1,9 +1,10 @@
 import { Component, ChangeDetectionStrategy, input, output, signal, computed, effect, inject, ViewChild, ElementRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { DomSanitizer, SafeResourceUrl, SafeHtml } from '@angular/platform-browser';
 import { IconComponent } from '../../../app/shared/components/icon/icon';
-import { AirVaultItem } from '../services/airvault-storage.service';
+import { AirVaultItem, AirVaultStorageService } from '../services/airvault-storage.service';
 import { AirVaultUIStore } from '../services/airvault-ui.store';
+import { renderMarkdownToSafeHtml, renderPlainTextToSafeHtml, looksLikeMarkdown } from '../services/airvault-markdown.util';
 import JSZip from 'jszip';
 
 export interface ArchiveFileEntry {
@@ -19,31 +20,100 @@ export interface ArchiveFileEntry {
   styleUrls: ['../airvault.shared.css'],
   template: `
     <div class="file-preview-root">
+      <!-- 0. IN-PROGRESS UPLOAD / PROCESSING STATE (Guards video/image/file from premature render) -->
+      @if (item().processingState === 'processing' || item().processingState === 'queued') {
+        <div class="preview-stage-container upload-in-progress-stage center-flex">
+          <div class="upload-in-progress-card">
+            <div class="upload-progress-circle-box">
+              <svg class="preview-circular-svg" viewBox="0 0 36 36">
+                <path class="circle-bg"
+                  d="M18 2.0845
+                    a 15.9155 15.9155 0 0 1 0 31.831
+                    a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+                <path class="circle-fill"
+                  [attr.stroke-dasharray]="(item().progressPercent || 0) + ', 100'"
+                  d="M18 2.0845
+                    a 15.9155 15.9155 0 0 1 0 31.831
+                    a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+              </svg>
+              <span class="preview-progress-percent">{{ item().progressPercent || 0 }}%</span>
+            </div>
+            <span class="in-progress-title">Resource is still uploading</span>
+            <span class="in-progress-filename">{{ item().content.filename || 'Attachment' }}</span>
+            <span class="in-progress-sub">
+              {{ (item().progressPercent || 0) < 100 ? 'Encrypting & streaming chunks…' : 'Finalizing & verifying resource…' }} · {{ item().progressPercent || 0 }}% complete
+            </span>
+            <p class="in-progress-hint">Please wait while the resource is securely uploaded and verified before previewing or playback.</p>
+          </div>
+        </div>
+      }
+
       <!-- 1. IMAGES (JPG, PNG, WEBP, GIF, SVG, HEIC) -->
-      @if (resolvedCategory() === 'image') {
-        <div class="preview-stage-container image-stage">
-          <img [src]="item().content.previewUrl || item().content.raw" 
-               [alt]="item().content.filename || 'Image preview'" 
-               class="stage-img" 
-               [style.transform]="'scale(' + zoomLevel() + ')'" 
-               (error)="onMediaError()" />
+      @else if (resolvedCategory() === 'image') {
+        <div class="preview-stage-container image-stage center-flex">
+          @if (mediaLoadError() || (!resolvedObjectUrl() && !item().content.raw && !item().content.previewUrl)) {
+            <div class="media-not-found-card" [style.transform]="'scale(' + zoomLevel() + ')'">
+              <div class="not-found-icon-halo">
+                <app-icon name="image-off" class="icon-lg text-amber"></app-icon>
+              </div>
+              <h4 class="not-found-title">Image Not Available</h4>
+              <span class="not-found-filename">{{ item().content.filename || 'Resource' }}</span>
+              <p class="not-found-desc">
+                The image source could not be loaded or was removed from local storage.
+                You can attempt to re-download or request it again from the originating device.
+              </p>
+              <div class="not-found-actions">
+                <button type="button" class="not-found-btn" (click)="retryLoad()">
+                  <app-icon name="rotate-ccw" class="icon-xs"></app-icon>
+                  <span>Retry Loading</span>
+                </button>
+              </div>
+            </div>
+          } @else {
+            <img [src]="resolvedObjectUrl() || item().content.raw || item().content.previewUrl" 
+                 [alt]="item().content.filename || 'Image preview'" 
+                 class="stage-img" 
+                 [style.transform]="'scale(' + zoomLevel() + ')'" 
+                 (error)="onMediaError()" />
+          }
         </div>
       }
 
       <!-- 2. VIDEOS (MP4, WEBM, MOV, MKV) -->
       @else if (resolvedCategory() === 'video') {
-        <div class="preview-stage-container video-stage">
-          <video #videoElementRef 
-                 [src]="item().content.previewUrl || item().content.raw" 
-                 controls autoplay 
-                 class="stage-video" 
-                 [style.transform]="'scale(' + zoomLevel() + ')'"
-                 (play)="playingChange.emit(true)"
-                 (pause)="playingChange.emit(false)"
-                 (volumechange)="onVolumeChange()"
-                 (error)="onMediaError()">
-            Your browser does not support the video tag.
-          </video>
+        <div class="preview-stage-container video-stage center-flex">
+          @if (mediaLoadError() || (!resolvedObjectUrl() && !item().content.raw && !item().content.previewUrl)) {
+            <div class="media-not-found-card" [style.transform]="'scale(' + zoomLevel() + ')'">
+              <div class="not-found-icon-halo">
+                <app-icon name="video-off" class="icon-lg text-red"></app-icon>
+              </div>
+              <h4 class="not-found-title">Video Stream Unavailable</h4>
+              <span class="not-found-filename">{{ item().content.filename || 'Video' }}</span>
+              <p class="not-found-desc">
+                Unable to play this video stream or the media file is not found locally.
+              </p>
+              <div class="not-found-actions">
+                <button type="button" class="not-found-btn" (click)="retryLoad()">
+                  <app-icon name="rotate-ccw" class="icon-xs"></app-icon>
+                  <span>Retry Loading</span>
+                </button>
+              </div>
+            </div>
+          } @else {
+            <video #videoElementRef 
+                   [src]="resolvedObjectUrl() || item().content.raw || item().content.previewUrl" 
+                   controls autoplay 
+                   class="stage-video" 
+                   [style.transform]="'scale(' + zoomLevel() + ')'"
+                   (play)="playingChange.emit(true)"
+                   (pause)="playingChange.emit(false)"
+                   (volumechange)="onVolumeChange()"
+                   (error)="onMediaError()">
+              Your browser does not support the video tag.
+            </video>
+          }
         </div>
       }
 
@@ -59,7 +129,7 @@ export interface ArchiveFileEntry {
               <span class="audio-meta">{{ formatBytes(item().content.byteSize) }} · Audio file</span>
             </div>
             <audio #audioElementRef 
-                   [src]="item().content.previewUrl || item().content.raw" 
+                   [src]="resolvedObjectUrl() || item().content.raw || item().content.previewUrl" 
                    controls 
                    class="native-audio-player"
                    (play)="playingChange.emit(true)"
@@ -178,7 +248,14 @@ export interface ArchiveFileEntry {
         </div>
       }
 
-      <!-- 8. CODE & JSON -->
+      <!-- 8. MARKDOWN (.md files or clipboard Markdown content) -->
+      @else if (resolvedCategory() === 'markdown') {
+        <div class="preview-stage-container generic-stage">
+          <div class="av-rich-document-preview" [class.nowrap-pre]="!isWrapped()" [style.font-size.px]="14 * zoomLevel()" [innerHTML]="safeFormattedTextPreview()"></div>
+        </div>
+      }
+
+      <!-- 9. CODE & JSON -->
       @else if (resolvedCategory() === 'code' || resolvedCategory() === 'json') {
         <div class="preview-stage-container code-stage">
           <pre class="stage-code-pre" [class.nowrap-pre]="!isWrapped()" [style.font-size.px]="13 * zoomLevel()"><code>@for (part of getHighlightParts(textPreview(), searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</code></pre>
@@ -199,11 +276,11 @@ export interface ArchiveFileEntry {
         </div>
       }
 
-      <!-- 10. GENERIC METADATA / UNSUPPORTED / DESIGN / EBOOK / DOCS -->
+      <!-- 10. GENERIC METADATA / RICH TEXT / UNSUPPORTED / DESIGN / EBOOK / DOCS -->
       @else {
         <div class="preview-stage-container generic-stage" [class.center-flex]="!isTextDoc()">
           @if (isTextDoc()) {
-            <pre class="stage-text-pre" [class.nowrap-pre]="!isWrapped()" [style.font-size.px]="14 * zoomLevel()">@for (part of getHighlightParts(textPreview(), searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</pre>
+            <div class="av-rich-document-preview" [class.nowrap-pre]="!isWrapped()" [style.font-size.px]="14 * zoomLevel()" [innerHTML]="safeFormattedTextPreview()"></div>
           } @else {
             <div class="generic-meta-card" [style.transform]="'scale(' + zoomLevel() + ')'">
               <div class="meta-icon-box" [style.color]="getCategoryColor()"><app-icon [name]="getCategoryIcon()" class="icon-lg"></app-icon></div>
@@ -369,11 +446,181 @@ export interface ArchiveFileEntry {
     .url-icon { color: #3B82F6; }
     .url-text { font-size: 16px; font-weight: 500; color: #3B82F6; word-break: break-all; text-decoration: underline; }
     .url-btn { display: inline-flex; align-items: center; gap: 6px; }
+
+    /* In-Progress Upload Stage */
+    .upload-in-progress-stage {
+      background: var(--av-surface-primary);
+    }
+    .upload-in-progress-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 40px;
+      background: var(--av-surface-secondary);
+      border: 1px solid var(--av-border);
+      border-radius: var(--av-radius-lg);
+      text-align: center;
+      max-width: 480px;
+      width: 100%;
+      margin: 0 auto;
+      box-shadow: var(--av-shadow-md);
+    }
+
+    /* Media Not Found Fallback Card */
+    .media-not-found-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 36px 28px;
+      background: var(--av-surface-secondary);
+      border: 1px solid var(--av-border-strong, rgba(255, 255, 255, 0.12));
+      border-radius: var(--av-radius-lg, 14px);
+      text-align: center;
+      max-width: 440px;
+      width: 100%;
+      margin: 0 auto;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+      animation: notFoundPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes notFoundPopIn {
+      0% { opacity: 0; transform: scale(0.94); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .not-found-icon-halo {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 4px;
+      box-shadow: 0 0 24px rgba(245, 158, 11, 0.15);
+    }
+
+    .not-found-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--av-text-primary);
+      margin: 0;
+    }
+
+    .not-found-filename {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--av-accent, #2196F3);
+      font-family: var(--av-font-mono, monospace);
+      word-break: break-all;
+      background: var(--av-surface-primary);
+      border: 1px solid var(--av-border);
+      padding: 3px 10px;
+      border-radius: var(--av-radius-pill, 9999px);
+      max-width: 320px;
+    }
+
+    .not-found-desc {
+      font-size: 12px;
+      color: var(--av-text-muted);
+      line-height: 1.5;
+      margin: 0;
+      max-width: 360px;
+    }
+
+    .not-found-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .not-found-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: var(--av-radius-sm, 6px);
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--av-surface-primary);
+      color: var(--av-text-primary);
+      border: 1px solid var(--av-border);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .not-found-btn:hover {
+      background: var(--av-accent, #2196F3);
+      border-color: var(--av-accent, #2196F3);
+      color: #ffffff;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+    }
+    .upload-progress-circle-box {
+      position: relative;
+      width: 64px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .preview-circular-svg {
+      width: 64px;
+      height: 64px;
+      transform: rotate(-90deg);
+    }
+    .preview-circular-svg .circle-bg {
+      fill: none;
+      stroke: var(--av-border, rgba(255, 255, 255, 0.15));
+      stroke-width: 3.5;
+    }
+    .preview-circular-svg .circle-fill {
+      fill: none;
+      stroke: var(--av-accent, #2196F3);
+      stroke-width: 3.5;
+      stroke-linecap: round;
+      transition: stroke-dasharray 0.2s ease;
+    }
+    .preview-progress-percent {
+      position: absolute;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--av-text-primary);
+      font-family: var(--av-font-mono, monospace);
+    }
+    .in-progress-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--av-text-primary);
+    }
+    .in-progress-filename {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--av-accent, #2196F3);
+      font-family: var(--av-font-mono, monospace);
+      word-break: break-all;
+    }
+    .in-progress-sub {
+      font-size: 12px;
+      color: var(--av-text-muted);
+    }
+    .in-progress-hint {
+      font-size: 11.5px;
+      color: var(--av-text-faint);
+      margin-top: 4px;
+      line-height: 1.5;
+      max-width: 380px;
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AirVaultFilePreviewComponent {
   private sanitizer = inject(DomSanitizer);
+  private storageService = inject(AirVaultStorageService);
   uiStore = inject(AirVaultUIStore);
 
   @ViewChild('videoElementRef') videoElementRef?: ElementRef<HTMLVideoElement>;
@@ -385,6 +632,11 @@ export class AirVaultFilePreviewComponent {
 
   playingChange = output<boolean>();
   mutedChange = output<boolean>();
+
+  resolvedObjectUrl = signal<string | null>(null);
+  isLoadingPayload = signal<boolean>(false);
+  mediaLoadError = signal<boolean>(false);
+  private activePayloadObjectUrl: string | null = null;
 
   searchHighlightQuery = computed(() => this.uiStore.searchHighlightQuery());
 
@@ -498,6 +750,10 @@ export class AirVaultFilePreviewComponent {
     if (explicitCat === 'font' || /\.(ttf|otf|woff|woff2)$/i.test(filename)) {
       return 'font';
     }
+    // Markdown (.md or explicit markdown category)
+    if (explicitCat === 'markdown' || /\.(md|markdown)$/i.test(filename)) {
+      return 'markdown';
+    }
     // Code / JSON
     if (explicitCat === 'code' || explicitCat === 'json' || /\.(js|ts|jsx|tsx|py|java|cpp|c|html|css|json|xml|sql|sh|yaml|yml|rs|go|php)$/i.test(filename)) {
       return explicitCat === 'json' ? 'json' : 'code';
@@ -517,31 +773,97 @@ export class AirVaultFilePreviewComponent {
     return raw;
   });
 
+  safeFormattedTextPreview = computed<SafeHtml>(() => {
+    const raw = this.textPreview();
+    if (!raw) return '';
+    const cat = this.resolvedCategory();
+    let safeHtml: string;
+    if (cat === 'markdown') {
+      safeHtml = renderMarkdownToSafeHtml(raw, false);
+    } else {
+      safeHtml = renderPlainTextToSafeHtml(raw);
+    }
+    return this.sanitizer.bypassSecurityTrustHtml(safeHtml);
+  });
+
   constructor() {
     effect(() => {
       const it = this.item();
       const cat = this.resolvedCategory();
-      const raw = it.content.previewUrl || it.content.raw || '';
       const filename = (it.content.filename || '').toLowerCase();
+      const directRaw = it.content.raw || '';
 
-      // Parse CSV if spreadsheet
-      if (cat === 'spreadsheet' && this.isCsvFormat()) {
-        this.parseCsv(raw);
+      // Reset media load error on item change
+      this.mediaLoadError.set(false);
+
+      // Clean up previous blob URL if needed
+      if (this.activePayloadObjectUrl && this.activePayloadObjectUrl.startsWith('blob:') && this.activePayloadObjectUrl !== this.resolvedObjectUrl()) {
+        try { URL.revokeObjectURL(this.activePayloadObjectUrl); } catch {}
+        this.activePayloadObjectUrl = null;
       }
 
-      // Parse ZIP archive table of contents if ZIP
-      if (cat === 'archive' && this.isZipArchive()) {
-        this.parseZip(raw);
-      }
-
-      // Safe Font Face specimen
-      if (cat === 'font' && raw.startsWith('data:')) {
-        this.loadDynamicFont(raw, filename);
-      }
-
-      // PDF Blob URL
-      if (cat === 'pdf') {
-        this.loadPdfBlob(raw);
+      // Check LRU cache first synchronously for instantaneous full-resolution display
+      const cached = this.storageService.resourceCache.get(it.id);
+      if (cached?.objectUrl) {
+        this.resolvedObjectUrl.set(cached.objectUrl);
+        if (cat === 'spreadsheet' && this.isCsvFormat()) {
+          cached.blob.text().then(t => this.parseCsv(t)).catch(() => this.parseCsv(directRaw));
+        } else if (cat === 'archive' && this.isZipArchive()) {
+          cached.blob.arrayBuffer().then(buf => this.parseZipBuffer(buf)).catch(() => this.parseZip(directRaw));
+        } else if (cat === 'font') {
+          this.loadDynamicFont(cached.objectUrl, filename);
+        } else if (cat === 'pdf') {
+          this.pdfBlobUrl.set(cached.objectUrl);
+        }
+      } else if (directRaw.startsWith('blob:') || (directRaw.startsWith('data:') && !directRaw.startsWith('data:image/jpeg;base64'))) {
+        // Direct raw is already a high-fidelity data/blob URL
+        this.resolvedObjectUrl.set(directRaw);
+        if (cat === 'spreadsheet' && this.isCsvFormat()) {
+          this.parseCsv(directRaw);
+        } else if (cat === 'archive' && this.isZipArchive()) {
+          this.parseZip(directRaw);
+        } else if (cat === 'font') {
+          this.loadDynamicFont(directRaw, filename);
+        } else if (cat === 'pdf') {
+          this.loadPdfBlob(directRaw);
+        }
+      } else {
+        // Asynchronously fetch full original binary from IndexedDB or backend stream
+        this.isLoadingPayload.set(true);
+        this.storageService.fetchResourcePayload(it).then(res => {
+          this.isLoadingPayload.set(false);
+          if (res?.objectUrl && res?.blob) {
+            this.activePayloadObjectUrl = res.objectUrl;
+            this.resolvedObjectUrl.set(res.objectUrl);
+            if (cat === 'spreadsheet' && this.isCsvFormat()) {
+              res.blob.text().then(t => this.parseCsv(t)).catch(() => this.parseCsv(directRaw));
+            } else if (cat === 'archive' && this.isZipArchive()) {
+              res.blob.arrayBuffer().then(buf => this.parseZipBuffer(buf)).catch(() => this.parseZip(directRaw));
+            } else if (cat === 'font') {
+              this.loadDynamicFont(res.objectUrl, filename);
+            } else if (cat === 'pdf') {
+              this.pdfBlobUrl.set(res.objectUrl);
+            }
+          } else {
+            // Fallback to existing raw / previewUrl
+            const fallback = it.content.previewUrl || it.content.raw || '';
+            if (!fallback) {
+              this.mediaLoadError.set(true);
+            }
+            this.resolvedObjectUrl.set(fallback || null);
+            if (cat === 'spreadsheet' && this.isCsvFormat()) this.parseCsv(fallback);
+            if (cat === 'archive' && this.isZipArchive()) this.parseZip(fallback);
+            if (cat === 'font' && fallback.startsWith('data:')) this.loadDynamicFont(fallback, filename);
+            if (cat === 'pdf') this.loadPdfBlob(fallback);
+          }
+        }).catch(() => {
+          this.isLoadingPayload.set(false);
+          const fallback = it.content.previewUrl || it.content.raw || '';
+          if (!fallback) {
+            this.mediaLoadError.set(true);
+          }
+          this.resolvedObjectUrl.set(fallback || null);
+        });
       }
     });
   }
@@ -674,8 +996,48 @@ export class AirVaultFilePreviewComponent {
     }
   }
 
+  private async parseZipBuffer(buffer: ArrayBuffer) {
+    try {
+      const zip = await JSZip.loadAsync(buffer);
+      const entries: ArchiveFileEntry[] = [];
+      zip.forEach((relativePath, file) => {
+        entries.push({
+          name: relativePath,
+          size: (file as any)._data?.uncompressedSize || 0,
+          dir: file.dir
+        });
+      });
+      this.zipEntries.set(entries);
+    } catch {
+      this.zipEntries.set([]);
+    }
+  }
+
   onMediaError() {
-    // Fallback if browser codec unsupported
+    this.mediaLoadError.set(true);
+  }
+
+  retryLoad() {
+    this.mediaLoadError.set(false);
+    const it = this.item();
+    this.isLoadingPayload.set(true);
+    this.storageService.fetchResourcePayload(it).then(res => {
+      this.isLoadingPayload.set(false);
+      if (res?.objectUrl && res?.blob) {
+        this.activePayloadObjectUrl = res.objectUrl;
+        this.resolvedObjectUrl.set(res.objectUrl);
+      } else {
+        const fallback = it.content.previewUrl || it.content.raw || '';
+        if (!fallback) {
+          this.mediaLoadError.set(true);
+        } else {
+          this.resolvedObjectUrl.set(fallback);
+        }
+      }
+    }).catch(() => {
+      this.isLoadingPayload.set(false);
+      this.mediaLoadError.set(true);
+    });
   }
 
   getCategoryIcon(): string {
@@ -720,6 +1082,12 @@ export class AirVaultFilePreviewComponent {
       try {
         URL.revokeObjectURL(url);
       } catch {}
+    }
+    if (this.activePayloadObjectUrl && this.activePayloadObjectUrl.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(this.activePayloadObjectUrl);
+      } catch {}
+      this.activePayloadObjectUrl = null;
     }
   }
 }
