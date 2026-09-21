@@ -101,6 +101,7 @@ import {
   LucideBell,
   LucideSettings,
   LucideUploadCloud,
+  LucideCloudSync,
   LucideShieldAlert,
   LucideChevronsUpDown,
   LucidePlus,
@@ -203,6 +204,10 @@ import {
   LucideBold,
   LucideItalic,
   LucideUnderline,
+  LucideWifi,
+  LucideLoaderCircle,
+  LucideBlend,
+  LucideImageOff,
 } from '@lucide/angular';
 
 @Component({
@@ -372,6 +377,8 @@ export class IconComponent {
     settings: LucideSettings,
     upload: LucideUploadCloud,
     'upload-cloud': LucideUploadCloud,
+    'cloud-sync': LucideCloudSync,
+    sync: LucideCloudSync,
     'wrap-text': LucideWrapText,
     'shield-alert': LucideShieldAlert,
     'chevrons-up-down': LucideChevronsUpDown,
@@ -490,6 +497,10 @@ export class IconComponent {
     more: LucideMoreHorizontal,
     'loader-2': LucideLoader2,
     loader: LucideLoader2,
+    'loader-circle': LucideLoaderCircle,
+    loadercircle: LucideLoaderCircle,
+    wifi: LucideWifi,
+    'refresh-ccw': LucideRotateCcw,
     tag: LucideTag,
     tags: LucideTags,
     flame: LucideFlame,
@@ -507,6 +518,8 @@ export class IconComponent {
     'text-size': LucideALargeSmall,
     'a-large-small': LucideALargeSmall,
     rocket: LucideRocket,
+    blend: LucideBlend,
+    'image-off': LucideImageOff,
   };
 
   readonly lucideIconComponent = computed(() => {

@@ -229,8 +229,8 @@ import { environment } from '../../../environments/environment';
                   (click)="onPairWithRemotePin6()"
                 >
                   @if (isPin6Loading()) {
-                    <app-icon name="loader-2" class="icon-xs spin-anim"></app-icon>
-                    <span>Connecting with PIN {{ remotePin6Digits.join('') }}...</span>
+                    <app-icon name="loader-2" class="icon-xs spin-anim text-cyan"></app-icon>
+                    <span>Pairing with PIN {{ remotePin6Digits.join('') }}...</span>
                   } @else {
                     <app-icon name="link" class="icon-xs"></app-icon>
                     <span>Pair with 6-Digit PIN</span>
@@ -240,7 +240,7 @@ import { environment } from '../../../environments/environment';
                 @if (isPin6Loading()) {
                   <div class="active-connecting-banner">
                     <app-icon name="loader-2" class="icon-xs text-cyan spin-anim"></app-icon>
-                    <span class="connecting-text">Connecting to remote device...</span>
+                    <span class="connecting-text">Pairing with remote device...</span>
                     <button class="btn-cancel-connecting" (click)="cancelPin6Connection()">Cancel</button>
                   </div>
                 }
@@ -436,8 +436,8 @@ import { environment } from '../../../environments/environment';
                   (click)="onPairWithRemoteUsernamePin()"
                 >
                   @if (isPairingLoading()) {
-                    <app-icon name="loader-2" class="icon-xs spin-anim"></app-icon>
-                    <span>Connecting to &#64;{{ remoteUsernameInput.trim() || 'Device' }}...</span>
+                    <app-icon name="loader-2" class="icon-xs spin-anim text-cyan"></app-icon>
+                    <span>Pairing with &#64;{{ remoteUsernameInput.trim() || 'Device' }}...</span>
                   } @else {
                     <app-icon name="link" class="icon-xs"></app-icon>
                     <span>Pair with &#64;{{ remoteUsernameInput.trim() || 'Device' }}</span>
@@ -2345,7 +2345,7 @@ export class AirVaultPairingModalComponent implements OnDestroy {
           this.syncService.pairWithPin(fullPin, cur.name);
 
           this.deviceAdded.emit(peerDevice);
-          this.syncService.initiateDeviceSync(peerDevice);
+          this.uiStore.openSyncConsent(peerDevice);
           this.uiStore.triggerToast(`✓ Connected & Paired with @${targetUser}!`);
           this.close.emit();
         } else {

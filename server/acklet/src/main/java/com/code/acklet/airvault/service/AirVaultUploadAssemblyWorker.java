@@ -29,6 +29,7 @@ public class AirVaultUploadAssemblyWorker {
     private final AirVaultRedisTracker redisTracker;
     private final AirVaultUploadService uploadService;
     private final AirVaultAuditService auditService;
+    private final com.code.acklet.airvault.storage.AirVaultStorageAdapter storageAdapter;
 
     private final Path storageRoot = Paths.get(System.getProperty("java.io.tmpdir"), "acklet_airvault_uploads");
 
@@ -174,6 +175,7 @@ public class AirVaultUploadAssemblyWorker {
 
             // 3. Post-Assembly Compression Option (Store compressed archive alongside)
             Path compressedFile = finalStorageDir.resolve(session.getFileId() + ".gz");
+            long compressedSize = 0;
             try (InputStream in = Files.newInputStream(finalFile);
                  OutputStream out = Files.newOutputStream(compressedFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
                  GZIPOutputStream gzipOut = new GZIPOutputStream(out)) {
@@ -183,8 +185,17 @@ public class AirVaultUploadAssemblyWorker {
                     gzipOut.write(buffer, 0, len);
                 }
             }
+            if (Files.exists(compressedFile)) {
+                compressedSize = Files.size(compressedFile);
+            }
 
-            // 4. Save permanent ClipboardFile entity
+            // 4. Store object into configured storage adapter (Local disk or Cloudflare R2)
+            String storageObjectKey = "files/" + session.getFileId() + ".bin";
+            try (InputStream in = Files.newInputStream(finalFile)) {
+                storageAdapter.storeObject(storageObjectKey, in, totalAssembledBytes, "application/octet-stream");
+            }
+
+            // 5. Save permanent ClipboardFile entity
             ClipboardFile clipboardFile = ClipboardFile.builder()
                     .clipboardId(session.getClipboardId())
                     .fileId(session.getFileId())
@@ -192,24 +203,31 @@ public class AirVaultUploadAssemblyWorker {
                     .category(session.getCategory())
                     .byteSize(totalAssembledBytes)
                     .checksum(calculatedChecksum)
-                    .storagePath(finalFile.toAbsolutePath().toString())
+                    .storagePath(storageObjectKey)
                     .previewUrl(session.getPreviewUrl())
                     .build();
 
             clipboardFileRepository.save(clipboardFile);
 
-            // 5. Update session status & Redis
+            // 6. Update session status & Redis
             session.setStatus("COMPLETED");
             session.setReceivedBytes(totalAssembledBytes);
-            session.setStoragePath(finalFile.toAbsolutePath().toString());
+            session.setStoragePath(storageObjectKey);
             uploadSessionRepository.save(session);
 
             redisTracker.setSessionStatus(sessionId, "READY");
 
-            // 6. Clean up intermediate temporary chunks
+            // 7. Clean up intermediate temporary chunks & assembled temp files
             if (Files.exists(sessionChunkDir)) {
                 deleteChunkDir(sessionChunkDir);
             }
+            try {
+                Files.deleteIfExists(compressedFile);
+                if (!"LOCAL".equalsIgnoreCase(storageAdapter.getProviderName())) {
+                    // For R2, cleanup the temporary local assembly file as it is now in the cloud
+                    Files.deleteIfExists(finalFile);
+                }
+            } catch (IOException ignored) {}
 
             log.info("[AirVault Worker] ✅ File assembly completed for {}: {} bytes, checksum={}",
                     session.getFileName(), totalAssembledBytes, calculatedChecksum);

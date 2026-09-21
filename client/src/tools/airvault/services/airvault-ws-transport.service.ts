@@ -189,12 +189,19 @@ export class AirVaultWsTransportService implements OnDestroy {
         this.stopPingInterval();
         this.ws = null;
 
+        let closeReasonDescription = '';
+        if (event.code === 1009) {
+          closeReasonDescription = 'Message frame exceeded buffer limit (1009: TOO_BIG_TO_PROCESS). Stream using chunked payload storage.';
+        } else if (event.code === 1006) {
+          closeReasonDescription = 'Abnormal closure (1006) — network drop or server reset.';
+        }
+
         if (this.isManualDisconnect) {
           this.connectionState.set('DISCONNECTED');
-          AirVaultLogger.debug(`[AirVault WS] Disconnected (code: ${event.code}, manual: true)`);
+          AirVaultLogger.debug(`[AirVault WS] Disconnected (code: ${event.code}, manual: true) ${closeReasonDescription}`);
         } else {
           this.connectionState.set('RECONNECTING');
-          AirVaultLogger.debug(`[AirVault WS] Disconnected (code: ${event.code}). Scheduling reconnect...`);
+          AirVaultLogger.warn(`[AirVault WS] Disconnected (code: ${event.code}${closeReasonDescription ? ` - ${closeReasonDescription}` : ''}). Scheduling reconnect...`);
           this.scheduleReconnect();
         }
       };

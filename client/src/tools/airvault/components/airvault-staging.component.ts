@@ -17,7 +17,7 @@ import { AirVaultUIStore } from '../services/airvault-ui.store';
 import { AirVaultCryptoService } from '../services/airvault-crypto.service';
 import { AirVaultColorService } from '../services/airvault-color.service';
 import { AirVaultBlameService } from '../services/airvault-blame.service';
-import { maskSensitivePreview, ComposerMatch, scanAllMatches } from '../services/airvault-action-detector';
+import { maskSensitivePreview, ComposerMatch, scanAllMatches, checkDuplicateResource } from '../services/airvault-action-detector';
 import { AirVaultActionPopoverComponent } from './airvault-action-popover.component';
 import { getAirVaultApiUrl } from '../services/airvault-api.util';
 import { checkInputThreshold, formatByteSize } from '../../../app/core/config/tool-thresholds';
@@ -693,7 +693,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     filename?: string;
     existingItemId?: string;
     lineBlameMap?: LineBlameEntry[];
-    options?: { tag?: string; customCategory?: string; retentionTtlMs?: number };
+    options?: { tag?: string; customCategory?: string; retentionTtlMs?: number; byteSize?: number };
   }>();
   liveTextChange = output<{ text: string; lineBlameMap?: LineBlameEntry[] }>();
   targetChange = output<string | undefined>();
@@ -838,19 +838,6 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
     // Transition to PREPARING
     this.updateStagedAttachmentStatus(attId, { status: 'PREPARING', progressPercent: 0 });
-
-    // Step 1: Storage quota checks
-    const currentUsage = this.storageService.totalBytes();
-    const currentCap = this.storageService.totalStorageCapBytes();
-    const remainingStorage = currentCap - currentUsage;
-
-    if (file.size > remainingStorage) {
-      const capGB = (currentCap / (1024 * 1024 * 1024)).toFixed(0);
-      const err = `Storage quota exceeded (${(currentUsage / 1024 / 1024).toFixed(0)} MB / ${capGB} GB)`;
-      this.updateStagedAttachmentStatus(attId, { status: 'FAILED', errorMessage: err });
-      this.uiStore.triggerToast(`⛔ "${file.name}": ${err}`);
-      return;
-    }
 
     const curDev = this.deviceService.currentDevice();
     const curUserName = curDev.username ? `@${curDev.username}` : (curDev.name || 'User');
@@ -2477,6 +2464,28 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     this.isManualExpanded.set(false);
   }
 
+  /**
+   * Clears the current input text, draft, and staged attachments from the composer tab.
+   * Does not affect any saved vault clipboard items.
+   */
+  clearCurrentInput(e?: Event) {
+    if (e) {
+      e.stopPropagation();
+      this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
+    }
+    const hadContent = !this.richEditor.isEmpty() || this.stagedText().trim().length > 0 || this.stagedAttachments().length > 0;
+    this.clearText();
+    // Clean up any object URLs for staged attachments
+    this.stagedAttachments().forEach(a => {
+      if (a.previewUrl) URL.revokeObjectURL(a.previewUrl);
+    });
+    this.stagedAttachments.set([]);
+    this.dismissGhostSuggestion();
+    if (hadContent) {
+      this.uiStore.triggerToast('🧹 Input cleared');
+    }
+  }
+
   triggerBeam(e?: Event) {
     // ── §12 Duplicate execution counter ─────────────────────────────────────
     resetCounters();
@@ -2647,7 +2656,6 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
     // Clear the local IndexedDB draft now that this content has been committed as a Beam
     this.storageService.clearDraft();
-    this.uiStore.triggerToast('⚡ Beamed entry to connected devices');
 
     // Note: run.finalise() is called by the async worker/beam pipeline when DONE
     // If it's a text-only send, finalise here
@@ -2968,16 +2976,6 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       totalBatchBytes += f.size;
     }
 
-    const currentUsage = this.storageService.totalBytes();
-    const currentCap = this.storageService.totalStorageCapBytes();
-    const remainingStorage = currentCap - currentUsage;
-
-    if (totalBatchBytes > remainingStorage) {
-      const capGB = (currentCap / (1024 * 1024 * 1024)).toFixed(0);
-      this.uiStore.triggerToast(`⛔ Batch total size (${(totalBatchBytes / 1024 / 1024).toFixed(1)} MB) exceeds remaining storage (${(remainingStorage / 1024 / 1024).toFixed(0)} MB / ${capGB} GB).`);
-      return;
-    }
-
     const batchId = `av_batch_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const curDev = this.deviceService.currentDevice();
     const curUserName = curDev.username ? `@${curDev.username}` : (curDev.name || 'User');
@@ -3085,17 +3083,6 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
         this.uiStore.triggerToast(`ℹ️ "${file.name}" already exists in your vault · Expiration timer refreshed (7d)`);
         return;
       }
-    }
-
-    // 1. Dynamic Storage Cap Guard (5 GB base + 5 GB per connected device)
-    const currentUsage = this.storageService.totalBytes();
-    const currentCap = this.storageService.totalStorageCapBytes();
-    const remainingStorage = currentCap - currentUsage;
-
-    if (file.size > remainingStorage) {
-      const capGB = (currentCap / (1024 * 1024 * 1024)).toFixed(0);
-      this.uiStore.triggerToast(`⛔ Clipboard storage is full. Free up space to add more resources (${(currentUsage / 1024 / 1024).toFixed(0)} MB / ${capGB} GB).`);
-      return;
     }
 
     // ── §1 Forensic: pick up correlation ID threaded from triggerBeam ────────
@@ -3288,17 +3275,17 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
             isSensitive: false
           };
 
-          // Check if identical content was already in the vault (only for standalone items)
+          // Check if identical content exists for a paired user / connected device
           if (!batchId) {
-            const duplicate = this.storageService.findDuplicateItem(classified, itemId);
-            if (duplicate) {
-              this.storageService.deleteItem(itemId);
-              this.storageService.refreshItemExpiry(duplicate.id);
-              this.cleanupWorker(itemId);
-              this.activeUploadsCount = Math.max(0, this.activeUploadsCount - 1);
-              this.processNextInQueue();
-              this.uiStore.triggerToast(`ℹ️ "${classified.filename || 'Item'}" already exists in your vault · Expiration timer refreshed (7d)`);
-              return;
+            const curUser = this.deviceService.currentDevice().username?.toLowerCase().replace(/^@/, '');
+            const curDevId = this.deviceService.currentDevice().id;
+            const pairedResources = this.storageService.allItems().filter(i => {
+              const owner = (i.originOwnerId || i.senderDeviceName || i.senderDeviceId || '').toLowerCase().replace(/^@/, '');
+              return owner && owner !== curUser && owner !== curDevId;
+            });
+            const pairedDup = checkDuplicateResource(classified, pairedResources);
+            if (pairedDup.isDuplicate && pairedDup.matchedUsername) {
+              this.uiStore.openDuplicateModal(pairedDup.matchedUsername, classified);
             }
           }
 
@@ -3348,9 +3335,13 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
               itemId, filename: classified.filename, category: classified.category,
               rawBytes: typeof classified.raw === 'string' ? classified.raw.length : 0,
             });
-            countStage('BROADCAST');
-            // Broadcast standard individual file payload to paired peer devices
-            this.beamPayload.emit({ text: classified.raw, targetDeviceId: this.selectedTargetId(), filename: classified.filename, existingItemId: itemId });
+            this.beamPayload.emit({ 
+              text: classified.raw, 
+              targetDeviceId: this.selectedTargetId(), 
+              filename: classified.filename, 
+              existingItemId: itemId,
+              options: { byteSize: classified.byteSize }
+            });
             // §4/§16 Finalise the run record
             const activeRun: any = (this as any)._activeRun;
             if (activeRun) {
@@ -3505,17 +3496,17 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
         isSensitive: false
       };
 
-      // Check if identical content was already in the vault (only for standalone items)
+      // Check if identical content exists for a paired user / connected device
       if (!batchId) {
-        const duplicate = this.storageService.findDuplicateItem(classified, itemId);
-        if (duplicate) {
-          this.storageService.deleteItem(itemId);
-          this.storageService.refreshItemExpiry(duplicate.id);
-          this.cleanupWorker(itemId);
-          this.activeUploadsCount = Math.max(0, this.activeUploadsCount - 1);
-          this.processNextInQueue();
-          this.uiStore.triggerToast(`ℹ️ "${classified.filename || 'Item'}" already exists in your vault · Expiration timer refreshed (7d)`);
-          return;
+        const curUser = this.deviceService.currentDevice().username?.toLowerCase().replace(/^@/, '');
+        const curDevId = this.deviceService.currentDevice().id;
+        const pairedResources = this.storageService.allItems().filter(i => {
+          const owner = (i.originOwnerId || i.senderDeviceName || i.senderDeviceId || '').toLowerCase().replace(/^@/, '');
+          return owner && owner !== curUser && owner !== curDevId;
+        });
+        const pairedDup = checkDuplicateResource(classified, pairedResources);
+        if (pairedDup.isDuplicate && pairedDup.matchedUsername) {
+          this.uiStore.openDuplicateModal(pairedDup.matchedUsername, classified);
         }
       }
 
@@ -3544,7 +3535,13 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
         }
       } else {
         // Broadcast encrypted file payload to paired peer devices without duplicate local tiles
-        this.beamPayload.emit({ text: classified.raw, targetDeviceId: this.selectedTargetId(), filename: classified.filename, existingItemId: itemId });
+        this.beamPayload.emit({ 
+          text: classified.raw, 
+          targetDeviceId: this.selectedTargetId(), 
+          filename: classified.filename, 
+          existingItemId: itemId,
+          options: { byteSize: classified.byteSize }
+        });
       }
     } catch (err: any) {
       AirVaultLogger.error('[AirVault] Inline file processing failed:', err);

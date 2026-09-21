@@ -1,4 +1,4 @@
-import { normalizeUrlForDedup, normalizeTextForDedup, computeDedupKey, computeDedupKeySync } from './airvault-action-detector';
+import { normalizeUrlForDedup, normalizeTextForDedup, computeDedupKey, computeDedupKeySync, checkDuplicateResource } from './airvault-action-detector';
 
 describe('AirVault Semantic Deduplication', () => {
   describe('URL Normalization', () => {
@@ -89,6 +89,80 @@ describe('AirVault Semantic Deduplication', () => {
       const key1 = await computeDedupKey('file', 'document.pdf', bytes1);
       const key2 = await computeDedupKey('file', 'document.pdf', bytes2);
       expect(key1).not.toBe(key2);
+    });
+  });
+
+  describe('checkDuplicateResource for Paired Users', () => {
+    it('should detect duplicate when new resource matches paired user resource content', () => {
+      const newResource = {
+        id: 'res-new',
+        content: {
+          category: 'text',
+          raw: 'Shared secret token or text payload'
+        }
+      };
+      const pairedUsersResources = [
+        {
+          id: 'res-existing',
+          senderDeviceName: '@charlie',
+          content: {
+            category: 'text',
+            raw: 'Shared secret token or text payload'
+          }
+        }
+      ];
+
+      const result = checkDuplicateResource(newResource, pairedUsersResources);
+      expect(result.isDuplicate).toBe(true);
+      expect(result.matchedUsername).toBe('@charlie');
+    });
+
+    it('should detect duplicate via semantic dedup key (e.g. whitespace differences in code)', () => {
+      const newResource = {
+        id: 'res-new-code',
+        content: {
+          category: 'code',
+          raw: 'function hello() {\r\n  return 42;\r\n}\r\n'
+        }
+      };
+      const pairedUsersResources = [
+        {
+          id: 'res-paired-code',
+          senderDeviceName: '@alice',
+          content: {
+            category: 'code',
+            raw: '  function hello() {\n  return 42;\n}\n  '
+          }
+        }
+      ];
+
+      const result = checkDuplicateResource(newResource, pairedUsersResources);
+      expect(result.isDuplicate).toBe(true);
+      expect(result.matchedUsername).toBe('@alice');
+    });
+
+    it('should return isDuplicate: false when no matching resource is found', () => {
+      const newResource = {
+        id: 'res-unique',
+        content: {
+          category: 'text',
+          raw: 'Completely unique text payload'
+        }
+      };
+      const pairedUsersResources = [
+        {
+          id: 'res-paired-1',
+          senderDeviceName: '@bob',
+          content: {
+            category: 'text',
+            raw: 'Different text content'
+          }
+        }
+      ];
+
+      const result = checkDuplicateResource(newResource, pairedUsersResources);
+      expect(result.isDuplicate).toBe(false);
+      expect(result.matchedUsername).toBe('');
     });
   });
 });

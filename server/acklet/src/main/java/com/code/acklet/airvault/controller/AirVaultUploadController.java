@@ -94,17 +94,59 @@ public class AirVaultUploadController {
     }
 
     @GetMapping(value = "/clipboards/{clipboardId}/files/{fileId}/raw")
-    @Operation(summary = "Stream Raw Resource Binary", description = "Non-blocking reactive streaming of file binary without in-memory buffering")
-    public void downloadRawFile(
+    @Operation(summary = "Stream Raw Resource Binary", description = "Progressive HTTP Range-based streaming supporting audio/video seeking and full downloads without memory buffering")
+    public ResponseEntity<?> downloadRawFile(
             @PathVariable String clipboardId,
             @PathVariable String fileId,
-            jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+            @RequestHeader(value = "Range", required = false) String rangeHeader) throws java.io.IOException {
         com.code.acklet.airvault.entity.ClipboardFile file = uploadService.getFileMetadata(fileId);
-        response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
-        response.setHeader("Content-Disposition", "inline; filename=\"" + (file.getFileName() != null ? file.getFileName() : fileId) + "\"");
-        response.setHeader("Content-Length", String.valueOf(file.getByteSize() != null ? file.getByteSize() : 0));
-        response.setHeader("Accept-Ranges", "bytes");
-        uploadService.streamRawFile(fileId, response.getOutputStream());
+        java.nio.file.Path filePath = uploadService.getDecompressedFilePath(fileId);
+
+        org.springframework.core.io.Resource resource = new org.springframework.core.io.FileSystemResource(filePath);
+        long contentLength = resource.contentLength();
+
+        String filename = file.getFileName() != null ? file.getFileName() : fileId;
+        String contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        String lowerName = filename.toLowerCase();
+        if (lowerName.endsWith(".mp4")) contentType = "video/mp4";
+        else if (lowerName.endsWith(".webm")) contentType = "video/webm";
+        else if (lowerName.endsWith(".mp3")) contentType = "audio/mpeg";
+        else if (lowerName.endsWith(".wav")) contentType = "audio/wav";
+        else if (lowerName.endsWith(".ogg")) contentType = "audio/ogg";
+        else if (lowerName.endsWith(".m4a") || lowerName.endsWith(".aac")) contentType = "audio/mp4";
+        else if (lowerName.endsWith(".pdf")) contentType = "application/pdf";
+        else if (lowerName.endsWith(".png")) contentType = "image/png";
+        else if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) contentType = "image/jpeg";
+        else if (lowerName.endsWith(".webp")) contentType = "image/webp";
+        else if (lowerName.endsWith(".zip")) contentType = "application/zip";
+
+        org.springframework.http.MediaType mediaType = org.springframework.http.MediaType.parseMediaType(contentType);
+
+        if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
+            org.springframework.core.io.support.ResourceRegion region;
+            try {
+                String[] ranges = rangeHeader.substring(6).split("-");
+                long start = Long.parseLong(ranges[0]);
+                long end = (ranges.length > 1 && !ranges[1].isBlank()) ? Long.parseLong(ranges[1]) : Math.min(start + 1024 * 1024 - 1, contentLength - 1);
+                long rangeLength = Math.min(end - start + 1, contentLength - start);
+                region = new org.springframework.core.io.support.ResourceRegion(resource, start, rangeLength);
+            } catch (Exception e) {
+                region = new org.springframework.core.io.support.ResourceRegion(resource, 0, Math.min(1024 * 1024, contentLength));
+            }
+
+            return ResponseEntity.status(org.springframework.http.HttpStatus.PARTIAL_CONTENT)
+                    .contentType(mediaType)
+                    .header(org.springframework.http.HttpHeaders.ACCEPT_RANGES, "bytes")
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                    .body(region);
+        }
+
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(org.springframework.http.HttpHeaders.ACCEPT_RANGES, "bytes")
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                .contentLength(contentLength)
+                .body(resource);
     }
 
     @GetMapping(value = "/clipboards/{clipboardId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

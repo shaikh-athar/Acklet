@@ -98,19 +98,6 @@ import { IconComponent } from '../../../app/shared/components/icon/icon';
             }
           </div>
 
-          <!-- Storage usage indicator -->
-          <div class="storage-pill" [class.storage-pill-warn]="storageUsedPercent() > 80"
-            [attr.data-tooltip]="storageSummary()">
-            <app-icon name="hard-drive" class="icon-xs"></app-icon>
-            <div class="storage-bar-track">
-              <div class="storage-bar-fill"
-                [style.width]="storageUsedPercent() + '%'"
-                [class.storage-bar-warn]="storageUsedPercent() > 80">
-              </div>
-            </div>
-            <span class="storage-label">{{ storageLabelText() }}</span>
-          </div>
-
           <button class="footer-pill" (click)="feedbackClick.emit()" data-tooltip="Send feedback">
             <app-icon name="message-square" class="icon-xs"></app-icon>
             <span>Feedback</span>
@@ -436,8 +423,6 @@ export class AirVaultFooterComponent {
   totalBytes = input<number>(0);
   activeBytes = input<number>(0);
   historyBytes = input<number>(0);
-  totalStorageCapBytes = input<number>(1024 * 1024 * 1024);
-  storageUsedPercent = input<number>(0);
 
   // Typography Options (6 diverse styles)
   fontStyles = [
@@ -537,24 +522,6 @@ export class AirVaultFooterComponent {
     document.documentElement.style.setProperty('--av-custom-font-family', font.family);
     document.documentElement.style.setProperty('--av-custom-font-scale', size.scale);
   }
-
-  storageLabelText = computed(() => {
-    const mb = this.totalBytes() / 1024 / 1024;
-    if (mb >= 1024) {
-      return `${(mb / 1024).toFixed(2)} GB`;
-    }
-    return `${mb.toFixed(0)} MB`;
-  });
-
-  storageSummary = computed(() => {
-    const usedMB = this.totalBytes() / 1024 / 1024;
-    const capMB = this.totalStorageCapBytes() / 1024 / 1024;
-    const usedStr = usedMB >= 1024 ? `${(usedMB / 1024).toFixed(2)} GB` : `${usedMB.toFixed(1)} MB`;
-    const capStr = capMB >= 1024 ? `${(capMB / 1024).toFixed(1)} GB` : `${capMB.toFixed(0)} MB`;
-    const activeStr = (this.activeBytes() / 1024 / 1024).toFixed(1) + ' MB';
-    const histStr = (this.historyBytes() / 1024 / 1024).toFixed(1) + ' MB';
-    return `Shared Storage: ${usedStr} / ${capStr} (${this.storageUsedPercent()}% used) · Active: ${activeStr}`;
-  });
 
   historyClick = output<void>();
   toggleAutoCapture = output<void>();

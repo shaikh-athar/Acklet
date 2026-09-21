@@ -18,6 +18,7 @@
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/ai/service/EmbeddingGenerationService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/ai/service/SeoGenerationService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/ai/service/SummaryGenerationService.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/config/AirVaultExecutorConfig.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/config/AirVaultPresenceAsyncConfig.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/config/AirVaultRabbitConfig.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/config/AirVaultRabbitMqConfig.java
@@ -27,6 +28,7 @@
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/controller/AirVaultHistoryController.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/controller/AirVaultSyncController.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/controller/AirVaultUploadController.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/diagnostic/WsOperationTimer.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/dto/AirVaultAuditEventDto.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/dto/AirVaultAuthDtos.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/dto/AirVaultDeviceDto.java
@@ -52,6 +54,8 @@
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/repository/UploadSessionRepository.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultAuditService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultAuthService.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultClusterSyncListener.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultDecompressedFileCache.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultDeviceService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultDocOpsQueueConsumer.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultDocSequencerService.java
@@ -60,7 +64,12 @@
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultSyncRelayService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultUploadAssemblyWorker.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultUploadService.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/storage/AirVaultStorageAdapter.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/storage/AirVaultStorageConfig.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/storage/LocalStorageAdapter.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/storage/R2StorageAdapter.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/websocket/AirVaultHandshakeInterceptor.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/websocket/AirVaultMetricsService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/websocket/AirVaultWebSocketConfig.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/websocket/AirVaultWebSocketHandler.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/websocket/dto/AirVaultWsMessage.java

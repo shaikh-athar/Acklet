@@ -81,16 +81,9 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"));
-        // Cache-Control and Pragma are sent by polling GETs (signal poll, presence poll).
-        // They must be explicitly allowed or the preflight returns HeaderDisallowedByPreflightResponse.
-        configuration.setAllowedHeaders(List.of(
-                "Authorization", "Content-Type", "X-Requested-With",
-                "Accept", "Origin",
-                "Cache-Control", "Pragma",
-                "X-Correlation-ID", "X-XSRF-TOKEN", "X-Turnstile-Token",
-                "X-Device-Id"
-        ));
-        configuration.setExposedHeaders(List.of("Authorization", "X-Correlation-ID", "X-XSRF-TOKEN", "Retry-After"));
+        // Allow all headers including custom telemetry (X-Operation-Id), device IDs, and caching headers
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("Authorization", "X-Correlation-ID", "X-XSRF-TOKEN", "Retry-After", "X-Operation-Id", "X-Device-Id"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L); // 1-hour preflight cache — stops OPTIONS spam on every poll
 

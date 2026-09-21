@@ -672,6 +672,8 @@
   width: 100%;
   display: flex;
   flex-direction: column;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease;
+  contain: layout style;
 }
 
 @media (max-width: 600px) {
@@ -1053,7 +1055,8 @@
 
 /* Plus Attach (+) button tooltip: anchor to left: 0 so it displays rightward inside the card and never clips against the clear button or screen edge */
 .composer-plus-icon [data-tooltip]::after,
-.composer-plus-attach-btn[data-tooltip]::after {
+.composer-plus-attach-btn[data-tooltip]::after,
+.composer-clear-input-btn[data-tooltip]::after {
   left: 0;
   right: auto;
   bottom: calc(100% + 8px);
@@ -1061,7 +1064,8 @@
   z-index: 9999 !important;
 }
 .composer-plus-icon [data-tooltip]:hover::after,
-.composer-plus-attach-btn[data-tooltip]:hover::after {
+.composer-plus-attach-btn[data-tooltip]:hover::after,
+.composer-clear-input-btn[data-tooltip]:hover::after {
   opacity: 1;
   transform: translateX(0) translateY(0);
 }
@@ -1258,12 +1262,15 @@
   transition: all 0.5s ease;
 }
 
-/* ── ZONE 3: Bottom-Left Standalone (+) Attach Icon ── */
+/* ── ZONE 3: Bottom-Left Standalone (+) Attach & Clear Input Icons ── */
 .composer-plus-icon {
   position: absolute;
   bottom: 12px;
   left: 12px;
   z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* ── ZONE 4: Bottom-Right Toolbar Row (clipboard, hourglass, <>, tag, send) ── */
@@ -1718,7 +1725,7 @@
   flex: 1;
   width: 100%;
   /* min-height keeps it at one line; JS in autoResizeTextarea() sets the actual height */
-  min-height: 44px;
+  min-height: 24px;
   max-height: 88px; /* ~4 lines collapsed cap */
   padding: 0;
   border: none !important;
@@ -1778,7 +1785,7 @@
   pointer-events: auto;
   /* Padding on ProseMirror itself so 100% of the bounding box is the editable contenteditable target */
   padding-top: 10px;
-  padding-bottom: 48px;
+  padding-bottom: 40px;
   padding-left: 14px;
   padding-right: 170px;
   margin: 0;
@@ -2075,7 +2082,7 @@
   max-height: 100%;
   pointer-events: none;
   padding-top: 10px;
-  padding-bottom: 48px;
+  padding-bottom: 40px;
   padding-left: 14px;
   padding-right: 170px;
   font-size: calc(var(--av-clipboard-font-size, 13px) * 1.05);
@@ -2140,7 +2147,7 @@
   max-height: 100%;
   pointer-events: none;
   padding-top: 10px;
-  padding-bottom: 48px;
+  padding-bottom: 40px;
   padding-left: 14px;
   padding-right: 170px;
   font-size: calc(var(--av-clipboard-font-size, 13px) * 1.05);
@@ -2562,6 +2569,25 @@
   color: var(--av-accent, #2196F3);
   border-color: rgba(33, 150, 243, 0.3);
   border-radius: var(--av-radius-full, 9999px);
+}
+
+/* Clear Input Button: Specific Red Hover Feedback */
+.composer-clear-input-btn:hover:not(:disabled) {
+  background: var(--av-danger-soft, rgba(239, 68, 68, 0.14)) !important;
+  color: var(--av-danger, #EF4444) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+:host-context([data-theme="light"]) .composer-clear-input-btn:hover:not(:disabled) {
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+  border-color: #fecaca !important;
+}
+
+.composer-clear-input-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .selection-size-dropdown {

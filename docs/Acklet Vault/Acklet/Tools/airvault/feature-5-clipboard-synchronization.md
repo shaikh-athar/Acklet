@@ -72,6 +72,17 @@
   - **Author Deletion Propagation**: When an author deletes lines they previously wrote, those lines are removed across connected peer devices (when `syncTextDeletions` is enabled). Lines written by other peers are strictly preserved. When disabled in Settings, peer devices retain the lines locally.
   - **Device-Specific Accent Highlighting**: Each author's lines, cards, gutters, and attribution tooltips render using the originating device's configured accent color (`authorColor` / `accentColor` / `LineBlameEntry.authorColor`).
 
+- **Durable Outbox & Resilient Cross-Device Synchronization (`vault_outbox`)**:
+  - Outbox queue is persisted directly in IndexedDB schema (`vault_outbox`), surviving full browser refreshes, network drops, and background tab sleeps.
+  - Automatic retry daemon with bounded exponential backoff (3s, 6s, 12s, 24s) drains and re-transmits pending packets when network or peer availability is restored.
+  - Automatic outbox flush triggers immediately upon WebSocket reconnect or peer presence signal.
+- **Initial Sync & Active Payload Broadcast**:
+  - When initiating bi-directional sync on reconnect/pairing, devices broadcast active vault items (`items().filter(it => !isTombstoned(it.id))`) to ensure newly connected peers receive current clipboard state.
+  - Dedicated initial batch parsing preserves original metadata, tags, resend history, and retention policies.
+- **Deduplication & Duplicate ACK Confirmation**:
+  - Packets matching `processedPacketIds` or tombstone sets still trigger an immediate `SYNC_ACK` emission back to the sender before exiting, preventing sender outbox stalls or infinite retries.
+- **Destination Device Sync Consent**:
+  - When a peer device connects, the destination device renders an interactive consent modal (`AirVaultSyncConsentModalComponent`) offering a choice between *"Sync Clipboard"* (ingesting existing peer items) and *"Ignore / Skip"* (starting clean without modifying either device's local vault).
 - **Clipboard Item Retention Guarantee**:
   - Beaming content to peer devices never acts as a move or delete. Both the sending device and receiving devices retain their respective items in their active stream, feeds, and IndexedDB history.
   - Safari clipboard suggestion support integrates native clipboard read with synchronous focus, `visibilitychange`, and in-session fallback listeners.

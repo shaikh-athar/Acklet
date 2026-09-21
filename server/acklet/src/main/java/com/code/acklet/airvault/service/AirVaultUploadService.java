@@ -35,6 +35,8 @@ public class AirVaultUploadService {
     private final RabbitTemplate rabbitTemplate;
     private final AirVaultRedisTracker redisTracker;
     private final AirVaultAuditService auditService;
+    private final com.code.acklet.airvault.storage.AirVaultStorageAdapter storageAdapter;
+    private final AirVaultDecompressedFileCache fileCache;
 
     // In-memory SSE connections map keyed by clipboardId
     private final Map<String, List<SseEmitter>> clipboardEmitters = new ConcurrentHashMap<>();
@@ -457,9 +459,8 @@ public class AirVaultUploadService {
         try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(out)) {
             Set<String> entryNames = new HashSet<>();
             for (ClipboardFile file : files) {
-                if (file.getStoragePath() == null) continue;
-                Path p = Paths.get(file.getStoragePath());
-                if (!Files.exists(p)) continue;
+                if (file.getStoragePath() == null || file.getStoragePath().isBlank()) continue;
+                if (!storageAdapter.exists(file.getStoragePath())) continue;
 
                 String entryName = file.getFileName();
                 int suffix = 1;
@@ -476,7 +477,13 @@ public class AirVaultUploadService {
 
                 java.util.zip.ZipEntry zipEntry = new java.util.zip.ZipEntry(entryName);
                 zos.putNextEntry(zipEntry);
-                Files.copy(p, zos);
+                try (InputStream fileIn = storageAdapter.getObject(file.getStoragePath())) {
+                    byte[] buffer = new byte[65536];
+                    int len;
+                    while ((len = fileIn.read(buffer)) != -1) {
+                        zos.write(buffer, 0, len);
+                    }
+                }
                 zos.closeEntry();
             }
             zos.finish();
@@ -493,20 +500,85 @@ public class AirVaultUploadService {
     }
 
     @Transactional(readOnly = true)
-    public void streamRawFile(String fileId, OutputStream out) throws IOException {
+    public Path getDecompressedFilePath(String fileId) throws IOException {
         ClipboardFile file = getFileMetadata(fileId);
-        if (file.getStoragePath() == null) {
+        String storagePath = file.getStoragePath();
+        if (storagePath == null || storagePath.isBlank()) {
             throw new ResourceNotFoundException("File storage path missing for: " + fileId);
         }
-        Path path = Paths.get(file.getStoragePath());
-        if (!Files.exists(path)) {
-            throw new ResourceNotFoundException("Physical file missing on server storage: " + fileId);
+
+        String checksum = file.getChecksum() != null ? file.getChecksum() : fileId;
+
+        return fileCache.getOrDecompressPath(checksum, destination -> {
+            try (InputStream rawIn = storageAdapter.getObject(storagePath);
+                 PushbackInputStream pushbackIn = new PushbackInputStream(new BufferedInputStream(rawIn), 2);
+                 OutputStream destOut = Files.newOutputStream(destination, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+                 BufferedOutputStream bufDestOut = new BufferedOutputStream(destOut)) {
+
+                byte[] signature = new byte[2];
+                int read = pushbackIn.read(signature);
+                if (read == 2) {
+                    pushbackIn.unread(signature);
+                }
+
+                boolean isGzip = (read == 2 && ((signature[0] & 0xFF) == 0x1F) && ((signature[1] & 0xFF) == 0x8B));
+                InputStream streamToRead = isGzip ? new java.util.zip.GZIPInputStream(pushbackIn) : pushbackIn;
+
+                byte[] buffer = new byte[65536];
+                int bytesRead;
+                long totalWritten = 0;
+                while ((bytesRead = streamToRead.read(buffer)) != -1) {
+                    bufDestOut.write(buffer, 0, bytesRead);
+                    totalWritten += bytesRead;
+                }
+                bufDestOut.flush();
+                return totalWritten;
+            }
+        });
+    }
+
+    @Transactional(readOnly = true)
+    public void streamRawFile(String fileId, OutputStream out) throws IOException {
+        ClipboardFile file = getFileMetadata(fileId);
+        String storagePath = file.getStoragePath();
+        if (storagePath == null || storagePath.isBlank()) {
+            throw new ResourceNotFoundException("File storage path missing for: " + fileId);
         }
-        try (InputStream in = Files.newInputStream(path);
-             BufferedInputStream bufIn = new BufferedInputStream(in)) {
-            byte[] buffer = new byte[65536]; // 64KB streaming chunk
+
+        String checksum = file.getChecksum() != null ? file.getChecksum() : fileId;
+
+        // Use cached decompressed stream if available, or stream and decompress on the fly
+        try (InputStream decompressedIn = fileCache.getOrDecompress(checksum, destination -> {
+            // Supplier to write decompressed stream to cache file
+            try (InputStream rawIn = storageAdapter.getObject(storagePath);
+                 PushbackInputStream pushbackIn = new PushbackInputStream(new BufferedInputStream(rawIn), 2);
+                 OutputStream destOut = Files.newOutputStream(destination, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+                 BufferedOutputStream bufDestOut = new BufferedOutputStream(destOut)) {
+
+                // Check for GZIP magic number 0x1f 0x8b
+                byte[] signature = new byte[2];
+                int read = pushbackIn.read(signature);
+                if (read == 2) {
+                    pushbackIn.unread(signature);
+                }
+
+                boolean isGzip = (read == 2 && ((signature[0] & 0xFF) == 0x1F) && ((signature[1] & 0xFF) == 0x8B));
+                InputStream streamToRead = isGzip ? new java.util.zip.GZIPInputStream(pushbackIn) : pushbackIn;
+
+                byte[] buffer = new byte[65536];
+                int bytesRead;
+                long totalWritten = 0;
+                while ((bytesRead = streamToRead.read(buffer)) != -1) {
+                    bufDestOut.write(buffer, 0, bytesRead);
+                    totalWritten += bytesRead;
+                }
+                bufDestOut.flush();
+                return totalWritten;
+            }
+        })) {
+            byte[] buffer = new byte[65536];
             int bytesRead;
-            while ((bytesRead = bufIn.read(buffer)) != -1) {
+            while ((bytesRead = decompressedIn.read(buffer)) != -1) {
                 out.write(buffer, 0, bytesRead);
             }
             out.flush();
@@ -543,15 +615,18 @@ public class AirVaultUploadService {
     public void resetClipboard(String clipboardId) {
         log.info("[AirVault Storage] 🧹 Resetting clipboard storage for clipboardId: {}", clipboardId);
 
-        // 1. Delete physical files on disk
+        // 1. Delete physical files from active storage adapter & invalidate cache
         List<ClipboardFile> files = clipboardFileRepository.findAllByClipboardId(clipboardId);
         for (ClipboardFile file : files) {
             try {
                 if (file.getStoragePath() != null) {
-                    Files.deleteIfExists(Paths.get(file.getStoragePath()));
+                    storageAdapter.deleteObject(file.getStoragePath());
+                }
+                if (file.getChecksum() != null) {
+                    fileCache.evict(file.getChecksum());
                 }
             } catch (IOException e) {
-                log.warn("[AirVault Storage] Failed to delete disk file {}: {}", file.getStoragePath(), e.getMessage());
+                log.warn("[AirVault Storage] Failed to delete object {}: {}", file.getStoragePath(), e.getMessage());
             }
         }
 
@@ -658,10 +733,13 @@ public class AirVaultUploadService {
             for (ClipboardFile file : expiredFiles) {
                 try {
                     if (file.getStoragePath() != null) {
-                        Files.deleteIfExists(Paths.get(file.getStoragePath()));
+                        storageAdapter.deleteObject(file.getStoragePath());
+                    }
+                    if (file.getChecksum() != null) {
+                        fileCache.evict(file.getChecksum());
                     }
                 } catch (IOException e) {
-                    log.warn("[AirVault Cleanup] Failed to delete disk file: {}", file.getStoragePath());
+                    log.warn("[AirVault Cleanup] Failed to delete object: {}", file.getStoragePath());
                 }
                 clipboardFileRepository.delete(file);
                 log.info("[AirVault Cleanup] Permanently purged expired file: {} ({})", file.getFileName(), file.getFileId());

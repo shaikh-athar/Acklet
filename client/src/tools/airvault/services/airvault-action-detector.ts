@@ -364,7 +364,76 @@ export function scanAllMatches(text: string): ComposerMatch[] {
     }
   }
 
-  // Sort by start offset for deterministic rendering order
+// Sort by start offset for deterministic rendering order
   results.sort((a, b) => a.start - b.start);
   return results;
+}
+
+/**
+ * Detects if a new resource is a duplicate of one already present for a paired user.
+ * Matches by semantic dedupKey or content comparison across paired users' resources.
+ * Returns { isDuplicate: boolean, matchedUsername: string }.
+ */
+export function checkDuplicateResource(
+  newResource: any,
+  pairedUsersResources: any[]
+): { isDuplicate: boolean; matchedUsername: string } {
+  if (!newResource || !pairedUsersResources || !Array.isArray(pairedUsersResources) || pairedUsersResources.length === 0) {
+    return { isDuplicate: false, matchedUsername: '' };
+  }
+
+  const incomingContent = newResource.content || newResource;
+  if (!incomingContent) {
+    return { isDuplicate: false, matchedUsername: '' };
+  }
+
+  const incomingCategory = incomingContent.category || (incomingContent.raw ? 'text' : '');
+  const incomingRaw = typeof incomingContent.raw === 'string' ? incomingContent.raw.trim() : '';
+  const incomingFilename = incomingContent.filename || '';
+  const incomingKey = newResource.dedupKey || incomingContent.dedupKey || (incomingCategory && incomingRaw ? computeDedupKeySync(incomingCategory, incomingRaw) : '');
+
+  const newId = newResource.id || newResource.packetId;
+
+  for (const existing of pairedUsersResources) {
+    if (!existing || !existing.content) continue;
+    // Skip comparing against self item if IDs match
+    if (newId && (existing.id === newId || existing.packetId === newId)) continue;
+
+    const matchedUsername = existing.senderDeviceName || existing.originOwnerId || (existing.username ? `@${existing.username.replace(/^@/, '')}` : (existing.originDeviceName || 'Paired User'));
+
+    // 1. Primary: semantic dedupKey match
+    const existingKey = existing.dedupKey || existing.content?.dedupKey || (existing.content?.category && existing.content?.raw ? computeDedupKeySync(existing.content.category, existing.content.raw) : '');
+    if (incomingKey && existingKey && incomingKey === existingKey) {
+      return { isDuplicate: true, matchedUsername };
+    }
+
+    // 2. Exact raw content match for text/code/json/url
+    const existingCategory = existing.content.category;
+    const existingRaw = typeof existing.content.raw === 'string' ? existing.content.raw.trim() : '';
+
+    if (incomingCategory && existingCategory && incomingCategory === existingCategory) {
+      if (['text', 'code', 'json', 'url'].includes(incomingCategory) && incomingRaw && existingRaw && incomingRaw === existingRaw) {
+        return { isDuplicate: true, matchedUsername };
+      }
+      // 3. Image / previewUrl / filename match
+      if (incomingCategory === 'image') {
+        const inPreview = incomingContent.previewUrl || incomingRaw;
+        const exPreview = existing.content.previewUrl || existingRaw;
+        if (inPreview && exPreview && inPreview === exPreview) {
+          return { isDuplicate: true, matchedUsername };
+        }
+      }
+      // 4. File / binary match (filename and byte size or raw payload)
+      if (['file', 'video', 'archive', 'spreadsheet', 'pdf', 'audio'].includes(incomingCategory)) {
+        if (incomingRaw && existingRaw && incomingRaw.length > 20 && incomingRaw === existingRaw) {
+          return { isDuplicate: true, matchedUsername };
+        }
+        if (incomingFilename && existing.content.filename && incomingFilename === existing.content.filename && incomingContent.byteSize && existing.content.byteSize && incomingContent.byteSize === existing.content.byteSize) {
+          return { isDuplicate: true, matchedUsername };
+        }
+      }
+    }
+  }
+
+  return { isDuplicate: false, matchedUsername: '' };
 }

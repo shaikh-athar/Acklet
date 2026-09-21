@@ -4,6 +4,8 @@ import { DomSanitizer, SafeResourceUrl, SafeHtml } from '@angular/platform-brows
 import { IconComponent } from '../../../app/shared/components/icon/icon';
 import { AirVaultItem, AirVaultStorageService } from '../services/airvault-storage.service';
 import { AirVaultUIStore } from '../services/airvault-ui.store';
+import { getAirVaultApiUrl } from '../services/airvault-api.util';
+import { AirVaultLogger } from '../services/airvault-sync-debug.service';
 import { renderMarkdownToSafeHtml, renderPlainTextToSafeHtml, looksLikeMarkdown } from '../services/airvault-markdown.util';
 import JSZip from 'jszip';
 
@@ -50,6 +52,20 @@ export interface ArchiveFileEntry {
         </div>
       }
 
+      <!-- 0b. DECOMPRESSION & RETRIEVAL LOADING STATE (>400ms operations) -->
+      @else if (isPreparingFile()) {
+        <div class="preview-stage-container upload-in-progress-stage center-flex">
+          <div class="upload-in-progress-card">
+            <div class="preparing-spinner-halo">
+              <div class="preparing-spinner"></div>
+            </div>
+            <span class="in-progress-title">Preparing your file…</span>
+            <span class="in-progress-filename">{{ item().content.filename || 'Resource' }}</span>
+            <span class="in-progress-sub">Decompressing & streaming verified original bytes</span>
+          </div>
+        </div>
+      }
+
       <!-- 1. IMAGES (JPG, PNG, WEBP, GIF, SVG, HEIC) -->
       @else if (resolvedCategory() === 'image') {
         <div class="preview-stage-container image-stage center-flex">
@@ -84,7 +100,7 @@ export interface ArchiveFileEntry {
       <!-- 2. VIDEOS (MP4, WEBM, MOV, MKV) -->
       @else if (resolvedCategory() === 'video') {
         <div class="preview-stage-container video-stage center-flex">
-          @if (mediaLoadError() || (!resolvedObjectUrl() && !item().content.raw && !item().content.previewUrl)) {
+          @if (mediaLoadError() || (!resolvedMediaStreamUrl() && !resolvedObjectUrl() && !item().content.raw && !item().content.previewUrl)) {
             <div class="media-not-found-card" [style.transform]="'scale(' + zoomLevel() + ')'">
               <div class="not-found-icon-halo">
                 <app-icon name="video-off" class="icon-lg text-red"></app-icon>
@@ -103,11 +119,14 @@ export interface ArchiveFileEntry {
             </div>
           } @else {
             <video #videoElementRef 
-                   [src]="resolvedObjectUrl() || item().content.raw || item().content.previewUrl" 
+                   [src]="resolvedMediaStreamUrl() || resolvedObjectUrl() || item().content.raw || item().content.previewUrl" 
+                   preload="metadata"
                    controls autoplay 
                    class="stage-video" 
                    [style.transform]="'scale(' + zoomLevel() + ')'"
-                   (play)="playingChange.emit(true)"
+                   (loadedmetadata)="onMediaLoadedMetadata($event, 'video')"
+                   (progress)="onMediaProgress($event, 'video')"
+                   (play)="onMediaPlay('video')"
                    (pause)="playingChange.emit(false)"
                    (volumechange)="onVolumeChange()"
                    (error)="onMediaError()">
@@ -126,13 +145,16 @@ export interface ArchiveFileEntry {
             </div>
             <div class="audio-info">
               <span class="audio-filename">{{ item().content.filename || 'Audio Track' }}</span>
-              <span class="audio-meta">{{ formatBytes(item().content.byteSize) }} · Audio file</span>
+              <span class="audio-meta">{{ formatBytes(item().content.byteSize) }} · Audio stream (progressive)</span>
             </div>
             <audio #audioElementRef 
-                   [src]="resolvedObjectUrl() || item().content.raw || item().content.previewUrl" 
+                   [src]="resolvedMediaStreamUrl() || resolvedObjectUrl() || item().content.raw || item().content.previewUrl" 
+                   preload="metadata"
                    controls 
                    class="native-audio-player"
-                   (play)="playingChange.emit(true)"
+                   (loadedmetadata)="onMediaLoadedMetadata($event, 'audio')"
+                   (progress)="onMediaProgress($event, 'audio')"
+                   (play)="onMediaPlay('audio')"
                    (pause)="playingChange.emit(false)"
                    (volumechange)="onVolumeChange()"></audio>
           </div>
@@ -158,7 +180,7 @@ export interface ArchiveFileEntry {
       @else if (resolvedCategory() === 'spreadsheet') {
         <div class="preview-stage-container spreadsheet-stage" [class.center-flex]="!isCsvFormat()">
           @if (isCsvFormat()) {
-            <div class="spreadsheet-table-wrapper" [style.font-size.px]="13 * zoomLevel()">
+            <div class="spreadsheet-table-wrapper" [style.font-size.px]="13 * zoomLevel()" (scroll)="onCsvScroll($event)">
               <table class="spreadsheet-grid">
                 <thead>
                   <tr>
@@ -179,9 +201,13 @@ export interface ArchiveFileEntry {
                   }
                 </tbody>
               </table>
-              @if (totalCsvRows() > maxPreviewRows) {
+              @if (totalCsvRows() > csvRows().length) {
                 <div class="spreadsheet-footer-notice">
-                  Showing first {{ maxPreviewRows }} rows of {{ totalCsvRows() }} total rows. Download to view complete spreadsheet.
+                  <span>Showing {{ csvRows().length }} of {{ totalCsvRows() }} rows (auto-loads as you scroll).</span>
+                  <div class="progressive-actions-row">
+                    <button type="button" class="progressive-load-btn" (click)="loadMoreCsvRows()">Load next 100</button>
+                    <button type="button" class="progressive-load-btn secondary" (click)="loadAllCsvRows()">Load all ({{ totalCsvRows() }})</button>
+                  </div>
                 </div>
               }
             </div>
@@ -250,15 +276,33 @@ export interface ArchiveFileEntry {
 
       <!-- 8. MARKDOWN (.md files or clipboard Markdown content) -->
       @else if (resolvedCategory() === 'markdown') {
-        <div class="preview-stage-container generic-stage">
+        <div class="preview-stage-container generic-stage" (scroll)="onTextScroll($event)">
           <div class="av-rich-document-preview" [class.nowrap-pre]="!isWrapped()" [style.font-size.px]="14 * zoomLevel()" [innerHTML]="safeFormattedTextPreview()"></div>
+          @if (hasMoreText()) {
+            <div class="progressive-chunk-bar">
+              <span class="progressive-chunk-info">Showing first {{ (renderedTextLength() / 1000).toFixed(0) }} KB of {{ (totalTextLength() / 1000).toFixed(0) }} KB (auto-loads as you scroll)</span>
+              <div class="progressive-actions-row">
+                <button type="button" class="progressive-load-btn" (click)="loadMoreText()">Load more</button>
+                <button type="button" class="progressive-load-btn secondary" (click)="loadAllText()">Load all</button>
+              </div>
+            </div>
+          }
         </div>
       }
 
       <!-- 9. CODE & JSON -->
       @else if (resolvedCategory() === 'code' || resolvedCategory() === 'json') {
-        <div class="preview-stage-container code-stage">
+        <div class="preview-stage-container code-stage" (scroll)="onTextScroll($event)">
           <pre class="stage-code-pre" [class.nowrap-pre]="!isWrapped()" [style.font-size.px]="13 * zoomLevel()"><code>@for (part of getHighlightParts(textPreview(), searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</code></pre>
+          @if (hasMoreText()) {
+            <div class="progressive-chunk-bar">
+              <span class="progressive-chunk-info">Showing first {{ (renderedTextLength() / 1000).toFixed(0) }} KB of {{ (totalTextLength() / 1000).toFixed(0) }} KB (auto-loads as you scroll)</span>
+              <div class="progressive-actions-row">
+                <button type="button" class="progressive-load-btn" (click)="loadMoreText()">Load more</button>
+                <button type="button" class="progressive-load-btn secondary" (click)="loadAllText()">Load all</button>
+              </div>
+            </div>
+          }
         </div>
       }
 
@@ -278,9 +322,18 @@ export interface ArchiveFileEntry {
 
       <!-- 10. GENERIC METADATA / RICH TEXT / UNSUPPORTED / DESIGN / EBOOK / DOCS -->
       @else {
-        <div class="preview-stage-container generic-stage" [class.center-flex]="!isTextDoc()">
+        <div class="preview-stage-container generic-stage" [class.center-flex]="!isTextDoc()" (scroll)="isTextDoc() ? onTextScroll($event) : null">
           @if (isTextDoc()) {
             <div class="av-rich-document-preview" [class.nowrap-pre]="!isWrapped()" [style.font-size.px]="14 * zoomLevel()" [innerHTML]="safeFormattedTextPreview()"></div>
+            @if (hasMoreText()) {
+              <div class="progressive-chunk-bar">
+                <span class="progressive-chunk-info">Showing first {{ (renderedTextLength() / 1000).toFixed(0) }} KB of {{ (totalTextLength() / 1000).toFixed(0) }} KB (auto-loads as you scroll)</span>
+                <div class="progressive-actions-row">
+                  <button type="button" class="progressive-load-btn" (click)="loadMoreText()">Load more</button>
+                  <button type="button" class="progressive-load-btn secondary" (click)="loadAllText()">Load all</button>
+                </div>
+              </div>
+            }
           } @else {
             <div class="generic-meta-card" [style.transform]="'scale(' + zoomLevel() + ')'">
               <div class="meta-icon-box" [style.color]="getCategoryColor()"><app-icon [name]="getCategoryIcon()" class="icon-lg"></app-icon></div>
@@ -367,6 +420,54 @@ export interface ArchiveFileEntry {
       align-items: center !important;
       justify-content: center !important;
       margin: 0 auto;
+    }
+
+    /* Progressive Chunking and Scroll Indicators */
+    .progressive-chunk-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 16px;
+      padding: 10px 14px;
+      background: var(--av-surface-secondary);
+      border: 1px solid var(--av-border);
+      border-radius: var(--av-radius-md);
+      font-size: 12px;
+      color: var(--av-text-muted);
+    }
+    .progressive-chunk-info {
+      flex: 1;
+      font-size: 11.5px;
+    }
+    .progressive-actions-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .progressive-load-btn {
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: var(--av-radius-sm);
+      background: var(--av-accent, #2196F3);
+      color: #ffffff;
+      border: 1px solid var(--av-accent, #2196F3);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .progressive-load-btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+    .progressive-load-btn.secondary {
+      background: var(--av-surface-primary);
+      color: var(--av-text-primary);
+      border-color: var(--av-border);
+    }
+    .progressive-load-btn.secondary:hover {
+      border-color: var(--av-accent, #2196F3);
+      color: var(--av-accent, #2196F3);
     }
 
     /* Spreadsheets */
@@ -501,6 +602,12 @@ export interface ArchiveFileEntry {
       justify-content: center;
       margin-bottom: 4px;
       box-shadow: 0 0 24px rgba(245, 158, 11, 0.15);
+      color: #F59E0B;
+    }
+    .not-found-icon-halo app-icon {
+      color: #F59E0B !important;
+      width: 28px !important;
+      height: 28px !important;
     }
 
     .not-found-title {
@@ -559,6 +666,28 @@ export interface ArchiveFileEntry {
       color: #ffffff;
       transform: translateY(-1px);
       box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+    }
+    .preparing-spinner-halo {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(33, 150, 243, 0.1);
+      border: 1px solid rgba(33, 150, 243, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 4px;
+    }
+    .preparing-spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid rgba(33, 150, 243, 0.2);
+      border-top-color: var(--av-accent, #2196F3);
+      border-radius: 50%;
+      animation: prepSpin 0.75s linear infinite;
+    }
+    @keyframes prepSpin {
+      to { transform: rotate(360deg); }
     }
     .upload-progress-circle-box {
       position: relative;
@@ -635,8 +764,10 @@ export class AirVaultFilePreviewComponent {
 
   resolvedObjectUrl = signal<string | null>(null);
   isLoadingPayload = signal<boolean>(false);
+  isPreparingFile = signal<boolean>(false);
   mediaLoadError = signal<boolean>(false);
   private activePayloadObjectUrl: string | null = null;
+  private preparingTimer: any = null;
 
   searchHighlightQuery = computed(() => this.uiStore.searchHighlightQuery());
 
@@ -660,13 +791,28 @@ export class AirVaultFilePreviewComponent {
   }
 
   maxPreviewRows = 100;
+  displayedCsvLimit = signal<number>(100);
+  private rawCsvLines: string[] = [];
   csvHeaders = signal<string[]>([]);
   csvRows = signal<string[][]>([]);
   totalCsvRows = signal<number>(0);
 
+  renderedTextLength = signal<number>(50000);
+
   zipEntries = signal<ArchiveFileEntry[]>([]);
   fontFamilyName = signal<string>('inherit');
   pdfBlobUrl = signal<string>('');
+
+  resolvedMediaStreamUrl = computed<string | null>(() => {
+    const it = this.item();
+    const cat = this.resolvedCategory();
+    if (cat === 'video' || cat === 'audio' || cat === 'pdf') {
+      if (it.id && !it.id.startsWith('local_')) {
+        return getAirVaultApiUrl(`/api/v1/airvault/clipboards/default/files/${it.id}/raw`);
+      }
+    }
+    return null;
+  });
 
   safePdfUrl = computed<SafeResourceUrl | null>(() => {
     const url = this.pdfBlobUrl();
@@ -714,6 +860,29 @@ export class AirVaultFilePreviewComponent {
     const a = this.audioElementRef?.nativeElement;
     const muted = v ? v.muted : (a ? a.muted : false);
     this.mutedChange.emit(muted);
+  }
+
+  onMediaPlay(type: 'video' | 'audio') {
+    this.playingChange.emit(true);
+    const streamUrl = this.resolvedMediaStreamUrl() || this.resolvedObjectUrl();
+    AirVaultLogger.info(`[AirVault Stream] 🎬 Progressive playback started for ${type}: "${this.item().content.filename || 'media'}" | Stream: ${streamUrl}`);
+  }
+
+  onMediaLoadedMetadata(event: Event, type: 'video' | 'audio') {
+    const el = event.target as HTMLMediaElement;
+    if (el) {
+      AirVaultLogger.info(`[AirVault Stream] ⚡ [METADATA_LOADED] ${type}: "${this.item().content.filename || 'media'}" | Duration: ${el.duration?.toFixed(1)}s | State: ready`);
+    }
+  }
+
+  onMediaProgress(event: Event, type: 'video' | 'audio') {
+    const el = event.target as HTMLMediaElement;
+    if (el && el.buffered.length > 0) {
+      const end = el.buffered.end(el.buffered.length - 1);
+      const total = el.duration || 0;
+      const pct = total > 0 ? ((end / total) * 100).toFixed(0) : '0';
+      AirVaultLogger.debug(`[AirVault Stream] 📦 [CHUNK_BUFFERED] ${type} range: 0s - ${end.toFixed(1)}s (${pct}%)`);
+    }
   }
 
   resolvedCategory = computed(() => {
@@ -767,11 +936,37 @@ export class AirVaultFilePreviewComponent {
 
   textPreview = computed(() => {
     const raw = this.item().content.raw || '';
-    if (raw.length > 50000) {
-      return raw.slice(0, 50000) + `\n\n… [Showing first 50,000 of ${raw.length.toLocaleString()} characters]`;
+    const limit = this.renderedTextLength();
+    if (raw.length > limit) {
+      return raw.slice(0, limit);
     }
     return raw;
   });
+
+  hasMoreText = computed(() => {
+    const raw = this.item().content.raw || '';
+    return raw.length > this.renderedTextLength();
+  });
+
+  totalTextLength = computed(() => (this.item().content.raw || '').length);
+
+  loadMoreText() {
+    this.renderedTextLength.update(l => l + 50000);
+  }
+
+  loadAllText() {
+    this.renderedTextLength.set(this.totalTextLength());
+  }
+
+  onTextScroll(event: Event) {
+    const target = event.target as HTMLElement;
+    if (!target) return;
+    if (target.scrollTop + target.clientHeight >= target.scrollHeight - 150) {
+      if (this.hasMoreText()) {
+        this.loadMoreText();
+      }
+    }
+  }
 
   safeFormattedTextPreview = computed<SafeHtml>(() => {
     const raw = this.textPreview();
@@ -830,8 +1025,19 @@ export class AirVaultFilePreviewComponent {
       } else {
         // Asynchronously fetch full original binary from IndexedDB or backend stream
         this.isLoadingPayload.set(true);
+        if (this.preparingTimer) clearTimeout(this.preparingTimer);
+        // Only show "Preparing your file…" if retrieval/decompression takes longer than 400ms
+        this.preparingTimer = setTimeout(() => {
+          if (this.isLoadingPayload()) {
+            this.isPreparingFile.set(true);
+          }
+        }, 400);
+
         this.storageService.fetchResourcePayload(it).then(res => {
           this.isLoadingPayload.set(false);
+          this.isPreparingFile.set(false);
+          if (this.preparingTimer) clearTimeout(this.preparingTimer);
+
           if (res?.objectUrl && res?.blob) {
             this.activePayloadObjectUrl = res.objectUrl;
             this.resolvedObjectUrl.set(res.objectUrl);
@@ -858,6 +1064,9 @@ export class AirVaultFilePreviewComponent {
           }
         }).catch(() => {
           this.isLoadingPayload.set(false);
+          this.isPreparingFile.set(false);
+          if (this.preparingTimer) clearTimeout(this.preparingTimer);
+
           const fallback = it.content.previewUrl || it.content.raw || '';
           if (!fallback) {
             this.mediaLoadError.set(true);
@@ -892,17 +1101,48 @@ export class AirVaultFilePreviewComponent {
     return /\.(txt|rtf|md|log|cfg|ini|env|csv|json|js|ts|html|css|py|sh)$/i.test(filename) || (!raw.startsWith('data:') && !raw.startsWith('[Encrypted'));
   }
 
+  loadMoreCsvRows() {
+    const limit = this.displayedCsvLimit();
+    const nextLimit = Math.min(this.rawCsvLines.length, limit + 100);
+    this.displayedCsvLimit.set(nextLimit);
+    const rows: string[][] = [];
+    for (let i = 1; i < nextLimit; i++) {
+      rows.push(this.parseCsvLine(this.rawCsvLines[i]));
+    }
+    this.csvRows.set(rows);
+  }
+
+  loadAllCsvRows() {
+    this.displayedCsvLimit.set(this.rawCsvLines.length);
+    const rows: string[][] = [];
+    for (let i = 1; i < this.rawCsvLines.length; i++) {
+      rows.push(this.parseCsvLine(this.rawCsvLines[i]));
+    }
+    this.csvRows.set(rows);
+  }
+
+  onCsvScroll(event: Event) {
+    const target = event.target as HTMLElement;
+    if (!target) return;
+    if (target.scrollTop + target.clientHeight >= target.scrollHeight - 100) {
+      if (this.displayedCsvLimit() < this.rawCsvLines.length) {
+        this.loadMoreCsvRows();
+      }
+    }
+  }
+
   private parseCsv(content: string) {
     if (!content) return;
     const lines = content.split(/\r?\n/).filter(l => l.trim().length > 0);
-    this.totalCsvRows.set(lines.length);
+    this.rawCsvLines = lines;
+    this.totalCsvRows.set(lines.length > 0 ? lines.length - 1 : 0);
     if (lines.length > 0) {
       const headerLine = lines[0];
       const headers = this.parseCsvLine(headerLine);
       this.csvHeaders.set(headers);
 
+      const previewLimit = Math.min(lines.length, this.displayedCsvLimit());
       const rows: string[][] = [];
-      const previewLimit = Math.min(lines.length, this.maxPreviewRows + 1);
       for (let i = 1; i < previewLimit; i++) {
         rows.push(this.parseCsvLine(lines[i]));
       }
@@ -1021,8 +1261,18 @@ export class AirVaultFilePreviewComponent {
     this.mediaLoadError.set(false);
     const it = this.item();
     this.isLoadingPayload.set(true);
+    if (this.preparingTimer) clearTimeout(this.preparingTimer);
+    this.preparingTimer = setTimeout(() => {
+      if (this.isLoadingPayload()) {
+        this.isPreparingFile.set(true);
+      }
+    }, 400);
+
     this.storageService.fetchResourcePayload(it).then(res => {
       this.isLoadingPayload.set(false);
+      this.isPreparingFile.set(false);
+      if (this.preparingTimer) clearTimeout(this.preparingTimer);
+
       if (res?.objectUrl && res?.blob) {
         this.activePayloadObjectUrl = res.objectUrl;
         this.resolvedObjectUrl.set(res.objectUrl);
@@ -1036,6 +1286,8 @@ export class AirVaultFilePreviewComponent {
       }
     }).catch(() => {
       this.isLoadingPayload.set(false);
+      this.isPreparingFile.set(false);
+      if (this.preparingTimer) clearTimeout(this.preparingTimer);
       this.mediaLoadError.set(true);
     });
   }

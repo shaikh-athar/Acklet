@@ -1171,6 +1171,25 @@ mark.av-search-match.current-match {
   40%       { opacity: 0.45; }
 }
 
+/* ── Item Sync / Update Halo Pulse (GPU-friendly) ───────────── */
+@keyframes avSyncPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7);
+    border-color: #2196F3;
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(33, 150, 243, 0);
+    border-color: #2196F3;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0);
+  }
+}
+
+.av-sync-pulse-active {
+  animation: avSyncPulse 0.8s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
 /* ── Utility classes that components can apply directly ──────── */
 .av-anim-fade-in   { animation: avFadeIn   0.18s ease-out both; }
 .av-anim-scale-in  { animation: avScaleIn  0.2s  cubic-bezier(0.16, 1, 0.3, 1) both; }

@@ -6,6 +6,7 @@
 | :--- | :--- | :--- | :--- |
 | **Beam Clipboard (⌘↵)** | `Send` / `Zap` | Encrypts staged content off-thread via AES-GCM-256 and transmits to target or all active devices. | Staging Area |
 | **Paste (⌘V)** | `Clipboard` | Reads local system clipboard content and stages for inspection/classification. | Staging Area |
+| **Clear Input Composer**| `X` | Clears staged input text and files in composer without touching vault history. | Composer Toolbar |
 | **Clear Composer** | `Trash` | Resets the staging input pane and aborts in-progress chunked workers. | Staging Area |
 | **1-Click Copy** | `Copy` → `Check` | Copies item content to local system clipboard with 2-second visual confirmation. | Stream Card |
 | **Pin / Unpin** | `Pin` | Protects item from automatic time-based expiration and capacity eviction. | Stream Card |
@@ -14,6 +15,8 @@
 | **Reconnect** | `Zap` / `Rotate-Cw` | Restores active sync with disconnected peer and triggers bi-directional history synchronization. | Constellation / Drawer |
 | **Forget Device** | `Trash-2` | Unpairs device, removes server session, and transitions remote peer to disconnected state. | Constellation / Drawer |
 | **Pair New Device**| `Plus` / `QrCode` | Opens device pairing modal displaying QR code, 6-digit PIN, and username/keyword pairing. | Bottom Capsule / Dock |
+| **Sync Consent** | `Check` / `X` | Interactive prompt on peer connection allowing destination user to pull clipboard items or skip. | Consent Modal |
+| **Duplicate Alert** | `Info` / `AlertCircle` | Notification alert triggered when a staged/synced item matches a resource from a paired user. | Duplicate Modal |
 | **Author Highlight**| `Highlighter` | Toggles per-line author attribution highlights and blame gutter on/off in live editor. | Bottom Capsule |
 | **Device Settings**| `Sliders` / `Monitor` | Opens the 3-tier device management drawer for renaming, presence, and revocation. | Constellation Bar |
 | **Re-add to Clipboard**| `Rotate-Ccw` | Restores a deleted or retention-expired item from 30-day Restorable History back to active stream. | History Modal |
@@ -37,8 +40,14 @@
 | **📌 Permanent** | Cyan Pill | Pinned item exempt from TTL expiration and capacity purge. |
 | **📦 Auto-Collapsed** | Gray Pill / Chevron | Long text/code block ($> 800$ chars or $> 18$ lines) auto-collapsed after 1000ms delay. |
 | **● Active** | Green Dot | Device heartbeat received within the last 45 seconds. |
-| **🔄 Connecting...** | Cyan Spinner / Pulse Dot | Device reconnection, PIN verification, or QR handshake in progress with live animated loader. |
-| **◐ Syncing** | Blue Pulse Dot | Active chunk transfer or signaling negotiation in progress. |
+| **🔄 Reconnecting...** | Cyan `Wifi` / Pulse Dot | Device reconnection and presence recovery in progress with live animated indicator. |
+| **🔗 Pairing...** | Cyan `Link` / Spin Loader | Device pairing handshake, PIN verification, or QR key negotiation in progress. |
+| **✈️ Sending...** | Blue `Send` / Slide Pulse | Initial beam dispatch and Web Crypto encryption in progress. |
+| **🔁 Resending...** | Amber `RefreshCw` / Spin | Retrying transmission of a failed or pending vault item to connected peers. |
+| **🔄 Syncing...** | Blue `RefreshCcw` / Spin | Bi-directional history synchronization and active payload transfer in progress. |
+| **⬆️ Uploading...** | Violet `Upload` / Ring | Chunked multi-part binary streaming to storage adapter. |
+| **⬇️ Downloading...** | Indigo `Download` / Ring | Fetching and decompressing binary/media payloads on-demand from LRU cache. |
+| **⚙️ Processing...** | Cyan `LoaderCircle` / `Loader` | Off-thread Web Worker AES-GCM decryption, regex scanning, or thumbnail generation. |
 | **○ Idle** | Slate Dot | Device registered but no activity recorded for > 5 minutes. |
 | **⊘ Offline** | Gray Dot | Device unreachable or manually disconnected. |
 | **🛡️ Masked Secret** | Yellow Pill | Sensitive API key, JWT, or password detected and masked by default (`●●●●`). |

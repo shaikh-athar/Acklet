@@ -64,12 +64,12 @@ import { AirVaultDayHistoryComponent } from './airvault-day-history.component';
           </div>
         </div>
 
-        <!-- 2. Storage Shared Quota Indicator Banner (Second Row, Matching Surface Background) -->
+        <!-- 2. Storage Utilization Indicator Banner (Second Row, Matching Surface Background) -->
         <div class="history-storage-banner">
           <div class="storage-info-left">
             <app-icon name="hard-drive" class="icon-xs text-cyan"></app-icon>
-            <span class="storage-title">Shared Storage Quota:</span>
-            <span class="storage-metric"><strong>{{ formatBytes(totalBytes()) }}</strong> / {{ formatBytes(totalStorageCapBytes()) }} ({{ storageUsedPercent() }}% used)</span>
+            <span class="storage-title">Vault Storage:</span>
+            <span class="storage-metric"><strong>{{ formatBytes(totalBytes()) }}</strong></span>
           </div>
           <div class="storage-breakdown-chips">
             <span class="breakdown-chip active-chip">Active: {{ formatBytes(activeBytes()) }}</span>
@@ -515,8 +515,6 @@ export class AirVaultHistoryModalComponent {
   totalBytes = input<number>(0);
   activeBytes = input<number>(0);
   historyBytes = input<number>(0);
-  totalStorageCapBytes = input<number>(1024 * 1024 * 1024);
-  storageUsedPercent = input<number>(0);
 
   deviceService = inject(AirVaultDeviceService);
 

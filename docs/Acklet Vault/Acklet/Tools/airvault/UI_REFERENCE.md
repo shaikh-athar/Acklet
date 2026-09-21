@@ -57,11 +57,41 @@ AirVault follows the strict design discipline established by Acklet's DataLens t
   - *Default/Collapsed mode*: Auto-grows dynamically up to ~6–7 lines (~150px) to comfortably accommodate multi-sentence messages before internal scrolling or full expansion.
   - *Expanded mode*: Expands to accommodate ~15–18 lines (~280px–380px) with docked bottom controls for long-form scripts, markdown documentation, and complex multi-line snippets.
   - *Expand/Collapse Toggle*: Corner expansion button using `maximize-2` / `minimize-2` matching the modern composer standard.
+  - *Input Field Clear Action*: Compact clear button (`x`) inside the composer toolbar adjacent to the `+` attachment button, allowing users to wipe staged text/files with 1 click without touching vault clipboard history.
   - *Clear Button*: Icon updated to `rotate-ccw` (with red hover danger styling) to clearly signify resetting/clearing the active device clipboard.
   - Leading paperclip attach button (`Upload file`, `Upload folder (.zip)`).
   - Text input area with placeholder `"Drop files, folders, or start typing"`.
   - Layered backdrops for attribution & entity detection.
   - Trailing Send/Beam button (`⌘ + Enter`).
+- **Interactive Modals & Dialogs**:
+  - **Destination Sync Consent Modal (`AirVaultSyncConsentModalComponent`)**: Displays on incoming device pairing/reconnection, asking the user whether to *"Sync Clipboard"* with the connecting peer or *"Ignore / Skip"*, preserving full device isolation and autonomy.
+  - **Duplicate Resource Notification Modal (`AirVaultDuplicateModalComponent`)**: Non-intrusive alert notifying users when a staged/incoming resource is identical to an existing resource from a paired user (`@paired-user`), displaying resource snippet and category badge without blocking vault operations.
+- **Action-Specific Processing Loaders & Semantic Icons**:
+  AirVault replaces generic spinners with distinct lightweight Lucide Angular icons and animated pulse/spin feedback communicating active operations:
+  
+  | Action / Operation | Lucide Icon | Animated Visual | Label / State | Semantics & Workflow |
+  | :--- | :--- | :--- | :--- | :--- |
+  | **Sending** | `Send` | Micro-bounce / transition | `Sending…` | Initial beam dispatch from staging composer. |
+  | **Pairing** | `Loader2` | Smooth spin | `Pairing…` | ECDH cryptographic key exchange and identity registration. |
+  | **Resending** | `RefreshCw` | Clockwise spin | `Resending…` | Retrying transmission of a specific vault item. |
+  | **Syncing** | `RefreshCcw` | Counter-clockwise spin | `Syncing…` | Bi-directional history synchronization between connected devices. |
+  | **Reconnecting** | `Loader2` | Smooth spin | `Reconnecting…` | Symmetrical peer reconnect and presence recovery. |
+  | **Uploading** | `LoaderCircle` | Circular progress ring | `Uploading…` | Streaming chunked multi-part binary files to storage adapter. |
+  | **Downloading / Lazy Loading** | `LoaderCircle` | Smooth spin | `Loading…` | On-demand streaming of verified binary payload/chunks. |
+  | **Processing Large File** | `LoaderCircle` / `Loader2` | Smooth spinning circle | `Processing…` | Off-thread Web Worker AES-GCM decryption and thumbnail generation. |
+
+  *Timing & Visibility Guarantee*:
+  ```text
+  Action starts immediately
+          ↓
+  Action-specific icon + loader
+          ↓
+  Fast operation (< 500ms) → Minimum ~1–1.5s visible for perceptual clarity
+          ↓
+  Slow / large payload    → Remains active until actual async completion
+          ↓
+  Success / Error state transition
+  ```
 - **Persistent Bottom Dock (`AirVaultFooterComponent`)**:
   - Left capsule: Clipboard History (`⌘H`), Auto-Capture toggle (primary path), Font Family & Size menus, and vault storage gauge.
   - Center capsule: `Pair Device` button + integrated **Theme toggle** (`Light` / `Dark`) separated by a clean vertical divider.
@@ -97,3 +127,22 @@ Reachable via smooth scroll or the bottom dock info button:
   - Multi-line text, code, and JSON entries use per-line blame ticks.
   - Single-line entries preserve the single entry-level gutter bar.
   - Non-text categories (images, binary files, batches, archives) never display line ticks and preserve entry-level scoping.
+
+---
+
+## 5. Clipboard Item Lifecycle Micro-Animations
+
+AirVault provides distinct, GPU-accelerated micro-animations for every clipboard item lifecycle event without visual lag or heavy blocking:
+
+| Lifecycle Event | Visual Animation | Timing & Easing | Semantics & Feel |
+| :--- | :--- | :--- | :--- |
+| **New Item Entrance (Local Capture)** | Elastic upward spring (`translateY: 14px → 0`, `scale: 0.96 → 1`, `opacity: 0 → 1`) | 280ms · `back.out(1.5)` | Crisp, tactile entry communicating immediate local capture. |
+| **New Item Entrance (Synced from Peer)** | Slide-down + accent border halo glow | 340ms · `power2.out` + 800ms halo pulse | Distinct from local captures; visually announces arrival from a connected device. |
+| **Item Deletion / Dismissal** | Smooth shrink & slide-out (`scale: 1 → 0.92`, `translateY: 0 → 8px`, `opacity: 1 → 0`) | 200ms · `power2.in` | Clean departure feedback before card unmounts. |
+| **Item Reordering / Grid Rearrangement** | Smooth GPU transform transition on grid cell (`contain: layout style`) | 220ms · `cubic-bezier(0.16, 1, 0.3, 1)` | Fluid rearrangement when tiles are dropped or sorted. |
+| **Item Update / Resend / Sync** | Subtle radial accent halo pulse (`.av-sync-pulse-active`) | 800ms · `cubic-bezier(0.16, 1, 0.3, 1)` | Informs the user that an existing item received new sync updates. |
+| **Item Pin / Unpin** | Micro-lift and spring settle (`scale: 1.02, y: -3` → settle) | 340ms · `back.out(1.4)` | Tactile physical feedback confirming permanent pin state. |
+| **Burn-After-Read Dissolve** | Upward blur & dissolve (`filter: blur(4px)`, `y: -12px`, `opacity: 0`) | 400ms · `power2.out` | Visual destruction feedback for ephemeral items. |
+
+*Reduced Motion*: All micro-animations automatically fall back to instant or simple opacity transitions when `@media (prefers-reduced-motion: reduce)` is active.
+

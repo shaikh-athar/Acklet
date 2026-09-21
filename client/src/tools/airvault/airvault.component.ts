@@ -22,6 +22,7 @@ import { AirVaultCollapseService } from './services/airvault-collapse.service';
 import { AirVaultColorService } from './services/airvault-color.service';
 import { AirVaultSyncDebugLogger, AirVaultLogger } from './services/airvault-sync-debug.service';
 import { AirVaultWsTransportService } from './services/airvault-ws-transport.service';
+import { checkDuplicateResource } from './services/airvault-action-detector';
 
 // Subcomponents
 import { AirVaultConstellationComponent } from './components/airvault-constellation.component';
@@ -36,10 +37,12 @@ import { AirVaultIdentityOnboardingModalComponent } from './components/airvault-
 import { AirVaultEraseModalComponent } from './components/airvault-erase-modal.component';
 import { AirVaultDeleteConfirmModalComponent } from './components/airvault-delete-confirm-modal.component';
 import { AirVaultClearConfirmModalComponent } from './components/airvault-clear-confirm-modal.component';
+import { AirVaultDuplicateModalComponent } from './components/airvault-duplicate-modal.component';
 import { ToolShellComponent } from '../../app/shared/components/tool-shell/tool-shell.component';
 import { AirVaultToastComponent } from './components/airvault-toast.component';
 import { AirVaultPreviewModalComponent } from './components/airvault-preview-modal.component';
 import { AirVaultSyncModalComponent } from './components/airvault-sync-modal.component';
+import { AirVaultSyncConsentModalComponent } from './components/airvault-sync-consent-modal.component';
 import { AirVaultSecurityChapterComponent } from './components/airvault-security-chapter.component';
 import { AirVaultTelemetryChapterComponent } from './components/airvault-telemetry-chapter.component';
 import { AirVaultProtocolsChapterComponent } from './components/airvault-protocols-chapter.component';
@@ -64,6 +67,8 @@ import { PreferenceService } from '../../app/core/services/preference.service';
     AirVaultEraseModalComponent,
     AirVaultDeleteConfirmModalComponent,
     AirVaultClearConfirmModalComponent,
+    AirVaultDuplicateModalComponent,
+    AirVaultSyncConsentModalComponent,
     AirVaultDeviceDrawerComponent,
     AirVaultSettingsDrawerComponent,
     AirVaultTipsModalComponent,
@@ -114,9 +119,11 @@ export class AirVaultComponent implements OnInit, OnDestroy {
   @HostListener('window:focus')
   async onWindowFocus() {
     const now = Date.now();
-    // Throttle window focus refreshes to at most once every 10 seconds
-    if (now - this.lastFocusRefresh < 10000) return;
+    // Throttle window focus refreshes to at most once every 3 seconds
+    if (now - this.lastFocusRefresh < 3000) return;
     this.lastFocusRefresh = now;
+    // Broadcast presence so connected devices immediately establish/refresh online connection
+    this.deviceService.broadcastDeviceOnlineSignal();
     // Re-verify pairing state and storage on window re-focus
     await this.storageService.refreshFromStorage();
   }
@@ -166,6 +173,7 @@ export class AirVaultComponent implements OnInit, OnDestroy {
   }
 
   private subs: import('rxjs').Subscription[] = [];
+  private pendingDeliveries = new Map<string, { timeoutTimer: any; itemName: string; targetPeerName?: string }>();
 
   /** Number of paired devices currently online (used by navbar connection pill) */
   connectedDeviceCount = computed(() =>
@@ -201,6 +209,25 @@ export class AirVaultComponent implements OnInit, OnDestroy {
           // Schedule auto-collapse for long content on the receiving side
           this.collapseService.scheduleCollapse(item);
         }
+      })
+    );
+
+    // Listen for delivery ACK confirmations from remote devices
+    this.subs.push(
+      this.syncService.onDeliveryConfirmed.subscribe(({ packetId, targetDeviceId }) => {
+        this.ngZone.run(() => {
+          const pending = this.pendingDeliveries.get(packetId);
+          if (pending) {
+            clearTimeout(pending.timeoutTimer);
+            this.pendingDeliveries.delete(packetId);
+
+            const paired = this.deviceStore.pairedDevices();
+            const peer = paired.find(d => d.id === targetDeviceId) ||
+                         (this.deviceService.registeredSessions() || []).find(s => s.id === targetDeviceId);
+            const peerHandle = peer?.username ? `@${peer.username.replace(/^@/, '')}` : (peer?.name || pending.targetPeerName || 'connected device');
+            this.uiStore.triggerToast(`⚡ Beamed entry delivered to ${peerHandle}`);
+          }
+        });
       })
     );
 
@@ -248,6 +275,8 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     this.wsTransport.disconnect();
     this.subs.forEach(s => s.unsubscribe());
     this.subs = [];
+    this.pendingDeliveries.forEach(p => clearTimeout(p.timeoutTimer));
+    this.pendingDeliveries.clear();
     this.storageService.flushPersistImmediate();
   }
 
@@ -264,23 +293,20 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     filename?: string;
     existingItemId?: string;
     lineBlameMap?: LineBlameEntry[];
-    options?: { tag?: string; customCategory?: string; retentionTtlMs?: number };
+    options?: { tag?: string; customCategory?: string; retentionTtlMs?: number; byteSize?: number };
   }) {
-    // Enforce 1 GB vault storage cap before beaming
-    if (this.storageService.capExceeded()) {
-      const usedMB = (this.storageService.totalBytes() / 1024 / 1024).toFixed(0);
-      this.uiStore.triggerToast(`⛔ Vault storage cap reached (${usedMB} MB / 1.0 GB). Delete items to add more.`);
-      return;
-    }
-
-    // Check if identical content already exists in the vault (for new direct text inputs)
     let itemIdToUse = event.existingItemId;
     if (!itemIdToUse) {
       const classified = this.clipboardService.classify(event.text, event.filename);
-      const existing = this.storageService.findDuplicateItem(classified);
-      if (existing) {
-        this.storageService.refreshItemExpiry(existing.id);
-        itemIdToUse = existing.id;
+      const curUser = this.deviceService.currentDevice().username?.toLowerCase().replace(/^@/, '');
+      const curDevId = this.deviceService.currentDevice().id;
+      const pairedResources = this.storageService.allItems().filter(i => {
+        const owner = (i.originOwnerId || i.senderDeviceName || i.senderDeviceId || '').toLowerCase().replace(/^@/, '');
+        return owner && owner !== curUser && owner !== curDevId;
+      });
+      const pairedDup = checkDuplicateResource(classified, pairedResources);
+      if (pairedDup.isDuplicate && pairedDup.matchedUsername) {
+        this.uiStore.openDuplicateModal(pairedDup.matchedUsername, classified);
       }
     }
 
@@ -298,6 +324,45 @@ export class AirVaultComponent implements OnInit, OnDestroy {
       syncId,
       event.options
     );
+
+    // Check connected peers to track delivery confirmation
+    const curDev = this.deviceService.currentDevice();
+    const paired = this.deviceService.pairedDevices();
+    const activeSessions = (this.deviceService.registeredSessions() || []).filter(s => s.id !== curDev.id);
+    const eligiblePeers = [
+      ...paired.filter(d => d.id !== curDev.id && d.status === 'active' && d.syncEnabled !== false && !this.deviceService.isManuallyDisconnected(d.id)),
+      ...activeSessions.filter(s => s.id !== curDev.id && s.status === 'active' && s.syncEnabled !== false && !this.deviceService.isManuallyDisconnected(s.id) && !paired.some(p => p.id === s.id))
+    ];
+
+    if (item && item.packetId) {
+      const targetDev = event.targetDeviceId ? paired.find(d => d.id === event.targetDeviceId) : null;
+      if (eligiblePeers.length > 0) {
+        const packetId = item.packetId;
+        const itemName = event.filename || item.content?.category || 'entry';
+        const targetPeerName = targetDev?.username ? `@${targetDev.username.replace(/^@/, '')}` : targetDev?.name;
+
+        // Start 6-second delivery timeout tracker
+        const timeoutTimer = setTimeout(() => {
+          this.ngZone.run(() => {
+            if (this.pendingDeliveries.has(packetId)) {
+              this.pendingDeliveries.delete(packetId);
+              AirVaultLogger.warn(`[AirVault Sync] ⚠️ Delivery timeout for packet ${packetId}. No remote ACK received.`);
+              this.uiStore.triggerToast('⚠️ Delivery unconfirmed by remote device — item saved locally in vault');
+            }
+          });
+        }, 6000);
+
+        this.pendingDeliveries.set(packetId, {
+          timeoutTimer,
+          itemName,
+          targetPeerName
+        });
+      } else {
+        // No connected peer online -> immediately inform user that it is saved locally
+        this.uiStore.triggerToast('✓ Saved to local vault');
+      }
+    }
+
     // Schedule auto-collapse for long content
     if (item) this.collapseService.scheduleCollapse(item);
     setTimeout(() => this.storageService.isRefreshing.set(false), 600);
@@ -308,7 +373,31 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     const updated = this.storageService.incrementResendCount(item.id);
     const count = updated?.resendCount || (item.resendCount || 0) + 1;
     const countLabel = count === 1 ? 'once' : `${count} times`;
-    this.uiStore.triggerToast(`⚡ Resent "${title}" (${countLabel}) to connected devices`);
+
+    // Check connected peers
+    const curDev = this.deviceService.currentDevice();
+    const paired = this.deviceService.pairedDevices();
+    const eligiblePeers = paired.filter(d => d.id !== curDev.id && d.status === 'active' && d.syncEnabled !== false && !this.deviceService.isManuallyDisconnected(d.id));
+
+    if (eligiblePeers.length > 0 && item.packetId) {
+      const packetId = item.packetId;
+      const timeoutTimer = setTimeout(() => {
+        this.ngZone.run(() => {
+          if (this.pendingDeliveries.has(packetId)) {
+            this.pendingDeliveries.delete(packetId);
+            this.uiStore.triggerToast(`⚠️ Resend unconfirmed by remote device for "${title}"`);
+          }
+        });
+      }, 6000);
+
+      this.pendingDeliveries.set(packetId, {
+        timeoutTimer,
+        itemName: title
+      });
+    } else {
+      this.uiStore.triggerToast(`✓ "${title}" saved in local vault`);
+    }
+
     await this.syncService.broadcastItem(updated || item);
   }
 
@@ -322,6 +411,11 @@ export class AirVaultComponent implements OnInit, OnDestroy {
 
   async onRefreshClipboard() {
     await this.storageService.refreshFromStorage();
+    const paired = this.deviceService.pairedDevices().filter(d => d.status === 'active' && d.syncEnabled !== false);
+    if (paired.length > 0) {
+      this.uiStore.triggerToast(`🔄 Syncing entire clipboard across connected devices...`);
+      await this.syncService.syncAllDevices();
+    }
   }
 
   onClearActiveClipboard() {
@@ -360,6 +454,10 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     this.uiStore.triggerToast(`🔌 Disconnected ${dev?.name || 'Device'}`);
   }
 
+  promptSyncConsent(localDevice: AirVaultDevice, remoteDevice: AirVaultDevice) {
+    this.uiStore.openSyncConsent(remoteDevice);
+  }
+
   onDeviceReconnect(deviceId: string) {
     const dev = this.deviceService.pairedDevices().find(d => d.id === deviceId);
     const cur = this.deviceService.currentDevice();
@@ -372,12 +470,19 @@ export class AirVaultComponent implements OnInit, OnDestroy {
       timestamp: Date.now()
     }), deviceId);
 
-    // Run existing sync process with the reconnected device
+    // Prompt user for sync consent before pulling history from the reconnected device
     if (dev) {
-      this.syncService.initiateDeviceSync(dev);
+      this.promptSyncConsent(cur, dev);
     }
 
     this.uiStore.triggerToast(`⚡ Reconnected ${dev?.name || 'Device'}`);
+  }
+
+  onManualDeviceSync(device: AirVaultDevice) {
+    if (!device) return;
+    const peerHandle = device.username ? `@${device.username.replace(/^@/, '')}` : (device.name || 'connected device');
+    this.uiStore.triggerToast(`🔄 Syncing with ${peerHandle}...`);
+    this.syncService.initiateDeviceSync(device);
   }
 
   onDeviceRemove(deviceId: string) {
@@ -464,6 +569,50 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     this.uiStore.triggerToast(`✓ Resource removed from this device locally (Available in 30-day Restorable History)`);
   }
 
+  onOverrideDuplicate() {
+    const data = this.uiStore.duplicateModalData();
+    this.uiStore.closeDuplicateModal();
+    if (!data) return;
+
+    const res = data.resourceItem;
+    const curDev = this.deviceService.currentDevice();
+    const timestampSuffix = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    if (res && res.id) {
+      // Find item in storage
+      const existing = this.storageService.allItems().find(i => i.id === res.id);
+      if (existing) {
+        const oldName = existing.content.filename || 'Resource';
+        const dotIdx = oldName.lastIndexOf('.');
+        let newName: string;
+        if (dotIdx > 0) {
+          newName = `${oldName.slice(0, dotIdx)} (Copy ${timestampSuffix})${oldName.slice(dotIdx)}`;
+        } else {
+          newName = `${oldName} (Copy ${timestampSuffix})`;
+        }
+
+        const updatedItem = {
+          ...existing,
+          content: {
+            ...existing.content,
+            filename: newName
+          },
+          originDeviceId: curDev.id,
+          senderDeviceId: curDev.id,
+          senderDeviceName: curDev.name,
+          timestamp: Date.now()
+        };
+
+        this.storageService.updateItem(updatedItem);
+        this.syncService.broadcastItem(updatedItem);
+        this.uiStore.triggerToast(`✓ Resource renamed to "${newName}" and saved as unique`);
+        return;
+      }
+    }
+
+    this.uiStore.triggerToast(`✓ Resource marked as unique`);
+  }
+
   onRestoreHistoryItem(itemId: string) {
     const result = this.storageService.restoreItemToActive(itemId);
     this.uiStore.triggerToast(result.message);
@@ -501,6 +650,21 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     this.syncService.lastPairedDevice.set(null);
     this.deviceStore.generatePairingPin();
     this.uiStore.showPairingModal.set(true);
+  }
+
+  onSyncConsentAccept(device: AirVaultDevice | null) {
+    this.uiStore.closeSyncConsent();
+    if (device) {
+      this.uiStore.triggerToast(`🔄 Pulling clipboard history from @${device.username || device.name}...`);
+      this.syncService.initiateDeviceSync(device);
+    }
+  }
+
+  onSyncConsentSkip(device: AirVaultDevice | null) {
+    this.uiStore.closeSyncConsent();
+    if (device) {
+      this.uiStore.triggerToast(`⚡ Paired with @${device.username || device.name} · Starting with fresh clipboard`);
+    }
   }
 
   openHistory() {

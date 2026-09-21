@@ -215,10 +215,14 @@ export class AirVaultColorService {
 
     const selfAliases = [cleanName, cleanUser, cleanId].filter(Boolean);
     const usedByOthers = this.getUsedColorsByOtherPeers(map, selfAliases);
+    const isBlueColor = (c: string) => {
+      const lower = c.toLowerCase();
+      return lower === OWNER_THEME_COLOR.toLowerCase() || lower === '#2196f3' || lower === '#2563eb' || lower === '#3b82f6';
+    };
 
     let resolvedColor: string | null = null;
 
-    if (accentColor && !usedByOthers.has(accentColor.toUpperCase())) {
+    if (accentColor && !isBlueColor(accentColor) && !usedByOthers.has(accentColor.toUpperCase())) {
       resolvedColor = accentColor;
     } else {
       // Check if color is already registered under any of the device keys
@@ -227,10 +231,8 @@ export class AirVaultColorService {
         (cleanName && map[cleanName.toLowerCase().replace(/^@/, '')]) ||
         (cleanId && map[cleanId.toLowerCase()]);
 
-      if (existing && !usedByOthers.has(existing.toUpperCase())) {
+      if (existing && !isBlueColor(existing) && !usedByOthers.has(existing.toUpperCase())) {
         resolvedColor = existing;
-      } else if (accentColor) {
-        resolvedColor = accentColor;
       } else {
         const seed = cleanUser || cleanName || cleanId || 'peer';
         resolvedColor = this.assignDistinctPeerColor(seed, usedByOthers);

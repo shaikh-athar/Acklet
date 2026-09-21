@@ -60,20 +60,16 @@ interface TextSegment {
           </span>
           <span><b> · </b></span>
           <span class="card-timestamp">{{ relativeTime(item().timestamp) }} ago</span>
-          @if ((item().copyCount || 1) > 1) {
-            <span class="copy-count-badge" [attr.data-tooltip]="'Copied ' + item().copyCount + ' times'">
-              <app-icon name="repeat" class="icon-3xs"></app-icon>
-              <span>{{ item().copyCount }}x</span>
-            </span>
-          }
         </div>
         
         <div class="card-header-right">
           <!-- Actions (visible on card hover) -->
           <div class="card-actions hover-reveal">
-            <button class="card-action-btn" (click)="onResend($event)" [attr.data-tooltip]="getResendTooltip(item().resendCount, item().lastResentAt) || 'Resend to connected devices'" aria-label="Resend item">
-              <app-icon name="repeat" class="icon-xs"></app-icon>
-            </button>
+            @if (isCurrentDevice()) {
+              <button class="card-action-btn" [class.is-resending]="isResending()" (click)="onResend($event)" [attr.data-tooltip]="isResending() ? 'Resending…' : (getResendTooltip(item().resendCount, item().lastResentAt) || 'Resend to connected devices')" aria-label="Resend item">
+                <app-icon name="refresh-cw" class="icon-xs" [class.spin-anim]="isResending()"></app-icon>
+              </button>
+            }
             @if (item().content?.isSensitive) {
               <button class="card-action-btn" (click)="onToggleReveal($event)" [attr.data-tooltip]="item().isRevealed ? 'Hide credential' : 'Reveal credential'" aria-label="Reveal credential">
                 <app-icon [name]="item().isRevealed ? 'eye-off' : 'eye'" class="icon-xs"></app-icon>
@@ -100,7 +96,7 @@ interface TextSegment {
               <div class="batch-uploading-box">
                 <div class="batch-upload-status-line">
                   <span class="batch-stage-text">
-                    <app-icon name="loader" class="icon-xs spin-anim text-blue-500"></app-icon>
+                    <app-icon name="loader-circle" class="icon-xs spin-anim text-blue-500"></app-icon>
                     <span>Uploading ({{ item().progressPercent || 0 }}%) · {{ item().batchCompletedCount || 0 }}/{{ item().batchTotalCount || 0 }} files</span>
                   </span>
                 </div>
@@ -244,8 +240,8 @@ interface TextSegment {
               <div class="preview-surface img-surface">
                 @if (isPayloadLoading()) {
                   <div class="tile-loading-overlay">
-                    <app-icon name="loader" class="icon-sm spin-anim text-blue-500"></app-icon>
-                    <span class="loading-label">Loading resource…</span>
+                    <app-icon name="loader-circle" class="icon-sm spin-anim text-blue-500"></app-icon>
+                    <span class="loading-label">Loading image…</span>
                   </div>
                 }
                 @if (imageLoadFailed() || !effectiveImageSrc()) {
@@ -1502,10 +1498,13 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
   textSegments = signal<TextSegment[]>([]);
   searchHighlightQuery = computed(() => this.uiStore.searchHighlightQuery());
   isCardHovered = signal<boolean>(false);
-
   private burnSub?: Subscription;
 
   ngOnInit(): void {
+    const cardEl = this.elementRef.nativeElement.querySelector('.av-card') || this.elementRef.nativeElement;
+    const isPeerSync = !this.isCurrentDevice();
+    this.motion.animateCardEnter(cardEl, isPeerSync);
+
     this.burnSub = this.syncService.onItemBurned.subscribe(event => {
       if (event.itemId === this.item().id) {
         this.performBurnDissolve();
@@ -1740,6 +1739,7 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
   }
 
   copied = signal(false);
+  isResending = signal(false);
   imageLoadFailed = signal(false);
   isPayloadLoading = signal(false);
   payloadObjectUrl = signal<string | null>(null);
@@ -1964,7 +1964,11 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
       e.stopPropagation();
       this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
     }
+    const cardEl = this.elementRef.nativeElement.querySelector('.av-card') || this.elementRef.nativeElement;
+    this.motion.animateCardSyncPulse(cardEl);
+    this.isResending.set(true);
     this.resendItem.emit(this.item());
+    setTimeout(() => this.isResending.set(false), 1200);
   }
 
   getResendTooltip(count?: number, lastResentAt?: number): string {
@@ -1979,6 +1983,9 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
 
   onTogglePin(e?: Event) {
     if (e) this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
+    const cardEl = this.elementRef.nativeElement.querySelector('.av-card') || this.elementRef.nativeElement;
+    const nextPinState = !this.item().isPinned;
+    this.motion.animateCardPin(cardEl, nextPinState);
     this.togglePin.emit(this.item().id);
   }
 
@@ -1988,8 +1995,14 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
   }
 
   onDelete(e?: Event) {
-    if (e) this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
-    this.deleteItem.emit(this.item().id);
+    if (e) {
+      e.stopPropagation();
+      this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
+    }
+    const cardEl = this.elementRef.nativeElement.querySelector('.av-card') || this.elementRef.nativeElement;
+    this.motion.animateCardDelete(cardEl, () => {
+      this.deleteItem.emit(this.item().id);
+    });
   }
 
   getFaviconUrl(url: string): string {

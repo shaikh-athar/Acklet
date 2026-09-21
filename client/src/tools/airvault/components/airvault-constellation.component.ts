@@ -91,6 +91,14 @@ import { AirVaultSyncService } from '../services/airvault-sync.service';
             </div>
 
             <div class="hover-card-actions">
+              <!-- Manual Sync Now -->
+              @if (device.status === 'active') {
+                <button class="hover-act-btn" (click)="syncNow.emit(device); $event.stopPropagation()">
+                  <app-icon name="cloud-sync" class="icon-xs text-cyan"></app-icon>
+                  <span>Sync</span>
+                </button>
+              }
+
               <!-- Copy Username / Handle -->
               <button class="hover-act-btn" (click)="copyHandle(device, $event); $event.stopPropagation()">
                 <app-icon name="copy" class="icon-xs text-muted"></app-icon>
@@ -106,7 +114,7 @@ import { AirVaultSyncService } from '../services/airvault-sync.service';
               } @else if (device.status === 'connecting' || deviceService.isReconnecting(device.id)) {
                 <button class="hover-act-btn" disabled>
                   <app-icon name="loader-2" class="icon-xs text-cyan spin-anim"></app-icon>
-                  <span>Connecting...</span>
+                  <span>Reconnecting...</span>
                 </button>
               } @else {
                 <button class="hover-act-btn" (click)="reconnect.emit(device.id); $event.stopPropagation()">
@@ -627,6 +635,7 @@ export class AirVaultConstellationComponent {
   toggleSync = output<string>();
   openPairingModal = output<void>();
   openDeviceManager = output<void>();
+  syncNow = output<AirVaultDevice>();
   disconnect = output<string>();
   reconnect = output<string>();
   rename = output<{ deviceId: string; newName: string }>();

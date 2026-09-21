@@ -252,8 +252,56 @@ Events emitted:
 
 ---
 
-## 9. Related Documentation
+## 9. Pluggable Object Storage Abstraction & Cloudflare R2 Support
+
+AirVault decouples all backend storage operations through the `AirVaultStorageAdapter` interface, allowing transparent switching between local filesystem and cloud object storage via a single server-side configuration flag:
+
+```text
+                  AirVault Business Logic
+            (AirVaultUploadService / AssemblyWorker)
+                              │
+                              ▼
+                  AirVaultStorageAdapter (Interface)
+                  ┌───────────┴───────────┐
+                  │                       │
+                  ▼                       ▼
+          LocalStorageAdapter      R2StorageAdapter
+          (Local Disk / Dev)       (Cloudflare R2 / S3 API)
+```
+
+### 9.1 Storage Backend Flag (`STORAGE_BACKEND`)
+- `STORAGE_BACKEND=local` (Default): Uses `LocalStorageAdapter` for local development. Requires zero cloud credentials and zero network calls.
+- `STORAGE_BACKEND=r2`: Production deployment mode. Connects to Cloudflare R2 using AWS SDK v2 (`S3Client`) with path-style access.
+- **Fail-Fast Validation**: If `STORAGE_BACKEND=r2` is set with missing credentials, Spring Boot aborts startup with an explicit descriptive error.
+
+### 9.2 Decompression-on-Access, LRU File Cache & HTTP 206 Partial Content Streaming
+When clients request file streams from `GET /api/v1/airvault/clipboards/{clipboardId}/files/{fileId}/raw`:
+1. `AirVaultUploadService` checks if the stored object is compressed (GZIP magic header `0x1f 0x8b`).
+2. If compressed, it decompresses on-the-fly and caches the decompressed stream in `AirVaultDecompressedFileCache`.
+3. The cache is keyed by content hash (`checksum`), size-bounded (500 MB LRU), with a 15-minute TTL and concurrency stampede locks.
+4. **HTTP 206 Partial Content / Byte-Range Streaming**: If a client sends an `HTTP Range` header (e.g., `bytes=0-1048575` for video/audio preview seeking), `AirVaultUploadController` processes random-access byte slicing via Spring's `ResourceRegion` with `206 PARTIAL_CONTENT` and `Accept-Ranges: bytes`. This enables instant progressive video/audio playback of 100MB+ media files without buffering the full payload into client memory or Signals.
+5. On file deletion or clipboard purge, cache entries are invalidated immediately.
+
+---
+
+## 10. Progressive Resource Loading Architecture
+
+AirVault avoids loading entire large payloads into memory, Signals, or IndexedDB during card preview or inspection. The progressive loading model operates across resource categories:
+
+| Resource Category | Progressive Loading Mechanism | Client Behavior |
+| :--- | :--- | :--- |
+| **Video & Audio** | HTTP 206 Partial Content / Range Requests | HTML5 `<video>`/`<audio>` with `preload="metadata"` streams chunks dynamically as media plays. |
+| **Spreadsheets (CSV/TSV)** | Progressive Row Pagination & Infinite Scroll | Renders initial 100 rows; auto-loads subsequent 100-row chunks as the user scrolls or clicks *Load more*. |
+| **Code, Markdown & Text** | Chunked Viewport Rendering & Auto-Expansion | Renders first 50 KB / viewport; streams/renders remaining chunks progressively on scroll without UI lag. |
+| **Archives (ZIP/RAR)** | Metadata Manifest First | Reads directory index and uncompressed file sizes first without extracting binary payloads into memory. |
+| **Images & Fonts** | Native Browser Decoding & LRU Memory Caching | Staged with metadata first; full binary resolved on-demand through bounded object URLs. |
+| **PDF & Documents** | Native Sandboxed Frames / Streams | Sandboxed stream embedding without keeping heavy binary buffers in Angular reactivity graph. |
+
+---
+
+## 10. Related Documentation
 
 - Master Overview: [README.md](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/README.md)
 - Web Worker Pipeline: [feature-13-web-workers-pipeline.md](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/feature-13-web-workers-pipeline.md)
 - Synchronization Transport: [feature-5-clipboard-synchronization.md](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/feature-5-clipboard-synchronization.md)
+

@@ -5,6 +5,8 @@ import { getAirVaultApiUrl } from './airvault-api.util';
 import { AirVaultDeviceService } from './airvault-device.service';
 import { AirVaultResourceCacheService } from './airvault-resource-cache.service';
 import { AirVaultLogger } from './airvault-sync-debug.service';
+import { checkDuplicateResource } from './airvault-action-detector';
+import { AirVaultUIStore } from './airvault-ui.store';
 
 export type DeliveryStatus = 'pending' | 'delivered' | 'failed' | 'queued_offline';
 export type ProcessingState = 'queued' | 'processing' | 'done' | 'failed';
@@ -63,7 +65,7 @@ export interface AirVaultItem {
 
 export interface AirVaultAuditEntry {
   id: string;
-  action: 'created' | 'deleted' | 'restored' | 'pinned' | 'unpinned';
+  action: 'created' | 'deleted' | 'modified' | 'deleted_locally' | 'deleted_globally' | 'restored' | 'purged' | 'erased_all' | 'burned' | 'pinned' | 'unpinned';
   itemId: string;
   itemCategory: string;
   itemSnippet: string;
@@ -80,14 +82,31 @@ export interface AirVaultAuditEntry {
   timestamp: number;
 }
 
+export interface OutboxRecord {
+  packetId: string;
+  itemId: string;
+  packet: any; // EncryptedPacket
+  sourceDeviceId: string;
+  targetDeviceId: string;
+  status: 'QUEUED' | 'SENDING' | 'WAITING_ACK' | 'RETRY_BACKOFF' | 'SYNCED' | 'FAILED';
+  retryCount: number;
+  maxRetries: number;
+  nextRetryAt: number;
+  lastAttemptAt?: number;
+  lastError?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export const MAX_ITEMS_CAPACITY = 500;
 const DB_NAME = 'acklet_airvault_db';
-const DB_VERSION = 3; // v3: added vault_drafts store
+const DB_VERSION = 4; // v4: added vault_outbox durable store
 const STORE_NAME = 'vault_items';
 const PAYLOAD_STORE_NAME = 'vault_payloads';
 const TOMBSTONE_STORE_NAME = 'vault_tombstones';
 const AUDIT_STORE_NAME = 'vault_audit_log';
 const DRAFT_STORE_NAME = 'vault_drafts';
+const OUTBOX_STORE_NAME = 'vault_outbox';
 export const LARGE_RESOURCE_RETENTION_THRESHOLD_BYTES = 5 * 1024 * 1024; // 5 MB
 export const RESTORABLE_HISTORY_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 Days
 
@@ -97,6 +116,7 @@ export const RESTORABLE_HISTORY_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 Da
 export class AirVaultStorageService {
   private db: IDBDatabase | null = null;
   private deviceService = inject(AirVaultDeviceService);
+  private uiStore = inject(AirVaultUIStore);
   public resourceCache = inject(AirVaultResourceCacheService);
 
   // Set of globally deleted item IDs (tombstones) so old sync packets or reconnects cannot resurrect them
@@ -153,9 +173,9 @@ export class AirVaultStorageService {
         const pId = (p.id || '').toLowerCase().trim();
         return (
           (pId && (senderId === pId || originDevId === pId)) ||
-          (pUser && (origin === pUser || senderId.includes(pUser) || originDevId.includes(pUser))) ||
-          (pName && (origin === pName || senderId.includes(pName) || originDevId.includes(pName))) ||
-          (origin && origin.includes(pUser || pName || pId))
+          (pUser && (origin === pUser || senderId.includes(pUser) || originDevId.includes(pUser) || origin.startsWith(pUser))) ||
+          (pName && (origin === pName || senderId.includes(pName) || originDevId.includes(pName) || origin.startsWith(pName))) ||
+          (origin && (pUser && origin.includes(pUser)) || (pName && origin.includes(pName)) || (pId && origin.includes(pId)))
         );
       });
     };
@@ -220,30 +240,6 @@ export class AirVaultStorageService {
   totalBytes = computed(() => {
     return this.activeBytes() + this.historyBytes();
   });
-
-  /**
-   * Authoritative Total Storage Quota:
-   * Base = 5 GB (for self device) + 5 GB per additional connected/active device
-   */
-  totalStorageCapBytes = computed(() => {
-    const activePeers = this.deviceService.pairedDevices().filter(d => d.status === 'active' && d.syncEnabled !== false);
-    return CLIPBOARD_STORAGE_CAP_BYTES + (activePeers.length * CLIPBOARD_STORAGE_CAP_BYTES);
-  });
-
-  /** 0–100 percentage of the total calculated storage quota used */
-  storageUsedPercent = computed(() => {
-    const cap = this.totalStorageCapBytes();
-    if (cap <= 0) return 0;
-    return Math.min(100, Math.round((this.totalBytes() / cap) * 100));
-  });
-
-  /** Remaining storage bytes available across active and restorable resources */
-  remainingStorageBytes = computed(() => {
-    return Math.max(0, this.totalStorageCapBytes() - this.totalBytes());
-  });
-
-  /** True when vault is at or above the dynamic storage cap */
-  capExceeded = computed(() => this.totalBytes() >= this.totalStorageCapBytes());
 
   isRefreshing = signal<boolean>(false);
 
@@ -316,6 +312,13 @@ export class AirVaultStorageService {
         if (!db.objectStoreNames.contains(DRAFT_STORE_NAME)) {
           db.createObjectStore(DRAFT_STORE_NAME, { keyPath: 'key' });
         }
+        // v4: Durable outbox queue store for resilient cross-device sync
+        if (!db.objectStoreNames.contains(OUTBOX_STORE_NAME)) {
+          const outboxStore = db.createObjectStore(OUTBOX_STORE_NAME, { keyPath: 'packetId' });
+          outboxStore.createIndex('status', 'status', { unique: false });
+          outboxStore.createIndex('targetDeviceId', 'targetDeviceId', { unique: false });
+          outboxStore.createIndex('nextRetryAt', 'nextRetryAt', { unique: false });
+        }
       };
 
       request.onsuccess = (event: any) => {
@@ -326,6 +329,85 @@ export class AirVaultStorageService {
     } catch {
       // IndexedDB fallback
     }
+  }
+
+  // ── Durable Outbox Operations (IndexedDB v4) ──────────────────────────────
+
+  /**
+   * Persists an outbox record durably in IndexedDB so pending syncs survive page refresh/disconnect.
+   */
+  async saveOutboxRecord(record: OutboxRecord): Promise<void> {
+    if (!this.db) return;
+    return new Promise<void>((resolve) => {
+      try {
+        const tx = this.db!.transaction(OUTBOX_STORE_NAME, 'readwrite');
+        const store = tx.objectStore(OUTBOX_STORE_NAME);
+        store.put(record);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+      } catch {
+        resolve();
+      }
+    });
+  }
+
+  /**
+   * Retrieves all pending outbox records needing transmission or retry.
+   */
+  async getPendingOutboxRecords(targetDeviceId?: string): Promise<OutboxRecord[]> {
+    if (!this.db) return [];
+    return new Promise<OutboxRecord[]>((resolve) => {
+      try {
+        const tx = this.db!.transaction(OUTBOX_STORE_NAME, 'readonly');
+        const store = tx.objectStore(OUTBOX_STORE_NAME);
+        const req = store.getAll();
+        req.onsuccess = () => {
+          const all: OutboxRecord[] = req.result || [];
+          const now = Date.now();
+          const pending = all.filter(r => {
+            if (r.status === 'SYNCED') return false;
+            if (targetDeviceId && r.targetDeviceId !== targetDeviceId && r.targetDeviceId !== 'broadcast') return false;
+            return r.status === 'QUEUED' || r.status === 'RETRY_BACKOFF' || r.status === 'WAITING_ACK' || (r.nextRetryAt && r.nextRetryAt <= now);
+          });
+          resolve(pending);
+        };
+        req.onerror = () => resolve([]);
+      } catch {
+        resolve([]);
+      }
+    });
+  }
+
+  /**
+   * Marks an outbox record as successfully SYNCED and purges it or flags status.
+   */
+  async markOutboxSynced(packetId: string): Promise<void> {
+    if (!this.db || !packetId) return;
+    return new Promise<void>((resolve) => {
+      try {
+        const tx = this.db!.transaction(OUTBOX_STORE_NAME, 'readwrite');
+        const store = tx.objectStore(OUTBOX_STORE_NAME);
+        store.delete(packetId);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+      } catch {
+        resolve();
+      }
+    });
+  }
+
+  /**
+   * Updates status/retry parameters for an outbox record.
+   */
+  async updateOutboxRecord(record: OutboxRecord): Promise<void> {
+    return this.saveOutboxRecord(record);
+  }
+
+  /**
+   * Removes an outbox record by packetId.
+   */
+  async removeOutboxRecord(packetId: string): Promise<void> {
+    return this.markOutboxSynced(packetId);
   }
 
   // ── Local Composer Draft Persistence (IndexedDB, never synced) ──────────────
@@ -451,10 +533,15 @@ export class AirVaultStorageService {
 
     if (isHeavyResource || isLargeRaw) {
       // Retain previewUrl (thumbnail), metadata, size, filename, and flags, but strip massive raw string
+      let effectivePreviewUrl = item.content.previewUrl;
+      if (!effectivePreviewUrl && cat === 'image' && item.content.raw && (item.content.raw.startsWith('data:') || item.content.raw.startsWith('blob:') || item.content.raw.startsWith('http'))) {
+        effectivePreviewUrl = item.content.raw;
+      }
       return {
         ...item,
         content: {
           ...item.content,
+          previewUrl: effectivePreviewUrl,
           raw: item.isBatchParent ? (item.content.raw || '') : '' // Preserve batch caption/text for batch parents
         }
       };
@@ -490,8 +577,9 @@ export class AirVaultStorageService {
    */
   async fetchResourcePayload(item: AirVaultItem): Promise<{ blob: Blob | null; objectUrl: string | null }> {
     const fileId = item.id;
+    const packetId = item.packetId;
     return this.resourceCache.fetchDeduplicated(fileId, async () => {
-      // 1. Check local IndexedDB payload store
+      // 1. Check local IndexedDB payload store (both by fileId and packetId)
       if (this.db) {
         try {
           const blobFromIdb = await new Promise<Blob | null>((resolve) => {
@@ -504,6 +592,19 @@ export class AirVaultStorageService {
               } else if (req.result && typeof req.result.raw === 'string' && req.result.raw.startsWith('data:')) {
                 // Convert legacy Base64 string to native Blob
                 fetch(req.result.raw).then(r => r.blob()).then(resolve).catch(() => resolve(null));
+              } else if (packetId && packetId !== fileId) {
+                // Try packetId key
+                const req2 = store.get(packetId);
+                req2.onsuccess = () => {
+                  if (req2.result && req2.result.blob instanceof Blob) {
+                    resolve(req2.result.blob);
+                  } else if (req2.result && typeof req2.result.raw === 'string' && req2.result.raw.startsWith('data:')) {
+                    fetch(req2.result.raw).then(r => r.blob()).then(resolve).catch(() => resolve(null));
+                  } else {
+                    resolve(null);
+                  }
+                };
+                req2.onerror = () => resolve(null);
               } else {
                 resolve(null);
               }
@@ -525,6 +626,7 @@ export class AirVaultStorageService {
           const blob = await resp.blob();
           // Store in IndexedDB payload store for future offline retrieval
           this.savePayloadToIndexedDb(fileId, blob);
+          if (packetId) this.savePayloadToIndexedDb(packetId, blob);
           return blob;
         }
       } catch (e) {
@@ -532,16 +634,20 @@ export class AirVaultStorageService {
       }
 
       // 3. Fallback to existing raw base64 or previewUrl if available
-      if (item.content?.raw && item.content.raw.startsWith('data:')) {
+      if (item.content?.raw && (item.content.raw.startsWith('data:') || item.content.raw.startsWith('blob:'))) {
         try {
           const res = await fetch(item.content.raw);
-          return await res.blob();
+          const blob = await res.blob();
+          this.savePayloadToIndexedDb(fileId, blob);
+          return blob;
         } catch {}
       }
-      if (item.content?.previewUrl && item.content.previewUrl.startsWith('data:')) {
+      if (item.content?.previewUrl && (item.content.previewUrl.startsWith('data:') || item.content.previewUrl.startsWith('blob:'))) {
         try {
           const res = await fetch(item.content.previewUrl);
-          return await res.blob();
+          const blob = await res.blob();
+          this.savePayloadToIndexedDb(fileId, blob);
+          return blob;
         } catch {}
       }
 
@@ -687,16 +793,39 @@ export class AirVaultStorageService {
       return { added: false, isDuplicate: false, item };
     }
 
-    // Guard against resurrecting locally deleted items during sync or reconnect
+    // Guard against resurrecting locally deleted items during background auto-sync, unless explicit restore, resend, or direct peer beam
     const curDev = this.deviceService.currentDevice();
     const isLocalCreate = !item.originDeviceId || item.originDeviceId === curDev.id || item.senderDeviceId === curDev.id;
     const existingLocal = this.allItems().find(i => i.id === item.id || (i.packetId && i.packetId === item.id));
-    if (existingLocal && existingLocal.isDeletedFromActive && !options?.isExplicitRestore && !isLocalCreate) {
-      AirVaultLogger.debug(`[AirVault Storage] 🛡️ Item ${item.id} is locally deleted/in history. Preserving local deletion.`);
-      return { added: false, isDuplicate: true, item: existingLocal };
-    }
-    if (existingLocal && (options?.isExplicitRestore || isLocalCreate)) {
+
+    if (existingLocal && existingLocal.isDeletedFromActive) {
+      const isResendOrRestore = !!(options?.isExplicitRestore || isLocalCreate || (item.resendCount && item.resendCount > 0) || (item.timestamp && item.timestamp > (existingLocal.deletedAt || 0)));
+      if (!isResendOrRestore) {
+        AirVaultLogger.debug(`[AirVault Storage] 🛡️ Item ${item.id} is locally deleted/in history. Preserving local deletion.`);
+        return { added: false, isDuplicate: true, item: existingLocal };
+      }
+      // Resurrect item cleanly back into active state and notify signals
       existingLocal.isDeletedFromActive = false;
+      existingLocal.deletedAt = undefined;
+      existingLocal.restorationExpiresAt = undefined;
+      existingLocal.timestamp = item.timestamp || Date.now();
+      if (item.resendCount) existingLocal.resendCount = item.resendCount;
+      if (item.lastResentAt) existingLocal.lastResentAt = item.lastResentAt;
+      if (item.content) existingLocal.content = item.content;
+      this.allItems.update(list => [existingLocal, ...list.filter(i => i.id !== existingLocal.id)]);
+      this.persistAll();
+      return { added: true, isDuplicate: false, item: existingLocal };
+    }
+
+    if (existingLocal && (options?.isExplicitRestore || isLocalCreate || (item.resendCount && item.resendCount > 0))) {
+      existingLocal.isDeletedFromActive = false;
+      existingLocal.timestamp = item.timestamp || Date.now();
+      if (item.resendCount) existingLocal.resendCount = item.resendCount;
+      if (item.lastResentAt) existingLocal.lastResentAt = item.lastResentAt;
+      if (item.content) existingLocal.content = item.content;
+      this.allItems.update(list => [existingLocal, ...list.filter(i => i.id !== existingLocal.id)]);
+      this.persistAll();
+      return { added: true, isDuplicate: false, item: existingLocal };
     }
 
     // 0. Batch child deduplication: if item belongs to a batch and is not a batch parent, never add as a standalone item
@@ -707,37 +836,33 @@ export class AirVaultStorageService {
       return { added: false, isDuplicate: false, item };
     }
 
-    // Check if identical content already exists
-    const duplicate = this.findDuplicateItem(item.content, item.id);
-    if (duplicate) {
-      AirVaultLogger.debug(`[AirVault Storage] 🔄 Duplicate item detected: "${duplicate.content.filename || duplicate.content.category}". Refreshing expiration timer.`);
-      const refreshed = this.refreshItemExpiry(duplicate.id) || duplicate;
-      return { added: false, isDuplicate: true, item: refreshed };
+    // Check if identical content exists for a paired user / connected device
+    const curUser = curDev.username?.toLowerCase().replace(/^@/, '');
+    const pairedResources = this.allItems().filter(i => {
+      const owner = (i.originOwnerId || i.senderDeviceName || i.senderDeviceId || '').toLowerCase().replace(/^@/, '');
+      return owner && owner !== curUser && owner !== curDev.id;
+    });
+
+    const pairedDup = checkDuplicateResource(item, pairedResources);
+    if (pairedDup.isDuplicate && pairedDup.matchedUsername) {
+      AirVaultLogger.info(`[AirVault Storage] 🔔 Duplicate resource found with paired user ${pairedDup.matchedUsername}. Notifying user.`);
+      this.uiStore.openDuplicateModal(pairedDup.matchedUsername, item);
     }
 
     const targetBytes = item.content?.byteSize || 0;
-    const currentUsage = this.totalBytes();
-    const quota = this.totalStorageCapBytes();
-
-    // Check if new payload would exceed available quota (Active + Restorable History shared)
-    if (currentUsage + targetBytes > quota) {
-      const usedMB = (currentUsage / 1024 / 1024).toFixed(0);
-      const capMB = (quota / 1024 / 1024).toFixed(0);
-      AirVaultLogger.warn(`[AirVault Storage] ⚠️ Storage cap reached (${usedMB} MB / ${capMB} MB). Resource upload rejected.`);
-      return { added: false, isDuplicate: false, item };
-    }
 
     // Assign owner and retention policy
     const isLifetime = targetBytes > LARGE_RESOURCE_RETENTION_THRESHOLD_BYTES;
     const customTtl = this.retentionTtlMs();
 
     // BURN_AFTER_READ is strictly restricted to RESOURCE / FILE items (images, pdfs, audio, video, spreadsheets, archives, binary files)
-    // It must NEVER apply to plain text, code, json, or url items.
+    // It must NEVER apply to plain text, code, json, or url items, and MUST be explicitly flagged (item.burnAfterRead === true)
     const cat = item.content?.category || '';
     const isTextOrCode = cat === 'text' || cat === 'code' || cat === 'json' || cat === 'url';
     const isResource = !isTextOrCode;
 
-    const isBurnAfterRead = isResource && (item.burnAfterRead === true || item.retentionTtlMs === -1 || customTtl === -1);
+    // Only burn after read if explicitly set on the item itself (never automatically inherited from global custom TTL)
+    const isBurnAfterRead = isResource && item.burnAfterRead === true;
     const effectiveTtl = isLifetime ? 0 : (isBurnAfterRead ? -1 : (item.retentionTtlMs && item.retentionTtlMs > 0 ? item.retentionTtlMs : (customTtl > 0 ? customTtl : (7 * 24 * 60 * 60 * 1000))));
 
     const enrichedItem: AirVaultItem = {
@@ -844,6 +969,14 @@ export class AirVaultStorageService {
   setCollapseState(itemId: string, state: 'expanded' | 'collapsed') {
     this.allItems.update(list =>
       list.map(i => i.id === itemId ? { ...i, content: { ...i.content, collapseState: state } } : i)
+    );
+    this.persistAll();
+  }
+
+  /** Update an item in-memory and persist */
+  updateItem(updatedItem: AirVaultItem) {
+    this.allItems.update(list =>
+      list.map(i => i.id === updatedItem.id ? updatedItem : i)
     );
     this.persistAll();
   }
@@ -1141,12 +1274,6 @@ export class AirVaultStorageService {
     const now = Date.now();
     if (target.restorationExpiresAt && target.restorationExpiresAt <= now) {
       return { success: false, message: 'This item is no longer available for restoration.' };
-    }
-
-    // Check if adding back to active would exceed available quota
-    // (Note: Since it's already in history, it already occupied quota, but verify total cap)
-    if (this.capExceeded()) {
-      return { success: false, message: 'Storage is full. Free up space to restore resources.' };
     }
 
     const curDev = this.deviceService.currentDevice();
@@ -1555,10 +1682,12 @@ export class AirVaultStorageService {
         const cat = item.content?.category;
         const isResource = !item.isBatchParent && cat !== 'text' && cat !== 'code' && cat !== 'json' && cat !== 'url';
         if (isResource && item.content?.raw && item.content.raw.length > 50_000) {
+          const preview = item.content.previewUrl || (cat === 'image' && item.content.raw.startsWith('data:') ? item.content.raw : undefined);
           return {
             ...item,
             content: {
               ...item.content,
+              previewUrl: preview,
               raw: '' // Binary data stored in IndexedDB payload store
             }
           };

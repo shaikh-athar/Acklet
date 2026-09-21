@@ -31,6 +31,122 @@ export class AirVaultMotionService {
   }
 
   /**
+   * 1b. Distinct Entrance Animation for Clipboard Item lifecycle:
+   * - New local capture: Crisp upward spring entrance (translateY 12px -> 0, scale 0.97 -> 1, opacity 0 -> 1)
+   * - Synced from peer: Subtle accent halo/glow ring along with gentle scale entry
+   */
+  animateCardEnter(element: HTMLElement, isSynced: boolean = false) {
+    if (!element) return;
+    if (this.prefersReducedMotion) {
+      gsap.fromTo(element, { opacity: 0 }, { opacity: 1, duration: 0.15 });
+      return;
+    }
+
+    if (isSynced) {
+      // Synced peer entrance: slide down + accent border pulse
+      gsap.fromTo(
+        element,
+        { opacity: 0, y: -14, scale: 0.96 },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.34,
+          ease: 'power2.out',
+          onComplete: () => {
+            this.animateCardSyncPulse(element);
+          }
+        }
+      );
+    } else {
+      // Local capture entrance: spring pop up
+      gsap.fromTo(
+        element,
+        { opacity: 0, y: 14, scale: 0.96 },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.28,
+          ease: 'back.out(1.5)',
+          clearProps: 'transform,opacity'
+        }
+      );
+    }
+  }
+
+  /**
+   * 1c. Distinct Deletion / Dismissal Animation:
+   * Smoothly shrinks and slides out (scale 1 -> 0.92, translateY 0 -> 10px, opacity 1 -> 0)
+   * in 200ms before triggering onComplete.
+   */
+  animateCardDelete(element: HTMLElement, onComplete?: () => void) {
+    if (!element) {
+      if (onComplete) onComplete();
+      return;
+    }
+
+    if (this.prefersReducedMotion) {
+      gsap.to(element, {
+        opacity: 0,
+        duration: 0.1,
+        onComplete: () => {
+          if (onComplete) onComplete();
+        }
+      });
+      return;
+    }
+
+    gsap.to(element, {
+      opacity: 0,
+      scale: 0.92,
+      y: 8,
+      duration: 0.2,
+      ease: 'power2.in',
+      onComplete: () => {
+        if (onComplete) onComplete();
+      }
+    });
+  }
+
+  /**
+   * 1d. Distinct Sync / Update / Resend Flash Animation:
+   * Fast, subtle border glow / halo pulse that signals an item was refreshed or synced.
+   */
+  animateCardSyncPulse(element: HTMLElement) {
+    if (this.prefersReducedMotion || !element) return;
+
+    element.classList.remove('av-sync-pulse-active');
+    // Force reflow to re-trigger if already active
+    void element.offsetWidth;
+    element.classList.add('av-sync-pulse-active');
+
+    setTimeout(() => {
+      element.classList.remove('av-sync-pulse-active');
+    }, 850);
+  }
+
+  /**
+   * 1e. Tactile Pin / Unpin Spring Transition:
+   * Subtle micro-tilt and spring settle when pinning or unpinning.
+   */
+  animateCardPin(element: HTMLElement, isPinned: boolean) {
+    if (this.prefersReducedMotion || !element) return;
+
+    if (isPinned) {
+      // Pinning: micro-lift + subtle rotation settle
+      gsap.timeline()
+        .to(element, { scale: 1.02, y: -3, duration: 0.12, ease: 'power2.out' })
+        .to(element, { scale: 1, y: 0, duration: 0.22, ease: this.springEase, clearProps: 'transform' });
+    } else {
+      // Unpinning: quick tactile dip
+      gsap.timeline()
+        .to(element, { scale: 0.98, y: 2, duration: 0.1, ease: 'power1.out' })
+        .to(element, { scale: 1, y: 0, duration: 0.18, ease: 'power2.out', clearProps: 'transform' });
+    }
+  }
+
+  /**
    * 2. 4-step progress timeline animation for beamed sync items.
    */
   animateSyncTimeline(container: HTMLElement) {

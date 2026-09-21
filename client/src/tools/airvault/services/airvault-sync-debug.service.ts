@@ -8,7 +8,7 @@
  * NEVER log clipboard text itself, passwords, PINs, or decrypted payloads.
  */
 
-export const ENABLE_AIRVAULT_SYNC_DEBUG = false;
+export const ENABLE_AIRVAULT_SYNC_DEBUG = true;
 
 export class AirVaultLogger {
   static isDebugEnabled(): boolean {

@@ -161,23 +161,20 @@ type SettingsTab = 'general' | 'retention' | 'backup' | 'shortcuts';
             <div class="tab-pane-content">
               <!-- Storage Metrics Section -->
               <div class="settings-section">
-                <div class="section-title">STORAGE & CAPACITY METRICS</div>
+                <div class="section-title">STORAGE & RETENTION METRICS</div>
                 <div class="metrics-grid">
                   <div class="metric-card">
                     <span class="metric-label">Cached Items</span>
                     <span class="metric-value">{{ totalItems() }} / 500</span>
                   </div>
                   <div class="metric-card">
-                    <span class="metric-label">Shared Storage Usage</span>
-                    <span class="metric-value">{{ formatBytes(totalBytes()) }} / {{ formatBytes(storageService.totalStorageCapBytes()) }}</span>
+                    <span class="metric-label">Total Vault Storage</span>
+                    <span class="metric-value">{{ formatBytes(totalBytes()) }}</span>
                   </div>
                   <div class="metric-card metric-card-wide">
                     <span class="metric-label">Active vs History</span>
-                    <span class="metric-value text-cyan">{{ formatBytes(storageService.activeBytes()) }} + {{ formatBytes(storageService.historyBytes()) }}</span>
+                    <span class="metric-value text-cyan">{{ formatBytes(storageService.activeBytes()) }} (Active) + {{ formatBytes(storageService.historyBytes()) }} (History)</span>
                   </div>
-                </div>
-                <div class="capacity-bar-track">
-                  <div class="capacity-bar-fill" [style.width.%]="getStoragePercent()"></div>
                 </div>
               </div>
 
@@ -852,12 +849,6 @@ export class AirVaultSettingsDrawerComponent {
       e.stopPropagation?.();
     }
     this.onClose();
-  }
-
-  getStoragePercent(): number {
-    const cap = this.storageService.totalStorageCapBytes();
-    if (cap <= 0) return 0;
-    return Math.min(100, Math.round((this.totalBytes() / cap) * 100));
   }
 
   ttlOptions = [

@@ -127,6 +127,8 @@ export class AirVaultDeviceService {
           syncEnabled: true
         };
         this.addPairedDevice(reconciledPeer);
+        // Ensure presence is refreshed immediately
+        this.broadcastDeviceOnlineSignal();
       }
     });
   }
@@ -154,6 +156,23 @@ export class AirVaultDeviceService {
           accentColor: d.accentColor
         }));
         this.registeredSessions.set(mapped);
+
+        // Symmetrically restore status to active for any paired devices that are currently active in registered sessions
+        const activeRemoteSessions = mapped.filter(s => !s.isCurrent && s.status === 'active');
+        if (activeRemoteSessions.length > 0) {
+          this.pairedDevices.update(list =>
+            list.map(d => {
+              const matchedSession = activeRemoteSessions.find(s => s.id === d.id || (s.username && d.username && s.username.toLowerCase().replace(/^@/, '') === d.username.toLowerCase().replace(/^@/, '')));
+              if (matchedSession) {
+                // If backend shows the session is active, auto-activate and clear stale manual disconnect flag
+                this.clearManualDisconnect(d.id);
+                return { ...d, id: matchedSession.id || d.id, status: 'active', lastActive: matchedSession.lastActive };
+              }
+              return d;
+            })
+          );
+          this.saveStoredDevices();
+        }
       }
     });
   }
@@ -655,7 +674,8 @@ export class AirVaultDeviceService {
     setTimeout(() => {
       this.setDeviceStatus(deviceId, 'active');
       this.setDeviceReconnecting(deviceId, false);
-    }, 1200);
+      this.broadcastDeviceOnlineSignal();
+    }, 400);
   }
 
   /**
@@ -809,8 +829,9 @@ export class AirVaultDeviceService {
 
     // 2. Immediate WebSocket heartbeat whenever transport connects or reconnects
     this.wsTransport.onConnected$.subscribe(() => {
-      AirVaultLogger.debug('[AirVault Device] ⚡ WebSocket connected. Emitting WS presence heartbeat immediately...');
+      AirVaultLogger.debug('[AirVault Device] ⚡ WebSocket connected. Emitting WS presence heartbeat & online signal immediately...');
       this.sendWsHeartbeat();
+      this.broadcastDeviceOnlineSignal();
     });
 
     // 3. Regular 5s application-level WebSocket heartbeat interval
@@ -819,21 +840,42 @@ export class AirVaultDeviceService {
     }, 5000);
 
     // 4. Page Visibility API: on tab return (visibilitychange to 'visible' or window focus),
-    // immediately send a heartbeat so throttled tab intervals never trigger false timeouts
+    // immediately send a heartbeat and online presence so throttled tab intervals never trigger false timeouts
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
-          AirVaultLogger.debug('[AirVault Device] 👁️ Tab became visible. Triggering immediate WS heartbeat...');
+          AirVaultLogger.debug('[AirVault Device] 👁️ Tab became visible. Triggering immediate WS heartbeat & online broadcast...');
           this.sendWsHeartbeat();
+          this.broadcastDeviceOnlineSignal();
         }
       });
       window.addEventListener('focus', () => {
         const now = Date.now();
         if (now - this.lastHeartbeatSentAt >= 1000) {
           this.sendWsHeartbeat();
+          this.broadcastDeviceOnlineSignal();
         }
       });
     }
+  }
+
+  /**
+   * Broadcasts a DEVICE_ONLINE signal containing full device metadata to peers.
+   */
+  public broadcastDeviceOnlineSignal() {
+    const cur = this.currentDevice();
+    const onlinePayload = {
+      deviceId: cur.id,
+      senderDevice: cur,
+      timestamp: Date.now()
+    };
+    this.wsTransport.send({
+      type: 'DEVICE_ONLINE',
+      senderDeviceId: cur.id,
+      targetDeviceId: 'broadcast',
+      payload: JSON.stringify(onlinePayload),
+      timestamp: Date.now()
+    });
   }
 
   /**
@@ -859,14 +901,17 @@ export class AirVaultDeviceService {
     this.lastHeartbeatSentAt = now;
     this.currentDevice.update(d => ({ ...d, lastActive: now }));
 
-    // Send lightweight app-level {"type":"HEARTBEAT"} frame over WebSocket
+    // 1. Send lightweight app-level {"type":"HEARTBEAT"} frame over WebSocket
     const sent = this.wsTransport.send({
       type: 'HEARTBEAT',
       senderDeviceId: cur.id,
       timestamp: now
     });
 
-    // Broadcast locally across open browser tabs via BroadcastChannel
+    // 2. Broadcast online presence over WebSocket so all paired peers auto-identify this device as active
+    this.broadcastDeviceOnlineSignal();
+
+    // 3. Broadcast locally across open browser tabs via BroadcastChannel
     if (typeof BroadcastChannel !== 'undefined') {
       try {
         const ch = new BroadcastChannel('acklet_airvault_sync_channel');

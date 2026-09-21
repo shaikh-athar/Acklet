@@ -377,6 +377,7 @@
           (toggleSync)="deviceStore.toggleSyncTarget($event)"
           (openPairingModal)="openPairing()"
           (openDeviceManager)="uiStore.showDeviceDrawer.set(true)"
+          (syncNow)="onManualDeviceSync($event)"
           (disconnect)="onDeviceDisconnect($event)"
           (reconnect)="onDeviceReconnect($event)"
           (rename)="onDeviceRename($event)"
@@ -421,8 +422,6 @@
       [totalBytes]="storageService.totalBytes()"
       [activeBytes]="storageService.activeBytes()"
       [historyBytes]="storageService.historyBytes()"
-      [totalStorageCapBytes]="storageService.totalStorageCapBytes()"
-      [storageUsedPercent]="storageService.storageUsedPercent()"
       (historyClick)="openHistory()"
       (toggleAutoCapture)="clipboardStore.toggleAutoCapture()"
       (pairDeviceClick)="openPairing()"
@@ -494,8 +493,6 @@
     [totalBytes]="storageService.totalBytes()"
     [activeBytes]="storageService.activeBytes()"
     [historyBytes]="storageService.historyBytes()"
-    [totalStorageCapBytes]="storageService.totalStorageCapBytes()"
-    [storageUsedPercent]="storageService.storageUsedPercent()"
     (close)="uiStore.showHistoryModal.set(false)"
     (restoreItem)="onRestoreHistoryItem($event)"
     (purgeItem)="onPurgeHistoryItem($event)"
@@ -573,6 +570,24 @@
     (confirm)="onConfirmClearActiveClipboard()"
     (cancel)="uiStore.showClearActiveModal.set(false)">
   </app-airvault-clear-confirm-modal>
+  }
+
+  @if (uiStore.showDuplicateModal()) {
+  <app-airvault-duplicate-modal
+    [matchedUsername]="uiStore.duplicateModalData()?.matchedUsername || ''"
+    [resourceSnippet]="uiStore.duplicateModalData()?.resourceSnippet || ''"
+    [category]="uiStore.duplicateModalData()?.category || ''"
+    (close)="uiStore.closeDuplicateModal()"
+    (override)="onOverrideDuplicate()">
+  </app-airvault-duplicate-modal>
+  }
+
+  @if (uiStore.showSyncConsentModal()) {
+  <app-airvault-sync-consent-modal
+    [device]="uiStore.syncConsentDevice()"
+    (sync)="onSyncConsentAccept($event)"
+    (skip)="onSyncConsentSkip($event)">
+  </app-airvault-sync-consent-modal>
   }
 
   @if (uiStore.showTipsModal()) {

@@ -63,8 +63,8 @@
 
   @if (hasMoreRailItems()) {
   <div class="stream-loading-indicator">
-    <app-icon name="loader" class="icon-xs spin-anim text-accent"></app-icon>
-    <span>Loading older entries ({{ displayedVaultItems().length }}/{{ vaultItems().length }})...</span>
+    <app-icon name="refresh-ccw" class="icon-xs spin-anim text-accent"></app-icon>
+    <span>Syncing older entries ({{ displayedVaultItems().length }}/{{ vaultItems().length }})...</span>
   </div>
   }
 </div>
@@ -428,6 +428,16 @@
           <app-icon name="plus" class="icon-sm"></app-icon>
         </button>
 
+        <!-- Clear Input Field Button (Clears typed text & staged attachments without affecting saved vault items) -->
+        <button type="button" class="composer-tool-btn composer-clear-input-btn"
+          [class.clicked]="clickedButtonId() === 'clear-input'"
+          (click)="clearCurrentInput($event); triggerClickPulse('clear-input')"
+          [disabled]="richEditor.isEmpty() && stagedAttachments().length === 0 && !stagedText().trim()"
+          data-tooltip="Clear input"
+          aria-label="Clear current input field">
+          <app-icon name="eraser" class="icon-sm"></app-icon>
+        </button>
+
         @if (uploadMenuOpen()) {
         <div class="chat-attach-popover" [class.is-closing]="isUploadMenuClosing()" (click)="$event.stopPropagation()">
           <!-- Upload Generic Files -->
@@ -623,7 +633,7 @@
   <!-- Pointer / Cursor-Anchored Inline Paste Loader -->
   @if (isProcessingPaste()) {
   <div class="pointer-paste-loader" [style.left.px]="pasteLoaderPos().x" [style.top.px]="pasteLoaderPos().y">
-    <span class="paste-loader-spinner spin-anim"></span>
+    <app-icon name="loader-circle" class="icon-sm spin-anim text-accent"></app-icon>
     <div class="paste-loader-info">
       <span class="paste-loader-title">Processing {{ pasteLoaderSize() }}…</span>
       <span class="paste-loader-sub">Chunked AES encryption · {{ pasteProgress() }}%</span>

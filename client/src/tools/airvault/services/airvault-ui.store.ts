@@ -23,6 +23,10 @@ export class AirVaultUIStore {
   readonly showDeleteConfirmModal = signal<boolean>(false);
   readonly deleteConfirmModalItem = signal<any | null>(null);
   readonly showClearActiveModal = signal<boolean>(false);
+  readonly showDuplicateModal = signal<boolean>(false);
+  readonly duplicateModalData = signal<{ matchedUsername: string; resourceSnippet?: string; category?: string; resourceItem?: any } | null>(null);
+  readonly showSyncConsentModal = signal<boolean>(false);
+  readonly syncConsentDevice = signal<any | null>(null);
 
   // Multi-select Filter criteria signals
   readonly activeCategoryFilters = signal<string[]>([]); // ['text', 'code', 'json', ...]
@@ -121,6 +125,25 @@ export class AirVaultUIStore {
   closeDeleteConfirm() {
     this.deleteConfirmModalItem.set(null);
     this.showDeleteConfirmModal.set(false);
+  }
+
+  openDuplicateModal(matchedUsername: string, resource?: any) {
+    const raw = resource?.content?.raw || resource?.raw || '';
+    const filename = resource?.content?.filename || resource?.filename || '';
+    const snippet = filename || (typeof raw === 'string' ? raw.slice(0, 80) : '');
+    const category = resource?.content?.category || resource?.category || 'resource';
+    this.duplicateModalData.set({
+      matchedUsername: matchedUsername ? (matchedUsername.startsWith('@') ? matchedUsername : `@${matchedUsername}`) : '@paired-user',
+      resourceSnippet: snippet,
+      category,
+      resourceItem: resource
+    });
+    this.showDuplicateModal.set(true);
+  }
+
+  closeDuplicateModal() {
+    this.showDuplicateModal.set(false);
+    this.duplicateModalData.set(null);
   }
 
   // Toast notification state
@@ -229,6 +252,16 @@ export class AirVaultUIStore {
     this.activeSensitiveOnly.set(false);
   }
 
+  openSyncConsent(device: any) {
+    this.syncConsentDevice.set(device);
+    this.showSyncConsentModal.set(true);
+  }
+
+  closeSyncConsent() {
+    this.showSyncConsentModal.set(false);
+    this.syncConsentDevice.set(null);
+  }
+
   closeAllModals() {
     this.showPairingModal.set(false);
     this.showDeviceDrawer.set(false);
@@ -237,6 +270,8 @@ export class AirVaultUIStore {
     this.showTipsModal.set(false);
     this.showFeedbackModal.set(false);
     this.showClearActiveModal.set(false);
+    this.showSyncConsentModal.set(false);
+    this.syncConsentDevice.set(null);
     this.disconnectedSourceNotification.set(null);
   }
 }
