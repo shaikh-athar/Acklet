@@ -15,6 +15,9 @@ Every motion in **AirVault** communicates **state or causality**. No animation e
 | **5. Capture Lift** | ⌘V Paste / Auto-Capture | Physical lift (`scale: 1.02` + elevation) then spring settle into staging area. |
 | **6. Sensitive Shutter** | Credential Shielding | Visible `clip-path` shutter close over `220ms` so users register the shielded secret. |
 | **7. History Insertion** | Item Feed Reflow | Smooth `translateY(-6px)` + opacity fade in `250ms`. |
+| **8. Tile Reflow & FLIP Layout Shift** | Item Arrival, Deletion, Reorder | GSAP FLIP (`First Last Invert Play`) delta calculation smoothly animating sibling tiles to their new grid positions (`power2.out` in `320ms`) when any resource arrives or is deleted. |
+| **9. Peer Arrival & Live Beacon** | Remote Cross-Device Arrival | Slide-down (`y: -18px`, `scale: 0.94 -> 1`, `back.out(1.6)`) + expanding radial GPU accent halo pulse (`avSyncPulse` over `950ms`). |
+| **10. Smooth Tile Dismissal** | Item Delete / Removal | Shrink and slide-out (`scale: 1 -> 0.88`, `y: 12px`, `opacity: 1 -> 0` in `240ms` with `power2.inOut`) before removing from state. |
 
 ---
 
@@ -23,3 +26,26 @@ Every motion in **AirVault** communicates **state or causality**. No animation e
 - **Duration Ceiling**: No transition exceeds `400ms` (except constellation breathing glow and particle beam travel).
 - **Reduced Motion**: `@media (prefers-reduced-motion: reduce)` strips transforms and long transitions, falling back to clean opacity updates.
 - **Looping Policy**: Continuous animation loops are restricted exclusively to the active presence breathing glow.
+
+---
+
+## 3. Tile Lifecycle, Ghost-Click Prevention & Sizing Rules
+
+### Explicit Lifecycle State Machine
+```text
+[Rendered / Interactive]
+         ↓ (User triggers delete confirmation & executes delete)
+[Exiting: pointer-events: none, user-select: none, isExiting=true]
+         ↓ (220ms GSAP scale/opacity slide-down exit transition)
+[Removed from Signal State: storageService.deleteItemGlobally/Locally]
+         ↓ (Angular @for track item.id unmounts DOM node completely)
+[FLIP Reflow: Neighboring tiles smoothly translate into reclaimed space]
+```
+
+### Key Architectural Invariants
+1. **Zero Ghost Click Targets**: Immediately upon initiating an exit animation or burn dissolve, `pointer-events: none` and `user-select: none` are applied to the element, and card action/preview handlers are guarded with `if (this.isExiting()) return;`.
+2. **True DOM Unmount**: Tiles are fully unmounted from Angular's DOM tree once the exit transition completes. No invisible (`opacity: 0`) elements remain in the layout.
+3. **No Conflicting CSS Transitions**: Sibling `.vault-card-cell` grid items do not use CSS `transition: transform` which would interfere with GSAP's FLIP delta calculations.
+4. **Natural Content-Driven Sizing**: Card dimensions are driven naturally by their internal preview content (with a baseline `min-height: 140px`) rather than hardcoded fixed heights.
+5. **Absolute Floating Suggestions**: Ghost suggestion docks float above the composer bar (`position: absolute; bottom: 100%`) so that input drafts never displace or reserve space in the clipboard collection before submission.
+

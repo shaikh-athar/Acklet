@@ -22,6 +22,7 @@
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/config/AirVaultPresenceAsyncConfig.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/config/AirVaultRabbitConfig.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/config/AirVaultRabbitMqConfig.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/config/AirVaultWebMvcConfig.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/controller/AirVaultAuthController.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/controller/AirVaultDeviceController.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/controller/AirVaultDocSyncController.java
@@ -44,12 +45,14 @@
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/entity/AirVaultDevice.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/entity/AirVaultDevicePairing.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/entity/AirVaultIdentity.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/entity/AirVaultStorageCleanupLog.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/entity/ClipboardFile.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/entity/UploadSession.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/repository/AirVaultAuditEventRepository.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/repository/AirVaultDevicePairingRepository.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/repository/AirVaultDeviceRepository.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/repository/AirVaultIdentityRepository.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/repository/AirVaultStorageCleanupLogRepository.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/repository/ClipboardFileRepository.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/repository/UploadSessionRepository.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultAuditService.java
@@ -61,6 +64,7 @@
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultDocSequencerService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultHistoryService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultRedisTracker.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultStorageCleanupService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultSyncRelayService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultUploadAssemblyWorker.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultUploadService.java

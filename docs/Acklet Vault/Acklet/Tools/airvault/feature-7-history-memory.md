@@ -58,14 +58,24 @@
   - 10 connected devices = `10.0 GB`
 - **Quota Exceeded Behavior**: When vault storage reaches the dynamic cap, new uploads are cleanly blocked with an informative message (`"Clipboard storage is full. Free up space to add more resources."`). Existing resources are never deleted automatically.
 
-### 4.2 Two-Tier Deletion Semantics & 30-Day Restorable History
-- **30-Day Restorable History**: When an active clipboard resource is deleted (by owner globally or peer locally) or its active TTL expires ($\le$ 5 MB), its actual content is retained in **Restorable History** for **30 days**.
-- **[Re-add to Clipboard]**: While within the 30-day window, users can 1-click restore the resource back into the Active Clipboard, preserving the original logical resource ID and broadcasting sync if owned.
-- **Permanent Purge After 30 Days**: Once the 30-day restoration window expires, the background cleaner permanently purges the actual binary/content, releasing its storage quota while retaining lightweight **Audit History** metadata.
+### 4.2 Two-Tier Deletion Semantics & Local Suppression Architecture
+- **Owner Deletion (`deleteItemGlobally`)**: When the authoritative resource owner deletes an active clipboard item:
+  - Broadcasts `ITEM_DELETE` and registers global tombstones across all paired peers.
+  - The resource moves into **30-Day Restorable History** on the owner device.
+  - The resource is purged from durable outbox and active caches.
+  - While within the 30-day window, the owner can 1-click restore the resource back into the Active Clipboard (`[Re-add to Clipboard]`), un-tombstoning and broadcasting restore.
+- **Non-Owner Removal ("Remove from my device" / `deleteItemLocally`)**: When a non-owner removes a shared resource received from a peer:
+  - Purges the resource completely from local active memory, local cache, and IndexedDB.
+  - Creates a persistent local suppression tombstone (`localSuppressedIds` stored in `localStorage`).
+  - **Does NOT** add to Restorable History (Restorable History is strictly reserved for owner-deleted/retention-expired items).
+  - **Does NOT** affect or delete the author's/owner's copy on other devices.
+  - Auto-sync, initial sync (`INITIAL_SYNC_BATCH`), reconnect handshakes, background polling, manual sync, and WebSockets strictly check `isLocallySuppressed()` and will never resurrect the resource.
+  - The resource only returns to this device if the owner explicitly triggers a new/explicit share or resend (`resendCount > 0` / `isResend: true`).
+- **Permanent Purge After 30 Days**: Once the 30-day restoration window expires for owner-deleted items, the background cleaner permanently purges the actual binary/content, releasing its storage quota while retaining lightweight **Audit History** metadata.
 - **Shared Storage Quota Model**: Active Clipboard resources and Restorable History resources share the exact same dynamic quota ($\text{Active} + \text{Restorable History} \le \text{Total Quota}$). Deleting a resource moves its storage from Active to History without freeing quota until permanently purged.
-- **Authoritative Client-Side Quota Source of Truth**: Local IndexedDB item data is the strict single source of truth for the displayed quota (`totalBytes = activeBytes + historyBytes`). Stale server telemetry NEVER overrides known local usage (preventing phantom non-zero usage displays when local vault is empty).
-- **Idempotent Server Usage Reconciliation**: When performing "Clear All" or "Clear All History", client wipes local IndexedDB records and asynchronously dispatches an idempotent `DELETE /api/v1/airvault/clipboards/{clipboardId}` request to purge relay backend files/sessions, reconciling server usage to 0 MB. If network fails, UI strictly stays at 0 MB local usage without resurrecting stale server bytes.
-- **Audit Trail**: All deletions (Global, Local, Restored, and Retention Expired) preserve audit metadata (`ID`, `Category`, `Snippet`, `Size`, `Device`, `Owner`, `Timestamp`, `Scope`), ensuring audit history never stores bloated binary payloads.
+- **Authoritative Client-Side Quota Source of Truth**: Local IndexedDB item data is the strict single source of truth for the displayed quota (`totalBytes = activeBytes + historyBytes`). Stale server telemetry NEVER overrides known local usage.
+- **Idempotent Server Usage Reconciliation**: When performing "Clear All" or "Clear All History", client wipes local IndexedDB records and asynchronously dispatches an idempotent `DELETE /api/v1/airvault/clipboards/{clipboardId}` request to purge relay backend files/sessions, reconciling server usage to 0 MB.
+- **Audit Trail**: All deletions (Global, Local Removal, Restored, and Retention Expired) preserve audit metadata (`ID`, `Category`, `Snippet`, `Size`, `Device`, `Owner`, `Timestamp`, `Scope`), ensuring audit history never stores bloated binary payloads.
 
 ---
 

@@ -225,12 +225,12 @@ RabbitMQ Topic Exchange (`acklet.airvault.upload.exchange`)
 AirVault Assembly Worker (`AirVaultUploadAssemblyWorker`, concurrency = "3-10")
        │
        ├─► 1. Fetches all chunk streams from disk in sequential index order
-       ├─► 2. Assembles chunks into single contiguous file
-       ├─► 3. Performs whole-file post-assembly compression (GZIP / DEFLATE)
-       ├─► 4. Computes SHA-256 verification checksum
-       ├─► 5. Promotes session in PostgreSQL to permanent `ClipboardFile`
+       ├─► 2. Assembles chunks into single contiguous temporary staging file
+       ├─► 3. Formats & compresses non-binary payload (GZIP for JSON/text; uncompressed for binary/media)
+       ├─► 4. Computes SHA-256 verification checksum on final stored payload
+       ├─► 5. Promotes session in PostgreSQL to permanent `ClipboardFile` with exact `storagePath`
        ├─► 6. Updates Redis status to `READY` (24h TTL)
-       ├─► 7. Cleans up intermediate temporary chunk files
+       ├─► 7. Cleans up intermediate temporary chunk and assembly files
        └─► 8. Emits SSE `upload_complete` to all connected devices in real time
 ```
 
@@ -269,18 +269,19 @@ AirVault decouples all backend storage operations through the `AirVaultStorageAd
           (Local Disk / Dev)       (Cloudflare R2 / S3 API)
 ```
 
-### 9.1 Storage Backend Flag (`STORAGE_BACKEND`)
-- `STORAGE_BACKEND=local` (Default): Uses `LocalStorageAdapter` for local development. Requires zero cloud credentials and zero network calls.
-- `STORAGE_BACKEND=r2`: Production deployment mode. Connects to Cloudflare R2 using AWS SDK v2 (`S3Client`) with path-style access.
-- **Fail-Fast Validation**: If `STORAGE_BACKEND=r2` is set with missing credentials, Spring Boot aborts startup with an explicit descriptive error.
+### 9.1 Storage Backend Configuration (`airvault.storage.type`)
+- `airvault.storage.type=local` (Default): Uses `LocalStorageAdapter` for local development. Requires zero cloud credentials and zero network calls.
+- `airvault.storage.type=s3` (or `r2`): Production deployment mode. Connects to Cloudflare R2 or AWS S3 using AWS SDK v2 (`S3Client`) with path-style access and byte-range GET support.
+- **Fail-Fast Validation**: If `airvault.storage.type=s3` is set with missing credentials or bucket, Spring Boot aborts startup immediately with a descriptive exception.
 
-### 9.2 Decompression-on-Access, LRU File Cache & HTTP 206 Partial Content Streaming
-When clients request file streams from `GET /api/v1/airvault/clipboards/{clipboardId}/files/{fileId}/raw`:
-1. `AirVaultUploadService` checks if the stored object is compressed (GZIP magic header `0x1f 0x8b`).
-2. If compressed, it decompresses on-the-fly and caches the decompressed stream in `AirVaultDecompressedFileCache`.
-3. The cache is keyed by content hash (`checksum`), size-bounded (500 MB LRU), with a 15-minute TTL and concurrency stampede locks.
-4. **HTTP 206 Partial Content / Byte-Range Streaming**: If a client sends an `HTTP Range` header (e.g., `bytes=0-1048575` for video/audio preview seeking), `AirVaultUploadController` processes random-access byte slicing via Spring's `ResourceRegion` with `206 PARTIAL_CONTENT` and `Accept-Ranges: bytes`. This enables instant progressive video/audio playback of 100MB+ media files without buffering the full payload into client memory or Signals.
-5. On file deletion or clipboard purge, cache entries are invalidated immediately.
+### 9.2 Binary Media Handling, Universal Byte-Range Streaming & Dual-Path Retention
+1. **Uncompressed Binary Media Pipeline**: `AirVaultUploadAssemblyWorker` detects binary formats (`video/*`, `audio/*`, `image/*`, `application/pdf`, `.zip`) and assembles uncompressed files preserving original extensions (`files/file_<fileId>.<ext>`), storing them directly with proper MIME types. GZIP compression is retained strictly for text and JSON clipboard payloads.
+2. **Automatic Legacy Media Migration**: On startup, `AirVaultUploadAssemblyWorker` scans existing `airvault_clipboard_files` for legacy `.bin.gz` media entries, decompresses them in place, and updates their storage paths.
+3. **Universal HTTP 206 Partial Content / Byte-Range Streaming**: `AirVaultStorageAdapter` defines `getRange(objectKey, start, end)` and `getObjectSize(objectKey)`. The streaming controller (`GET /api/v1/airvault/clipboards/{clipboardId}/files/{fileId}/raw`) processes `Range: bytes=start-end` uniformly using `storageAdapter.getRange(...)` for both Local disk (`RandomAccessFile`) and S3/R2 (`GetObjectRequest.builder().range(...)`) with zero backend branching in the controller.
+4. **Dual-Path Scheduled Storage Retention & Cleanup Engine (`AirVaultStorageCleanupService`)**:
+   - **Path A (User-Facing Files, 7-Day Recoverable Window)**: Daily Phase 1 mark scan flags candidates (`EXPIRED`, `SOFT_DELETED`, `ORPHANED_FILE`) in `airvault_storage_cleanup_log`. Phase 2 sweep executes 7 days later after re-verifying active status, permanently deleting objects via `storageAdapter.deleteObject(...)` and removing DB records.
+   - **Path B (Dead / Incomplete Upload Chunks, Hourly Purge)**: Hourly job purges orphaned or abandoned `chunks_<sessionId>/` directories older than the short grace window (default: 2 hours), deletes DB `UploadSession` records, and purges Redis chunk tracking keys.
+   - **Audit Logging & Reclaimed Metrics**: All deletions are logged to `airvault_storage_cleanup_log` with `cleanup_path` (`FILE` vs `CHUNK`), candidate reasons, and reclaimed byte metrics. Independent dry-run modes (`airvault.cleanup.files.dry-run`, `airvault.cleanup.chunks.dry-run`) allow safe simulation.
 
 ---
 

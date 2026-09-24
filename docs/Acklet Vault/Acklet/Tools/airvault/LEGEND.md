@@ -9,8 +9,9 @@
 | **Clear Input Composer**| `X` | Clears staged input text and files in composer without touching vault history. | Composer Toolbar |
 | **Clear Composer** | `Trash` | Resets the staging input pane and aborts in-progress chunked workers. | Staging Area |
 | **1-Click Copy** | `Copy` → `Check` | Copies item content to local system clipboard with 2-second visual confirmation. | Stream Card |
-| **Pin / Unpin** | `Pin` | Protects item from automatic time-based expiration and capacity eviction. | Stream Card |
-| **Delete Tile** | `Trash-2` | Moves item to 30-day Restorable History (or emits global tombstone delete if owner). | Stream Card |
+| **Native OS Share** | `Share-2` | Opens native OS share sheet (Web Share API) for single items or loops through multi-item batch files preserving authentic MIME/file types without forced downloads. | Stream Card / Subfile Row |
+| **Delete (Owner)** | `Trash-2` | Moves item to 30-day Restorable History and broadcasts global tombstone deletion to connected devices. | Stream Card |
+| **Remove from my device (Non-owner)** | `Trash-2` | Removes resource from local device, registers persistent local suppression tombstone, and does not touch author's copy or Restorable History. | Stream Card |
 | **Disconnect** | `Unplug` | Temporarily disconnects sync with target peer, setting status to offline with persistent reconnect capability. | Constellation / Drawer |
 | **Reconnect** | `Zap` / `Rotate-Cw` | Restores active sync with disconnected peer and triggers bi-directional history synchronization. | Constellation / Drawer |
 | **Forget Device** | `Trash-2` | Unpairs device, removes server session, and transitions remote peer to disconnected state. | Constellation / Drawer |
@@ -57,15 +58,23 @@
 
 ## 3. Keyboard Shortcuts
 
-| Shortcut | Context | Action |
-| :--- | :--- | :--- |
-| `Cmd / Ctrl + Enter` | Staging Composer | **Beam Content**: Trigger off-thread encryption and sync transmission. |
-| `Cmd / Ctrl + V` | Global / Workspace | **Paste to Staging**: Ingest current OS clipboard content. |
-| `Cmd / Ctrl + F` | Stream Search | Focus search query bar in clipboard history stream. |
-| `Cmd / Ctrl + K` | Workspace | Open global Acklet command palette. |
-| `Cmd / Ctrl + P` | Constellation | Open Device Pairing Modal. |
-| `Cmd / Ctrl + ,` | Workspace | Open AirVault Settings Drawer. |
-| `Esc` | Modals / Drawers | Dismiss active drawer, modal, or diagnostics viewer. |
+| Category | Shortcut (macOS / Windows) | Context | Action |
+| :--- | :--- | :--- | :--- |
+| **Navigation** | `?` | Global (non-typing) | Open Keyboard Shortcuts reference inside Settings Drawer. |
+| **Navigation** | `Esc` | Global / Modals | Close modal, drawer, search panel, or active temporary overlay. |
+| **Search** | `⌘ K` / `Ctrl K` | Global | Focus navbar search input bar. |
+| **Search** | `Esc` | Search Bar | Clear search query or close search dropdown. |
+| **Search** | `Enter` / `⇧ Enter` | Search Bar | Navigate to next / previous match in search results. |
+| **Search** | `↑` / `↓` | Search Dropdown | Navigate search dropdown matches. |
+| **Selection** | `⌘ A` / `Ctrl A` | Clipboard Stream | Select all visible clipboard resources (when not typing in editor). |
+| **Selection** | `Esc` | Selection Active | Clear resource selection. |
+| **Selection** | `⌫` / `Delete` | Selection Active | Delete selected resource(s) with confirmation dialog. |
+| **Selection** | `Enter` | Single Selected | Open preview for the selected resource. |
+| **Composer** | `⌘ ↵` / `Ctrl Enter` | Input / Composer | Beam current staged input / attachments to vault. |
+| **Preview** | `⌘ +` / `Ctrl +` | Preview Modal | Zoom in image / increase text size. |
+| **Preview** | `⌘ -` / `Ctrl -` | Preview Modal | Zoom out image / decrease text size. |
+| **Preview** | `⌘ 0` / `Ctrl 0` | Preview Modal | Reset zoom to 100% / default text size. |
+| **Preview** | `Esc` | Preview Modal | Close preview / review modal. |
 
 ---
 

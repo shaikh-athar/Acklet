@@ -208,6 +208,10 @@ import {
   LucideLoaderCircle,
   LucideBlend,
   LucideImageOff,
+  LucideVideoOff,
+  LucideSquare,
+  LucideCheckSquare,
+  LucideSquareCheck,
 } from '@lucide/angular';
 
 @Component({
@@ -484,6 +488,7 @@ export class IconComponent {
     picture: LucideImage,
     film: LucideFilm,
     video: LucideFilm,
+    'video-off': LucideVideoOff,
     'alert-triangle': LucideTriangleAlert,
     'triangle-alert': LucideTriangleAlert,
     'alert-circle': LucideCircleAlert,
@@ -520,6 +525,9 @@ export class IconComponent {
     rocket: LucideRocket,
     blend: LucideBlend,
     'image-off': LucideImageOff,
+    square: LucideSquare,
+    'check-square': LucideCheckSquare,
+    'square-check': LucideSquareCheck,
   };
 
   readonly lucideIconComponent = computed(() => {

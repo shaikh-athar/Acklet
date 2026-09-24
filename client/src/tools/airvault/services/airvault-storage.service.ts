@@ -10,7 +10,7 @@ import { AirVaultUIStore } from './airvault-ui.store';
 
 export type DeliveryStatus = 'pending' | 'delivered' | 'failed' | 'queued_offline';
 export type ProcessingState = 'queued' | 'processing' | 'done' | 'failed';
-export type DeletionScope = 'global' | 'local' | 'retention_expired';
+export type DeletionScope = 'global' | 'local' | 'local_removal' | 'retention_expired';
 
 export interface AirVaultItem {
   id: string;
@@ -121,6 +121,9 @@ export class AirVaultStorageService {
 
   // Set of globally deleted item IDs (tombstones) so old sync packets or reconnects cannot resurrect them
   tombstones = signal<Set<string>>(this.loadTombstones());
+
+  // Set of locally removed item IDs (non-owner local suppression) so auto-sync/reconnect/reload cannot resurrect them
+  localSuppressedIds = signal<Set<string>>(this.loadLocalSuppressions());
 
   // Master store contains all items (both active and restorable history)
   allItems = signal<AirVaultItem[]>([]);
@@ -410,6 +413,13 @@ export class AirVaultStorageService {
     return this.markOutboxSynced(packetId);
   }
 
+  /**
+   * Purges an outbox record by packetId.
+   */
+  async purgeOutboxRecord(packetId: string): Promise<void> {
+    return this.markOutboxSynced(packetId);
+  }
+
   // ── Local Composer Draft Persistence (IndexedDB, never synced) ──────────────
 
   /**
@@ -494,7 +504,12 @@ export class AirVaultStorageService {
               // Strip any accidentally hydrated heavy payloads to keep metadata-first guarantee
               const sorted = req.result
                 .map((it: AirVaultItem) => this.toMetadataOnlyItem(it))
-                .sort((a: AirVaultItem, b: AirVaultItem) => b.timestamp - a.timestamp);
+                .sort((a: AirVaultItem, b: AirVaultItem) => {
+                  const tsDiff = b.timestamp - a.timestamp;
+                  // Stable secondary sort by ID prevents non-deterministic reordering
+                  // of same-timestamp items across refreshFromStorage calls
+                  return tsDiff !== 0 ? tsDiff : a.id.localeCompare(b.id);
+                });
               this.allItems.set(sorted);
               AirVaultLogger.debug(`[AirVault Clipboard] ✅ Refreshed ${sorted.length} metadata-first items from IndexedDB`);
             }
@@ -558,10 +573,14 @@ export class AirVaultStorageService {
 
       req.onsuccess = () => {
         if (req.result && Array.isArray(req.result) && req.result.length > 0) {
-          // Sort descending by timestamp and enforce metadata-only projection
+          // Sort descending by timestamp and enforce metadata-only projection while filtering suppressed items
           const sorted = req.result
+            .filter((it: AirVaultItem) => !this.isLocallySuppressed(it.id) && (!it.packetId || !this.isLocallySuppressed(it.packetId)))
             .map((it: AirVaultItem) => this.toMetadataOnlyItem(it))
-            .sort((a: AirVaultItem, b: AirVaultItem) => b.timestamp - a.timestamp);
+            .sort((a: AirVaultItem, b: AirVaultItem) => {
+              const tsDiff = b.timestamp - a.timestamp;
+              return tsDiff !== 0 ? tsDiff : a.id.localeCompare(b.id);
+            });
           this.allItems.set(sorted);
           AirVaultLogger.debug(`[AirVault Storage] 💾 Restored ${sorted.length} metadata-first items from IndexedDB upon startup.`);
         }
@@ -572,47 +591,114 @@ export class AirVaultStorageService {
   }
 
   /**
+   * Helper to detect authentic MIME type from filename and category
+   */
+  getMimeTypeForResource(filename?: string, category?: string, blobType?: string): string {
+    if (blobType && blobType !== 'application/octet-stream' && blobType !== 'application/x-download' && blobType !== '') {
+      return blobType;
+    }
+    const fname = (filename || '').trim().toLowerCase();
+    const ext = fname.split('.').pop() || '';
+    const mimeMap: Record<string, string> = {
+      png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
+      svg: 'image/svg+xml', bmp: 'image/bmp', ico: 'image/x-icon', heic: 'image/heic', heif: 'image/heif',
+      pdf: 'application/pdf', doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ppt: 'application/vnd.ms-powerpoint',
+      pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      zip: 'application/zip', rar: 'application/vnd.rar', '7z': 'application/x-7z-compressed',
+      tar: 'application/x-tar', gz: 'application/gzip',
+      txt: 'text/plain', csv: 'text/csv', tsv: 'text/tab-separated-values',
+      json: 'application/json', xml: 'application/xml', yaml: 'application/yaml', yml: 'application/yaml',
+      md: 'text/markdown', markdown: 'text/markdown',
+      mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', m4a: 'audio/mp4',
+      mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', mkv: 'video/x-matroska'
+    };
+    if (mimeMap[ext]) return mimeMap[ext];
+    switch (category) {
+      case 'image': return 'image/png';
+      case 'video': return 'video/mp4';
+      case 'audio': return 'audio/mpeg';
+      case 'pdf': return 'application/pdf';
+      case 'spreadsheet': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'archive': return 'application/zip';
+      case 'json': return 'application/json';
+      case 'markdown': return 'text/markdown';
+      case 'code':
+      case 'text': return 'text/plain';
+      default: return blobType || 'application/octet-stream';
+    }
+  }
+
+  /**
    * On-demand async retrieval of a full resource payload (Blob / Object URL).
    * Hierarchy: In-Memory LRU Cache -> IndexedDB vault_payloads -> Server Streaming Endpoint
    */
   async fetchResourcePayload(item: AirVaultItem): Promise<{ blob: Blob | null; objectUrl: string | null }> {
     const fileId = item.id;
     const packetId = item.packetId;
+    const batchId = item.batchId;
+
     return this.resourceCache.fetchDeduplicated(fileId, async () => {
-      // 1. Check local IndexedDB payload store (both by fileId and packetId)
+      // 1. Check local IndexedDB payload store (by fileId, packetId, or batchId)
       if (this.db) {
         try {
           const blobFromIdb = await new Promise<Blob | null>((resolve) => {
             const tx = this.db!.transaction(PAYLOAD_STORE_NAME, 'readonly');
             const store = tx.objectStore(PAYLOAD_STORE_NAME);
-            const req = store.get(fileId);
-            req.onsuccess = () => {
-              if (req.result && req.result.blob instanceof Blob) {
-                resolve(req.result.blob);
-              } else if (req.result && typeof req.result.raw === 'string' && req.result.raw.startsWith('data:')) {
-                // Convert legacy Base64 string to native Blob
-                fetch(req.result.raw).then(r => r.blob()).then(resolve).catch(() => resolve(null));
-              } else if (packetId && packetId !== fileId) {
-                // Try packetId key
-                const req2 = store.get(packetId);
-                req2.onsuccess = () => {
-                  if (req2.result && req2.result.blob instanceof Blob) {
-                    resolve(req2.result.blob);
-                  } else if (req2.result && typeof req2.result.raw === 'string' && req2.result.raw.startsWith('data:')) {
-                    fetch(req2.result.raw).then(r => r.blob()).then(resolve).catch(() => resolve(null));
-                  } else {
-                    resolve(null);
-                  }
-                };
-                req2.onerror = () => resolve(null);
-              } else {
-                resolve(null);
+
+            const decodeRawDataUrl = (rawStr: string): Blob | null => {
+              try {
+                const parts = rawStr.split(',');
+                const mimeMatch = parts[0].match(/:(.*?);/);
+                const rawMime = mimeMatch ? mimeMatch[1] : '';
+                const bstr = atob(parts[1]);
+                const bytes = new Uint8Array(bstr.length);
+                for (let i = 0; i < bstr.length; i++) bytes[i] = bstr.charCodeAt(i);
+                const authenticMime = this.getMimeTypeForResource(item.content?.filename, item.content?.category, rawMime);
+                return new Blob([bytes], { type: authenticMime });
+              } catch {
+                return null;
               }
             };
-            req.onerror = () => resolve(null);
+
+            const checkNextKey = (keys: (string | undefined)[]) => {
+              const nextKey = keys.shift();
+              if (!nextKey) {
+                resolve(null);
+                return;
+              }
+              const req = store.get(nextKey);
+              req.onsuccess = () => {
+                if (req.result && req.result.blob instanceof Blob && req.result.blob.size > 0) {
+                  const authenticMime = this.getMimeTypeForResource(item.content?.filename, item.content?.category, req.result.blob.type);
+                  if (authenticMime && req.result.blob.type !== authenticMime) {
+                    resolve(new Blob([req.result.blob], { type: authenticMime }));
+                  } else {
+                    resolve(req.result.blob);
+                  }
+                } else if (req.result && typeof req.result.raw === 'string' && req.result.raw.startsWith('data:')) {
+                  const decoded = decodeRawDataUrl(req.result.raw);
+                  if (decoded && decoded.size > 0) {
+                    resolve(decoded);
+                  } else {
+                    checkNextKey(keys);
+                  }
+                } else {
+                  checkNextKey(keys);
+                }
+              };
+              req.onerror = () => checkNextKey(keys);
+            };
+
+            const candidateKeys = [fileId, packetId, batchId].filter((k): k is string => !!k && k.length > 0);
+            const uniqueKeys = Array.from(new Set(candidateKeys));
+            checkNextKey(uniqueKeys);
           });
 
-          if (blobFromIdb) {
+          if (blobFromIdb && blobFromIdb.size > 0) {
             return blobFromIdb;
           }
         } catch {}
@@ -623,32 +709,52 @@ export class AirVaultStorageService {
         const streamUrl = getAirVaultApiUrl(`/api/v1/airvault/clipboards/default/files/${fileId}/raw`);
         const resp = await fetch(streamUrl);
         if (resp.ok) {
-          const blob = await resp.blob();
-          // Store in IndexedDB payload store for future offline retrieval
-          this.savePayloadToIndexedDb(fileId, blob);
-          if (packetId) this.savePayloadToIndexedDb(packetId, blob);
-          return blob;
+          const rawBlob = await resp.blob();
+          if (rawBlob && rawBlob.size > 0) {
+            const authenticMime = this.getMimeTypeForResource(item.content?.filename, item.content?.category, rawBlob.type);
+            const blob = (authenticMime && rawBlob.type !== authenticMime) ? new Blob([rawBlob], { type: authenticMime }) : rawBlob;
+            // Store in IndexedDB payload store for future offline retrieval
+            this.savePayloadToIndexedDb(fileId, blob);
+            if (packetId) this.savePayloadToIndexedDb(packetId, blob);
+            return blob;
+          }
         }
       } catch (e) {
         AirVaultLogger.warn(`[AirVault Storage] Could not stream resource ${fileId}:`, e);
       }
 
       // 3. Fallback to existing raw base64 or previewUrl if available
-      if (item.content?.raw && (item.content.raw.startsWith('data:') || item.content.raw.startsWith('blob:'))) {
-        try {
-          const res = await fetch(item.content.raw);
-          const blob = await res.blob();
-          this.savePayloadToIndexedDb(fileId, blob);
-          return blob;
-        } catch {}
-      }
-      if (item.content?.previewUrl && (item.content.previewUrl.startsWith('data:') || item.content.previewUrl.startsWith('blob:'))) {
-        try {
-          const res = await fetch(item.content.previewUrl);
-          const blob = await res.blob();
-          this.savePayloadToIndexedDb(fileId, blob);
-          return blob;
-        } catch {}
+      const candidateRaw = [item.content?.raw, item.content?.previewUrl];
+      for (const raw of candidateRaw) {
+        if (raw && typeof raw === 'string' && raw.startsWith('data:')) {
+          try {
+            const parts = raw.split(',');
+            const mimeMatch = parts[0].match(/:(.*?);/);
+            const rawMime = mimeMatch ? mimeMatch[1] : '';
+            const bstr = atob(parts[1]);
+            const bytes = new Uint8Array(bstr.length);
+            for (let i = 0; i < bstr.length; i++) bytes[i] = bstr.charCodeAt(i);
+            const authenticMime = this.getMimeTypeForResource(item.content?.filename, item.content?.category, rawMime);
+            const blob = new Blob([bytes], { type: authenticMime });
+            if (blob.size > 0) {
+              this.savePayloadToIndexedDb(fileId, blob);
+              return blob;
+            }
+          } catch {}
+        } else if (raw && typeof raw === 'string' && (raw.startsWith('blob:') || raw.startsWith('http'))) {
+          try {
+            const res = await fetch(raw);
+            if (res.ok) {
+              const rawBlob = await res.blob();
+              if (rawBlob && rawBlob.size > 0) {
+                const authenticMime = this.getMimeTypeForResource(item.content?.filename, item.content?.category, rawBlob.type);
+                const blob = (authenticMime && rawBlob.type !== authenticMime) ? new Blob([rawBlob], { type: authenticMime }) : rawBlob;
+                this.savePayloadToIndexedDb(fileId, blob);
+                return blob;
+              }
+            }
+          } catch {}
+        }
       }
 
       return null;
@@ -793,15 +899,33 @@ export class AirVaultStorageService {
       return { added: false, isDuplicate: false, item };
     }
 
-    // Guard against resurrecting locally deleted items during background auto-sync, unless explicit restore, resend, or direct peer beam
+    // Guard against resurrecting locally removed/suppressed items during auto-sync/reconnect/reload
+    const isSuppressed = this.isLocallySuppressed(item.id) || (item.packetId && this.isLocallySuppressed(item.packetId)) || (item.batchId && this.isLocallySuppressed(item.batchId));
+    if (isSuppressed) {
+      const isExplicitResendOrRestore = !!(
+        options?.isExplicitRestore ||
+        (item as any).isResend ||
+        (item.resendCount && item.resendCount > 0)
+      );
+      if (!isExplicitResendOrRestore) {
+        AirVaultLogger.debug(`[AirVault Storage] 🛡️ Item ${item.id} was locally removed by user on this device. Preserving suppression.`);
+        return { added: false, isDuplicate: false, item };
+      }
+      // If explicit resend by owner or restore, clear local suppression
+      this.removeLocalSuppression(item.id);
+      if (item.packetId) this.removeLocalSuppression(item.packetId);
+      if (item.batchId) this.removeLocalSuppression(item.batchId);
+    }
+
+    // Guard against resurrecting owner-deleted items in restorable history during background auto-sync
     const curDev = this.deviceService.currentDevice();
     const isLocalCreate = !item.originDeviceId || item.originDeviceId === curDev.id || item.senderDeviceId === curDev.id;
     const existingLocal = this.allItems().find(i => i.id === item.id || (i.packetId && i.packetId === item.id));
 
     if (existingLocal && existingLocal.isDeletedFromActive) {
-      const isResendOrRestore = !!(options?.isExplicitRestore || isLocalCreate || (item.resendCount && item.resendCount > 0) || (item.timestamp && item.timestamp > (existingLocal.deletedAt || 0)));
+      const isResendOrRestore = !!(options?.isExplicitRestore || (item.resendCount && item.resendCount > 0));
       if (!isResendOrRestore) {
-        AirVaultLogger.debug(`[AirVault Storage] 🛡️ Item ${item.id} is locally deleted/in history. Preserving local deletion.`);
+        AirVaultLogger.debug(`[AirVault Storage] 🛡️ Item ${item.id} is owner-deleted/in history. Preserving history status.`);
         return { added: false, isDuplicate: true, item: existingLocal };
       }
       // Resurrect item cleanly back into active state and notify signals
@@ -817,13 +941,21 @@ export class AirVaultStorageService {
       return { added: true, isDuplicate: false, item: existingLocal };
     }
 
-    if (existingLocal && (options?.isExplicitRestore || isLocalCreate || (item.resendCount && item.resendCount > 0))) {
+    if (existingLocal) {
+      const isExplicitResend = !!(options?.isExplicitRestore || (item.resendCount && item.resendCount > 0));
       existingLocal.isDeletedFromActive = false;
       existingLocal.timestamp = item.timestamp || Date.now();
       if (item.resendCount) existingLocal.resendCount = item.resendCount;
       if (item.lastResentAt) existingLocal.lastResentAt = item.lastResentAt;
       if (item.content) existingLocal.content = item.content;
-      this.allItems.update(list => [existingLocal, ...list.filter(i => i.id !== existingLocal.id)]);
+
+      if (isExplicitResend || isLocalCreate) {
+        // Explicit resend or local create moves item to top of this local device's clipboard
+        this.allItems.update(list => [existingLocal, ...list.filter(i => i.id !== existingLocal.id)]);
+      } else {
+        // Background sync / routine update updates in-place to PRESERVE local user-controlled UI ordering
+        this.allItems.update(list => list.map(i => (i.id === existingLocal.id || (i.packetId && i.packetId === existingLocal.id)) ? existingLocal : i));
+      }
       this.persistAll();
       return { added: true, isDuplicate: false, item: existingLocal };
     }
@@ -1076,9 +1208,12 @@ export class AirVaultStorageService {
   }
 
   /**
-   * Local Delete (Non-owner):
-   * Removes resource content from this device view only.
-   * Moves into Restorable History for up to 30 days locally.
+   * Non-Owner Local Removal ("Remove from my device"):
+   * Removes resource content completely from this device view only.
+   * Registers a persistent local tombstone/suppression record so auto-sync,
+   * reconnects, reloads, and WebSockets do not resurrect it.
+   * Does NOT add to 30-day Restorable History.
+   * Does NOT affect or delete the author's/owner's copy.
    */
   deleteItemLocally(id: string, deleterDevice?: { id: string; name: string; accentColor?: string; type?: string }) {
     const target = this.allItems().find(i => 
@@ -1089,7 +1224,27 @@ export class AirVaultStorageService {
     const curDev = this.deviceService.currentDevice();
     const dDevice = deleterDevice || curDev;
     const now = Date.now();
-    const restExpire = now + RESTORABLE_HISTORY_DURATION_MS;
+
+    // Register local suppression / tombstone so auto-sync, initial sync, reloads, reconnects, WebSockets do not resurrect it
+    this.addLocalSuppression(id);
+    if (target?.id) this.addLocalSuppression(target.id);
+    if (target?.packetId) this.addLocalSuppression(target.packetId);
+    if (target?.batchId) this.addLocalSuppression(target.batchId);
+    if (target?.isBatchParent && target.batchFiles) {
+      target.batchFiles.forEach(bf => this.addLocalSuppression(bf.id));
+    }
+
+    // Invalidate in-memory cache and purge pending outbox for this item
+    this.resourceCache.invalidate(id);
+    if (target?.id) this.resourceCache.invalidate(target.id);
+    if (target?.packetId) this.resourceCache.invalidate(target.packetId);
+    if (target?.batchId) this.resourceCache.invalidate(target.batchId);
+    if (target?.isBatchParent && target.batchFiles) {
+      target.batchFiles.forEach(bf => this.resourceCache.invalidate(bf.id));
+    }
+    this.removeOutboxRecord(id);
+    if (target?.packetId) this.removeOutboxRecord(target.packetId);
+    if (target?.id) this.removeOutboxRecord(target.id);
 
     if (target) {
       this.recordAudit({
@@ -1105,23 +1260,41 @@ export class AirVaultStorageService {
         deviceType: dDevice.type || 'laptop',
         ownerId: target.originDeviceId,
         ownerName: target.senderDeviceName,
-        deletionScope: 'local',
-        deletionReason: 'Removed locally by device (Available in 30-day Restorable History)',
-        restorationExpiresAt: restExpire,
+        deletionScope: 'local_removal',
+        deletionReason: 'Removed locally from device',
+        restorationExpiresAt: 0,
         timestamp: now
       });
 
-      // Move into 30-day Restorable History (do not delete content yet!)
-      this.allItems.update(list =>
-        list.map(i => (i.id === id || (i.packetId && i.packetId === id) || (i.batchId && i.batchId === id) || (target && i.id === target.id)) ? {
-          ...i,
-          isDeletedFromActive: true,
-          deletedAt: now,
-          restorationExpiresAt: restExpire,
-          deletedByDeviceId: dDevice.id,
-          deletedByDeviceName: dDevice.name
-        } : i)
-      );
+      // Completely remove from local allItems (so it does NOT appear in active items NOR in 30-day Restorable History)
+      this.allItems.update(list => list.filter(i =>
+        i.id !== id &&
+        (!i.packetId || i.packetId !== id) &&
+        (!i.batchId || i.batchId !== id) &&
+        i.id !== target.id
+      ));
+
+      // Purge from local IndexedDB
+      if (this.db) {
+        try {
+          const tx = this.db.transaction([STORE_NAME, PAYLOAD_STORE_NAME], 'readwrite');
+          tx.objectStore(STORE_NAME).delete(target.id);
+          tx.objectStore(STORE_NAME).delete(id);
+          tx.objectStore(PAYLOAD_STORE_NAME).delete(target.id);
+          tx.objectStore(PAYLOAD_STORE_NAME).delete(id);
+          if (target.packetId) {
+            tx.objectStore(STORE_NAME).delete(target.packetId);
+            tx.objectStore(PAYLOAD_STORE_NAME).delete(target.packetId);
+          }
+          if (target.batchId) {
+            tx.objectStore(STORE_NAME).delete(target.batchId);
+            tx.objectStore(PAYLOAD_STORE_NAME).delete(target.batchId);
+          }
+        } catch (err) {
+          AirVaultLogger.warn('[AirVault Storage] Failed to delete local item from IndexedDB:', err);
+        }
+      }
+
       this.persistAll();
     }
   }
@@ -1150,6 +1323,20 @@ export class AirVaultStorageService {
     if (target?.isBatchParent && target.batchFiles) {
       target.batchFiles.forEach(bf => this.addTombstone(bf.id));
     }
+
+    // Invalidate in-memory cache
+    this.resourceCache.invalidate(id);
+    if (target?.id) this.resourceCache.invalidate(target.id);
+    if (target?.packetId) this.resourceCache.invalidate(target.packetId);
+    if (target?.batchId) this.resourceCache.invalidate(target.batchId);
+    if (target?.isBatchParent && target.batchFiles) {
+      target.batchFiles.forEach(bf => this.resourceCache.invalidate(bf.id));
+    }
+
+    // Purge from durable outbox so pending sync retries never resurrect this deleted item
+    this.removeOutboxRecord(id);
+    if (target?.packetId) this.removeOutboxRecord(target.packetId);
+    if (target?.id) this.removeOutboxRecord(target.id);
 
     const isBurn = target?.burnAfterRead || (deleterDevice as any)?.burnAfterRead || false;
 
@@ -1183,9 +1370,12 @@ export class AirVaultStorageService {
         ));
         if (this.db) {
           try {
-            const tx = this.db.transaction(STORE_NAME, 'readwrite');
+            const tx = this.db.transaction([STORE_NAME, PAYLOAD_STORE_NAME], 'readwrite');
             tx.objectStore(STORE_NAME).delete(target.id);
             tx.objectStore(STORE_NAME).delete(id);
+            tx.objectStore(PAYLOAD_STORE_NAME).delete(target.id);
+            tx.objectStore(PAYLOAD_STORE_NAME).delete(id);
+            if (target.packetId) tx.objectStore(PAYLOAD_STORE_NAME).delete(target.packetId);
           } catch {}
         }
       } else {
@@ -1383,6 +1573,53 @@ export class AirVaultStorageService {
       try {
         const arr = Array.from(this.tombstones()).slice(-250); // Retain last 250 tombstones
         localStorage.setItem('acklet_airvault_tombstones', JSON.stringify(arr));
+      } catch {}
+    }, 300);
+  }
+
+  removeLocalSuppression(id: string) {
+    if (!id) return;
+    this.localSuppressedIds.update(set => {
+      const copy = new Set(set);
+      copy.delete(id);
+      return copy;
+    });
+    this.saveLocalSuppressions();
+  }
+
+  addLocalSuppression(id: string) {
+    if (!id) return;
+    this.localSuppressedIds.update(set => {
+      const copy = new Set(set);
+      copy.add(id);
+      return copy;
+    });
+    this.saveLocalSuppressions();
+  }
+
+  isLocallySuppressed(id: string): boolean {
+    if (!id) return false;
+    return this.localSuppressedIds().has(id);
+  }
+
+  private loadLocalSuppressions(): Set<string> {
+    try {
+      const raw = localStorage.getItem('acklet_airvault_local_suppressions');
+      if (raw) {
+        return new Set(JSON.parse(raw));
+      }
+    } catch {}
+    return new Set<string>();
+  }
+
+  private localSuppressionTimer: any = null;
+
+  private saveLocalSuppressions() {
+    if (this.localSuppressionTimer) clearTimeout(this.localSuppressionTimer);
+    this.localSuppressionTimer = setTimeout(() => {
+      try {
+        const arr = Array.from(this.localSuppressedIds()).slice(-300); // Retain last 300 suppressions
+        localStorage.setItem('acklet_airvault_local_suppressions', JSON.stringify(arr));
       } catch {}
     }, 300);
   }
@@ -1666,8 +1903,8 @@ export class AirVaultStorageService {
       const raw = localStorage.getItem('acklet_airvault_items');
       if (raw) {
         const parsed: AirVaultItem[] = JSON.parse(raw);
-        // Exclude any legacy mock items cached in user's browser localStorage
-        return parsed.filter(i => !i.id.startsWith('item-demo-'));
+        // Exclude any legacy mock items cached in user's browser localStorage and locally suppressed items
+        return parsed.filter(i => !i.id.startsWith('item-demo-') && !this.isLocallySuppressed(i.id) && (!i.packetId || !this.isLocallySuppressed(i.packetId)));
       }
     } catch {}
 

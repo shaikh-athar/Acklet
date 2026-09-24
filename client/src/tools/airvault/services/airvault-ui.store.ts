@@ -16,12 +16,19 @@ export class AirVaultUIStore {
   readonly showDeviceDrawer = signal<boolean>(false);
   readonly showPrivacyModal = signal<boolean>(false);
   readonly showSettingsDrawer = signal<boolean>(false);
+  readonly settingsDrawerInitialTab = signal<'general' | 'retention' | 'backup' | 'shortcuts'>('general');
+
+  openSettings(tab: 'general' | 'retention' | 'backup' | 'shortcuts' = 'general') {
+    this.settingsDrawerInitialTab.set(tab);
+    this.showSettingsDrawer.set(true);
+  }
   readonly showEraseModal = signal<boolean>(false);
   readonly showHistoryModal = signal<boolean>(false);
   readonly showTipsModal = signal<boolean>(false);
   readonly showFeedbackModal = signal<boolean>(false);
   readonly showDeleteConfirmModal = signal<boolean>(false);
   readonly deleteConfirmModalItem = signal<any | null>(null);
+  readonly deleteConfirmModalItems = signal<any[] | null>(null);
   readonly showClearActiveModal = signal<boolean>(false);
   readonly showDuplicateModal = signal<boolean>(false);
   readonly duplicateModalData = signal<{ matchedUsername: string; resourceSnippet?: string; category?: string; resourceItem?: any } | null>(null);
@@ -117,13 +124,20 @@ export class AirVaultUIStore {
     this.previewModalItem.set(null);
   }
 
-  openDeleteConfirm(item: any) {
-    this.deleteConfirmModalItem.set(item);
+  openDeleteConfirm(itemOrItems: any) {
+    if (Array.isArray(itemOrItems)) {
+      this.deleteConfirmModalItems.set(itemOrItems);
+      this.deleteConfirmModalItem.set(itemOrItems.length === 1 ? itemOrItems[0] : null);
+    } else {
+      this.deleteConfirmModalItem.set(itemOrItems);
+      this.deleteConfirmModalItems.set(itemOrItems ? [itemOrItems] : null);
+    }
     this.showDeleteConfirmModal.set(true);
   }
 
   closeDeleteConfirm() {
     this.deleteConfirmModalItem.set(null);
+    this.deleteConfirmModalItems.set(null);
     this.showDeleteConfirmModal.set(false);
   }
 
@@ -175,6 +189,60 @@ export class AirVaultUIStore {
     if (this.toastTimer) clearTimeout(this.toastTimer);
     this.toastTimer = setTimeout(() => this.toastMessage.set(null), 2800);
   }
+
+  // ─── Centralized Error-to-User-Message Mapper & Handler ────────────────────
+  /**
+   * Translates any technical error, exception, or failure context into a friendly,
+   * safe, non-technical message. Preserves technical details in console/logs for developers.
+   */
+  getUserFriendlyErrorMessage(
+    context?: 'sending' | 'pairing' | 'syncing' | 'deleting' | 'loading' | 'searching' | 'import' | 'export' | 'erasing' | 'clipboard' | 'general' | string,
+    technicalError?: any
+  ): string {
+    if (technicalError) {
+      console.error(`[AirVault Centralized Error Log] (${context || 'general'}):`, technicalError);
+    }
+
+    switch (context) {
+      case 'sending':
+        return "We couldn't send this resource. Please try again.";
+      case 'pairing':
+        return "We couldn't pair this device. Please try again.";
+      case 'syncing':
+        return "Sync couldn't be completed. Please try again.";
+      case 'deleting':
+        return "We couldn't complete the deletion. Please try again.";
+      case 'loading':
+        return "We couldn't load this resource. Please try again.";
+      case 'searching':
+        return "We couldn't complete the search. Please try again.";
+      case 'import':
+        return "Unable to import this backup file. Please try again.";
+      case 'export':
+        return "Unable to export vault data. Please try again.";
+      case 'erasing':
+        return "AirVault could not complete the account erase. Please try again.";
+      case 'clipboard':
+        return "Unable to access clipboard. Please check browser permissions and try again.";
+      default:
+        return "Something went wrong. Please try again.";
+    }
+  }
+
+  /**
+   * Reports an operation error: logs the technical error for developers and displays
+   * a sanitized user-friendly toast notification.
+   */
+  reportOperationError(
+    context?: 'sending' | 'pairing' | 'syncing' | 'deleting' | 'loading' | 'searching' | 'import' | 'export' | 'erasing' | 'clipboard' | 'general' | string,
+    technicalError?: any,
+    prefixEmoji: string = '⚠️'
+  ): string {
+    const friendlyMsg = this.getUserFriendlyErrorMessage(context, technicalError);
+    this.triggerToast(`${prefixEmoji} ${friendlyMsg}`);
+    return friendlyMsg;
+  }
+  // ───────────────────────────────────────────────────────────────────────────
 
   // ─── Centralized network-offline state ─────────────────────────────────────
   // One flag tracks whether we're currently in an "offline" episode.

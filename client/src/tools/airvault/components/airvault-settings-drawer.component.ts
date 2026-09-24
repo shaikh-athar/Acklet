@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal, computed, input, output, inject, HostListener } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, input, output, inject, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IconComponent } from '../../../app/shared/components/icon/icon';
@@ -6,6 +6,7 @@ import { AirVaultPreferencesService, BURN_AFTER_READ_TTL } from '../services/air
 import { AirVaultPortabilityService } from '../services/airvault-portability.service';
 import { AirVaultStorageService } from '../services/airvault-storage.service';
 import { AirVaultNotificationService } from '../services/airvault-notification.service';
+import { AirVaultShortcutService } from '../services/airvault-shortcut.service';
 
 type SettingsTab = 'general' | 'retention' | 'backup' | 'shortcuts';
 
@@ -226,14 +227,14 @@ type SettingsTab = 'general' | 'retention' | 'backup' | 'shortcuts';
             <div class="tab-pane-content">
               <div class="settings-section">
                 <div class="section-title">DATA PORTABILITY & BACKUP</div>
-                <p class="section-desc">Export your entire clipboard vault or selective pinned clips as a portable JSON file.</p>
+                <p class="section-desc">Export your entire clipboard vault or selective pinned clips as a portable JSON file (Schema v1).</p>
 
                 <div class="backup-actions-grid">
-                  <button class="backup-btn" (click)="onExportAll()">
+                  <button type="button" class="backup-btn" (click)="onExportAll()">
                     <app-icon name="download" class="icon-xs text-cyan"></app-icon>
-                    <span>Export Full Vault (JSON)</span>
+                    <span>Export Entire Vault (JSON · v1)</span>
                   </button>
-                  <button class="backup-btn" (click)="onExportPinned()">
+                  <button type="button" class="backup-btn secondary" (click)="onExportPinned()">
                     <app-icon name="pin" class="icon-xs text-cyan"></app-icon>
                     <span>Export Pinned Only</span>
                   </button>
@@ -242,18 +243,102 @@ type SettingsTab = 'general' | 'retention' | 'backup' | 'shortcuts';
 
               <div class="settings-section">
                 <div class="section-title">RESTORE VAULT ARCHIVE</div>
-                <p class="section-desc">Upload a previously exported JSON backup to merge into your local history.</p>
+                <p class="section-desc">Upload a previously exported JSON backup to merge into your account with custom duplicate resolution.</p>
 
-                <label class="file-upload-box">
-                  <input type="file" accept=".json" (change)="onFileSelected($event)" class="file-input-hidden" />
-                  <app-icon name="upload-cloud" class="icon-sm text-cyan"></app-icon>
-                  <span class="upload-title">Choose Backup JSON File</span>
-                  <span class="upload-sub">Validates schema before restoring</span>
-                </label>
+                @if (!pendingInspection()) {
+                  <label class="file-upload-box">
+                    <input #fileInputRef type="file" accept=".json,application/json" (change)="onFileSelected($event)" class="file-input-hidden" />
+                    <app-icon name="upload-cloud" class="icon-sm text-cyan"></app-icon>
+                    <span class="upload-title">Choose Backup JSON File</span>
+                    <span class="upload-sub">Validates schema version and scans for duplicate items</span>
+                  </label>
+                }
+
+                @if (pendingInspection() && !pendingInspection()!.valid) {
+                  <div class="import-error-card">
+                    <div class="import-card-header">
+                      <app-icon name="alert-triangle" class="icon-xs text-amber"></app-icon>
+                      <span class="import-error-title">Incompatible or Invalid File</span>
+                    </div>
+                    <p class="import-error-desc">{{ pendingInspection()!.error }}</p>
+                    <button type="button" class="import-retry-btn" (click)="resetImportSelection()">
+                      <app-icon name="rotate-ccw" class="icon-xs"></app-icon>
+                      <span>Choose Another File</span>
+                    </button>
+                  </div>
+                }
+
+                @if (pendingInspection() && pendingInspection()!.valid) {
+                  <div class="import-review-card">
+                    <div class="import-review-header">
+                      <div class="import-review-meta">
+                        <span class="import-file-author">Author: <b>{{ pendingInspection()!.exportedBy }}</b></span>
+                        <span class="import-file-date">{{ formatDate(pendingInspection()!.exportedAt!) }}</span>
+                        <span class="import-schema-pill">Schema v{{ pendingInspection()!.schemaVersion }}</span>
+                      </div>
+                      <span class="import-items-badge">{{ pendingInspection()!.totalItems }} items</span>
+                    </div>
+
+                    <!-- Duplicate Inspection Breakdown -->
+                    <div class="import-breakdown-row">
+                      @if (pendingInspection()!.duplicateCount > 0) {
+                        <span class="breakdown-pill dup-pill">
+                          <app-icon name="copy" class="icon-xxs"></app-icon>
+                          <span>{{ pendingInspection()!.duplicateCount }} duplicate items found</span>
+                        </span>
+                      }
+                      <span class="breakdown-pill new-pill">
+                        <app-icon name="plus" class="icon-xxs"></app-icon>
+                        <span>{{ pendingInspection()!.newCount }} new items</span>
+                      </span>
+                    </div>
+
+                    <!-- Strategy Choice -->
+                    <div class="import-strategy-section">
+                      <span class="strategy-section-label">DUPLICATE HANDLING STRATEGY:</span>
+                      
+                      <label class="strategy-option-card" [class.selected]="selectedStrategy() === 'skip'">
+                        <input type="radio" name="dupStrategy" value="skip" [checked]="selectedStrategy() === 'skip'" (change)="selectedStrategy.set('skip')" />
+                        <div class="strategy-option-info">
+                          <span class="strategy-opt-title">Skip Duplicates (Recommended)</span>
+                          <span class="strategy-opt-desc">Safest option. Keeps your existing items untouched and imports only new items.</span>
+                        </div>
+                      </label>
+
+                      <label class="strategy-option-card" [class.selected]="selectedStrategy() === 'overwrite'">
+                        <input type="radio" name="dupStrategy" value="overwrite" [checked]="selectedStrategy() === 'overwrite'" (change)="selectedStrategy.set('overwrite')" />
+                        <div class="strategy-option-info">
+                          <span class="strategy-opt-title">Overwrite Existing</span>
+                          <span class="strategy-opt-desc">Replaces matching items with the imported versions while preserving item IDs.</span>
+                        </div>
+                      </label>
+
+                      <label class="strategy-option-card" [class.selected]="selectedStrategy() === 'keep_both'">
+                        <input type="radio" name="dupStrategy" value="keep_both" [checked]="selectedStrategy() === 'keep_both'" (change)="selectedStrategy.set('keep_both')" />
+                        <div class="strategy-option-info">
+                          <span class="strategy-opt-title">Keep Both</span>
+                          <span class="strategy-opt-desc">Creates new duplicate entries with fresh IDs so both versions are preserved.</span>
+                        </div>
+                      </label>
+                    </div>
+
+                    <!-- Action Controls -->
+                    <div class="import-actions-row">
+                      <button type="button" class="import-confirm-btn" [disabled]="isImporting()" (click)="onConfirmImport()">
+                        <app-icon [name]="isImporting() ? 'loader-circle' : 'check'" class="icon-xs" [class.spin-anim]="isImporting()"></app-icon>
+                        <span>{{ isImporting() ? 'Importing…' : ('Import ' + pendingInspection()!.totalItems + ' Items') }}</span>
+                      </button>
+                      <button type="button" class="import-cancel-btn" [disabled]="isImporting()" (click)="resetImportSelection()">
+                        <span>Cancel</span>
+                      </button>
+                    </div>
+                  </div>
+                }
 
                 @if (importStatus()) {
                   <div class="import-status-box" [class.success]="importStatus()!.success" [class.error]="!importStatus()!.success">
-                    {{ importStatus()!.message }}
+                    <app-icon [name]="importStatus()!.success ? 'check' : 'alert-circle'" class="icon-xs"></app-icon>
+                    <span>{{ importStatus()!.message }}</span>
                   </div>
                 }
               </div>
@@ -264,24 +349,27 @@ type SettingsTab = 'general' | 'retention' | 'backup' | 'shortcuts';
           @if (activeTab() === 'shortcuts') {
             <div class="tab-pane-content">
               <div class="settings-section">
-                <div class="section-title">KEYBOARD COMMAND PALETTE</div>
-                <div class="shortcuts-table">
-                  <div class="shortcut-row">
-                    <span class="shortcut-desc">Beam Staged Payload</span>
-                    <div class="shortcut-keys"><kbd>⌘</kbd><kbd>Enter</kbd></div>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="shortcut-desc">Paste from Clipboard</span>
-                    <div class="shortcut-keys"><kbd>⌘</kbd><kbd>V</kbd></div>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="shortcut-desc">Search Vault Feed</span>
-                    <div class="shortcut-keys"><kbd>⌘</kbd><kbd>F</kbd></div>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="shortcut-desc">Close Drawers & Modals</span>
-                    <div class="shortcut-keys"><kbd>Esc</kbd></div>
-                  </div>
+                <div class="section-title">KEYBOARD SHORTCUTS REFERENCE</div>
+                <p class="section-desc">Quick navigation and action triggers available across AirVault.</p>
+
+                <div class="shortcuts-groups-container">
+                  @for (cat of shortcutService.categories; track cat) {
+                    @if (shortcutService.groupedShortcuts()[cat]; as group) {
+                      <div class="shortcut-category-group">
+                        <div class="category-header-title">{{ cat }}</div>
+                        <div class="shortcuts-table">
+                          @for (sc of group; track sc.id) {
+                            <div class="shortcut-row">
+                              <span class="shortcut-desc">{{ sc.description }}</span>
+                              <div class="shortcut-keys">
+                                <kbd>{{ shortcutService.isMac ? sc.displayMac : sc.displayWin }}</kbd>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    }
+                  }
                 </div>
               </div>
             </div>
@@ -698,24 +786,50 @@ type SettingsTab = 'general' | 'retention' | 'backup' | 'shortcuts';
       color: var(--av-error);
     }
 
+    .shortcuts-groups-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .shortcut-category-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .category-header-title {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--av-accent, #2196F3);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding-left: 2px;
+    }
+
     .shortcuts-table {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
     }
 
     .shortcut-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 10px;
+      padding: 7px 10px;
       background: var(--av-surface-secondary);
       border: 1px solid var(--av-border);
       border-radius: 6px;
+      transition: background 0.12s ease;
+    }
+
+    .shortcut-row:hover {
+      background: var(--av-surface-elevated, var(--av-surface-secondary));
     }
 
     .shortcut-desc {
-      font-size: 11px;
+      font-size: 11.5px;
       font-weight: 600;
       color: var(--av-text-main);
     }
@@ -795,6 +909,232 @@ type SettingsTab = 'general' | 'retention' | 'backup' | 'shortcuts';
         transform: translateY(0) scale(1);
       }
     }
+    /* ── Import Review & Duplicate Resolution Styles ──────────── */
+    .import-error-card {
+      padding: 12px 14px;
+      background: rgba(248, 81, 73, 0.1);
+      border: 1px solid rgba(248, 81, 73, 0.35);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .import-card-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .import-error-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #EF4444;
+    }
+    .import-error-desc {
+      font-size: 11px;
+      color: var(--av-text-muted);
+      margin: 0;
+      line-height: 1.4;
+    }
+    .import-retry-btn {
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      background: var(--av-surface-secondary);
+      border: 1px solid var(--av-border);
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--av-text-main);
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    .import-retry-btn:hover {
+      border-color: var(--av-accent);
+      color: var(--av-accent);
+    }
+
+    .import-review-card {
+      padding: 14px;
+      background: var(--av-surface-secondary);
+      border: 1px solid var(--av-border);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      animation: tabPaneFadeIn 0.2s ease-out forwards;
+    }
+    .import-review-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--av-border-subtle);
+    }
+    .import-review-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .import-file-author {
+      font-size: 12px;
+      color: var(--av-text-main);
+    }
+    .import-file-author b {
+      color: var(--av-accent);
+    }
+    .import-file-date {
+      font-size: 10px;
+      color: var(--av-text-muted);
+    }
+    .import-schema-pill {
+      display: inline-block;
+      margin-top: 3px;
+      padding: 1px 6px;
+      background: var(--av-surface-primary);
+      border: 1px solid var(--av-border);
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--av-text-muted);
+      width: fit-content;
+    }
+    .import-items-badge {
+      padding: 3px 8px;
+      background: rgba(33, 150, 243, 0.15);
+      border: 1px solid rgba(33, 150, 243, 0.35);
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--av-accent);
+      white-space: nowrap;
+    }
+
+    .import-breakdown-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .breakdown-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 5px;
+      font-size: 10.5px;
+      font-weight: 600;
+    }
+    .breakdown-pill.dup-pill {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: #D97706;
+    }
+    .breakdown-pill.new-pill {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: #10B981;
+    }
+
+    .import-strategy-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .strategy-section-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--av-text-muted);
+      letter-spacing: 0.05em;
+    }
+    .strategy-option-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--av-surface-primary);
+      border: 1px solid var(--av-border);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .strategy-option-card:hover {
+      border-color: var(--av-accent);
+    }
+    .strategy-option-card.selected {
+      border-color: var(--av-accent);
+      background: var(--av-surface-elevated);
+    }
+    .strategy-option-card input {
+      margin-top: 2px;
+      accent-color: var(--av-accent);
+    }
+    .strategy-option-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .strategy-opt-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--av-text-main);
+    }
+    .strategy-opt-desc {
+      font-size: 9.5px;
+      color: var(--av-text-muted);
+      line-height: 1.3;
+    }
+
+    .import-actions-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .import-confirm-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 12px;
+      background: var(--av-accent);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+    .import-confirm-btn:hover:not(:disabled) {
+      opacity: 0.9;
+    }
+    .import-confirm-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .import-cancel-btn {
+      padding: 9px 14px;
+      background: var(--av-surface-primary);
+      border: 1px solid var(--av-border);
+      border-radius: 6px;
+      color: var(--av-text-muted);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .import-cancel-btn:hover:not(:disabled) {
+      color: var(--av-text-main);
+      border-color: var(--av-border-hover);
+    }
+    .spin-anim {
+      animation: spinIcon 1s linear infinite;
+    }
+    @keyframes spinIcon {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -803,6 +1143,7 @@ export class AirVaultSettingsDrawerComponent {
   portabilityService = inject(AirVaultPortabilityService);
   storageService = inject(AirVaultStorageService);
   notificationService = inject(AirVaultNotificationService);
+  shortcutService = inject(AirVaultShortcutService);
 
   currentTtlMs = input.required<number>();
   totalItems = input<number>(0);
@@ -814,9 +1155,21 @@ export class AirVaultSettingsDrawerComponent {
   purgeAllHistory = output<void>();
   openEraseModal = output<void>();
 
+  initialTab = input<SettingsTab>('general');
   activeTab = signal<SettingsTab>('general');
+
+  ngOnInit() {
+    if (this.initialTab()) {
+      this.activeTab.set(this.initialTab());
+    }
+  }
   isClosing = signal<boolean>(false);
   importStatus = signal<{ success: boolean; message: string } | null>(null);
+
+  // Backup & Import state
+  pendingInspection = signal<import('../services/airvault-portability.service').BackupValidationInspection | null>(null);
+  selectedStrategy = signal<import('../services/airvault-portability.service').DuplicateStrategy>('skip');
+  isImporting = signal<boolean>(false);
 
   onClose() {
     if (this.isClosing()) return;
@@ -900,10 +1253,43 @@ export class AirVaultSettingsDrawerComponent {
   async onFileSelected(event: any) {
     const file = event.target.files?.[0];
     if (file) {
-      const res = await this.portabilityService.importVault(file);
-      this.importStatus.set(res);
-      setTimeout(() => this.importStatus.set(null), 5000);
+      this.importStatus.set(null);
+      const inspection = await this.portabilityService.inspectBackupFile(file);
+      this.pendingInspection.set(inspection);
+      this.selectedStrategy.set('skip');
     }
+  }
+
+  resetImportSelection() {
+    this.pendingInspection.set(null);
+    this.selectedStrategy.set('skip');
+    this.isImporting.set(false);
+  }
+
+  async onConfirmImport() {
+    const inspection = this.pendingInspection();
+    if (!inspection || !inspection.valid || !inspection.parsedData) return;
+
+    this.isImporting.set(true);
+    try {
+      const result = await this.portabilityService.executeImport(inspection.parsedData, this.selectedStrategy());
+      this.importStatus.set({
+        success: result.success,
+        message: result.message
+      });
+      if (result.success) {
+        this.pendingInspection.set(null);
+      }
+      setTimeout(() => this.importStatus.set(null), 6000);
+    } finally {
+      this.isImporting.set(false);
+    }
+  }
+
+  formatDate(timestamp: number): string {
+    if (!timestamp) return '';
+    const d = new Date(timestamp);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
   formatBytes(bytes: number): string {

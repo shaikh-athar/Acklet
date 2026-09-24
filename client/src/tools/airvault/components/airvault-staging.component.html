@@ -49,13 +49,19 @@
   }
 
   <!-- Masonry / Responsive Card Grid (auto-fit columns, cards sized to content) -->
-  <div class="vault-card-grid">
+  <div class="vault-card-grid" #cardGrid>
     @for (item of displayedVaultItems(); track item.id) {
     <div class="vault-card-cell">
-      <app-airvault-card [item]="item" (openPreview)="uiStore.openPreview($event)" (cancelUpload)="cancelUpload($event)"
-        (retryUpload)="retryUpload($event)" (togglePin)="storageService.togglePin($event)"
-        (toggleReveal)="storageService.toggleReveal($event)" (deleteItem)="deleteItem.emit($event)"
-        (resendItem)="resendItem.emit($event)" (triggerToast)="uiStore.triggerToast($event)">
+      <app-airvault-card
+        [item]="item"
+        (openPreview)="uiStore.openPreview($event)"
+        (cancelUpload)="cancelUpload($event)"
+        (retryUpload)="retryUpload($event)"
+        (togglePin)="storageService.togglePin($event)"
+        (toggleReveal)="storageService.toggleReveal($event)"
+        (deleteItem)="deleteItem.emit($event)"
+        (resendItem)="resendItem.emit($event)"
+        (triggerToast)="uiStore.triggerToast($event)">
       </app-airvault-card>
     </div>
     }
@@ -414,6 +420,7 @@
         <!-- Permanent Hidden File Inputs (Always alive in DOM so native pickers work reliably across all browsers) -->
         <input #docInput type="file" (change)="onFileInput($event); uploadMenuOpen.set(false)" hidden multiple />
         <input #imgInput type="file" accept="image/*" (change)="onFileInput($event); uploadMenuOpen.set(false)" hidden multiple />
+        <input #videoInput type="file" accept="video/*" (change)="onFileInput($event); uploadMenuOpen.set(false)" hidden multiple />
         <input #zipInput type="file" accept=".zip,application/zip" (change)="onFileInput($event); uploadMenuOpen.set(false)" hidden />
         <input #folderInput type="file" webkitdirectory directory multiple (change)="onFolderInputSelected($event); uploadMenuOpen.set(false)" hidden />
 
@@ -423,8 +430,8 @@
           (mouseenter)="onPlusHover()"
           (mouseleave)="onPlusLeave()"
           (click)="toggleUploadMenu($event); triggerClickPulse('plus')"
-          data-tooltip="Add file, image, zip or folder"
-          aria-label="Add file, image, or folder">
+          data-tooltip="Add file, image, video, zip or folder"
+          aria-label="Add file, image, video, or folder">
           <app-icon name="plus" class="icon-sm"></app-icon>
         </button>
 
@@ -450,6 +457,12 @@
           <button type="button" class="attach-popover-item" (click)="imgInput.click(); closeUploadMenu(true)">
             <app-icon name="image" class="icon-sm text-amber"></app-icon>
             <span>Upload Image / Photo</span>
+          </button>
+
+          <!-- Upload Videos & Media -->
+          <button type="button" class="attach-popover-item" (click)="videoInput.click(); closeUploadMenu(true)">
+            <app-icon name="video" class="icon-sm text-purple"></app-icon>
+            <span>Upload Video / Media</span>
           </button>
 
           <!-- Upload Zip Archives -->
@@ -618,7 +631,7 @@
           [class.clicked]="clickedButtonId() === 'send'"
           (click)="triggerBeam($event); triggerClickPulse('send')"
           [disabled]="!canSend()"
-          [attr.data-tooltip]="canSend() ? 'Beam to vault (↵)' : (stagedAttachments().length > 0 ? 'Waiting for resources to upload…' : null)"
+          [attr.data-tooltip]="canSend() ? ('Beam to vault · ' + shortcutService.formatShortcut('composer-send')) : (stagedAttachments().length > 0 ? 'Waiting for resources to upload…' : null)"
           data-tooltip-pos="left"
           aria-label="Beam item to AirVault">
           <app-icon name="rocket" class="icon-sm"></app-icon>

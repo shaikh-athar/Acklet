@@ -17,6 +17,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.*;
 import java.nio.file.*;
+import java.security.MessageDigest;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -110,7 +111,7 @@ public class AirVaultUploadService {
                     .status("UPLOADING")
                     .previewUrl(req.getPreviewUrl())
                     .batchId(req.getBatchId())
-                    .storagePath(storageRoot.resolve(req.getFileId()).toString())
+                    .storagePath(null)
                     .build();
         }
 
@@ -301,36 +302,71 @@ public class AirVaultUploadService {
     private void assembleSynchronously(UploadSession session) {
         Path sessionChunkDir = storageRoot.resolve("chunks_" + session.getId().toString());
         Path finalStorageDir = storageRoot.resolve("files");
-        Path finalFile = finalStorageDir.resolve(session.getFileId() + ".bin");
+
+        String ext = "";
+        if (session.getFileName() != null && session.getFileName().contains(".")) {
+            ext = session.getFileName().substring(session.getFileName().lastIndexOf('.') + 1);
+        }
+        boolean isMedia = session.getFileName() != null &&
+                (session.getFileName().matches("(?i).*\\.(mp4|webm|mov|mkv|m4v|mp3|wav|ogg|m4a|aac|pdf|png|jpe?g|webp|gif|svg)$"));
+
+        String assembledFilename = isMedia
+                ? "file_" + session.getFileId() + (ext.isEmpty() ? "" : "." + ext)
+                : session.getFileId() + ".bin";
+
+        Path finalFile = finalStorageDir.resolve(assembledFilename);
 
         try {
             if (!Files.exists(finalStorageDir)) Files.createDirectories(finalStorageDir);
+
+            MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+            long totalAssembledBytes = 0;
 
             try (OutputStream fileOut = Files.newOutputStream(finalFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
                  BufferedOutputStream bufferedOut = new BufferedOutputStream(fileOut)) {
                 for (int i = 0; i < session.getTotalChunks(); i++) {
                     Path chunkPath = sessionChunkDir.resolve("chunk_" + i);
                     if (Files.exists(chunkPath)) {
-                        bufferedOut.write(Files.readAllBytes(chunkPath));
+                        byte[] chunkBytes = Files.readAllBytes(chunkPath);
+                        bufferedOut.write(chunkBytes);
+                        sha256.update(chunkBytes);
+                        totalAssembledBytes += chunkBytes.length;
                     }
                 }
                 bufferedOut.flush();
             }
 
-            ClipboardFile file = ClipboardFile.builder()
-                    .clipboardId(session.getClipboardId())
-                    .fileId(session.getFileId())
-                    .fileName(session.getFileName())
-                    .category(session.getCategory())
-                    .byteSize(session.getReceivedBytes())
-                    .checksum(session.getChecksum())
-                    .storagePath(finalFile.toAbsolutePath().toString())
-                    .previewUrl(session.getPreviewUrl())
-                    .batchId(session.getBatchId())
-                    .build();
+            byte[] hashBytes = sha256.digest();
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hashBytes) {
+                hexString.append(String.format("%02x", b));
+            }
+            String calculatedChecksum = hexString.toString();
+
+            String storageObjectKey = "files/" + assembledFilename;
+            try (InputStream in = Files.newInputStream(finalFile)) {
+                storageAdapter.storeObject(storageObjectKey, in, totalAssembledBytes, null);
+            }
+
+            ClipboardFile file = clipboardFileRepository.findByFileId(session.getFileId())
+                    .orElse(ClipboardFile.builder()
+                            .clipboardId(session.getClipboardId())
+                            .fileId(session.getFileId())
+                            .build());
+
+            file.setFileName(session.getFileName());
+            file.setCategory(session.getCategory());
+            file.setByteSize(totalAssembledBytes);
+            file.setChecksum(calculatedChecksum);
+            file.setStoragePath(storageObjectKey);
+            file.setPreviewUrl(session.getPreviewUrl());
+            file.setBatchId(session.getBatchId());
+
             clipboardFileRepository.save(file);
 
             session.setStatus("COMPLETED");
+            session.setReceivedBytes(totalAssembledBytes);
+            session.setStoragePath(storageObjectKey);
             uploadSessionRepository.save(session);
             redisTracker.setSessionStatus(session.getId(), "READY");
 
@@ -511,28 +547,28 @@ public class AirVaultUploadService {
 
         return fileCache.getOrDecompressPath(checksum, destination -> {
             try (InputStream rawIn = storageAdapter.getObject(storagePath);
-                 PushbackInputStream pushbackIn = new PushbackInputStream(new BufferedInputStream(rawIn), 2);
-                 OutputStream destOut = Files.newOutputStream(destination, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
-                 BufferedOutputStream bufDestOut = new BufferedOutputStream(destOut)) {
+                 BufferedInputStream bufIn = new BufferedInputStream(rawIn)) {
 
+                bufIn.mark(2);
                 byte[] signature = new byte[2];
-                int read = pushbackIn.read(signature);
-                if (read == 2) {
-                    pushbackIn.unread(signature);
-                }
+                int read = bufIn.read(signature);
+                bufIn.reset();
 
                 boolean isGzip = (read == 2 && ((signature[0] & 0xFF) == 0x1F) && ((signature[1] & 0xFF) == 0x8B));
-                InputStream streamToRead = isGzip ? new java.util.zip.GZIPInputStream(pushbackIn) : pushbackIn;
+                try (InputStream streamToRead = isGzip ? new java.util.zip.GZIPInputStream(bufIn) : bufIn;
+                     OutputStream destOut = Files.newOutputStream(destination, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+                     BufferedOutputStream bufDestOut = new BufferedOutputStream(destOut)) {
 
-                byte[] buffer = new byte[65536];
-                int bytesRead;
-                long totalWritten = 0;
-                while ((bytesRead = streamToRead.read(buffer)) != -1) {
-                    bufDestOut.write(buffer, 0, bytesRead);
-                    totalWritten += bytesRead;
+                    byte[] buffer = new byte[65536];
+                    int bytesRead;
+                    long totalWritten = 0;
+                    while ((bytesRead = streamToRead.read(buffer)) != -1) {
+                        bufDestOut.write(buffer, 0, bytesRead);
+                        totalWritten += bytesRead;
+                    }
+                    bufDestOut.flush();
+                    return totalWritten;
                 }
-                bufDestOut.flush();
-                return totalWritten;
             }
         });
     }
@@ -717,75 +753,5 @@ public class AirVaultUploadService {
 
     private String serializeIndices(Set<Integer> set) {
         return set.stream().map(String::valueOf).collect(Collectors.joining(","));
-    }
-
-    /**
-     * Hourly purge of files older than 7 days per defined retention policy.
-     * Also removes stale uncompleted upload sessions older than 24 hours.
-     */
-    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 3600000)
-    @Transactional
-    public void cleanupExpiredFiles() {
-        java.time.Instant cutoff = java.time.Instant.now().minus(RETENTION_PERIOD_DAYS, java.time.temporal.ChronoUnit.DAYS);
-        List<ClipboardFile> expiredFiles = clipboardFileRepository.findAllByCreatedAtBefore(cutoff);
-        if (!expiredFiles.isEmpty()) {
-            log.info("[AirVault Cleanup] Found {} expired files (> 7 days old) to purge", expiredFiles.size());
-            for (ClipboardFile file : expiredFiles) {
-                try {
-                    if (file.getStoragePath() != null) {
-                        storageAdapter.deleteObject(file.getStoragePath());
-                    }
-                    if (file.getChecksum() != null) {
-                        fileCache.evict(file.getChecksum());
-                    }
-                } catch (IOException e) {
-                    log.warn("[AirVault Cleanup] Failed to delete object: {}", file.getStoragePath());
-                }
-                clipboardFileRepository.delete(file);
-                log.info("[AirVault Cleanup] Permanently purged expired file: {} ({})", file.getFileName(), file.getFileId());
-            }
-        }
-
-        // Stale incomplete sessions cleanup (> 24 hours)
-        java.time.Instant sessionCutoff = java.time.Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS);
-        List<UploadSession> staleSessions = uploadSessionRepository.findAllByCreatedAtBefore(sessionCutoff);
-        for (UploadSession session : staleSessions) {
-            if (!"COMPLETED".equalsIgnoreCase(session.getStatus())) {
-                try {
-                    if (session.getStoragePath() != null) {
-                        Files.deleteIfExists(Paths.get(session.getStoragePath()));
-                    }
-                    Path chunkDir = storageRoot.resolve("chunks_" + session.getId().toString());
-                    if (Files.exists(chunkDir)) {
-                        try (var stream = Files.walk(chunkDir)) {
-                            stream.sorted(Comparator.reverseOrder())
-                                  .map(Path::toFile)
-                                  .forEach(File::delete);
-                        }
-                    }
-                } catch (IOException ignored) {}
-                uploadSessionRepository.delete(session);
-                log.info("[AirVault Cleanup] Purged stale upload session and chunks: {}", session.getFileId());
-            }
-        }
-
-        // Cleanup any orphaned chunk_* directories older than 24 hours on disk
-        try (var ds = Files.newDirectoryStream(storageRoot, "chunks_*")) {
-            long nowMs = System.currentTimeMillis();
-            long twentyFourHoursMs = 24 * 60 * 60 * 1000L;
-            for (Path orphanChunkDir : ds) {
-                try {
-                    long lastModified = Files.getLastModifiedTime(orphanChunkDir).toMillis();
-                    if (nowMs - lastModified > twentyFourHoursMs) {
-                        try (var stream = Files.walk(orphanChunkDir)) {
-                            stream.sorted(Comparator.reverseOrder())
-                                  .map(Path::toFile)
-                                  .forEach(File::delete);
-                        }
-                        log.info("[AirVault Cleanup] Purged orphaned chunk directory: {}", orphanChunkDir.getFileName());
-                    }
-                } catch (IOException ignored) {}
-            }
-        } catch (IOException ignored) {}
     }
 }

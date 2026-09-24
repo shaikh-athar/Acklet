@@ -22,6 +22,7 @@ import { AirVaultActionPopoverComponent } from './airvault-action-popover.compon
 import { getAirVaultApiUrl } from '../services/airvault-api.util';
 import { checkInputThreshold, formatByteSize } from '../../../app/core/config/tool-thresholds';
 import { AirVaultDocSyncService } from '../services/airvault-doc-sync.service';
+import { AirVaultShortcutService } from '../services/airvault-shortcut.service';
 import { WordUndoManager } from '../services/airvault-undo.manager';
 import { AirVaultPreferencesService } from '../services/airvault-preferences.service';
 import { AirVaultLogger } from '../services/airvault-sync-debug.service';
@@ -77,6 +78,9 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   /** Reference to the contenteditable Tiptap editor host element */
   @ViewChild('editorRef') editorRef?: ElementRef<HTMLDivElement>;
   @ViewChild('streamArea') streamAreaRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('cardGrid') cardGridRef?: ElementRef<HTMLDivElement>;
+
+  private prevCardRects = new Map<string, DOMRect>();
 
   public richEditor = inject(AirvaultRichEditorService);
 
@@ -93,6 +97,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   public cryptoService = inject(AirVaultCryptoService);
   public prefService = inject(AirVaultPreferencesService);
   public operationState = inject(AirVaultOperationStateService);
+  public shortcutService = inject(AirVaultShortcutService);
   private ngZone = inject(NgZone);
   motion = inject(AirVaultMotionService);
 
@@ -486,7 +491,31 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
     // Multi-select Category (OR condition between selected categories)
     if (cats.length > 0) {
-      items = items.filter(it => cats.some(c => c.toLowerCase() === (it.content?.category || 'text').toLowerCase()));
+      items = items.filter(it => {
+        const itemCat = (it.content?.category || 'text').toLowerCase();
+        const isBatch = !!it.isBatchParent || itemCat === 'batch';
+        const batchFiles = it.batchFiles || [];
+
+        return cats.some(c => {
+          const filterCat = c.toLowerCase();
+          // If filtering for multi-resource/mixed tiles
+          if (filterCat === 'batch') {
+            return isBatch || (it.content?.category === 'batch');
+          }
+
+          // Direct category match
+          if (itemCat === filterCat) {
+            return true;
+          }
+
+          // If item is a multi-resource/batch tile, check if any attached sub-file matches the category (e.g. image in batch)
+          if (isBatch && batchFiles.length > 0) {
+            return batchFiles.some(subFile => (subFile.content?.category || '').toLowerCase() === filterCat);
+          }
+
+          return false;
+        });
+      });
     }
 
     // Multi-select Time (OR condition between selected time ranges)
@@ -545,6 +574,16 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   displayedVaultItems = computed(() => {
     return this.filteredVaultItems().slice(0, this.visibleItemCount());
   });
+
+  /**
+   * Tracks only the ordered sequence of item IDs in the current view.
+   * The FLIP animation effect depends on this instead of displayedVaultItems()
+   * so it only fires when tile positions actually change — not on any item
+   * property update (sync status, progress, copyCount, etc.).
+   */
+  displayedItemOrder = computed(() =>
+    this.displayedVaultItems().map(i => i.id).join(',')
+  );
 
   hasMoreRailItems = computed(() => {
     return this.filteredVaultItems().length > this.visibleItemCount();
@@ -851,7 +890,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
         body: JSON.stringify({
           fileId: attId,
           fileName: file.name,
-          category: file.type.startsWith('image/') ? 'image' : (file.type.startsWith('video/') ? 'video' : 'file'),
+          category: this.clipboard.classify(file.type ? `data:${file.type};base64,` : '', file.name).category,
           declaredSize: file.size,
           chunkSize: 4 * 1024 * 1024,
           totalChunks: Math.max(1, Math.ceil(file.size / (4 * 1024 * 1024))),
@@ -926,8 +965,9 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
             worker.terminate();
           } else if (type === 'ERROR' || error || success === false) {
-            const err = error || 'Upload or processing failed';
-            this.updateStagedAttachmentStatus(attId, { status: 'FAILED', errorMessage: String(err) });
+            console.error('[AirVault Staging] Worker upload error:', error);
+            const friendlyErr = this.uiStore.getUserFriendlyErrorMessage('sending', error);
+            this.updateStagedAttachmentStatus(attId, { status: 'FAILED', errorMessage: friendlyErr });
             worker.terminate();
           }
         };
@@ -1546,7 +1586,41 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   activePopoverMatch = signal<ComposerMatch | null>(null);
   composerPopoverPos = signal<{ top: number; left: number }>({ top: 0, left: 0 });
 
+  /** Guards against stacking multiple FLIP calls within the same animation frame */
+  private flipPending = false;
+
   constructor() {
+    // Smooth FLIP layout animation: fires only when the ordered list of tile IDs changes.
+    // Using displayedItemOrder (ID sequence) instead of displayedVaultItems (full objects)
+    // prevents spurious animations on status/progress/sync-metadata updates.
+    effect(() => {
+      // Reactive dependency: only the ordered ID sequence
+      const _order = this.displayedItemOrder();
+
+      // Capture current DOM positions synchronously (before RAF runs the FLIP).
+      // This ensures the "before" snapshot reflects positions at the moment the order changed.
+      const gridEl = this.cardGridRef?.nativeElement;
+      const hasExistingRects = this.prevCardRects.size > 0;
+
+      // Snapshot current positions immediately (synchronous, pre-RAF)
+      const snapshotBefore = new Map(this.prevCardRects);
+
+      // Update our stored snapshot to the NEW positions after DOM settles
+      if (!this.flipPending) {
+        this.flipPending = true;
+        this.ngZone.runOutsideAngular(() => {
+          requestAnimationFrame(() => {
+            this.flipPending = false;
+            if (gridEl && hasExistingRects && snapshotBefore.size > 0) {
+              this.motion.animateGridFlip(gridEl, snapshotBefore);
+            }
+            // Always refresh snapshot so next change has fresh "before" positions
+            this.captureCardPositions();
+          });
+        });
+      }
+    });
+
     // Restore draft from local IndexedDB asynchronously — never from remote
     // We use a short delay to let the DB open (initIndexedDb fires in storage constructor)
     setTimeout(async () => {
@@ -1562,6 +1636,20 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     }
     this.initClipboardFocusListener();
     this.initDraftHandoffListeners();
+  }
+
+  private captureCardPositions() {
+    const gridEl = this.cardGridRef?.nativeElement;
+    if (!gridEl) return;
+    this.prevCardRects.clear();
+    const cards = gridEl.querySelectorAll<HTMLElement>('.vault-card-cell');
+    cards.forEach(card => {
+      const cardInner = card.querySelector<HTMLElement>('.av-card');
+      const cardId = cardInner?.getAttribute('data-card-id');
+      if (cardId) {
+        this.prevCardRects.set(cardId, card.getBoundingClientRect());
+      }
+    });
   }
   private clipboardFocusHandler: (() => void) | null = null;
   private clipboardVisibilityHandler: (() => void) | null = null;
@@ -2282,17 +2370,14 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     if (target?.closest('button') || target?.closest('.composer-tool-btn') || target?.closest('.composer-popover-anchor') ||
       target?.closest('.composer-label-chip-group') || target?.closest('.staged-attachment-tile') ||
       target?.closest('.chat-attach-popover') || target?.closest('.composer-selection-toolbar') ||
-      target?.closest('input')) {
+      target?.closest('input') || target?.closest('.capsule-input-area') || target?.closest('.chat-composer-textarea') ||
+      target?.closest('.ProseMirror')) {
       return;
     }
     if (this.ghostSuggestion()) {
       this.dismissGhostSuggestion();
     }
-    // If the click is inside the ProseMirror editor element, let ProseMirror natively place the caret!
-    if (target?.closest('.ProseMirror') || target?.closest('.chat-composer-textarea')) {
-      return;
-    }
-    // Only if clicking on the background container outside the text area, focus editor at end
+    // Only if clicking on empty background margin outside the text area and input capsule, focus editor at end
     this.richEditor.focus('end');
   }
 
@@ -2983,8 +3068,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
     // Create child items in pending state
     const childItems: AirVaultItem[] = files.map((file, i) => {
-      const isImg = file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(file.name);
-      const isVid = file.type.startsWith('video/') || /\.(mp4|webm|mov|avi|mkv)$/i.test(file.name);
+      const classified = this.clipboard.classify(file.type ? `data:${file.type};base64,` : '', file.name);
       return {
         id: `av_file_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 7)}`,
         originDeviceId: curDev.id,
@@ -3003,7 +3087,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
         processingState: 'processing',
         progressPercent: 0,
         content: {
-          category: isImg ? 'image' : (isVid ? 'video' : 'file'),
+          category: classified.category,
           raw: '',
           filename: file.name,
           byteSize: file.size,
@@ -3116,7 +3200,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
         body: JSON.stringify({
           fileId: itemId,
           fileName: file.name,
-          category: file.type.startsWith('image/') ? 'image' : (file.type.startsWith('video/') ? 'video' : 'file'),
+          category: this.clipboard.classify(file.type ? `data:${file.type};base64,` : '', file.name).category,
           declaredSize: file.size,
           chunkSize: 4 * 1024 * 1024,
           totalChunks: Math.max(1, Math.ceil(file.size / (4 * 1024 * 1024))),
@@ -3155,8 +3239,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
     // 4. If single file upload (no batchId), immediately create single tile in "pending" / "processing" state
     if (!batchId) {
-      const isImg = file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(file.name);
-      const isVid = file.type.startsWith('video/') || /\.(mp4|webm|mov|avi|mkv)$/i.test(file.name);
+      const classified = this.clipboard.classify(file.type ? `data:${file.type};base64,` : '', file.name);
       const authorColor = this.colorService.getColorForIdentity(curDev.username || curDev.id, curDev.accentColor);
 
       const pendingItem: AirVaultItem = {
@@ -3176,7 +3259,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
         processingState: this.activeUploadsCount >= this.MAX_CONCURRENT_UPLOADS ? 'queued' : 'processing',
         progressPercent: 0,
         content: {
-          category: isImg ? 'image' : (isVid ? 'video' : 'file'),
+          category: classified.category,
           raw: '',
           filename: file.name,
           byteSize: file.size,
@@ -3476,8 +3559,21 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       const isBinary = isImg || isVid || /\.(zip|pdf|docx?|xlsx?|tar|gz|7z|bin|iso|dmg|pkg|wasm|dylib|so)$/i.test(file.name || '') || (file.type && (file.type.startsWith('application/zip') || file.type.startsWith('image/') || file.type.startsWith('video/') || file.type === 'application/octet-stream'));
 
       if (isBinary) {
-        rawContent = '';
-      } else if (totalBytes <= 100 * 1024) {
+        if (totalBytes <= 50 * 1024 * 1024) {
+          try {
+            rawContent = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            });
+          } catch {
+            rawContent = '';
+          }
+        } else {
+          rawContent = '';
+        }
+      } else if (totalBytes <= 25 * 1024 * 1024) {
         try {
           rawContent = await file.text();
         } catch {
@@ -3487,8 +3583,9 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
         rawContent = '';
       }
 
+      const classifiedContent = this.clipboard.classify(file.type ? `data:${file.type};base64,` : rawContent, file.name);
       const classified: ClassifiedContent = {
-        category: isImg ? 'image' : (isVid ? 'video' : 'file'),
+        category: classifiedContent.category,
         raw: rawContent,
         previewUrl: previewUrl || (isImg ? rawContent : undefined),
         filename: file.name,
@@ -3708,9 +3805,17 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     const parentArea = editorEl.closest('.capsule-input-area') as HTMLElement;
     const parentRect = (parentArea || editorEl).getBoundingClientRect();
 
-    // Position bubble 38px above the top of the selected text range, centered on selection
-    const top = Math.max(0, rangeRect.top - parentRect.top - 40);
-    const left = Math.max(8, Math.min(parentRect.width - 240, (rangeRect.left + rangeRect.right) / 2 - parentRect.left - 120));
+    // Position bubble comfortably above the selection or float cleanly above the capsule
+    const spaceAbove = rangeRect.top - parentRect.top;
+    let top: number;
+    if (spaceAbove >= 44) {
+      top = spaceAbove - 42;
+    } else {
+      // Float cleanly right above the input capsule (top: -42px) without overlapping text
+      top = -42;
+    }
+    const selCenterX = (rangeRect.left + rangeRect.right) / 2;
+    const left = Math.max(8, Math.min(parentRect.width - 250, selCenterX - parentRect.left - 120));
 
     this.selectionToolbarPos.set({ top, left });
     this.showSelectionToolbar.set(true);

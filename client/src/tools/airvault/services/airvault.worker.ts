@@ -241,12 +241,40 @@ addEventListener('message', async (event: MessageEvent) => {
               binary += String.fromCharCode.apply(null, sub as any);
             }
             let mime = file.type;
-            if (!mime) {
-              if (fname.endsWith('.zip')) mime = 'application/zip';
-              else if (fname.endsWith('.pdf')) mime = 'application/pdf';
-              else if (fname.endsWith('.mp3')) mime = 'audio/mpeg';
-              else if (fname.endsWith('.wav')) mime = 'audio/wav';
-              else mime = 'application/octet-stream';
+            if (!mime || mime === 'application/octet-stream') {
+              const ext = fname.split('.').pop()?.toLowerCase() || '';
+              const mimeMap: Record<string, string> = {
+                pdf: 'application/pdf',
+                doc: 'application/msword',
+                docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                xls: 'application/vnd.ms-excel',
+                xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                ppt: 'application/vnd.ms-powerpoint',
+                pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                zip: 'application/zip',
+                rar: 'application/vnd.rar',
+                '7z': 'application/x-7z-compressed',
+                tar: 'application/x-tar',
+                gz: 'application/gzip',
+                csv: 'text/csv',
+                tsv: 'text/tab-separated-values',
+                json: 'application/json',
+                png: 'image/png',
+                jpg: 'image/jpeg',
+                jpeg: 'image/jpeg',
+                gif: 'image/gif',
+                webp: 'image/webp',
+                svg: 'image/svg+xml',
+                mp3: 'audio/mpeg',
+                wav: 'audio/wav',
+                mp4: 'video/mp4',
+                webm: 'video/webm'
+              };
+              if (mimeMap[ext]) {
+                mime = mimeMap[ext];
+              } else if (!mime) {
+                mime = 'application/octet-stream';
+              }
             }
             rawContent = `data:${mime};base64,${btoa(binary)}`;
             if (isImg && !previewUrl) previewUrl = rawContent;

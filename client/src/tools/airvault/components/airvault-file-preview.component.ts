@@ -97,42 +97,15 @@ export interface ArchiveFileEntry {
         </div>
       }
 
-      <!-- 2. VIDEOS (MP4, WEBM, MOV, MKV) -->
+      <!-- 2. VIDEOS (Metadata representation, no streaming/playback) -->
       @else if (resolvedCategory() === 'video') {
         <div class="preview-stage-container video-stage center-flex">
-          @if (mediaLoadError() || (!resolvedMediaStreamUrl() && !resolvedObjectUrl() && !item().content.raw && !item().content.previewUrl)) {
-            <div class="media-not-found-card" [style.transform]="'scale(' + zoomLevel() + ')'">
-              <div class="not-found-icon-halo">
-                <app-icon name="video-off" class="icon-lg text-red"></app-icon>
-              </div>
-              <h4 class="not-found-title">Video Stream Unavailable</h4>
-              <span class="not-found-filename">{{ item().content.filename || 'Video' }}</span>
-              <p class="not-found-desc">
-                Unable to play this video stream or the media file is not found locally.
-              </p>
-              <div class="not-found-actions">
-                <button type="button" class="not-found-btn" (click)="retryLoad()">
-                  <app-icon name="rotate-ccw" class="icon-xs"></app-icon>
-                  <span>Retry Loading</span>
-                </button>
-              </div>
-            </div>
-          } @else {
-            <video #videoElementRef 
-                   [src]="resolvedMediaStreamUrl() || resolvedObjectUrl() || item().content.raw || item().content.previewUrl" 
-                   preload="metadata"
-                   controls autoplay 
-                   class="stage-video" 
-                   [style.transform]="'scale(' + zoomLevel() + ')'"
-                   (loadedmetadata)="onMediaLoadedMetadata($event, 'video')"
-                   (progress)="onMediaProgress($event, 'video')"
-                   (play)="onMediaPlay('video')"
-                   (pause)="playingChange.emit(false)"
-                   (volumechange)="onVolumeChange()"
-                   (error)="onMediaError()">
-              Your browser does not support the video tag.
-            </video>
-          }
+          <div class="generic-meta-card" [style.transform]="'scale(' + zoomLevel() + ')'">
+            <div class="meta-icon-box video-accent"><app-icon name="film" class="icon-lg"></app-icon></div>
+            <span class="meta-file-title">@for (part of getHighlightParts(item().content.filename || 'Video Resource', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
+            <span class="meta-file-details">{{ formatBytes(item().content.byteSize) }} · Video Resource</span>
+            <p class="meta-desc">Video resource stored securely. Ready for download or transfer across devices.</p>
+          </div>
         </div>
       }
 
@@ -186,7 +159,7 @@ export interface ArchiveFileEntry {
                   <tr>
                     <th class="row-num-th">#</th>
                     @for (col of csvHeaders(); track $index) {
-                      <th>{{ col }}</th>
+                      <th>@for (part of getHighlightParts(col, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</th>
                     }
                   </tr>
                 </thead>
@@ -195,7 +168,7 @@ export interface ArchiveFileEntry {
                     <tr>
                       <td class="row-num-td">{{ $index + 1 }}</td>
                       @for (cell of row; track $index) {
-                        <td>@for (part of getHighlightParts(cell, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</td>
+                        <td>@for (part of getHighlightParts(cell, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</td>
                       }
                     </tr>
                   }
@@ -205,8 +178,8 @@ export interface ArchiveFileEntry {
                 <div class="spreadsheet-footer-notice">
                   <span>Showing {{ csvRows().length }} of {{ totalCsvRows() }} rows (auto-loads as you scroll).</span>
                   <div class="progressive-actions-row">
-                    <button type="button" class="progressive-load-btn" (click)="loadMoreCsvRows()">Load next 100</button>
-                    <button type="button" class="progressive-load-btn secondary" (click)="loadAllCsvRows()">Load all ({{ totalCsvRows() }})</button>
+                    <button type="button" class="progressive-load-btn" (click)="loadMoreCsvRows()" data-tooltip="Load next 100 rows into table" aria-label="Load next 100 rows">Load next 100</button>
+                    <button type="button" class="progressive-load-btn secondary" (click)="loadAllCsvRows()" data-tooltip="Load all remaining rows" aria-label="Load all rows">Load all ({{ totalCsvRows() }})</button>
                   </div>
                 </div>
               }
@@ -214,7 +187,7 @@ export interface ArchiveFileEntry {
           } @else {
             <div class="generic-meta-card" [style.transform]="'scale(' + zoomLevel() + ')'">
               <div class="meta-icon-box excel-accent"><app-icon name="table" class="icon-lg"></app-icon></div>
-              <span class="meta-file-title">@for (part of getHighlightParts(item().content.filename || 'Spreadsheet', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
+              <span class="meta-file-title">@for (part of getHighlightParts(item().content.filename || 'Spreadsheet', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
               <span class="meta-file-details">{{ formatBytes(item().content.byteSize) }} · Microsoft Excel Spreadsheet</span>
               <p class="meta-desc">Binary spreadsheet files can be viewed by downloading to Excel, Numbers, or Google Sheets.</p>
             </div>
@@ -235,7 +208,7 @@ export interface ArchiveFileEntry {
                 @for (entry of zipEntries(); track entry.name) {
                   <div class="archive-entry-row">
                     <app-icon [name]="entry.dir ? 'folder' : 'file'" class="icon-xs entry-icon"></app-icon>
-                    <span class="entry-name">@for (part of getHighlightParts(entry.name, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
+                    <span class="entry-name">@for (part of getHighlightParts(entry.name, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
                     @if (!entry.dir) {
                       <span class="entry-size">{{ formatBytes(entry.size) }}</span>
                     }
@@ -246,7 +219,7 @@ export interface ArchiveFileEntry {
           } @else {
             <div class="generic-meta-card" [style.transform]="'scale(' + zoomLevel() + ')'">
               <div class="meta-icon-box archive-accent"><app-icon name="archive" class="icon-lg"></app-icon></div>
-              <span class="meta-file-title">@for (part of getHighlightParts(item().content.filename || 'Compressed Archive', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
+              <span class="meta-file-title">@for (part of getHighlightParts(item().content.filename || 'Compressed Archive', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
               <span class="meta-file-details">{{ formatBytes(item().content.byteSize) }} · Compressed Archive</span>
               <p class="meta-desc">Encrypted archive package. Click Download to extract on your machine.</p>
             </div>
@@ -259,7 +232,7 @@ export interface ArchiveFileEntry {
         <div class="preview-stage-container font-stage center-flex" [style.transform]="'scale(' + zoomLevel() + ')'">
           <div class="font-specimen-card" [style.font-family]="fontFamilyName()">
             <div class="specimen-header">
-              <span class="specimen-name">@for (part of getHighlightParts(item().content.filename || 'Typography Specimen', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
+              <span class="specimen-name">@for (part of getHighlightParts(item().content.filename || 'Typography Specimen', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
               <span class="specimen-meta">{{ formatBytes(item().content.byteSize) }} · Typeface</span>
             </div>
             <div class="specimen-alphabet">
@@ -293,7 +266,7 @@ export interface ArchiveFileEntry {
       <!-- 9. CODE & JSON -->
       @else if (resolvedCategory() === 'code' || resolvedCategory() === 'json') {
         <div class="preview-stage-container code-stage" (scroll)="onTextScroll($event)">
-          <pre class="stage-code-pre" [class.nowrap-pre]="!isWrapped()" [style.font-size.px]="13 * zoomLevel()"><code>@for (part of getHighlightParts(textPreview(), searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</code></pre>
+          <pre class="stage-code-pre" [class.nowrap-pre]="!isWrapped()" [style.font-size.px]="13 * zoomLevel()"><code>@for (part of getHighlightParts(textPreview(), searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</code></pre>
           @if (hasMoreText()) {
             <div class="progressive-chunk-bar">
               <span class="progressive-chunk-info">Showing first {{ (renderedTextLength() / 1000).toFixed(0) }} KB of {{ (totalTextLength() / 1000).toFixed(0) }} KB (auto-loads as you scroll)</span>
@@ -311,7 +284,7 @@ export interface ArchiveFileEntry {
         <div class="preview-stage-container url-stage center-flex" [style.transform]="'scale(' + zoomLevel() + ')'">
           <div class="url-card">
             <app-icon name="link" class="icon-lg url-icon"></app-icon>
-            <a [href]="item().content.raw" target="_blank" rel="noopener noreferrer" class="url-text">@for (part of getHighlightParts(item().content.raw, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</a>
+            <a [href]="item().content.raw" target="_blank" rel="noopener noreferrer" class="url-text">@for (part of getHighlightParts(item().content.raw, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</a>
             <a [href]="item().content.raw" target="_blank" rel="noopener noreferrer" class="av-btn-primary url-btn">
               <span>Open in New Tab</span>
               <app-icon name="external-link" class="icon-xs"></app-icon>
@@ -337,7 +310,7 @@ export interface ArchiveFileEntry {
           } @else {
             <div class="generic-meta-card" [style.transform]="'scale(' + zoomLevel() + ')'">
               <div class="meta-icon-box" [style.color]="getCategoryColor()"><app-icon [name]="getCategoryIcon()" class="icon-lg"></app-icon></div>
-              <span class="meta-file-title">@for (part of getHighlightParts(item().content.filename || 'Attached File', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
+              <span class="meta-file-title">@for (part of getHighlightParts(item().content.filename || 'Attached File', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
               <span class="meta-file-details">{{ formatBytes(item().content.byteSize) }} · {{ getCategoryLabel() }}</span>
               <p class="meta-desc">Encrypted zero-knowledge file. Ready to download with full binary fidelity.</p>
             </div>
@@ -375,9 +348,8 @@ export interface ArchiveFileEntry {
     .image-stage { background: var(--av-bg-canvas, #09090b); }
     .stage-img { max-width: 100%; max-height: 72vh; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
 
-    /* Videos */
-    .video-stage { background: var(--av-bg-canvas, #09090b); }
-    .stage-video { max-width: 100%; max-height: 72vh; border-radius: 6px; outline: none; }
+    /* Videos (Metadata representation) */
+    .video-stage { background: var(--av-surface-primary); }
 
     /* Audio */
     .audio-stage { background: var(--av-surface-primary); }
@@ -537,6 +509,7 @@ export interface ArchiveFileEntry {
     .meta-icon-box { width: 68px; height: 68px; border-radius: 16px; background: var(--av-surface-primary); border: 1px solid var(--av-border); display: flex; align-items: center; justify-content: center; }
     .excel-accent { color: #10B981; background: rgba(16, 185, 129, 0.1); }
     .archive-accent { color: #06B6D4; background: rgba(6, 182, 212, 0.1); }
+    .video-accent { color: #F43F5E; background: rgba(244, 63, 94, 0.1); }
     .meta-file-title { font-size: 16px; font-weight: 600; color: var(--av-text-primary); word-break: break-all; }
     .meta-file-details { font-size: 12.5px; color: var(--av-text-muted); }
     .meta-desc { font-size: 12px; color: var(--av-text-faint); margin-top: 4px; line-height: 1.4; }
@@ -752,7 +725,6 @@ export class AirVaultFilePreviewComponent {
   private storageService = inject(AirVaultStorageService);
   uiStore = inject(AirVaultUIStore);
 
-  @ViewChild('videoElementRef') videoElementRef?: ElementRef<HTMLVideoElement>;
   @ViewChild('audioElementRef') audioElementRef?: ElementRef<HTMLAudioElement>;
 
   item = input.required<AirVaultItem>();
@@ -771,10 +743,12 @@ export class AirVaultFilePreviewComponent {
 
   searchHighlightQuery = computed(() => this.uiStore.searchHighlightQuery());
 
-  getHighlightParts(text: string, query: string): { text: string; isMatch: boolean }[] {
+  activeMatchIndex = computed(() => this.uiStore.activeMatchIndex());
+
+  getHighlightParts(text: string, query: string): { text: string; isMatch: boolean; isCurrent: boolean }[] {
     if (!text) return [];
     const q = query ? query.trim() : '';
-    if (!q) return [{ text, isMatch: false }];
+    if (!q) return [{ text, isMatch: false, isCurrent: false }];
 
     let pattern: RegExp;
     if (q.length <= 2) {
@@ -784,10 +758,22 @@ export class AirVaultFilePreviewComponent {
     }
 
     const parts = text.split(pattern);
-    return parts.filter(p => p.length > 0).map(part => ({
-      text: part,
-      isMatch: part.toLowerCase() === q.toLowerCase()
-    }));
+    const activeIdx = this.activeMatchIndex();
+    let matchCounter = 0;
+
+    return parts.filter(p => p.length > 0).map(part => {
+      const isMatch = part.toLowerCase() === q.toLowerCase();
+      let isCurrent = false;
+      if (isMatch) {
+        isCurrent = matchCounter === activeIdx;
+        matchCounter++;
+      }
+      return {
+        text: part,
+        isMatch,
+        isCurrent
+      };
+    });
   }
 
   maxPreviewRows = 100;
@@ -806,7 +792,7 @@ export class AirVaultFilePreviewComponent {
   resolvedMediaStreamUrl = computed<string | null>(() => {
     const it = this.item();
     const cat = this.resolvedCategory();
-    if (cat === 'video' || cat === 'audio' || cat === 'pdf') {
+    if (cat === 'audio' || cat === 'pdf') {
       if (it.id && !it.id.startsWith('local_')) {
         return getAirVaultApiUrl(`/api/v1/airvault/clipboards/default/files/${it.id}/raw`);
       }
@@ -821,61 +807,41 @@ export class AirVaultFilePreviewComponent {
   });
 
   togglePlay() {
-    const v = this.videoElementRef?.nativeElement;
     const a = this.audioElementRef?.nativeElement;
-    if (v) {
-      if (v.paused) v.play();
-      else v.pause();
-    } else if (a) {
+    if (a) {
       if (a.paused) a.play();
       else a.pause();
     }
   }
 
   toggleMute() {
-    const v = this.videoElementRef?.nativeElement;
     const a = this.audioElementRef?.nativeElement;
-    if (v) {
-      v.muted = !v.muted;
-      this.mutedChange.emit(v.muted);
-    } else if (a) {
+    if (a) {
       a.muted = !a.muted;
       this.mutedChange.emit(a.muted);
     }
   }
 
-  toggleFullscreen() {
-    const v = this.videoElementRef?.nativeElement;
-    if (v) {
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      } else {
-        v.requestFullscreen().catch(() => {});
-      }
-    }
-  }
-
   onVolumeChange() {
-    const v = this.videoElementRef?.nativeElement;
     const a = this.audioElementRef?.nativeElement;
-    const muted = v ? v.muted : (a ? a.muted : false);
+    const muted = a ? a.muted : false;
     this.mutedChange.emit(muted);
   }
 
-  onMediaPlay(type: 'video' | 'audio') {
+  onMediaPlay(type: 'audio') {
     this.playingChange.emit(true);
     const streamUrl = this.resolvedMediaStreamUrl() || this.resolvedObjectUrl();
     AirVaultLogger.info(`[AirVault Stream] 🎬 Progressive playback started for ${type}: "${this.item().content.filename || 'media'}" | Stream: ${streamUrl}`);
   }
 
-  onMediaLoadedMetadata(event: Event, type: 'video' | 'audio') {
+  onMediaLoadedMetadata(event: Event, type: 'audio') {
     const el = event.target as HTMLMediaElement;
     if (el) {
       AirVaultLogger.info(`[AirVault Stream] ⚡ [METADATA_LOADED] ${type}: "${this.item().content.filename || 'media'}" | Duration: ${el.duration?.toFixed(1)}s | State: ready`);
     }
   }
 
-  onMediaProgress(event: Event, type: 'video' | 'audio') {
+  onMediaProgress(event: Event, type: 'audio') {
     const el = event.target as HTMLMediaElement;
     if (el && el.buffered.length > 0) {
       const end = el.buffered.end(el.buffered.length - 1);
@@ -972,11 +938,13 @@ export class AirVaultFilePreviewComponent {
     const raw = this.textPreview();
     if (!raw) return '';
     const cat = this.resolvedCategory();
+    const q = this.searchHighlightQuery();
+    const activeIdx = this.activeMatchIndex();
     let safeHtml: string;
     if (cat === 'markdown') {
-      safeHtml = renderMarkdownToSafeHtml(raw, false);
+      safeHtml = renderMarkdownToSafeHtml(raw, false, q, activeIdx);
     } else {
-      safeHtml = renderPlainTextToSafeHtml(raw);
+      safeHtml = renderPlainTextToSafeHtml(raw, q, activeIdx);
     }
     return this.sanitizer.bypassSecurityTrustHtml(safeHtml);
   });
@@ -990,12 +958,6 @@ export class AirVaultFilePreviewComponent {
 
       // Reset media load error on item change
       this.mediaLoadError.set(false);
-
-      // Clean up previous blob URL if needed
-      if (this.activePayloadObjectUrl && this.activePayloadObjectUrl.startsWith('blob:') && this.activePayloadObjectUrl !== this.resolvedObjectUrl()) {
-        try { URL.revokeObjectURL(this.activePayloadObjectUrl); } catch {}
-        this.activePayloadObjectUrl = null;
-      }
 
       // Check LRU cache first synchronously for instantaneous full-resolution display
       const cached = this.storageService.resourceCache.get(it.id);
@@ -1023,7 +985,16 @@ export class AirVaultFilePreviewComponent {
           this.loadPdfBlob(directRaw);
         }
       } else {
-        // Asynchronously fetch full original binary from IndexedDB or backend stream
+        // For audio, if we have a resolved media streaming endpoint URL,
+        // we allow the browser's native <audio> element to stream progressively with Range requests.
+        // We do NOT eagerly fetch the entire 100MB+ binary file into memory as a Blob!
+        if (cat === 'audio' && this.resolvedMediaStreamUrl()) {
+          this.isLoadingPayload.set(false);
+          this.isPreparingFile.set(false);
+          return;
+        }
+
+        // Asynchronously fetch full original binary from IndexedDB or backend stream for non-streamed items (images, PDFs, spreadsheets, archives, fonts)
         this.isLoadingPayload.set(true);
         if (this.preparingTimer) clearTimeout(this.preparingTimer);
         // Only show "Preparing your file…" if retrieval/decompression takes longer than 400ms
@@ -1253,13 +1224,39 @@ export class AirVaultFilePreviewComponent {
     }
   }
 
-  onMediaError() {
+  onMediaError(event?: Event) {
+    const it = this.item();
+    const streamUrl = this.resolvedMediaStreamUrl();
+    const objectUrl = this.resolvedObjectUrl();
+    const audioEl = this.audioElementRef?.nativeElement;
+    const mediaErr = audioEl?.error;
+
+    // Ignore user seek / abort errors (code 1 = MEDIA_ERR_ABORTED)
+    if (mediaErr && mediaErr.code === 1) {
+      console.debug('[AirVault Preview] ℹ️ Media request aborted (user seeked or switched stream)');
+      return;
+    }
+
+    console.error('[AirVault Preview] ❌ Media load error occurred for item:', {
+      id: it.id,
+      filename: it.content.filename,
+      category: it.content.category,
+      resolvedCategory: this.resolvedCategory(),
+      streamUrl: streamUrl,
+      objectUrl: objectUrl,
+      rawPrefix: it.content.raw ? it.content.raw.substring(0, 50) + '...' : null,
+      previewUrl: it.content.previewUrl,
+      mediaErrorCode: mediaErr ? mediaErr.code : null, // 1: MEDIA_ERR_ABORTED, 2: MEDIA_ERR_NETWORK, 3: MEDIA_ERR_DECODE, 4: MEDIA_ERR_SRC_NOT_SUPPORTED
+      mediaErrorMessage: mediaErr ? mediaErr.message : null,
+      domEvent: event
+    });
     this.mediaLoadError.set(true);
   }
 
   retryLoad() {
-    this.mediaLoadError.set(false);
     const it = this.item();
+    console.log('[AirVault Preview] 🔄 Retrying load for item:', it.id, it.content.filename);
+    this.mediaLoadError.set(false);
     this.isLoadingPayload.set(true);
     if (this.preparingTimer) clearTimeout(this.preparingTimer);
     this.preparingTimer = setTimeout(() => {
@@ -1294,6 +1291,7 @@ export class AirVaultFilePreviewComponent {
 
   getCategoryIcon(): string {
     const filename = (this.item().content.filename || '').toLowerCase();
+    if (/\.(mp4|webm|mov|mkv|avi|m4v)$/i.test(filename)) return 'film';
     if (/\.(doc|docx|pages)$/i.test(filename)) return 'file-text';
     if (/\.(ppt|pptx|key)$/i.test(filename)) return 'presentation';
     if (/\.(psd|ai|fig|sketch|xd)$/i.test(filename)) return 'palette';
@@ -1304,6 +1302,7 @@ export class AirVaultFilePreviewComponent {
 
   getCategoryColor(): string {
     const filename = (this.item().content.filename || '').toLowerCase();
+    if (/\.(mp4|webm|mov|mkv|avi|m4v)$/i.test(filename)) return '#F43F5E';
     if (/\.(doc|docx)$/i.test(filename)) return '#2563EB';
     if (/\.(ppt|pptx)$/i.test(filename)) return '#EA580C';
     if (/\.(psd|ai|fig|sketch|xd)$/i.test(filename)) return '#EC4899';
@@ -1314,6 +1313,7 @@ export class AirVaultFilePreviewComponent {
 
   getCategoryLabel(): string {
     const filename = (this.item().content.filename || '').toLowerCase();
+    if (/\.(mp4|webm|mov|mkv|avi|m4v)$/i.test(filename)) return 'Video Resource';
     if (/\.(doc|docx)$/i.test(filename)) return 'Word Document';
     if (/\.(ppt|pptx)$/i.test(filename)) return 'Presentation';
     if (/\.(psd|ai|fig|sketch|xd)$/i.test(filename)) return 'Design Document';
@@ -1329,17 +1329,11 @@ export class AirVaultFilePreviewComponent {
   }
 
   ngOnDestroy() {
-    const url = this.pdfBlobUrl();
-    if (url && url.startsWith('blob:')) {
-      try {
-        URL.revokeObjectURL(url);
-      } catch {}
-    }
-    if (this.activePayloadObjectUrl && this.activePayloadObjectUrl.startsWith('blob:')) {
-      try {
-        URL.revokeObjectURL(this.activePayloadObjectUrl);
-      } catch {}
-      this.activePayloadObjectUrl = null;
+    // Note: Do NOT revoke activePayloadObjectUrl here as it may be managed and shared across
+    // modal sessions by AirVaultResourceCacheService. Revocation is handled strictly on cache eviction or resource deletion.
+    if (this.preparingTimer) {
+      clearTimeout(this.preparingTimer);
+      this.preparingTimer = null;
     }
   }
 }

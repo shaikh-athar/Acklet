@@ -18,21 +18,35 @@ import { AirVaultDeviceService } from '../services/airvault-device.service';
             <app-icon name="trash-2" class="icon-md" style="color: #EF4444;"></app-icon>
           </div>
           <h2 class="delete-title">
-            {{ isOwner() && activePeerCount() > 0 ? 'Delete Shared Resource?' : 'Delete Resource?' }}
+            @if (isMultiSelect()) {
+              {{ isAllOwner() && activePeerCount() > 0 ? 'Delete ' + resourceCount() + ' Shared Resources?' : isAllOwner() ? 'Delete ' + resourceCount() + ' Resources?' : 'Remove ' + resourceCount() + ' Resources?' }}
+            } @else {
+              {{ isOwner() && activePeerCount() > 0 ? 'Delete Shared Resource?' : isOwner() ? 'Delete Resource?' : 'Remove Resource?' }}
+            }
           </h2>
           <p class="delete-subtitle">
-            @if (isOwner() && activePeerCount() > 0) {
-              Choose whether to erase this resource across all connected paired devices or remove it only from this device.
-            } @else if (!isOwner()) {
-              Remove this shared resource from this device. It will remain active on other paired devices.
+            @if (isMultiSelect()) {
+              @if (isAllOwner() && activePeerCount() > 0) {
+                Choose whether to erase these {{ resourceCount() }} resources across all connected paired devices or remove them only from this device.
+              } @else if (isAnyNonOwner()) {
+                Remove {{ resourceCount() }} resources from your device. Non-owned resources will be persistently suppressed without affecting the authors' copies.
+              } @else {
+                Remove these {{ resourceCount() }} items from your active clipboard. They will remain in 30-day Restorable History.
+              }
             } @else {
-              Remove this content from your active clipboard. It will remain in 30-day Restorable History.
+              @if (isOwner() && activePeerCount() > 0) {
+                Choose whether to erase this resource across all connected paired devices or remove it only from this device.
+              } @else if (!isOwner()) {
+                Remove this shared resource from your device. It will remain active on the author's device.
+              } @else {
+                Remove this content from your active clipboard. It will remain in 30-day Restorable History.
+              }
             }
           </p>
         </div>
 
-        <!-- Resource Preview Snippet -->
-        @if (item(); as it) {
+        <!-- Resource Preview Snippet (Single) -->
+        @if (!isMultiSelect() && item(); as it) {
           <div class="resource-preview-card">
             <div class="resource-pill">
               <app-icon [name]="getCategoryIcon(it.content?.category || 'text')" class="icon-xs text-accent"></app-icon>
@@ -50,11 +64,25 @@ import { AirVaultDeviceService } from '../services/airvault-device.service';
           </div>
         }
 
+        <!-- Resources Summary Snippet (Multi-Select) -->
+        @if (isMultiSelect()) {
+          <div class="resource-preview-card">
+            <div class="resource-pill">
+              <app-icon name="layers" class="icon-xs text-accent"></app-icon>
+              <span>{{ resourceCount() }} ITEMS</span>
+            </div>
+            <div class="resource-info">
+              <span class="resource-title">{{ multiSummaryTitle() }}</span>
+              <span class="resource-meta">{{ formatBytes(totalMultiBytes()) }} total</span>
+            </div>
+          </div>
+        }
+
         <!-- Actions -->
         <div class="delete-modal-actions">
-          @if (isOwner() && activePeerCount() > 0) {
+          @if (isAllOwner() && activePeerCount() > 0) {
             <!-- Multi-choice for owner when paired peers exist -->
-            <button class="delete-choice-btn danger-choice" (click)="deleteGlobal.emit(item()!.id)">
+            <button class="delete-choice-btn danger-choice" (click)="deleteGlobal.emit(targetIdOrEmpty())">
               <div class="choice-icon-wrap danger-bg">
                 <app-icon name="network" class="icon-sm" style="color: #EF4444;"></app-icon>
               </div>
@@ -64,34 +92,34 @@ import { AirVaultDeviceService } from '../services/airvault-device.service';
               </div>
             </button>
 
-            <button class="delete-choice-btn neutral-choice" (click)="deleteLocal.emit(item()!.id)">
+            <button class="delete-choice-btn neutral-choice" (click)="deleteLocal.emit(targetIdOrEmpty())">
               <div class="choice-icon-wrap neutral-bg">
                 <app-icon name="laptop" class="icon-sm text-muted"></app-icon>
               </div>
               <div class="choice-text-col">
-                <span class="choice-heading">Remove from This Device Only</span>
-                <span class="choice-desc">Keeps the resource active on other paired devices.</span>
+                <span class="choice-heading">Remove from my device</span>
+                <span class="choice-desc">Keeps the resources active on other paired devices.</span>
               </div>
             </button>
-          } @else if (!isOwner()) {
-            <!-- Non-owner with shared resource: can only remove from this device -->
-            <button class="delete-choice-btn neutral-choice" (click)="deleteLocal.emit(item()!.id)">
+          } @else if (isAnyNonOwner() || !isOwner()) {
+            <!-- Non-owner or mixed resources: can remove from this device -->
+            <button class="delete-choice-btn neutral-choice" (click)="deleteLocal.emit(targetIdOrEmpty())">
               <div class="choice-icon-wrap neutral-bg">
                 <app-icon name="laptop" class="icon-sm text-muted"></app-icon>
               </div>
               <div class="choice-text-col">
-                <span class="choice-heading">Remove from This Device Only</span>
-                <span class="choice-desc">Keeps the resource active on the author's and other paired devices.</span>
+                <span class="choice-heading">Remove from my device</span>
+                <span class="choice-desc">Removes {{ isMultiSelect() ? 'these resources' : 'this resource' }} from your device only without affecting other copies.</span>
               </div>
             </button>
           } @else {
-            <!-- Standard single remove when owner but no other active peers -->
-            <button class="delete-choice-btn danger-choice" (click)="deleteGlobal.emit(item()!.id)">
+            <!-- Standard single or multi remove when owner but no other active peers -->
+            <button class="delete-choice-btn danger-choice" (click)="deleteGlobal.emit(targetIdOrEmpty())">
               <div class="choice-icon-wrap danger-bg">
                 <app-icon name="trash-2" class="icon-sm" style="color: #EF4444;"></app-icon>
               </div>
               <div class="choice-text-col">
-                <span class="choice-heading">Delete Resource</span>
+                <span class="choice-heading">{{ isMultiSelect() ? 'Delete ' + resourceCount() + ' Resources' : 'Delete Resource' }}</span>
                 <span class="choice-desc">Moves into 30-day Restorable History.</span>
               </div>
             </button>
@@ -314,6 +342,7 @@ import { AirVaultDeviceService } from '../services/airvault-device.service';
 })
 export class AirVaultDeleteConfirmModalComponent {
   item = input<AirVaultItem | null>(null);
+  items = input<AirVaultItem[] | null>(null);
 
   deleteGlobal = output<string>();
   deleteLocal = output<string>();
@@ -321,9 +350,43 @@ export class AirVaultDeleteConfirmModalComponent {
 
   private deviceService = inject(AirVaultDeviceService);
 
-  isOwner = computed(() => {
-    const it = this.item();
-    if (!it) return true;
+  isMultiSelect = computed(() => {
+    const list = this.items();
+    return !!(list && list.length > 1);
+  });
+
+  effectiveItems = computed<AirVaultItem[]>(() => {
+    const list = this.items();
+    if (list && list.length > 0) return list;
+    const single = this.item();
+    return single ? [single] : [];
+  });
+
+  resourceCount = computed(() => {
+    return this.effectiveItems().length;
+  });
+
+  totalMultiBytes = computed(() => {
+    return this.effectiveItems().reduce((acc, it) => acc + (it.content?.byteSize || 0), 0);
+  });
+
+  multiSummaryTitle = computed(() => {
+    const list = this.effectiveItems();
+    if (list.length === 0) return 'Selected resources';
+    if (list.length === 1) return list[0].content?.filename || list[0].content?.raw || '1 resource';
+    const firstTitle = list[0].content?.filename || list[0].content?.category || 'Item';
+    return `${firstTitle} and ${list.length - 1} other resource${list.length > 2 ? 's' : ''}`;
+  });
+
+  targetIdOrEmpty = computed(() => {
+    const single = this.item();
+    if (single) return single.id;
+    const list = this.items();
+    if (list && list.length === 1) return list[0].id;
+    return '';
+  });
+
+  private checkItemOwnership(it: AirVaultItem): boolean {
     const curDev = this.deviceService.currentDevice();
     const isSelf = !it.originDeviceId || it.originDeviceId === curDev.id || it.senderDeviceId === curDev.id;
     if (isSelf) return true;
@@ -335,6 +398,24 @@ export class AirVaultDeleteConfirmModalComponent {
       return true;
     }
     return false;
+  }
+
+  isOwner = computed(() => {
+    const it = this.item();
+    if (!it) return true;
+    return this.checkItemOwnership(it);
+  });
+
+  isAllOwner = computed(() => {
+    const list = this.effectiveItems();
+    if (list.length === 0) return true;
+    return list.every(i => this.checkItemOwnership(i));
+  });
+
+  isAnyNonOwner = computed(() => {
+    const list = this.effectiveItems();
+    if (list.length === 0) return false;
+    return list.some(i => !this.checkItemOwnership(i));
   });
 
   activePeerCount = computed(() => {

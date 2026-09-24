@@ -13,6 +13,7 @@ import { AirVaultSyncService } from '../services/airvault-sync.service';
 import { detectUrlsAsync, isValidHttpUrl, normalizeUrlForNavigation, formatDisplayUrl, DetectedUrlSpan } from '../services/airvault-url-detector';
 import { renderMarkdownToSafeHtml, renderPlainTextToSafeHtml, looksLikeMarkdown } from '../services/airvault-markdown.util';
 import { AirVaultActionPopoverComponent } from './airvault-action-popover.component';
+import { AirVaultQuickActionsService } from '../services/airvault-quick-actions.service';
 import { Subscription } from 'rxjs';
 
 interface TextSegment {
@@ -33,6 +34,7 @@ interface TextSegment {
       [class.av-card-pinned]="item().isPinned"
       [class.av-card-batch]="item().isBatchParent"
       [class.av-card-batch-expanded]="isBatchExpanded()"
+      [class.av-card-exiting]="isExiting()"
       [class.is-self]="isCurrentDevice()"
       [style.--device-accent]="getAuthorColor()"
       [attr.data-category]="item().content.category"
@@ -79,7 +81,7 @@ interface TextSegment {
               (click)="onTogglePin($event)" [attr.data-tooltip]="item().isPinned ? 'Unpin item' : 'Pin item'">
               <app-icon name="pin" class="icon-xs"></app-icon>
             </button>
-            <button class="card-action-btn card-action-danger" (click)="onDelete($event)" aria-label="Delete item" data-tooltip="Delete item">
+            <button class="card-action-btn card-action-danger" (click)="onDelete($event)" [attr.aria-label]="isCurrentDevice() ? 'Delete item' : 'Remove from my device'" [attr.data-tooltip]="isCurrentDevice() ? 'Delete item' : 'Remove from my device'">
               <app-icon name="trash-2" class="icon-xs"></app-icon>
             </button>
           </div>
@@ -164,20 +166,24 @@ interface TextSegment {
                       <span class="subfile-meta">{{ formatBytes(subFile.content.byteSize) }}</span>
                     </div>
 
-                    <!-- Per-file Status / Actions -->
+                    <!-- Per-file Status / Actions (Capability-Driven) -->
                     <div class="subfile-actions">
                       @if (subFile.processingState === 'failed') {
-                        <button class="subfile-btn retry" (click)="onRetryBatchFile(subFile, $event)" data-tooltip="Retry upload" aria-label="Retry upload">
+                        <button class="subfile-btn retry" (click)="onRetryBatchFile(subFile, $event)" aria-label="Retry upload">
                           <app-icon name="rotate-cw" class="icon-xs text-amber"></app-icon>
                         </button>
                       }
-                      <button class="subfile-btn" (click)="onCopySingleSubFile(subFile, $event)" data-tooltip="Copy" aria-label="Copy file">
-                        <app-icon name="copy" class="icon-xs"></app-icon>
-                      </button>
-                      <button class="subfile-btn" (click)="onDownloadSingleSubFile(subFile, $event)" data-tooltip="Download" aria-label="Download">
-                        <app-icon name="download" class="icon-xs"></app-icon>
-                      </button>
-                      <button class="subfile-btn danger" (click)="onDeleteSubFile(subFile, $event)" data-tooltip="Delete file" aria-label="Delete file">
+                      @if (getSubFileCapabilities(subFile).canCopy) {
+                        <button class="subfile-btn" (click)="onCopySingleSubFile(subFile, $event)" aria-label="Copy file">
+                          <app-icon name="copy" class="icon-xs"></app-icon>
+                        </button>
+                      }
+                      @if (getSubFileCapabilities(subFile).canDownload) {
+                        <button class="subfile-btn" (click)="onDownloadSingleSubFile(subFile, $event)" aria-label="Download">
+                          <app-icon name="download" class="icon-xs"></app-icon>
+                        </button>
+                      }
+                      <button class="subfile-btn danger" (click)="onDeleteSubFile(subFile, $event)" aria-label="Delete file">
                         <app-icon name="trash-2" class="icon-xs"></app-icon>
                       </button>
                     </div>
@@ -261,7 +267,7 @@ interface TextSegment {
               <div class="preview-surface file-surface">
                 <div class="file-type-icon video-icon"><app-icon name="film" class="icon-sm"></app-icon></div>
                 <div class="file-info">
-                  <span class="filename">@for (part of getHighlightParts(item().content.filename || 'Video Attachment', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
+                  <span class="filename">@for (part of getHighlightParts(item().content.filename || 'Video Attachment', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
                   <span class="filesize">{{ formatBytes(item().content.byteSize) }}</span>
                 </div>
               </div>
@@ -270,7 +276,7 @@ interface TextSegment {
               <div class="preview-surface file-surface">
                 <div class="file-type-icon audio-icon"><app-icon name="music" class="icon-sm"></app-icon></div>
                 <div class="file-info">
-                  <span class="filename">@for (part of getHighlightParts(item().content.filename || 'Audio Track', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
+                  <span class="filename">@for (part of getHighlightParts(item().content.filename || 'Audio Track', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
                   <span class="filesize">{{ formatBytes(item().content.byteSize) }}</span>
                 </div>
               </div>
@@ -279,7 +285,7 @@ interface TextSegment {
               <div class="preview-surface file-surface">
                 <div class="file-type-icon pdf-icon"><app-icon name="file-text" class="icon-sm"></app-icon></div>
                 <div class="file-info">
-                  <span class="filename">@for (part of getHighlightParts(item().content.filename || 'PDF Document', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
+                  <span class="filename">@for (part of getHighlightParts(item().content.filename || 'PDF Document', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
                   <span class="filesize">{{ formatBytes(item().content.byteSize) }}</span>
                 </div>
               </div>
@@ -288,7 +294,7 @@ interface TextSegment {
               <div class="preview-surface file-surface">
                 <div class="file-type-icon excel-icon"><app-icon name="table" class="icon-sm"></app-icon></div>
                 <div class="file-info">
-                  <span class="filename">@for (part of getHighlightParts(item().content.filename || 'Spreadsheet', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
+                  <span class="filename">@for (part of getHighlightParts(item().content.filename || 'Spreadsheet', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
                   <span class="filesize">{{ formatBytes(item().content.byteSize) }}</span>
                 </div>
               </div>
@@ -297,7 +303,7 @@ interface TextSegment {
               <div class="preview-surface file-surface">
                 <div class="file-type-icon archive-icon"><app-icon name="folder-archive" class="icon-sm"></app-icon></div>
                 <div class="file-info">
-                  <span class="filename">@for (part of getHighlightParts(item().content.filename || 'Archive Package', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
+                  <span class="filename">@for (part of getHighlightParts(item().content.filename || 'Archive Package', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
                   <span class="filesize">{{ formatBytes(item().content.byteSize) }}</span>
                 </div>
               </div>
@@ -306,7 +312,7 @@ interface TextSegment {
               <div class="preview-surface file-surface">
                 <div class="file-type-icon font-icon"><app-icon name="type" class="icon-sm"></app-icon></div>
                 <div class="file-info">
-                  <span class="filename">@for (part of getHighlightParts(item().content.filename || 'Typeface Font', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
+                  <span class="filename">@for (part of getHighlightParts(item().content.filename || 'Typeface Font', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
                   <span class="filesize">{{ formatBytes(item().content.byteSize) }}</span>
                 </div>
               </div>
@@ -315,7 +321,7 @@ interface TextSegment {
               <div class="preview-surface file-surface">
                 <div class="file-type-icon doc-icon"><app-icon name="file-text" class="icon-sm"></app-icon></div>
                 <div class="file-info">
-                  <span class="filename">@for (part of getHighlightParts(item().content.filename || 'File attachment', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
+                  <span class="filename">@for (part of getHighlightParts(item().content.filename || 'File attachment', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
                   <span class="filesize">{{ formatBytes(item().content.byteSize) }}</span>
                 </div>
               </div>
@@ -324,7 +330,7 @@ interface TextSegment {
               <div class="preview-surface url-surface">
                 <div class="url-favicon-row">
                   <img class="url-favicon" [src]="getFaviconUrl(item().content.raw)" alt="" (error)="onFaviconError($event)" loading="lazy" />
-                  <a [href]="normalizeUrl(item().content.raw)" target="_blank" rel="noopener noreferrer" class="url-link" (click)="$event.stopPropagation()">@for (part of getHighlightParts(formatUrl(item().content.raw), searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</a>
+                  <a [href]="normalizeUrl(item().content.raw)" target="_blank" rel="noopener noreferrer" class="url-link" (click)="$event.stopPropagation()">@for (part of getHighlightParts(formatUrl(item().content.raw), searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</a>
                   <div class="url-quick-actions" (click)="$event.stopPropagation()">
                     <button class="url-action-btn" (click)="onCopyDetectedUrl(item().content.raw, $event)" title="Copy link">
                       <app-icon name="copy" class="icon-xs"></app-icon>
@@ -344,7 +350,7 @@ interface TextSegment {
                     <span>Empty JSON payload</span>
                   </div>
                 } @else {
-                  <pre class="code-pre"><code>@for (seg of textSegments(); track $index) {@if (seg.isUrl) {<span class="url-detected-span" (mouseenter)="setActiveHoverUrl(seg.text)" (mouseleave)="clearActiveHoverUrl()"><a [href]="normalizeUrl(seg.text)" target="_blank" rel="noopener noreferrer" class="url-anchor-text" (click)="$event.stopPropagation()">@for (part of getHighlightParts(seg.text, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</a>@if (activeHoverUrl() === seg.text) {<span class="url-hover-popover" (click)="$event.stopPropagation()"><span class="url-popover-resolved">{{ seg.text }}</span><button class="popover-btn" (click)="onCopyDetectedUrl(seg.text, $event)">Copy</button><button class="popover-btn" (click)="onOpenDetectedUrl(seg.text, $event)">Open</button></span>}</span>} @else {@for (part of getHighlightParts(seg.text, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}}}</code></pre>
+                  <pre class="code-pre"><code>@for (seg of textSegments(); track $index) {@if (seg.isUrl) {<span class="url-detected-span" (mouseenter)="setActiveHoverUrl(seg.text)" (mouseleave)="clearActiveHoverUrl()"><a [href]="normalizeUrl(seg.text)" target="_blank" rel="noopener noreferrer" class="url-anchor-text" (click)="$event.stopPropagation()">@for (part of getHighlightParts(seg.text, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</a>@if (activeHoverUrl() === seg.text) {<span class="url-hover-popover" (click)="$event.stopPropagation()"><span class="url-popover-resolved">{{ seg.text }}</span><button class="popover-btn" (click)="onCopyDetectedUrl(seg.text, $event)">Copy</button><button class="popover-btn" (click)="onOpenDetectedUrl(seg.text, $event)">Open</button></span>}</span>} @else {@for (part of getHighlightParts(seg.text, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}}}</code></pre>
                   @if (isLongPreview()) {
                     <div class="show-more-pill" (click)="openPreview.emit(item())">
                       <app-icon name="maximize-2" class="icon-xs"></app-icon>
@@ -362,7 +368,7 @@ interface TextSegment {
                     <span>Empty code snippet</span>
                   </div>
                 } @else {
-                  <pre class="code-pre"><code>@for (seg of textSegments(); track $index) {@if (seg.isUrl) {<span class="url-detected-span" (mouseenter)="setActiveHoverUrl(seg.text)" (mouseleave)="clearActiveHoverUrl()"><a [href]="normalizeUrl(seg.text)" target="_blank" rel="noopener noreferrer" class="url-anchor-text" (click)="$event.stopPropagation()">@for (part of getHighlightParts(seg.text, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</a>@if (activeHoverUrl() === seg.text) {<span class="url-hover-popover" (click)="$event.stopPropagation()"><span class="url-popover-resolved">{{ seg.text }}</span><button class="popover-btn" (click)="onCopyDetectedUrl(seg.text, $event)">Copy</button><button class="popover-btn" (click)="onOpenDetectedUrl(seg.text, $event)">Open</button></span>}</span>} @else {@for (part of getHighlightParts(seg.text, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}}}</code></pre>
+                  <pre class="code-pre"><code>@for (seg of textSegments(); track $index) {@if (seg.isUrl) {<span class="url-detected-span" (mouseenter)="setActiveHoverUrl(seg.text)" (mouseleave)="clearActiveHoverUrl()"><a [href]="normalizeUrl(seg.text)" target="_blank" rel="noopener noreferrer" class="url-anchor-text" (click)="$event.stopPropagation()">@for (part of getHighlightParts(seg.text, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</a>@if (activeHoverUrl() === seg.text) {<span class="url-hover-popover" (click)="$event.stopPropagation()"><span class="url-popover-resolved">{{ seg.text }}</span><button class="popover-btn" (click)="onCopyDetectedUrl(seg.text, $event)">Copy</button><button class="popover-btn" (click)="onOpenDetectedUrl(seg.text, $event)">Open</button></span>}</span>} @else {@for (part of getHighlightParts(seg.text, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}}}</code></pre>
                   @if (isLongPreview()) {
                     <div class="show-more-pill" (click)="openPreview.emit(item())">
                       <app-icon name="maximize-2" class="icon-xs"></app-icon>
@@ -440,15 +446,17 @@ interface TextSegment {
               <app-icon name="folder-down" class="icon-xs"></app-icon>
             </button>
           } @else {
-            <!-- Single Item Download & Copy Actions -->
-            @if (item().content.category === 'image' || item().content.category === 'file' || item().content.category === 'video' || item().content.raw) {
+            <!-- Capability-Driven Single Item Download & Copy Actions -->
+            @if (capabilities().canDownload) {
               <button class="copy-btn-icon" (click)="onDownload($event)" data-tooltip="Download" data-tooltip-pos="left" aria-label="Download resource">
                 <app-icon name="download" class="icon-xs"></app-icon>
               </button>
             }
-            <button class="copy-btn-icon" [class.copy-btn-done]="copied()" (click)="onCopy($event)" [attr.data-tooltip]="copied() ? 'Copied!' : 'Copy'" data-tooltip-pos="left" aria-label="Copy to clipboard">
-              <app-icon [name]="copied() ? 'check' : 'copy'" class="icon-xs"></app-icon>
-            </button>
+            @if (capabilities().canCopy) {
+              <button class="copy-btn-icon" [class.copy-btn-done]="copied()" (click)="onCopy($event)" [attr.data-tooltip]="copied() ? 'Copied!' : 'Copy'" data-tooltip-pos="left" aria-label="Copy to clipboard">
+                <app-icon [name]="copied() ? 'check' : 'copy'" class="icon-xs"></app-icon>
+              </button>
+            }
           }
         </div>
       </div>
@@ -470,7 +478,11 @@ interface TextSegment {
       transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
       box-sizing: border-box;
       position: relative;
-      animation: avSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .av-card.av-card-exiting {
+      pointer-events: none !important;
+      user-select: none !important;
+      opacity: 0.6;
     }
     .av-card:hover {
       border-color: var(--device-accent, var(--av-accent, #2196F3)) !important;
@@ -499,20 +511,36 @@ interface TextSegment {
       min-height: 24px;
       box-sizing: border-box;
       white-space: nowrap;
+      position: relative;
+      z-index: 20;
     }
     .card-header-left {
       display: flex;
       align-items: center;
       gap: 5px;
       min-width: 0;
-      overflow: hidden;
+      overflow: visible;
+    }
+    .card-header-left [data-tooltip]::after,
+    .sender-badge[data-tooltip]::after {
+      bottom: auto !important;
+      top: calc(100% + 6px) !important;
+      left: 0 !important;
+      right: auto !important;
+      transform: translateX(0) translateY(-4px) !important;
+      z-index: 99999 !important;
+    }
+    .card-header-left [data-tooltip]:hover::after,
+    .sender-badge[data-tooltip]:hover::after {
+      opacity: 1 !important;
+      transform: translateX(0) translateY(0) !important;
     }
     .sender-badge {
       display: inline-flex;
       align-items: center;
       gap: 5px;
       min-width: 0;
-      overflow: hidden;
+      overflow: visible;
     }
     .sender-accent-dot {
       width: 6px;
@@ -577,7 +605,7 @@ interface TextSegment {
       pointer-events: auto;
     }
 
-    .card-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+    .card-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; position: relative; z-index: 20; }
     .card-action-btn {
       display: flex;
       align-items: center;
@@ -1300,6 +1328,7 @@ interface TextSegment {
       overflow: visible;
       white-space: nowrap;
       position: relative;
+      z-index: 20;
     }
     .card-footer-meta {
       display: flex;
@@ -1452,10 +1481,15 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
   blameService = inject(AirVaultBlameService);
   syncService = inject(AirVaultSyncService);
   uiStore = inject(AirVaultUIStore);
+  quickActions = inject(AirVaultQuickActionsService);
 
   item = input.required<AirVaultItem>();
   accentColor = input<string>('');
   bubbleAccentColor = input<string>('');
+
+  capabilities = computed(() => {
+    return this.clipboardService.getResourceCapabilities(this.item());
+  });
 
   effectiveAccentColor = computed(() => {
     return this.accentColor() || this.bubbleAccentColor() || this.getAuthorColor();
@@ -1465,13 +1499,14 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
     const raw = this.item().content?.raw || '';
     if (!raw) return '';
     const cat = this.item().content?.category;
+    const q = this.searchHighlightQuery();
     let safeHtml: string;
     if (cat === 'markdown') {
-      safeHtml = renderMarkdownToSafeHtml(raw, true);
+      safeHtml = renderMarkdownToSafeHtml(raw, true, q);
     } else {
       // Plain text snippet: truncate and escape without Markdown interpretation
       const preview = raw.length > 300 ? raw.slice(0, 300) + '…' : raw;
-      safeHtml = renderPlainTextToSafeHtml(preview);
+      safeHtml = renderPlainTextToSafeHtml(preview, q);
     }
     return this.sanitizer.bypassSecurityTrustHtml(safeHtml);
   });
@@ -1498,6 +1533,7 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
   textSegments = signal<TextSegment[]>([]);
   searchHighlightQuery = computed(() => this.uiStore.searchHighlightQuery());
   isCardHovered = signal<boolean>(false);
+  isExiting = signal<boolean>(false);
   private burnSub?: Subscription;
 
   ngOnInit(): void {
@@ -1519,6 +1555,7 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
   }
 
   private performBurnDissolve(): void {
+    this.isExiting.set(true);
     const cardEl = this.elementRef.nativeElement.querySelector('.av-card') || this.elementRef.nativeElement;
     this.motion.animateBurnDissolve(cardEl, () => {
       this.deleteItem.emit(this.item().id);
@@ -1557,10 +1594,12 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
     // Keep popover reactive without blocking card state
   }
 
-  getHighlightParts(text: string, query: string): { text: string; isMatch: boolean }[] {
+  activeMatchIndex = computed(() => this.uiStore.activeMatchIndex());
+
+  getHighlightParts(text: string, query: string): { text: string; isMatch: boolean; isCurrent: boolean }[] {
     if (!text) return [];
     const q = query ? query.trim() : '';
-    if (!q) return [{ text, isMatch: false }];
+    if (!q) return [{ text, isMatch: false, isCurrent: false }];
 
     let pattern: RegExp;
     if (q.length <= 2) {
@@ -1570,10 +1609,22 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
     }
 
     const parts = text.split(pattern);
-    return parts.filter(p => p.length > 0).map(part => ({
-      text: part,
-      isMatch: part.toLowerCase() === q.toLowerCase()
-    }));
+    const activeIdx = this.activeMatchIndex();
+    let matchCounter = 0;
+
+    return parts.filter(p => p.length > 0).map(part => {
+      const isMatch = part.toLowerCase() === q.toLowerCase();
+      let isCurrent = false;
+      if (isMatch) {
+        isCurrent = matchCounter === activeIdx;
+        matchCounter++;
+      }
+      return {
+        text: part,
+        isMatch,
+        isCurrent
+      };
+    });
   }
 
   shouldShowEntryGutter(): boolean {
@@ -1829,6 +1880,7 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
   }
 
   onCardClick(e: Event) {
+    if (this.isExiting()) return;
     // If clicking an interactive button inside the card, ignore
     if ((e.target as HTMLElement).closest('.card-action-btn, .cancel-upload-btn, .url-link, .copy-btn-icon')) {
       return;
@@ -1837,6 +1889,10 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
   }
 
   onTileDragStart(e: DragEvent) {
+    if (this.isExiting()) {
+      e.preventDefault();
+      return;
+    }
     if (e.dataTransfer) {
       e.dataTransfer.setData('application/x-airvault-item-id', this.item().id);
       e.dataTransfer.effectAllowed = 'move';
@@ -1982,6 +2038,7 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
   }
 
   onTogglePin(e?: Event) {
+    if (this.isExiting()) return;
     if (e) this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
     const cardEl = this.elementRef.nativeElement.querySelector('.av-card') || this.elementRef.nativeElement;
     const nextPinState = !this.item().isPinned;
@@ -1990,19 +2047,18 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
   }
 
   onToggleReveal(e?: Event) {
+    if (this.isExiting()) return;
     if (e) this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
     this.toggleReveal.emit(this.item().id);
   }
 
   onDelete(e?: Event) {
+    if (this.isExiting()) return;
     if (e) {
       e.stopPropagation();
       this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
     }
-    const cardEl = this.elementRef.nativeElement.querySelector('.av-card') || this.elementRef.nativeElement;
-    this.motion.animateCardDelete(cardEl, () => {
-      this.deleteItem.emit(this.item().id);
-    });
+    this.deleteItem.emit(this.item().id);
   }
 
   getFaviconUrl(url: string): string {
@@ -2105,6 +2161,10 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
       case 'code': return 'cat-bg-indigo';
       default: return 'cat-bg-blue';
     }
+  }
+
+  getSubFileCapabilities(subFile: AirVaultItem) {
+    return this.clipboardService.getResourceCapabilities(subFile);
   }
 
   getBatchFileIconClass(subFile?: AirVaultItem | null): string {

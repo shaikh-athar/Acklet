@@ -1,5 +1,6 @@
 import { Component, ChangeDetectionStrategy, input, output, inject, signal, computed, ViewChild, ElementRef, HostListener, OnInit, OnDestroy, effect, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { IconComponent } from '../../../app/shared/components/icon/icon';
 import { AirVaultStorageService, AirVaultItem } from '../services/airvault-storage.service';
@@ -11,6 +12,8 @@ import { AirVaultDeviceService } from '../services/airvault-device.service';
 import { AirVaultSyncService } from '../services/airvault-sync.service';
 import { AirVaultFilePreviewComponent } from './airvault-file-preview.component';
 import { renderMarkdownToSafeHtml, renderPlainTextToSafeHtml, looksLikeMarkdown } from '../services/airvault-markdown.util';
+import { AirVaultQuickActionsService } from '../services/airvault-quick-actions.service';
+import { getPreviewCapabilities, PreviewCapabilities } from '../services/preview-capability.config';
 import { Subscription } from 'rxjs';
 
 export interface PreviewToolbarAction {
@@ -24,15 +27,22 @@ export interface PreviewToolbarAction {
 @Component({
   selector: 'app-airvault-preview-modal',
   standalone: true,
-  imports: [CommonModule, IconComponent, AirVaultFilePreviewComponent, forwardRef(() => AirVaultPreviewModalComponent)],
+  imports: [CommonModule, FormsModule, IconComponent, AirVaultFilePreviewComponent, forwardRef(() => AirVaultPreviewModalComponent)],
   styleUrls: ['../airvault.shared.css'],
   template: `
     <div class="modal-backdrop" [class.is-closing]="isClosing()" (click)="requestClose()" (keydown.escape)="requestClose()">
       <div class="preview-modal-box" [class.is-closing]="isClosing()" (click)="$event.stopPropagation()">
         <!-- Header -->
         <div class="preview-modal-header">
-          <!-- Top Left Actions: Contextual File-Type / Text Aware Toolbar -->
+          <!-- Top Left Actions: Contextual File-Type / Text Aware Toolbar + Search + Share -->
           <div class="preview-header-left">
+            <!-- Search Toggle Button (for searchable resources) -->
+            @if (isSearchableResource()) {
+              <button class="av-btn-icon" [class.active]="showSearch()" (click)="toggleSearch()" [attr.data-tooltip]="showSearch() ? 'Close Search (Esc)' : 'Find in Document (Cmd/Ctrl+F)'" aria-label="Find in preview">
+                <app-icon name="search" class="icon-xs"></app-icon>
+              </button>
+            }
+
             <!-- Case A: Base Mixed Item (Text + Attached Resources) — Show dedicated Text/Code/Note operations -->
             @if (hasMixedBatchText()) {
               <button class="av-btn-icon" (click)="toggleWrap()" [class.active]="isWrapped()" [attr.data-tooltip]="isWrapped() ? 'Disable Word Wrap' : 'Enable Word Wrap'" aria-label="Toggle line wrapping">
@@ -87,20 +97,7 @@ export interface PreviewToolbarAction {
                 </button>
               }
 
-              <!-- 3. Video Actions -->
-              @else if (resolvedCategory() === 'video') {
-                <button class="av-btn-icon" (click)="toggleMediaPlay()" [attr.data-tooltip]="isPlaying() ? 'Pause' : 'Play'" [attr.aria-label]="isPlaying() ? 'Pause' : 'Play'">
-                  <app-icon [name]="isPlaying() ? 'pause' : 'play'" class="icon-xs"></app-icon>
-                </button>
-                <button class="av-btn-icon" (click)="toggleMute()" [attr.data-tooltip]="isMuted() ? 'Unmute' : 'Mute'" [attr.aria-label]="isMuted() ? 'Unmute' : 'Mute'">
-                  <app-icon [name]="isMuted() ? 'volume-x' : 'volume-2'" class="icon-xs"></app-icon>
-                </button>
-                <button class="av-btn-icon" (click)="toggleFullscreen()" data-tooltip="Fullscreen" aria-label="Toggle fullscreen">
-                  <app-icon name="maximize-2" class="icon-xs"></app-icon>
-                </button>
-              }
-
-              <!-- 4. Audio Actions -->
+              <!-- 3. Audio Actions -->
               @else if (resolvedCategory() === 'audio') {
                 <button class="av-btn-icon" (click)="toggleMediaPlay()" [attr.data-tooltip]="isPlaying() ? 'Pause' : 'Play'" [attr.aria-label]="isPlaying() ? 'Pause' : 'Play'">
                   <app-icon [name]="isPlaying() ? 'pause' : 'play'" class="icon-xs"></app-icon>
@@ -110,16 +107,21 @@ export interface PreviewToolbarAction {
                 </button>
               }
 
-              <!-- 5. Spreadsheets (CSV/TSV) Actions -->
+              <!-- 4. Spreadsheets (CSV/TSV) Actions -->
               @else if (resolvedCategory() === 'spreadsheet' && isCsvFormat()) {
-                <button class="av-btn-icon" (click)="onCopyText()" aria-label="Copy CSV">
-                  <app-icon name="copy" class="icon-xs"></app-icon>
-                </button>
-                <button class="av-btn-icon" (click)="zoomIn()" [disabled]="zoomLevel() >= 2.0"  aria-label="Increase text size">
+                @if (capabilities().canCopy) {
+                  <button class="av-btn-icon" [class.active]="isCopied()" (click)="onCopyText()" data-tooltip="Copy CSV Content" aria-label="Copy CSV">
+                    <app-icon [name]="isCopied() ? 'check' : 'copy'" class="icon-xs"></app-icon>
+                  </button>
+                }
+                <button class="av-btn-icon" (click)="zoomIn()" [disabled]="zoomLevel() >= 2.0" data-tooltip="Increase font size" aria-label="Increase text size">
                   <app-icon name="zoom-in" class="icon-xs"></app-icon>
                 </button>
-                <button class="av-btn-icon" (click)="zoomOut()" [disabled]="zoomLevel() <= 0.8"  aria-label="Decrease text size">
+                <button class="av-btn-icon" (click)="zoomOut()" [disabled]="zoomLevel() <= 0.8" data-tooltip="Decrease font size" aria-label="Decrease text size">
                   <app-icon name="zoom-out" class="icon-xs"></app-icon>
+                </button>
+                <button class="av-btn-icon" (click)="resetZoom()" [disabled]="zoomLevel() === 1.0" data-tooltip="Reset font size (100%)" aria-label="Reset font size">
+                  <app-icon name="rotate-ccw" class="icon-xs"></app-icon>
                 </button>
               }
 
@@ -128,43 +130,104 @@ export interface PreviewToolbarAction {
                 <button class="av-btn-icon" (click)="toggleWrap()" [class.active]="isWrapped()" [attr.data-tooltip]="isWrapped() ? 'Disable Word Wrap' : 'Enable Word Wrap'" aria-label="Toggle line wrapping">
                   <app-icon name="wrap-text" class="icon-xs"></app-icon>
                 </button>
-                <button class="av-btn-icon" [class.active]="isCopied()" (click)="onCopyText()" data-tooltip="Copy Content" aria-label="Copy text to clipboard">
-                  <app-icon [name]="isCopied() ? 'check' : 'copy'" class="icon-xs"></app-icon>
-                </button>
+                @if (capabilities().canCopy) {
+                  <button class="av-btn-icon" [class.active]="isCopied()" (click)="onCopyText()" data-tooltip="Copy Content" aria-label="Copy text to clipboard">
+                    <app-icon [name]="isCopied() ? 'check' : 'copy'" class="icon-xs"></app-icon>
+                  </button>
+                }
                 <button class="av-btn-icon" (click)="zoomIn()" [disabled]="zoomLevel() >= 2.0" data-tooltip="Increase font size" aria-label="Increase text size">
                   <app-icon name="zoom-in" class="icon-xs"></app-icon>
                 </button>
                 <button class="av-btn-icon" (click)="zoomOut()" [disabled]="zoomLevel() <= 0.8" data-tooltip="Decrease font size" aria-label="Decrease text size">
                   <app-icon name="zoom-out" class="icon-xs"></app-icon>
                 </button>
+                <button class="av-btn-icon" (click)="resetZoom()" [disabled]="zoomLevel() === 1.0" data-tooltip="Reset font size (100%)" aria-label="Reset font size">
+                  <app-icon name="rotate-ccw" class="icon-xs"></app-icon>
+                </button>
               }
 
-              <!-- Universal Action: Download Resource -->
-              <button class="av-btn-icon download-btn" (click)="onDownload()" data-tooltip="Download File" aria-label="Download file">
-                <app-icon name="download" class="icon-xs"></app-icon>
-              </button>
+              <!-- Universal Action: Download Resource (Guarded by Capability Policy) -->
+              @if (capabilities().canDownload) {
+                <button class="av-btn-icon download-btn" (click)="onDownload()" data-tooltip="Download File" aria-label="Download file">
+                  <app-icon name="download" class="icon-xs"></app-icon>
+                </button>
+              }
             }
           </div>
 
-          <!-- Top Center: Category badge & Filename -->
+          <!-- Top Center: Category badge & Filename OR In-Preview Search Bar -->
           <div class="preview-header-center">
-            @if (hasBatchGallery() && !hasMixedBatchText()) {
-              <div class="gallery-nav-box">
-                <button class="gallery-nav-btn" (click)="onPrevBatchItem()" [disabled]="currentBatchIndex() <= 0" title="Previous item (Left Arrow)">
-                  <app-icon name="chevron-left" class="icon-xs"></app-icon>
-                </button>
-                <span class="gallery-counter">{{ currentBatchIndex() + 1 }} / {{ batchTotal() }}</span>
-                <button class="gallery-nav-btn" (click)="onNextBatchItem()" [disabled]="currentBatchIndex() >= batchTotal() - 1" title="Next item (Right Arrow)">
-                  <app-icon name="chevron-right" class="icon-xs"></app-icon>
+            @if (showSearch()) {
+              <!-- In-Preview Keyword Search Bar (reuses searchHighlightQuery & activeMatchIndex) -->
+              <div class="preview-search-group" (click)="$event.stopPropagation()">
+                <span class="search-icon-prefix">
+                  <app-icon name="search" class="icon-xs search-icon"></app-icon>
+                </span>
+                <input
+                  #searchInputRef
+                  type="text"
+                  class="navbar-search-input preview-search-input"
+                  placeholder="Search in preview..."
+                  [ngModel]="searchHighlightQuery()"
+                  (ngModelChange)="onSearchInput($event)"
+                  (keydown)="onSearchKeydown($event)"
+                />
+
+                @if (searchHighlightQuery().trim()) {
+                  <div class="navbar-search-nav-controls">
+                    <span class="navbar-search-match-pill" [class.has-matches]="totalMatches() > 0">
+                      {{ totalMatches() > 0 ? ((activeMatchIndex() + 1) + ' of ' + totalMatches()) : '0 matches' }}
+                    </span>
+
+                    <button
+                      type="button"
+                      class="navbar-search-nav-btn"
+                      [disabled]="totalMatches() === 0"
+                      (click)="prevMatch($event)"
+                      data-tooltip="Previous match (Shift+Enter)"
+                      aria-label="Previous match">
+                      <app-icon name="chevron-up" class="icon-xxs"></app-icon>
+                    </button>
+
+                    <button
+                      type="button"
+                      class="navbar-search-nav-btn"
+                      [disabled]="totalMatches() === 0"
+                      (click)="nextMatch($event)"
+                      data-tooltip="Next match (Enter)"
+                      aria-label="Next match">
+                      <app-icon name="chevron-down" class="icon-xxs"></app-icon>
+                    </button>
+
+                    <button type="button" class="navbar-search-clear-btn" (click)="onSearchInput('')" data-tooltip="Clear search" aria-label="Clear search">
+                      <app-icon name="x" class="icon-xxs"></app-icon>
+                    </button>
+                  </div>
+                }
+
+                <button type="button" class="av-btn-icon preview-search-close-btn" (click)="toggleSearch()" data-tooltip="Close search (Esc)" aria-label="Close search">
+                  <app-icon name="x" class="icon-xs"></app-icon>
                 </button>
               </div>
-            }
-            <span class="preview-cat-badge">
-              <app-icon [name]="hasMixedBatchText() ? 'align-left' : getCategoryIcon(resolvedCategory())" class="icon-xs"></app-icon>
-              <span>{{ (hasMixedBatchText() ? 'Notes & Attachments' : getCategoryLabel(resolvedCategory())) | uppercase }}</span>
-            </span>
-            @if (!hasMixedBatchText() && currentDisplayItem().content.filename) {
-              <span class="preview-filename">@for (part of getHighlightParts(currentDisplayItem().content.filename!, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
+            } @else {
+              @if (hasBatchGallery() && !hasMixedBatchText()) {
+                <div class="gallery-nav-box">
+                  <button class="gallery-nav-btn" (click)="onPrevBatchItem()" [disabled]="currentBatchIndex() <= 0" data-tooltip="Previous item (Left Arrow)" aria-label="Previous item">
+                    <app-icon name="chevron-left" class="icon-xs"></app-icon>
+                  </button>
+                  <span class="gallery-counter">{{ currentBatchIndex() + 1 }} / {{ batchTotal() }}</span>
+                  <button class="gallery-nav-btn" (click)="onNextBatchItem()" [disabled]="currentBatchIndex() >= batchTotal() - 1" data-tooltip="Next item (Right Arrow)" aria-label="Next item">
+                    <app-icon name="chevron-right" class="icon-xs"></app-icon>
+                  </button>
+                </div>
+              }
+              <span class="preview-cat-badge">
+                <app-icon [name]="hasMixedBatchText() ? 'align-left' : getCategoryIcon(resolvedCategory())" class="icon-xs"></app-icon>
+                <span>{{ (hasMixedBatchText() ? 'Notes & Attachments' : getCategoryLabel(resolvedCategory())) | uppercase }}</span>
+              </span>
+              @if (!hasMixedBatchText() && currentDisplayItem().content.filename) {
+                <span class="preview-filename">@for (part of getHighlightParts(currentDisplayItem().content.filename!, searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
+              }
             }
           </div>
 
@@ -274,7 +337,7 @@ export interface PreviewToolbarAction {
                     <app-icon name="align-left" class="icon-xs text-muted"></app-icon>
                     <span>Content & Notes</span>
                   </div>
-                  <div class="av-rich-document-preview" [style.font-size.px]="14 * zoomLevel()" [innerHTML]="safeFormattedMixedText()"></div>
+                  <div class="av-rich-document-preview" [class.nowrap-pre]="!isWrapped()" [style.font-size.px]="14 * zoomLevel()" [innerHTML]="safeFormattedMixedText()"></div>
                 </div>
               </div>
             } @else {
@@ -440,6 +503,7 @@ export interface PreviewToolbarAction {
       position: relative;
       min-height: 52px;
       box-sizing: border-box;
+      z-index: 50;
     }
 
     .preview-header-left {
@@ -460,6 +524,58 @@ export interface PreviewToolbarAction {
       gap: 8px;
       max-width: calc(100% - 280px);
       z-index: 1;
+    }
+
+    .preview-search-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 28px;
+      padding: 0 8px;
+      background: var(--av-surface-primary);
+      border: 1px solid var(--av-border-strong, #363D47);
+      border-radius: var(--av-radius-sm, 6px);
+      box-sizing: border-box;
+      position: relative;
+      width: 320px;
+      max-width: 100%;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+      animation: avSearchGroupPop 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes avSearchGroupPop {
+      0% { opacity: 0; transform: scale(0.95); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .preview-search-input {
+      flex: 1;
+      min-width: 60px;
+      border: none;
+      background: transparent;
+      outline: none;
+      font-size: 12px;
+      font-family: var(--av-font-ui);
+      color: var(--av-text-primary);
+    }
+
+    .preview-search-close-btn {
+      width: 20px;
+      height: 20px;
+      border: none;
+      padding: 0;
+      color: var(--av-text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: color 0.12s, background 0.12s;
+    }
+
+    .preview-search-close-btn:hover {
+      color: var(--av-text-primary);
+      background: var(--av-surface-secondary);
     }
 
     .preview-filename {
@@ -533,6 +649,16 @@ export interface PreviewToolbarAction {
     }
     .preview-header-actions [data-tooltip]:hover::after {
       transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* First button in left toolbar — anchor tooltip to left edge to prevent overflow */
+    .preview-header-left .av-btn-icon:first-child::after {
+      left: 0;
+      transform: translateX(0) translateY(-4px);
+    }
+    .preview-header-left .av-btn-icon:first-child:hover::after {
+      transform: translateX(0) translateY(0);
       opacity: 1;
     }
 
@@ -812,21 +938,6 @@ export interface PreviewToolbarAction {
       box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
 
-    /* Video viewer */
-    .big-video-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      background: var(--av-bg-canvas, #09090b);
-    }
-    .big-preview-video {
-      max-width: 100%;
-      max-height: 72vh;
-      border-radius: 6px;
-      outline: none;
-    }
-
     /* URL viewer */
     .big-url-container {
       display: flex;
@@ -1100,8 +1211,17 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
   colorService = inject(AirVaultColorService);
   syncService = inject(AirVaultSyncService);
   uiStore = inject(AirVaultUIStore);
+  quickActions = inject(AirVaultQuickActionsService);
   item = input.required<AirVaultItem>();
   close = output<void>();
+
+  capabilities = computed(() => {
+    return this.clipboardService.getResourceCapabilities(this.currentDisplayItem());
+  });
+
+  previewCapabilities = computed<PreviewCapabilities>(() => {
+    return getPreviewCapabilities(this.currentDisplayItem());
+  });
 
   isBurnedMessageVisible = signal<boolean>(false);
   isClosing = signal<boolean>(false);
@@ -1169,32 +1289,273 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
     }
   }
 
+  showSearch = signal<boolean>(false);
+  activeMatchIndex = signal<number>(0);
+  @ViewChild('searchInputRef') searchInputRef?: ElementRef<HTMLInputElement>;
+
   searchHighlightQuery = computed(() => this.uiStore.searchHighlightQuery());
 
-  getHighlightParts(text: string, query: string): { text: string; isMatch: boolean }[] {
-    if (!text) return [];
-    const q = query ? query.trim() : '';
-    if (!q) return [{ text, isMatch: false }];
+  isSearchableResource = computed(() => {
+    if (this.hasMixedBatchText()) {
+      const raw = this.item().content?.raw || '';
+      return !!raw && raw.trim().length > 0;
+    }
+    const item = this.currentDisplayItem();
+    const cat = this.resolvedCategory();
+    const raw = item.content?.raw || '';
+    const filename = (item.content?.filename || '').toLowerCase();
+
+    // Pure binary media without text are NOT searchable
+    if (cat === 'image' || cat === 'video' || cat === 'audio') {
+      return false;
+    }
+
+    // Binary spreadsheets (.xlsx, .xls) without parsed/raw text are NOT searchable
+    if (cat === 'spreadsheet' && !this.isCsvFormat() && (!raw || raw.startsWith('data:') || raw.startsWith('[Encrypted'))) {
+      return false;
+    }
+
+    // CSV / TSV spreadsheets with content are searchable
+    if (this.isCsvFormat()) {
+      return !!raw && !raw.startsWith('data:') && !raw.startsWith('[Encrypted') && raw.trim().length > 0;
+    }
+
+    // PDF files: only searchable if text is available
+    if (cat === 'pdf') {
+      return !!raw && !raw.startsWith('data:') && !raw.startsWith('blob:') && !raw.startsWith('http') && raw.trim().length > 0;
+    }
+
+    // Word docs / Presentations: searchable if text is available
+    if (/\.(docx?|pptx?|odt|odp)$/i.test(filename)) {
+      return !!raw && !raw.startsWith('data:') && !raw.startsWith('[Encrypted') && raw.trim().length > 0;
+    }
+
+    // Binary archives / design files / fonts without text
+    if (/\.(zip|rar|7z|tar|gz|ttf|otf|woff2?|psd|ai|fig|sketch|xd)$/i.test(filename) && (!raw || raw.startsWith('data:'))) {
+      return false;
+    }
+
+    // Plain text, code, json, markdown, url, xml, yaml, log, config, text docs
+    if (cat === 'code' || cat === 'json' || cat === 'text' || cat === 'markdown' || cat === 'url' || this.isTextDoc()) {
+      return !!raw && !raw.startsWith('data:') && !raw.startsWith('[Encrypted') && raw.trim().length > 0;
+    }
+
+    // General fallback: if non-empty, non-binary text exists
+    return !!raw && !raw.startsWith('data:') && !raw.startsWith('[Encrypted') && raw.trim().length > 0;
+  });
+
+  allSearchMatches = computed(() => {
+    const q = this.searchHighlightQuery().trim();
+    if (!q || !this.isSearchableResource()) return [];
+    const matches: { text: string; offset: number }[] = [];
 
     let pattern: RegExp;
     if (q.length <= 2) {
-      pattern = new RegExp(`(\\b${q.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\b)`, 'gi');
+      pattern = new RegExp(`\\b${this.escapeRegex(q)}\\b`, 'gi');
     } else {
-      pattern = new RegExp(`(${q.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')})`, 'gi');
+      pattern = new RegExp(this.escapeRegex(q), 'gi');
+    }
+
+    // 1. If mixed batch, check raw text
+    if (this.hasMixedBatchText()) {
+      const text = this.item().content?.raw || '';
+      if (text) {
+        let m: RegExpExecArray | null;
+        while ((m = pattern.exec(text)) !== null) {
+          matches.push({ text: m[0], offset: m.index });
+        }
+      }
+      return matches;
+    }
+
+    // 2. Pure resource text/code/csv/tsv/url/json/markdown/etc.
+    const disp = this.currentDisplayItem();
+    const raw = disp.content?.raw || '';
+
+    if (this.isCsvFormat() && raw) {
+      // Search all underlying cells/lines of the CSV
+      const lines = raw.split(/\r?\n/).filter(l => l.trim().length > 0);
+      for (const line of lines) {
+        pattern.lastIndex = 0;
+        let m: RegExpExecArray | null;
+        while ((m = pattern.exec(line)) !== null) {
+          matches.push({ text: m[0], offset: m.index });
+        }
+      }
+      return matches;
+    }
+
+    if (raw) {
+      pattern.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = pattern.exec(raw)) !== null) {
+        matches.push({ text: m[0], offset: m.index });
+      }
+    }
+    return matches;
+  });
+
+  totalMatches = computed(() => {
+    return this.allSearchMatches().length;
+  });
+
+  private escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  toggleSearch() {
+    this.showSearch.update(v => {
+      const next = !v;
+      if (next) {
+        setTimeout(() => this.searchInputRef?.nativeElement?.focus(), 50);
+      } else {
+        this.uiStore.setSearchHighlightQuery('');
+      }
+      return next;
+    });
+  }
+
+  onSearchInput(val: string) {
+    this.uiStore.setSearchHighlightQuery(val);
+    this.activeMatchIndex.set(0);
+    this.uiStore.setActiveMatchIndex(0);
+    if (val.trim()) {
+      setTimeout(() => this.scrollToActiveMatch(), 60);
+    }
+  }
+
+  onSearchKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        this.prevMatch(e);
+      } else {
+        this.nextMatch(e);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      this.toggleSearch();
+    }
+  }
+
+  nextMatch(e?: Event) {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const total = this.totalMatches();
+    if (total === 0) return;
+    const next = (this.activeMatchIndex() + 1) % total;
+    this.activeMatchIndex.set(next);
+    this.uiStore.setActiveMatchIndex(next);
+    this.scrollToActiveMatch();
+  }
+
+  prevMatch(e?: Event) {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const total = this.totalMatches();
+    if (total === 0) return;
+    const prev = (this.activeMatchIndex() - 1 + total) % total;
+    this.activeMatchIndex.set(prev);
+    this.uiStore.setActiveMatchIndex(prev);
+    this.scrollToActiveMatch();
+  }
+
+  private scrollToActiveMatch() {
+    setTimeout(() => {
+      const container = this.stageContainer?.nativeElement;
+      if (!container) return;
+      const matchEls = container.querySelectorAll('mark.av-search-match');
+      const idx = this.activeMatchIndex();
+
+      matchEls.forEach((el, i) => {
+        if (i === idx) {
+          el.classList.add('current-match');
+        } else {
+          el.classList.remove('current-match');
+        }
+      });
+
+      if (matchEls.length > 0 && idx >= 0 && idx < matchEls.length) {
+        const targetEl = matchEls[idx] as HTMLElement;
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      }
+    }, 40);
+  }
+
+  getHighlightParts(text: string, query: string): { text: string; isMatch: boolean; isCurrent: boolean }[] {
+    if (!text) return [];
+    const q = query ? query.trim() : '';
+    if (!q) return [{ text, isMatch: false, isCurrent: false }];
+
+    let pattern: RegExp;
+    if (q.length <= 2) {
+      pattern = new RegExp(`(\\b${this.escapeRegex(q)}\\b)`, 'gi');
+    } else {
+      pattern = new RegExp(`(${this.escapeRegex(q)})`, 'gi');
     }
 
     const parts = text.split(pattern);
-    return parts.filter(p => p.length > 0).map(part => ({
-      text: part,
-      isMatch: part.toLowerCase() === q.toLowerCase()
-    }));
+    const activeIdx = this.activeMatchIndex();
+    let matchCounter = 0;
+
+    return parts.filter(p => p.length > 0).map(part => {
+      const isMatch = part.toLowerCase() === q.toLowerCase();
+      let isCurrent = false;
+      if (isMatch) {
+        isCurrent = matchCounter === activeIdx;
+        matchCounter++;
+      }
+      return {
+        text: part,
+        isMatch,
+        isCurrent
+      };
+    });
   }
 
   activeBatchIndex = signal<number>(0);
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(e: KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+      if (this.isSearchableResource()) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.showSearch.set(true);
+        setTimeout(() => this.searchInputRef?.nativeElement?.focus(), 50);
+        return;
+      }
+    }
+
+    // ── Preview Zoom Shortcuts (⌘/Ctrl + +, ⌘/Ctrl + -, ⌘/Ctrl + 0) ──
+    if (e.metaKey || e.ctrlKey) {
+      if (e.key === '+' || e.key === '=' || e.key === 'Add') {
+        e.preventDefault();
+        e.stopPropagation();
+        this.zoomIn();
+        return;
+      }
+      if (e.key === '-' || e.key === '_' || e.key === 'Subtract') {
+        e.preventDefault();
+        e.stopPropagation();
+        this.zoomOut();
+        return;
+      }
+      if (e.key === '0') {
+        e.preventDefault();
+        e.stopPropagation();
+        this.resetZoom();
+        return;
+      }
+    }
+
     if (e.key === 'Escape') {
+      if (this.showSearch()) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.toggleSearch();
+        return;
+      }
       if (this.selectedResourceItem()) {
         e.preventDefault();
         e.stopPropagation();
@@ -1248,11 +1609,13 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
     const raw = this.item().content?.raw || '';
     if (!raw) return '';
     const cat = this.item().content?.category;
+    const q = this.searchHighlightQuery();
+    const activeIdx = this.activeMatchIndex();
     let safeHtml: string;
     if (cat === 'markdown') {
-      safeHtml = renderMarkdownToSafeHtml(raw, false);
+      safeHtml = renderMarkdownToSafeHtml(raw, false, q, activeIdx);
     } else {
-      safeHtml = renderPlainTextToSafeHtml(raw);
+      safeHtml = renderPlainTextToSafeHtml(raw, q, activeIdx);
     }
     return this.sanitizer.bypassSecurityTrustHtml(safeHtml);
   });
@@ -1499,10 +1862,6 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
 
   toggleMute() {
     this.previewRef?.toggleMute();
-  }
-
-  toggleFullscreen() {
-    this.previewRef?.toggleFullscreen();
   }
 
   onPlayingChange(playing: boolean) {

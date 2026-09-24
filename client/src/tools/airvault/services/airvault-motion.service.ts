@@ -32,8 +32,8 @@ export class AirVaultMotionService {
 
   /**
    * 1b. Distinct Entrance Animation for Clipboard Item lifecycle:
-   * - New local capture: Crisp upward spring entrance (translateY 12px -> 0, scale 0.97 -> 1, opacity 0 -> 1)
-   * - Synced from peer: Subtle accent halo/glow ring along with gentle scale entry
+   * - New local capture: Crisp upward spring entrance with slight overshoot (scale 0.94 -> 1, translateY 16px -> 0, opacity 0 -> 1)
+   * - Synced from peer: Peer beacon entrance (translateY -16px -> 0, scale 0.95 -> 1, opacity 0 -> 1) followed by subtle accent halo pulse
    */
   animateCardEnter(element: HTMLElement, isSynced: boolean = false) {
     if (!element) return;
@@ -46,28 +46,29 @@ export class AirVaultMotionService {
       // Synced peer entrance: slide down + accent border pulse
       gsap.fromTo(
         element,
-        { opacity: 0, y: -14, scale: 0.96 },
+        { opacity: 0, y: -18, scale: 0.94 },
         {
           opacity: 1,
           y: 0,
           scale: 1,
-          duration: 0.34,
-          ease: 'power2.out',
+          duration: 0.38,
+          ease: 'back.out(1.6)',
+          clearProps: 'transform,opacity',
           onComplete: () => {
             this.animateCardSyncPulse(element);
           }
         }
       );
     } else {
-      // Local capture entrance: spring pop up
+      // Local capture entrance: crisp spring pop up
       gsap.fromTo(
         element,
-        { opacity: 0, y: 14, scale: 0.96 },
+        { opacity: 0, y: 18, scale: 0.94 },
         {
           opacity: 1,
           y: 0,
           scale: 1,
-          duration: 0.28,
+          duration: 0.34,
           ease: 'back.out(1.5)',
           clearProps: 'transform,opacity'
         }
@@ -77,14 +78,20 @@ export class AirVaultMotionService {
 
   /**
    * 1c. Distinct Deletion / Dismissal Animation:
-   * Smoothly shrinks and slides out (scale 1 -> 0.92, translateY 0 -> 10px, opacity 1 -> 0)
-   * in 200ms before triggering onComplete.
+   * Smoothly shrinks and slides out (scale 1 -> 0.88, translateY 0 -> 12px, opacity 1 -> 0)
+   * in 240ms with smooth cubic-bezier easing before triggering onComplete.
+   * Immediately disables pointer-events and marks element as exiting to prevent ghost clicks.
    */
   animateCardDelete(element: HTMLElement, onComplete?: () => void) {
     if (!element) {
       if (onComplete) onComplete();
       return;
     }
+
+    // Immediately neutralize all user interactions on exiting tile
+    element.style.pointerEvents = 'none';
+    element.style.userSelect = 'none';
+    element.classList.add('av-card-exiting');
 
     if (this.prefersReducedMotion) {
       gsap.to(element, {
@@ -99,12 +106,48 @@ export class AirVaultMotionService {
 
     gsap.to(element, {
       opacity: 0,
-      scale: 0.92,
-      y: 8,
-      duration: 0.2,
-      ease: 'power2.in',
+      scale: 0.88,
+      y: 12,
+      duration: 0.22,
+      ease: 'power2.inOut',
       onComplete: () => {
         if (onComplete) onComplete();
+      }
+    });
+  }
+
+  /**
+   * 1c-2. FLIP (First Last Invert Play) Grid Layout Transition:
+   * Smoothly moves neighboring tiles when an item is added, removed, or reordered.
+   */
+  animateGridFlip(container: HTMLElement, cardPositionsBefore: Map<string, DOMRect>) {
+    if (this.prefersReducedMotion || !container || cardPositionsBefore.size === 0) return;
+
+    const cards = container.querySelectorAll<HTMLElement>('.vault-card-cell');
+    cards.forEach(card => {
+      const cardInner = card.querySelector<HTMLElement>('.av-card');
+      const cardId = cardInner?.getAttribute('data-card-id');
+      if (!cardId) return;
+
+      const firstRect = cardPositionsBefore.get(cardId);
+      if (!firstRect) return; // New card — handled by entrance animation
+
+      const lastRect = card.getBoundingClientRect();
+      const deltaX = firstRect.left - lastRect.left;
+      const deltaY = firstRect.top - lastRect.top;
+
+      if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
+        gsap.fromTo(
+          card,
+          { x: deltaX, y: deltaY },
+          {
+            x: 0,
+            y: 0,
+            duration: 0.32,
+            ease: 'power2.out',
+            clearProps: 'transform'
+          }
+        );
       }
     });
   }
@@ -325,6 +368,11 @@ export class AirVaultMotionService {
       if (onComplete) onComplete();
       return;
     }
+
+    // Immediately disable interactions on dissolving element
+    element.style.pointerEvents = 'none';
+    element.style.userSelect = 'none';
+    element.classList.add('av-card-exiting');
 
     if (this.prefersReducedMotion) {
       gsap.to(element, {

@@ -5,6 +5,7 @@ import com.code.acklet.airvault.entity.ClipboardFile;
 import com.code.acklet.airvault.entity.UploadSession;
 import com.code.acklet.airvault.repository.ClipboardFileRepository;
 import com.code.acklet.airvault.repository.UploadSessionRepository;
+import com.code.acklet.airvault.storage.AirVaultStorageAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -16,8 +17,9 @@ import java.io.*;
 import java.nio.file.*;
 import java.security.MessageDigest;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
-import org.springframework.scheduling.annotation.Scheduled;
 
 @Service
 @RequiredArgsConstructor
@@ -29,84 +31,112 @@ public class AirVaultUploadAssemblyWorker {
     private final AirVaultRedisTracker redisTracker;
     private final AirVaultUploadService uploadService;
     private final AirVaultAuditService auditService;
-    private final com.code.acklet.airvault.storage.AirVaultStorageAdapter storageAdapter;
+    private final AirVaultStorageAdapter storageAdapter;
 
     private final Path storageRoot = Paths.get(System.getProperty("java.io.tmpdir"), "acklet_airvault_uploads");
 
     // -------------------------------------------------------------------------
-    // Chunk-storage housekeeping
+    // Startup Verification & Migration
     // -------------------------------------------------------------------------
 
-    /**
-     * Wipes every {@code chunks_*} directory under {@link #storageRoot} on
-     * application startup.  This clears any orphaned chunk directories that
-     * accumulated before the previous JVM process terminated (e.g. the
-     * "Missing chunk indices [0]" crash loops seen in production logs).
-     */
     @PostConstruct
-    public void purgeAllChunkDirectoriesOnStartup() {
-        log.info("[AirVault Worker] 🧹 Startup chunk-storage purge initiated on: {}", storageRoot);
-        int purged = purgeAllChunkDirectories();
-        log.info("[AirVault Worker] 🧹 Startup purge complete — removed {} chunk director{}.",
-                purged, purged == 1 ? "y" : "ies");
+    public void onStartup() {
+        migrateLegacyCompressedBinaryMedia();
     }
 
-    /**
-     * Daily sweep to remove any {@code chunks_*} directories that were not
-     * cleaned up during normal assembly (e.g. process kill, disk-full, etc.).
-     * Runs once a day at 02:00 AM server time.
-     */
-    @Scheduled(cron = "0 0 2 * * *")
-    public void scheduledChunkStoragePurge() {
-        log.info("[AirVault Worker] 🕑 Scheduled daily chunk-storage purge started.");
-        int purged = purgeAllChunkDirectories();
-        log.info("[AirVault Worker] 🕑 Scheduled purge complete — removed {} chunk director{}.",
-                purged, purged == 1 ? "y" : "ies");
-    }
+    public void migrateLegacyCompressedBinaryMedia() {
+        log.info("[AirVault Worker] 🔍 Checking for legacy compressed binary media files to migrate...");
+        try {
+            List<ClipboardFile> legacyFiles = clipboardFileRepository.findAll();
+            int migratedCount = 0;
 
-    /**
-     * Deletes every directory inside {@link #storageRoot} whose name starts
-     * with {@code chunks_}.  Returns the number of directories deleted.
-     */
-    private int purgeAllChunkDirectories() {
-        if (!Files.exists(storageRoot)) {
-            return 0;
-        }
-        int count = 0;
-        try (var entries = Files.newDirectoryStream(storageRoot, "chunks_*")) {
-            for (Path chunkDir : entries) {
-                if (Files.isDirectory(chunkDir)) {
-                    deleteChunkDir(chunkDir);
-                    count++;
+            for (ClipboardFile file : legacyFiles) {
+                String path = file.getStoragePath();
+                if (path == null) continue;
+
+                boolean isLegacyGz = path.endsWith(".bin.gz") || path.endsWith(".gz");
+                boolean isMedia = isBinaryMedia(file.getFileName(), file.getCategory(), null);
+
+                if (isLegacyGz && isMedia) {
+                    log.info("[AirVault Worker] 📦 Migrating legacy compressed media file: {} (path={})", file.getFileName(), path);
+
+                    // Determine clean uncompressed extension
+                    String ext = getFileExtension(file.getFileName());
+                    String newKey = "files/file_" + file.getFileId() + (ext.isEmpty() ? "" : "." + ext);
+
+                    if (storageAdapter.exists(path)) {
+                        try (InputStream rawIn = storageAdapter.getObject(path);
+                             PushbackInputStream pushIn = new PushbackInputStream(new BufferedInputStream(rawIn), 2)) {
+
+                            byte[] signature = new byte[2];
+                            int read = pushIn.read(signature);
+                            if (read == 2) pushIn.unread(signature);
+
+                            boolean isGzip = (read == 2 && ((signature[0] & 0xFF) == 0x1F) && ((signature[1] & 0xFF) == 0x8B));
+                            InputStream streamToRead = isGzip ? new GZIPInputStream(pushIn) : pushIn;
+
+                            // Write uncompressed to temporary file
+                            Path tempUncompressed = Files.createTempFile("legacy_migrate_", ".tmp");
+                            try {
+                                long uncompressedBytes;
+                                try (OutputStream out = Files.newOutputStream(tempUncompressed)) {
+                                chip: uncompressedBytes = streamToRead.transferTo(out);
+                                }
+
+                                // Store uncompressed object with correct key
+                                try (InputStream uncompressedIn = Files.newInputStream(tempUncompressed)) {
+                                    storageAdapter.storeObject(newKey, uncompressedIn, uncompressedBytes, resolveMimeType(file.getFileName()));
+                                }
+
+                                // Delete old legacy compressed object
+                                storageAdapter.deleteObject(path);
+
+                                // Update DB record
+                                file.setStoragePath(newKey);
+                                file.setByteSize(uncompressedBytes);
+                                clipboardFileRepository.save(file);
+                                migratedCount++;
+
+                                log.info("[AirVault Worker] ✅ Successfully migrated legacy media file to uncompressed: {}", newKey);
+
+                            } finally {
+                                Files.deleteIfExists(tempUncompressed);
+                            }
+                        } catch (Exception e) {
+                            log.warn("[AirVault Worker] ⚠️ Could not migrate legacy file {}: {}", path, e.getMessage());
+                        }
+                    }
                 }
             }
-        } catch (Exception e) {
-            log.warn("[AirVault Worker] ⚠️ Error during chunk-storage purge: {}", e.getMessage());
-        }
-        return count;
-    }
 
-    /** Recursively deletes {@code dir} and all its contents, ignoring errors. */
-    private void deleteChunkDir(Path dir) {
-        try (var stream = Files.walk(dir)) {
-            stream.sorted(Comparator.reverseOrder()).forEach(p -> {
-                try { Files.deleteIfExists(p); } catch (Exception ignored) {}
-            });
+            if (migratedCount > 0) {
+                log.info("[AirVault Worker] 🎉 Finished legacy media migration: converted {} files to uncompressed.", migratedCount);
+            }
+
         } catch (Exception e) {
-            log.warn("[AirVault Worker] ⚠️ Could not fully delete {}: {}", dir, e.getMessage());
+            log.warn("[AirVault Worker] ⚠️ Legacy media migration check skipped due to: {}", e.getMessage());
         }
     }
 
     // -------------------------------------------------------------------------
-    // RabbitMQ message handler
+    // RabbitMQ Message Handler & Chunk Assembly
     // -------------------------------------------------------------------------
 
-    @RabbitListener(queues = AirVaultRabbitMqConfig.AIRVAULT_UPLOAD_COMPLETED_QUEUE, concurrency = "3-10")
+    @RabbitListener(
+            queues = AirVaultRabbitMqConfig.AIRVAULT_UPLOAD_COMPLETED_QUEUE,
+            concurrency = "3-10",
+            ackMode = "MANUAL"
+    )
     @Transactional
-    public void processUploadAssembly(Map<String, Object> message) {
+    public void processUploadAssembly(
+            Map<String, Object> message,
+            com.rabbitmq.client.Channel channel,
+            @org.springframework.messaging.handler.annotation.Header(org.springframework.amqp.support.AmqpHeaders.DELIVERY_TAG) long deliveryTag
+    ) {
         String sessionIdStr = (String) message.get("uploadSessionId");
         if (sessionIdStr == null) {
             log.error("[AirVault Worker] ⛔ Received invalid assembly message: {}", message);
+            try { channel.basicAck(deliveryTag, false); } catch (Exception ignored) {}
             return;
         }
 
@@ -115,6 +145,7 @@ public class AirVaultUploadAssemblyWorker {
         Optional<UploadSession> sessionOpt = uploadSessionRepository.findById(sessionId);
         if (sessionOpt.isEmpty()) {
             log.debug("[AirVault Worker] Upload session {} no longer exists (already purged or deleted); discarding message.", sessionId);
+            try { channel.basicAck(deliveryTag, false); } catch (Exception ignored) {}
             return;
         }
 
@@ -125,14 +156,24 @@ public class AirVaultUploadAssemblyWorker {
 
         Path sessionChunkDir = storageRoot.resolve("chunks_" + session.getId().toString());
         Path finalStorageDir = storageRoot.resolve("files");
-        Path finalFile = finalStorageDir.resolve(session.getFileId() + ".bin");
+
+        String ext = getFileExtension(session.getFileName());
+        boolean isMedia = isBinaryMedia(session.getFileName(), session.getCategory(), null);
+
+        // Determine destination filename: preserve extension for binary media (e.g., file_<fileId>.mp4)
+        String assembledFilename = isMedia
+                ? "file_" + session.getFileId() + (ext.isEmpty() ? "" : "." + ext)
+                : session.getFileId() + ".bin";
+
+        Path tempAssemblyFile = null;
 
         try {
+            tempAssemblyFile = Files.createTempFile("airvault_asm_", ".tmp");
             if (!Files.exists(finalStorageDir)) {
                 Files.createDirectories(finalStorageDir);
             }
 
-            // Pre-flight: verify ALL chunk files exist on disk before starting assembly.
+            // Pre-flight: verify ALL chunk files exist on disk before starting assembly
             List<Integer> missingChunks = new ArrayList<>();
             for (int i = 0; i < session.getTotalChunks(); i++) {
                 if (!Files.exists(sessionChunkDir.resolve("chunk_" + i))) {
@@ -140,19 +181,24 @@ public class AirVaultUploadAssemblyWorker {
                 }
             }
             if (!missingChunks.isEmpty()) {
-                log.warn("[AirVault Worker] ⚠️ Missing chunk indices {} in directory: {} for session {}. Marking session as FAILED.",
+                log.debug("[AirVault Worker] Missing chunk indices {} in directory: {} for session {}. Marking session as FAILED.",
                         missingChunks, sessionChunkDir, sessionId);
                 session.setStatus("FAILED");
                 uploadSessionRepository.save(session);
                 redisTracker.setSessionStatus(sessionId, "FAILED");
+                if (Files.exists(sessionChunkDir)) {
+                    deleteChunkDir(sessionChunkDir);
+                }
+                try { Files.deleteIfExists(tempAssemblyFile); } catch (IOException ignored) {}
+                try { channel.basicAck(deliveryTag, false); } catch (Exception ignored) {}
                 return;
             }
 
             MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
             long totalAssembledBytes = 0;
 
-            // 1. Sequentially assemble all chunks
-            try (OutputStream fileOut = Files.newOutputStream(finalFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+            // 1. Sequentially assemble all chunks into isolated temporary staging file
+            try (OutputStream fileOut = Files.newOutputStream(tempAssemblyFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
                  BufferedOutputStream bufferedOut = new BufferedOutputStream(fileOut)) {
 
                 for (int i = 0; i < session.getTotalChunks(); i++) {
@@ -173,64 +219,91 @@ public class AirVaultUploadAssemblyWorker {
             }
             String calculatedChecksum = hexString.toString();
 
-            // 3. Post-Assembly Compression Option (Store compressed archive alongside)
-            Path compressedFile = finalStorageDir.resolve(session.getFileId() + ".gz");
-            long compressedSize = 0;
-            try (InputStream in = Files.newInputStream(finalFile);
-                 OutputStream out = Files.newOutputStream(compressedFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
-                 GZIPOutputStream gzipOut = new GZIPOutputStream(out)) {
-                byte[] buffer = new byte[8192];
-                int len;
-                while ((len = in.read(buffer)) > 0) {
-                    gzipOut.write(buffer, 0, len);
+            String contentType = resolveMimeType(session.getFileName());
+            String storageObjectKey;
+
+            // 3. Media vs Text branching:
+            // Video / Audio / Image / PDF -> Keep uncompressed, store with proper extension & MIME
+            // Text / JSON / Clipboard -> Optional GZIP compression
+            if (isMedia) {
+                storageObjectKey = "files/" + assembledFilename;
+                try (InputStream in = Files.newInputStream(tempAssemblyFile)) {
+                    storageAdapter.storeObject(storageObjectKey, in, totalAssembledBytes, contentType);
                 }
-            }
-            if (Files.exists(compressedFile)) {
-                compressedSize = Files.size(compressedFile);
+            } else {
+                // For non-binary text payloads, optionally gzip
+                Path compressedFile = Files.createTempFile("airvault_cmp_", ".gz");
+                try (InputStream in = Files.newInputStream(tempAssemblyFile);
+                     OutputStream out = Files.newOutputStream(compressedFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+                     GZIPOutputStream gzipOut = new GZIPOutputStream(out)) {
+                    byte[] buffer = new byte[8192];
+                    int len;
+                    while ((len = in.read(buffer)) > 0) {
+                        gzipOut.write(buffer, 0, len);
+                    }
+                }
+                long compressedSize = Files.size(compressedFile);
+                storageObjectKey = "files/" + session.getFileId() + ".gz";
+                try (InputStream in = Files.newInputStream(compressedFile)) {
+                    storageAdapter.storeObject(storageObjectKey, in, compressedSize, "application/gzip");
+                }
+                try { Files.deleteIfExists(compressedFile); } catch (IOException ignored) {}
             }
 
-            // 4. Store object into configured storage adapter (Local disk or Cloudflare R2)
-            String storageObjectKey = "files/" + session.getFileId() + ".bin";
-            try (InputStream in = Files.newInputStream(finalFile)) {
-                storageAdapter.storeObject(storageObjectKey, in, totalAssembledBytes, "application/octet-stream");
-            }
+            // Clean up temporary assembly file
+            try { Files.deleteIfExists(tempAssemblyFile); } catch (IOException ignored) {}
 
-            // 5. Save permanent ClipboardFile entity
-            ClipboardFile clipboardFile = ClipboardFile.builder()
-                    .clipboardId(session.getClipboardId())
-                    .fileId(session.getFileId())
-                    .fileName(session.getFileName())
-                    .category(session.getCategory())
-                    .byteSize(totalAssembledBytes)
-                    .checksum(calculatedChecksum)
-                    .storagePath(storageObjectKey)
-                    .previewUrl(session.getPreviewUrl())
-                    .build();
+            // 5. Save/Update permanent ClipboardFile entity with exact storagePath & byteSize
+            ClipboardFile clipboardFile = clipboardFileRepository.findByFileId(session.getFileId())
+                    .orElse(ClipboardFile.builder()
+                            .clipboardId(session.getClipboardId())
+                            .fileId(session.getFileId())
+                            .build());
+
+            clipboardFile.setFileName(session.getFileName());
+            clipboardFile.setCategory(session.getCategory());
+            clipboardFile.setByteSize(totalAssembledBytes);
+            clipboardFile.setChecksum(calculatedChecksum);
+            clipboardFile.setStoragePath(storageObjectKey);
+            clipboardFile.setPreviewUrl(session.getPreviewUrl());
+            clipboardFile.setBatchId(session.getBatchId());
 
             clipboardFileRepository.save(clipboardFile);
 
-            // 6. Update session status & Redis
+            // 5. Update session status & Redis
             session.setStatus("COMPLETED");
             session.setReceivedBytes(totalAssembledBytes);
             session.setStoragePath(storageObjectKey);
             uploadSessionRepository.save(session);
 
+            // Post-Assembly Consistency Safeguard: Verify physical presence & size
+            if (!storageAdapter.exists(storageObjectKey)) {
+                log.error("[AirVault Worker] ❌ Integrity check failed: Stored object key '{}' not found in storage provider ({}) after assembly for session {}!",
+                        storageObjectKey, storageAdapter.getProviderName(), sessionId);
+            } else {
+                long verifiedSize = storageAdapter.getObjectSize(storageObjectKey);
+                if (verifiedSize != totalAssembledBytes) {
+                    log.warn("[AirVault Worker] ⚠️ Size mismatch post-assembly: expected {} B, storage reported {} B for key '{}'",
+                            totalAssembledBytes, verifiedSize, storageObjectKey);
+                }
+            }
+
             redisTracker.setSessionStatus(sessionId, "READY");
 
-            // 7. Clean up intermediate temporary chunks & assembled temp files
+            // 6. Clean up intermediate temporary chunks
             if (Files.exists(sessionChunkDir)) {
                 deleteChunkDir(sessionChunkDir);
             }
-            try {
-                Files.deleteIfExists(compressedFile);
-                if (!"LOCAL".equalsIgnoreCase(storageAdapter.getProviderName())) {
-                    // For R2, cleanup the temporary local assembly file as it is now in the cloud
-                    Files.deleteIfExists(finalFile);
-                }
-            } catch (IOException ignored) {}
 
-            log.info("[AirVault Worker] ✅ File assembly completed for {}: {} bytes, checksum={}",
-                    session.getFileName(), totalAssembledBytes, calculatedChecksum);
+            // Acknowledge RabbitMQ message
+            try {
+                channel.basicAck(deliveryTag, false);
+            } catch (Exception ackEx) {
+                log.warn("[AirVault Worker] Could not ACK deliveryTag={}: {}", deliveryTag, ackEx.getMessage());
+            }
+
+            log.info("[AirVault Worker] ✅ File assembly completed for {}: {} bytes, key={}, checksum={}",
+                    session.getFileName(), totalAssembledBytes, storageObjectKey, calculatedChecksum);
 
             // 7. Broadcast SSE upload_complete event
             uploadService.broadcastEvent(session.getClipboardId(), "upload_complete", Map.of(
@@ -261,6 +334,13 @@ public class AirVaultUploadAssemblyWorker {
             uploadSessionRepository.save(session);
             redisTracker.setSessionStatus(sessionId, "FAILED");
 
+            try {
+                // Acknowledge poisoned/failed message to prevent infinite crash loops
+                channel.basicAck(deliveryTag, false);
+            } catch (Exception ackEx) {
+                log.warn("[AirVault Worker] Could not ACK failed message deliveryTag={}: {}", deliveryTag, ackEx.getMessage());
+            }
+
             auditService.recordEvent(
                     "upload_failed",
                     null,
@@ -273,11 +353,86 @@ public class AirVaultUploadAssemblyWorker {
                     null,
                     Map.of("error", e.getMessage() != null ? e.getMessage() : "Assembly failure")
             );
-            // Do NOT re-throw — re-throwing causes Spring Retry to re-deliver the same message
-            // in a tight loop (3× within ~1s per the RetryOperationsInterceptor in the stacktrace)
-            // before routing to the DLQ, amplifying log noise without any chance of recovery.
-            // The session is already marked FAILED in DB + Redis; the x-dead-letter-exchange
-            // binding on the queue handles DLQ routing automatically on natural message NACK.
+        }
+    }
+
+    private boolean isBinaryMedia(String filename, String category, String contentType) {
+        if (category != null) {
+            String cat = category.toLowerCase().trim();
+            if (cat.equals("video") || cat.equals("audio") || cat.equals("image") || cat.equals("pdf") || cat.equals("binary")) {
+                return true;
+            }
+        }
+        if (contentType != null) {
+            String ct = contentType.toLowerCase().trim();
+            if (ct.startsWith("video/") || ct.startsWith("audio/") || ct.startsWith("image/") || ct.equals("application/pdf")) {
+                return true;
+            }
+        }
+        if (filename != null) {
+            String lower = filename.toLowerCase().trim();
+            return lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mov") || lower.endsWith(".mkv")
+                    || lower.endsWith(".m4v") || lower.endsWith(".avi")
+                    || lower.endsWith(".mp3") || lower.endsWith(".wav") || lower.endsWith(".ogg") || lower.endsWith(".m4a")
+                    || lower.endsWith(".aac") || lower.endsWith(".flac")
+                    || lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".webp")
+                    || lower.endsWith(".gif") || lower.endsWith(".svg")
+                    || lower.endsWith(".pdf") || lower.endsWith(".zip") || lower.endsWith(".tar") || lower.endsWith(".gz");
+        }
+        return false;
+    }
+
+    private String getFileExtension(String filename) {
+        if (filename == null) return "";
+        int dot = filename.lastIndexOf('.');
+        return dot > 0 ? filename.substring(dot + 1) : "";
+    }
+
+    private String resolveMimeType(String filename) {
+        if (filename == null) return "application/octet-stream";
+        String lower = filename.toLowerCase();
+        if (lower.endsWith(".mp4")) return "video/mp4";
+        if (lower.endsWith(".webm")) return "video/webm";
+        if (lower.endsWith(".mov")) return "video/quicktime";
+        if (lower.endsWith(".mkv")) return "video/x-matroska";
+        if (lower.endsWith(".mp3")) return "audio/mpeg";
+        if (lower.endsWith(".wav")) return "audio/wav";
+        if (lower.endsWith(".ogg")) return "audio/ogg";
+        if (lower.endsWith(".m4a") || lower.endsWith(".aac")) return "audio/mp4";
+        if (lower.endsWith(".pdf")) return "application/pdf";
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+        if (lower.endsWith(".webp")) return "image/webp";
+        if (lower.endsWith(".gif")) return "image/gif";
+        if (lower.endsWith(".svg")) return "image/svg+xml";
+        if (lower.endsWith(".zip")) return "application/zip";
+        return "application/octet-stream";
+    }
+
+    private String calculateSha256Hex(Path path) throws Exception {
+        MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+        try (InputStream in = Files.newInputStream(path)) {
+            byte[] buf = new byte[8192];
+            int read;
+            while ((read = in.read(buf)) > 0) {
+                sha256.update(buf, 0, read);
+            }
+        }
+        byte[] hashBytes = sha256.digest();
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : hashBytes) {
+            hexString.append(String.format("%02x", b));
+        }
+        return hexString.toString();
+    }
+
+    private void deleteChunkDir(Path dir) {
+        try (var stream = Files.walk(dir)) {
+            stream.sorted(Comparator.reverseOrder()).forEach(p -> {
+                try { Files.deleteIfExists(p); } catch (Exception ignored) {}
+            });
+        } catch (Exception e) {
+            log.warn("[AirVault Worker] ⚠️ Could not delete chunk dir {}: {}", dir, e.getMessage());
         }
     }
 }

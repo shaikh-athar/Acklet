@@ -106,6 +106,28 @@ export class AirVaultResourceCacheService {
   }
 
   /**
+   * Checks if a resource ID is cached.
+   */
+  has(id: string): boolean {
+    return this.cache.has(id);
+  }
+
+  /**
+   * Invalidates and deletes a cached resource entry, revoking its Object URL.
+   */
+  invalidate(id: string): void {
+    if (this.cache.has(id)) {
+      const entry = this.cache.get(id)!;
+      try {
+        URL.revokeObjectURL(entry.objectUrl);
+      } catch {}
+      this.currentCacheBytes -= entry.byteSize;
+      this.cache.delete(id);
+    }
+    this.inFlightRequests.delete(id);
+  }
+
+  /**
    * Evicts least recently accessed item from cache and revokes its Object URL
    */
   private evictLru() {

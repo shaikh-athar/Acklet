@@ -552,11 +552,11 @@ export class AirVaultEraseModalComponent {
 
         setTimeout(() => this.executeEraseEverything(), 1400);
       } catch (err: any) {
+        console.error('[AirVault Erase] Backup creation error:', err);
         this.backupState.set('failed');
         this.isErasing.set(false);
         this.errorMessage.set(
-          'Backup could not be created: ' + (err?.message || 'unknown error') +
-          '. You can erase without a backup or go back.'
+          'Backup could not be created. You can erase without a backup or go back.'
         );
       }
     }, 100);

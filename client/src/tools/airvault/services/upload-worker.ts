@@ -197,23 +197,97 @@ addEventListener('message', async (event: MessageEvent) => {
       const hashBuffer = await crypto.subtle.digest('SHA-256', encryptedChunkBuffers[0] || new Uint8Array());
       const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
 
-      // 6. Build final payload representation
+      // 6. Accurate category detection
+      const fname = (filename || '').toLowerCase();
+      let detectedCategory = 'file';
+      const isAud = /\.(mp3|wav|m4a|aac|ogg|flac|wma)$/i.test(fname) || (file.type && file.type.startsWith('audio/'));
+      const isPdf = fname.endsWith('.pdf') || (file.type && file.type.startsWith('application/pdf'));
+      const isSpreadsheet = /\.(csv|tsv|xlsx|xls)$/i.test(fname);
+      const isArchive = /\.(zip|rar|7z|tar|gz|bz2)$/i.test(fname) || (file.type && file.type.startsWith('application/zip'));
+      const isFont = /\.(ttf|otf|woff|woff2)$/i.test(fname);
+      const isMd = /\.(md|markdown)$/i.test(fname);
+      const isCodeExt = /\.(js|ts|jsx|tsx|py|java|cpp|c|html|css|json|xml|sql|sh|yaml|yml|rs|go|php|dart|vue|svelte|rb|swift|kt)$/i.test(fname);
+
+      if (isImg) detectedCategory = 'image';
+      else if (isVid) detectedCategory = 'video';
+      else if (isAud) detectedCategory = 'audio';
+      else if (isPdf) detectedCategory = 'pdf';
+      else if (isSpreadsheet) detectedCategory = 'spreadsheet';
+      else if (isArchive) detectedCategory = 'archive';
+      else if (isFont) detectedCategory = 'font';
+      else if (isMd) detectedCategory = 'markdown';
+      else if (isCodeExt) detectedCategory = fname.endsWith('.json') ? 'json' : 'code';
+
+      // 7. Build final payload representation preserving binary data integrity
       let rawContent = '';
-      if (totalBytes <= 8 * 1024 * 1024) {
-        if (isImg) {
-          const fullBuf = await file.arrayBuffer();
-          const bytes = new Uint8Array(fullBuf);
-          let binary = '';
-          for (let i = 0; i < bytes.byteLength; i++) {
-            binary += String.fromCharCode(bytes[i]);
+      const isBinary = isImg || isVid || isAud || isPdf || isArchive || isFont || /\.(docx?|xlsx?|pptx?|bin|iso|dmg|pkg|wasm|dylib|so|psd|ai|fig|sketch|xd|epub|mobi)$/i.test(fname) || (file.type && (file.type.startsWith('application/') || file.type.startsWith('image/') || file.type.startsWith('video/') || file.type.startsWith('audio/')));
+
+      if (isBinary) {
+        if (totalBytes <= 25 * 1024 * 1024) {
+          try {
+            const fullBuf = await file.arrayBuffer();
+            const bytes = new Uint8Array(fullBuf);
+            let binary = '';
+            const len = bytes.byteLength;
+            const CHUNK = 32768;
+            for (let i = 0; i < len; i += CHUNK) {
+              const sub = bytes.subarray(i, Math.min(i + CHUNK, len));
+              binary += String.fromCharCode.apply(null, sub as any);
+            }
+            let mime = file.type;
+            if (!mime || mime === 'application/octet-stream') {
+              const ext = fname.split('.').pop()?.toLowerCase() || '';
+              const mimeMap: Record<string, string> = {
+                pdf: 'application/pdf',
+                doc: 'application/msword',
+                docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                xls: 'application/vnd.ms-excel',
+                xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                ppt: 'application/vnd.ms-powerpoint',
+                pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                zip: 'application/zip',
+                rar: 'application/vnd.rar',
+                '7z': 'application/x-7z-compressed',
+                tar: 'application/x-tar',
+                gz: 'application/gzip',
+                csv: 'text/csv',
+                tsv: 'text/tab-separated-values',
+                json: 'application/json',
+                png: 'image/png',
+                jpg: 'image/jpeg',
+                jpeg: 'image/jpeg',
+                gif: 'image/gif',
+                webp: 'image/webp',
+                svg: 'image/svg+xml',
+                mp3: 'audio/mpeg',
+                wav: 'audio/wav',
+                mp4: 'video/mp4',
+                webm: 'video/webm'
+              };
+              if (mimeMap[ext]) {
+                mime = mimeMap[ext];
+              } else if (isImg) {
+                mime = 'image/png';
+              } else if (!mime) {
+                mime = 'application/octet-stream';
+              }
+            }
+            rawContent = `data:${mime};base64,${btoa(binary)}`;
+            if (isImg && !previewUrl) previewUrl = rawContent;
+          } catch {
+            rawContent = `[Encrypted Binary Attachment: ${filename} - ${(totalBytes / 1024 / 1024).toFixed(1)} MB]`;
           }
-          rawContent = `data:${file.type || 'image/png'};base64,${btoa(binary)}`;
-          if (!previewUrl) previewUrl = rawContent;
         } else {
+          rawContent = `[Encrypted Binary Attachment: ${filename} - ${(totalBytes / 1024 / 1024).toFixed(1)} MB]`;
+        }
+      } else if (totalBytes <= 8 * 1024 * 1024) {
+        try {
           rawContent = await file.text();
+        } catch {
+          rawContent = `[Encrypted Attachment: ${filename} - ${(totalBytes / 1024 / 1024).toFixed(1)} MB]`;
         }
       } else {
-        rawContent = previewUrl || `[Encrypted E2EE Attachment: ${filename} - ${(totalBytes / 1024 / 1024).toFixed(1)} MB]`;
+        rawContent = previewUrl || `[Encrypted Attachment: ${filename} - ${(totalBytes / 1024 / 1024).toFixed(1)} MB]`;
       }
 
       postMessage({
@@ -224,7 +298,7 @@ addEventListener('message', async (event: MessageEvent) => {
           checksum: `sha256-${hashHex}`,
           serverFileRef: `vault-${fileId}-${Date.now()}`,
           previewUrl: previewUrl || (isImg ? rawContent : undefined),
-          category: isImg ? 'image' : (isVid ? 'video' : 'file'),
+          category: detectedCategory,
           rawContent,
           filename
         }

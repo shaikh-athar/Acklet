@@ -58,6 +58,20 @@ AirVault follows the strict design discipline established by Acklet's DataLens t
   - *Expanded mode*: Expands to accommodate ~15–18 lines (~280px–380px) with docked bottom controls for long-form scripts, markdown documentation, and complex multi-line snippets.
   - *Expand/Collapse Toggle*: Corner expansion button using `maximize-2` / `minimize-2` matching the modern composer standard.
   - *Input Field Clear Action*: Compact clear button (`x`) inside the composer toolbar adjacent to the `+` attachment button, allowing users to wipe staged text/files with 1 click without touching vault clipboard history.
+
+### 2.4 Multi-Resource Batch Action Bar & Transfer Workflow
+- **Multi-Resource Selection**:
+  - Each clipboard card provides an interactive checkbox in its top-left header.
+  - Hovering over a card reveals the checkbox; selecting an item persists the checkbox and highlights the card container with an active accent ring (`0 0 0 1.5px var(--av-accent)`).
+- **Floating Batch Action Bar (`.av-batch-floating-bar`)**:
+  - Automatically floats docked above the composer row whenever one or more items are selected.
+  - **Left**: Select All / Deselect All toggle button with active count pill (`N selected`).
+  - **Center (Idle)**: Destination Device Picker dropdown button with device dot, name, `@username`, and chevron.
+  - **Center (Sending)**: Live progress indicator (`Sending X of Y · "resource-name"`) with breakdown statistics (`N sent · M failed · K pending`).
+  - **Right**: Primary `Send to Device` action button with animated loading spinner during transfer, alongside a cancel (`x`) button to dismiss selection.
+- **Completion Feedback**:
+  - Dispatches non-blocking transfers sequentially through the existing single-item `broadcastItem` / `beamContent` pipeline.
+  - Displays a clean completion summary toast upon finish (e.g. `✓ Successfully sent all 5 resources to @laptop` or `✓ Sent 4 resources to @laptop (1 failed)`).
   - *Clear Button*: Icon updated to `rotate-ccw` (with red hover danger styling) to clearly signify resetting/clearing the active device clipboard.
   - Leading paperclip attach button (`Upload file`, `Upload folder (.zip)`).
   - Text input area with placeholder `"Drop files, folders, or start typing"`.

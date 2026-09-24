@@ -598,31 +598,29 @@ When a significant architectural change is completed, update this section:
 
 ## Latest Changes
 
-### [DATE] - [FEATURE]
+### 2026-09-22 - AirVault Media Storage, Byte-Range Streaming & Dual-Path Retention
 
 Files:
 
-* file/path
+* `server/acklet/src/main/java/com/code/acklet/airvault/storage/AirVaultStorageAdapter.java`
+* `server/acklet/src/main/java/com/code/acklet/airvault/storage/LocalStorageAdapter.java`
+* `server/acklet/src/main/java/com/code/acklet/airvault/storage/R2StorageAdapter.java`
+* `server/acklet/src/main/java/com/code/acklet/airvault/storage/AirVaultStorageConfig.java`
+* `server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultUploadAssemblyWorker.java`
+* `server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultStorageCleanupService.java`
+* `server/acklet/src/main/java/com/code/acklet/airvault/controller/AirVaultUploadController.java`
+* `server/acklet/src/main/resources/db/migration/V44__airvault_storage_cleanup_log.sql`
 
 Change:
 
-* What changed
+* Preserved original uncompressed extensions for binary media (`.mp4`, `.jpg`, `.pdf`, etc.) and added in-place startup migration for legacy `.bin.gz` media.
+* Upgraded `AirVaultStorageAdapter` to support `getRange(key, start, end)`, `getObjectSize(key)`, and `listAll()` for both Local disk and Cloudflare R2 / AWS S3.
+* Implemented universal RFC 7233 HTTP Byte-Range seeking in `AirVaultUploadController` with zero backend branching.
+* Built dual-path storage retention engine (`AirVaultStorageCleanupService`): Path A (User files, 7-day recoverable mark & sweep) and Path B (Dead upload chunks, hourly immediate purge), complete with audit logging (`airvault_storage_cleanup_log`) and independent dry-run flags.
 
 Reason:
 
-* Why it changed
-
-Flow:
-
-* New execution flow
-
-Impact:
-
-* What existing behavior is affected
-
-Known limitation:
-
-* Any remaining limitation
+* Prevent media corruption from double compression and provide seamless S3/R2 cloud storage compatibility with safe, audited background cleanup.
 
 ---
 

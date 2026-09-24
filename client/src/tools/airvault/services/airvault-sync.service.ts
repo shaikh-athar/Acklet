@@ -174,21 +174,61 @@ export class AirVaultSyncService {
     }
   }
 
+  /**
+   * Serializes batch sub-files while restoring binary data-URLs from IndexedDB/cache
+   * so receiver devices have the full payload.
+   */
+  private async serializeBatchFilesWithPayloads(batchFiles: AirVaultItem[]): Promise<any[]> {
+    return Promise.all(batchFiles.map(async (bf) => {
+      let rawPayload = bf.content?.raw;
+      let previewPayload = bf.content?.previewUrl;
+
+      if (!rawPayload || rawPayload.length === 0 || rawPayload.startsWith('blob:') || rawPayload.startsWith('[Encrypted')) {
+        const cached = this.storageService.resourceCache.get(bf.id);
+        let blobToUse = cached?.blob || null;
+        if (!blobToUse) {
+          const fetched = await this.storageService.fetchResourcePayload(bf);
+          blobToUse = fetched.blob;
+        }
+        if (blobToUse && blobToUse.size > 0) {
+          try {
+            rawPayload = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(blobToUse!);
+            });
+            if (!previewPayload && bf.content?.category === 'image') {
+              previewPayload = rawPayload;
+            }
+          } catch {}
+        }
+      }
+
+      return {
+        id: bf.id,
+        content: {
+          ...bf.content,
+          raw: rawPayload || bf.content?.raw || '',
+          previewUrl: previewPayload || bf.content?.previewUrl
+        },
+        timestamp: bf.timestamp
+      };
+    }));
+  }
+
   /** 
    * Broadcasts an existing or restored resource to all connected active devices.
    */
   async broadcastItem(item: AirVaultItem): Promise<AirVaultItem | null> {
     if (item.isBatchParent && item.batchFiles && item.batchFiles.length > 0) {
+      const serializedFiles = await this.serializeBatchFilesWithPayloads(item.batchFiles);
       const batchPayload = JSON.stringify({
         isBatchParent: true,
         batchId: item.batchId || item.id,
         batchTotalCount: item.batchTotalCount || item.batchFiles.length,
         batchTotalBytes: item.batchTotalBytes || 0,
-        batchFiles: item.batchFiles.map(bf => ({
-          id: bf.id,
-          content: bf.content,
-          timestamp: bf.timestamp
-        }))
+        batchFiles: serializedFiles
       });
       return this.beamContent(batchPayload, item.targetDeviceId, `${item.batchTotalCount || item.batchFiles.length} Files Batch`, item.id);
     }
@@ -768,16 +808,13 @@ export class AirVaultSyncService {
       const existingItem = this.storageService.allItems().find(i => i.id === existingItemId);
       if (existingItem?.isBatchParent) {
         isBatch = true;
+        const serializedFiles = await this.serializeBatchFilesWithPayloads(existingItem.batchFiles || []);
         batchData = {
           isBatchParent: true,
           batchId: existingItem.id,
           batchTotalCount: existingItem.batchTotalCount || existingItem.batchFiles?.length || 0,
           batchTotalBytes: existingItem.batchTotalBytes || 0,
-          batchFiles: existingItem.batchFiles?.map(bf => ({
-            id: bf.id,
-            content: bf.content,
-            timestamp: bf.timestamp
-          }))
+          batchFiles: serializedFiles
         };
       }
     }
@@ -801,6 +838,7 @@ export class AirVaultSyncService {
         isSensitive: false,
         collapseState: 'collapsed'
       };
+      const existingItemForResend = existingItemId ? this.storageService.allItems().find(i => i.id === existingItemId) : null;
       payloadString = JSON.stringify({
         isBatchParent: true,
         batchId: batchData.batchId || existingItemId,
@@ -808,6 +846,9 @@ export class AirVaultSyncService {
         batchTotalBytes: bytes,
         raw: resolvedRaw,
         batchFiles: batchData.batchFiles || [],
+        resendCount: existingItemForResend?.resendCount,
+        lastResentAt: existingItemForResend?.lastResentAt,
+        isResend: !!(existingItemForResend?.resendCount && existingItemForResend.resendCount > 0),
         originDeviceId: curDevice.id,
         originDeviceName: curDevice.name
       });
@@ -819,18 +860,16 @@ export class AirVaultSyncService {
       if (options?.byteSize) {
         classified.byteSize = options.byteSize;
       }
-      if (existingItemId) {
-        const existingItem = this.storageService.allItems().find(i => i.id === existingItemId);
-        if (existingItem?.content) {
-          if (!classified.previewUrl && existingItem.content.previewUrl) {
-            classified.previewUrl = existingItem.content.previewUrl;
-          }
-          if (!classified.filename && existingItem.content.filename) {
-            classified.filename = existingItem.content.filename;
-          }
-          if (existingItem.content.byteSize && !classified.byteSize) {
-            classified.byteSize = existingItem.content.byteSize;
-          }
+      const existingItemForPayload = existingItemId ? this.storageService.allItems().find(i => i.id === existingItemId) : null;
+      if (existingItemForPayload?.content) {
+        if (!classified.previewUrl && existingItemForPayload.content.previewUrl) {
+          classified.previewUrl = existingItemForPayload.content.previewUrl;
+        }
+        if (!classified.filename && existingItemForPayload.content.filename) {
+          classified.filename = existingItemForPayload.content.filename;
+        }
+        if (existingItemForPayload.content.byteSize && !classified.byteSize) {
+          classified.byteSize = existingItemForPayload.content.byteSize;
         }
       }
       if (!classified.previewUrl && classified.category === 'image' && classified.raw) {
@@ -854,6 +893,9 @@ export class AirVaultSyncService {
         previewUrl: classified.previewUrl,
         byteSize: classified.byteSize,
         lineBlameMap: classified.lineBlameMap,
+        resendCount: existingItemForPayload?.resendCount,
+        lastResentAt: existingItemForPayload?.lastResentAt,
+        isResend: !!(existingItemForPayload?.resendCount && existingItemForPayload.resendCount > 0),
         tag: options?.tag,
         retentionTtlMs: options?.retentionTtlMs,
         originDeviceId: curDevice.id,
@@ -1019,6 +1061,12 @@ export class AirVaultSyncService {
     const now = Date.now();
 
     for (const record of pending) {
+      // If the resource or packet was tombstoned/deleted globally, immediately purge from outbox and skip
+      if (this.storageService.isTombstoned(record.itemId) || this.storageService.isTombstoned(record.packetId)) {
+        await this.storageService.purgeOutboxRecord(record.packetId);
+        continue;
+      }
+
       if (record.retryCount >= record.maxRetries) {
         record.status = 'FAILED';
         record.updatedAt = now;
@@ -1584,6 +1632,26 @@ export class AirVaultSyncService {
       const rawBatchFiles = parsed ? (parsed.batchFiles || parsed.batch_files) : null;
       const isBatchDetected = !!(parsed && (parsed.isBatchParent || parsed.is_batch_parent || (Array.isArray(rawBatchFiles) && rawBatchFiles.length > 0)));
 
+      // Check if item has been locally removed / suppressed on this device
+      const isSuppressedLocally = this.storageService.isLocallySuppressed(packet.packetId) ||
+        (parsed?.id && this.storageService.isLocallySuppressed(parsed.id)) ||
+        (parsed?.batchId && this.storageService.isLocallySuppressed(parsed.batchId));
+
+      if (isSuppressedLocally) {
+        const isExplicitOwnerResend = !!(parsed && (parsed.isResend || (parsed.resendCount && parsed.resendCount > 0)));
+        if (!isExplicitOwnerResend) {
+          AirVaultSyncDebugLogger.logDestinationSkipped(syncId, senderDevice.id, 'locally_suppressed', packet.packetId);
+          AirVaultLogger.debug(`[AirVault Sync] 🛡️ Packet ${packet.packetId} was locally removed by user on this device. Ignoring auto-sync.`);
+          this.sendAck(packet.packetId, senderDevice.id);
+          return;
+        } else {
+          AirVaultLogger.info(`[AirVault Sync] 🔄 Item ${packet.packetId} was explicitly resent by owner. Unsuppressing.`);
+          this.storageService.removeLocalSuppression(packet.packetId);
+          if (parsed?.id) this.storageService.removeLocalSuppression(parsed.id);
+          if (parsed?.batchId) this.storageService.removeLocalSuppression(parsed.batchId);
+        }
+      }
+
       if (isBatchDetected) {
         if (parsed.originDeviceId) originDevId = parsed.originDeviceId;
         if (parsed.originDeviceName) originDevName = parsed.originDeviceName;
@@ -1668,7 +1736,7 @@ export class AirVaultSyncService {
 
       AirVaultSyncDebugLogger.logPacketDecrypted(syncId, classified.category);
 
-      const isExplicitPacketRestore = isInitialBatch || !!(parsed && (parsed.isResend || (parsed.resendCount && parsed.resendCount > 0)));
+      const isExplicitPacketRestore = !!(parsed && (parsed.isResend || (parsed.resendCount && parsed.resendCount > 0)));
 
       const receivedItem: AirVaultItem = {
         id: packet.packetId,
@@ -1711,8 +1779,27 @@ export class AirVaultSyncService {
       // If incoming payload contains raw binary / data URL, persist to IndexedDB payload store
       if (classified.raw && (classified.raw.startsWith('data:') || classified.raw.startsWith('blob:'))) {
         this.storageService.savePayloadToIndexedDb(receivedItem.id, classified.raw);
+        if (receivedItem.packetId && receivedItem.packetId !== receivedItem.id) {
+          this.storageService.savePayloadToIndexedDb(receivedItem.packetId, classified.raw);
+        }
       } else if (classified.previewUrl && classified.previewUrl.startsWith('data:')) {
         this.storageService.savePayloadToIndexedDb(receivedItem.id, classified.previewUrl);
+        if (receivedItem.packetId && receivedItem.packetId !== receivedItem.id) {
+          this.storageService.savePayloadToIndexedDb(receivedItem.packetId, classified.previewUrl);
+        }
+      }
+
+      // ── PERSIST EVERY BATCH SUB-FILE PAYLOAD INDIVIDUALLY TO INDEXEDDB ────
+      if (receivedItem.isBatchParent && Array.isArray(receivedItem.batchFiles)) {
+        for (const bf of receivedItem.batchFiles) {
+          const bfRaw = bf.content?.raw || (bf as any).raw;
+          const bfPreview = bf.content?.previewUrl || (bf as any).previewUrl;
+          if (bfRaw && (bfRaw.startsWith('data:') || bfRaw.startsWith('blob:'))) {
+            this.storageService.savePayloadToIndexedDb(bf.id, bfRaw);
+          } else if (bfPreview && bfPreview.startsWith('data:')) {
+            this.storageService.savePayloadToIndexedDb(bf.id, bfPreview);
+          }
+        }
       }
 
       // Ensure sender device is recognized as active

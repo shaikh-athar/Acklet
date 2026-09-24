@@ -8,15 +8,15 @@ import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Cloudflare R2 object storage implementation of {@link AirVaultStorageAdapter} using AWS SDK v2 S3 API.
+ * Cloudflare R2 / AWS S3 object storage implementation of {@link AirVaultStorageAdapter} using AWS SDK v2 S3 API.
  * <p>
- * This adapter is active when {@code STORAGE_BACKEND=r2} (the production deployment mode).
- * It communicates with Cloudflare R2's S3-compatible API using the configured bucket and credentials.
- * <p>
- * Switching between {@code LocalStorageAdapter} and {@code R2StorageAdapter} requires no code changes —
- * only changing the {@code STORAGE_BACKEND} environment variable from {@code local} to {@code r2}.
+ * This adapter is active when {@code airvault.storage.type=s3} or {@code STORAGE_BACKEND=r2}.
+ * It communicates with Cloudflare R2 / AWS S3's S3-compatible API using the configured bucket, credentials, and endpoint.
  */
 @Slf4j
 public class R2StorageAdapter implements AirVaultStorageAdapter {
@@ -27,7 +27,7 @@ public class R2StorageAdapter implements AirVaultStorageAdapter {
     public R2StorageAdapter(S3Client s3Client, String bucketName) {
         this.s3Client = s3Client;
         this.bucketName = bucketName;
-        log.info("[AirVault R2Storage] Initialized R2 adapter for bucket: {}", bucketName);
+        log.info("[AirVault S3/R2Storage] Initialized S3/R2 adapter for bucket: {}", bucketName);
     }
 
     private String cleanKey(String objectKey) {
@@ -46,13 +46,13 @@ public class R2StorageAdapter implements AirVaultStorageAdapter {
                     .build();
 
             s3Client.putObject(putRequest, RequestBody.fromInputStream(inputStream, contentLength));
-            log.debug("[AirVault R2Storage] Uploaded object '{}' ({} bytes) to R2 bucket '{}'", key, contentLength, bucketName);
+            log.debug("[AirVault S3/R2Storage] Uploaded object '{}' ({} bytes) to bucket '{}'", key, contentLength, bucketName);
         } catch (S3Exception e) {
-            log.error("[AirVault R2Storage] ⛔ S3 error uploading '{}' to bucket '{}': {}", key, bucketName, e.awsErrorDetails().errorMessage());
-            throw new IOException("R2 storage upload failed for key " + key + ": " + e.getMessage(), e);
+            log.error("[AirVault S3/R2Storage] ⛔ S3 error uploading '{}' to bucket '{}': {}", key, bucketName, e.awsErrorDetails().errorMessage());
+            throw new IOException("S3/R2 storage upload failed for key " + key + ": " + e.getMessage(), e);
         } catch (Exception e) {
-            log.error("[AirVault R2Storage] ⛔ Unexpected error uploading '{}' to R2: {}", key, e.getMessage());
-            throw new IOException("R2 storage upload error for key " + key + ": " + e.getMessage(), e);
+            log.error("[AirVault S3/R2Storage] ⛔ Unexpected error uploading '{}' to S3/R2: {}", key, e.getMessage());
+            throw new IOException("S3/R2 storage upload error for key " + key + ": " + e.getMessage(), e);
         }
     }
 
@@ -65,16 +65,56 @@ public class R2StorageAdapter implements AirVaultStorageAdapter {
                     .key(key)
                     .build();
 
-            ResponseInputStream<GetObjectResponse> s3Stream = s3Client.getObject(getRequest);
-            return s3Stream;
+            return s3Client.getObject(getRequest);
         } catch (NoSuchKeyException e) {
-            throw new IOException("Object not found in R2: " + key, e);
+            throw new IOException("Object not found in S3/R2: " + key, e);
         } catch (S3Exception e) {
-            log.error("[AirVault R2Storage] ⛔ S3 error retrieving '{}' from bucket '{}': {}", key, bucketName, e.awsErrorDetails().errorMessage());
-            throw new IOException("R2 getObject failed for key " + key + ": " + e.getMessage(), e);
+            log.error("[AirVault S3/R2Storage] ⛔ S3 error retrieving '{}' from bucket '{}': {}", key, bucketName, e.awsErrorDetails().errorMessage());
+            throw new IOException("S3/R2 getObject failed for key " + key + ": " + e.getMessage(), e);
         } catch (Exception e) {
-            log.error("[AirVault R2Storage] ⛔ Unexpected error retrieving '{}' from R2: {}", key, e.getMessage());
-            throw new IOException("R2 retrieval error for key " + key + ": " + e.getMessage(), e);
+            log.error("[AirVault S3/R2Storage] ⛔ Unexpected error retrieving '{}' from S3/R2: {}", key, e.getMessage());
+            throw new IOException("S3/R2 retrieval error for key " + key + ": " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public InputStream getRange(String objectKey, long start, long end) throws IOException {
+        String key = cleanKey(objectKey);
+        try {
+            String rangeHeader = String.format("bytes=%d-%d", start, end);
+            GetObjectRequest getRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .range(rangeHeader)
+                    .build();
+
+            return s3Client.getObject(getRequest);
+        } catch (NoSuchKeyException e) {
+            throw new IOException("Object not found in S3/R2: " + key, e);
+        } catch (S3Exception e) {
+            log.error("[AirVault S3/R2Storage] ⛔ S3 error retrieving range for '{}' from bucket '{}': {}", key, bucketName, e.awsErrorDetails().errorMessage());
+            throw new IOException("S3/R2 getRange failed for key " + key + ": " + e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("[AirVault S3/R2Storage] ⛔ Unexpected error retrieving range for '{}' from S3/R2: {}", key, e.getMessage());
+            throw new IOException("S3/R2 getRange error for key " + key + ": " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public long getObjectSize(String objectKey) throws IOException {
+        String key = cleanKey(objectKey);
+        try {
+            HeadObjectRequest headRequest = HeadObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build();
+            HeadObjectResponse resp = s3Client.headObject(headRequest);
+            return resp.contentLength();
+        } catch (NoSuchKeyException e) {
+            throw new IOException("Object not found in S3/R2: " + key, e);
+        } catch (S3Exception e) {
+            log.error("[AirVault S3/R2Storage] ⛔ S3 error retrieving size for '{}' from bucket '{}': {}", key, bucketName, e.awsErrorDetails().errorMessage());
+            throw new IOException("S3/R2 getObjectSize failed for key " + key + ": " + e.getMessage(), e);
         }
     }
 
@@ -94,10 +134,10 @@ public class R2StorageAdapter implements AirVaultStorageAdapter {
             if (e.statusCode() == 404) {
                 return false;
             }
-            log.warn("[AirVault R2Storage] HeadObject check warning for '{}': {}", key, e.awsErrorDetails().errorMessage());
+            log.warn("[AirVault S3/R2Storage] HeadObject check warning for '{}': {}", key, e.awsErrorDetails().errorMessage());
             return false;
         } catch (Exception e) {
-            log.warn("[AirVault R2Storage] Unexpected error checking existence for '{}': {}", key, e.getMessage());
+            log.warn("[AirVault S3/R2Storage] Unexpected error checking existence for '{}': {}", key, e.getMessage());
             return false;
         }
     }
@@ -106,24 +146,64 @@ public class R2StorageAdapter implements AirVaultStorageAdapter {
     public void deleteObject(String objectKey) throws IOException {
         String key = cleanKey(objectKey);
         try {
-            DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
+            // First check if this key might represent a prefix / directory in S3
+            ListObjectsV2Request listReq = ListObjectsV2Request.builder()
                     .bucket(bucketName)
-                    .key(key)
+                    .prefix(key)
                     .build();
-            s3Client.deleteObject(deleteRequest);
-            log.debug("[AirVault R2Storage] Deleted object '{}' from R2 bucket '{}'", key, bucketName);
+            ListObjectsV2Response listResp = s3Client.listObjectsV2(listReq);
+
+            if (!listResp.contents().isEmpty()) {
+                for (S3Object s3Obj : listResp.contents()) {
+                    s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(s3Obj.key()).build());
+                    log.debug("[AirVault S3/R2Storage] Deleted object '{}' under prefix '{}'", s3Obj.key(), key);
+                }
+            } else {
+                DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(key)
+                        .build();
+                s3Client.deleteObject(deleteRequest);
+                log.debug("[AirVault S3/R2Storage] Deleted object '{}' from bucket '{}'", key, bucketName);
+            }
         } catch (S3Exception e) {
-            log.error("[AirVault R2Storage] ⛔ S3 error deleting '{}' from bucket '{}': {}", key, bucketName, e.awsErrorDetails().errorMessage());
-            throw new IOException("R2 deleteObject failed for key " + key + ": " + e.getMessage(), e);
+            log.error("[AirVault S3/R2Storage] ⛔ S3 error deleting '{}' from bucket '{}': {}", key, bucketName, e.awsErrorDetails().errorMessage());
+            throw new IOException("S3/R2 deleteObject failed for key " + key + ": " + e.getMessage(), e);
         } catch (Exception e) {
-            log.error("[AirVault R2Storage] ⛔ Unexpected error deleting '{}' from R2: {}", key, e.getMessage());
-            throw new IOException("R2 delete error for key " + key + ": " + e.getMessage(), e);
+            log.error("[AirVault S3/R2Storage] ⛔ Unexpected error deleting '{}' from S3/R2: {}", key, e.getMessage());
+            throw new IOException("S3/R2 delete error for key " + key + ": " + e.getMessage(), e);
         }
     }
 
     @Override
+    public List<StorageObjectMetadata> listAll() throws IOException {
+        List<StorageObjectMetadata> results = new ArrayList<>();
+        try {
+            ListObjectsV2Request listReq = ListObjectsV2Request.builder()
+                    .bucket(bucketName)
+                    .build();
+
+            for (ListObjectsV2Response page : s3Client.listObjectsV2Paginator(listReq)) {
+                for (S3Object s3Object : page.contents()) {
+                    boolean isDir = s3Object.key().endsWith("/");
+                    results.add(new StorageObjectMetadata(
+                            s3Object.key(),
+                            s3Object.size() != null ? s3Object.size() : 0L,
+                            s3Object.lastModified() != null ? s3Object.lastModified() : Instant.now(),
+                            isDir
+                    ));
+                }
+            }
+        } catch (S3Exception e) {
+            log.error("[AirVault S3/R2Storage] ⛔ Error listing bucket contents for '{}': {}", bucketName, e.awsErrorDetails().errorMessage());
+            throw new IOException("Failed to list objects in S3/R2 bucket " + bucketName + ": " + e.getMessage(), e);
+        }
+        return results;
+    }
+
+    @Override
     public String getProviderName() {
-        return "R2";
+        return "S3";
     }
 
     public String getBucketName() {

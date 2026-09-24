@@ -455,12 +455,6 @@ export class AirVaultActionPopoverComponent {
           icon: 'copy',
           action: () => this.quickActions.copyText(urlToOpen, 'Link copied')
         });
-        actions.push({
-          id: 'share-url',
-          label: 'Share',
-          icon: 'share-2',
-          action: () => this.quickActions.shareUrl(urlToOpen)
-        });
         break;
       }
 

@@ -2,7 +2,7 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { AirVaultStorageService, AirVaultItem } from './airvault-storage.service';
 import { AirVaultClipboardService, ClassifiedContent } from './airvault-clipboard.service';
 
-export type FilterTab = 'all' | 'pinned' | 'code' | 'url' | 'image' | 'file' | 'markdown' | 'text';
+export type FilterTab = 'all' | 'pinned' | 'batch' | 'code' | 'url' | 'image' | 'file' | 'markdown' | 'text';
 
 @Injectable({
   providedIn: 'root'
@@ -24,6 +24,7 @@ export class AirVaultClipboardStore {
   readonly filterTabs: { id: FilterTab; label: string; icon: string }[] = [
     { id: 'all', label: 'All Items', icon: 'layers' },
     { id: 'pinned', label: 'Pinned', icon: 'pin' },
+    { id: 'batch', label: 'Multi-Resource', icon: 'layers' },
     { id: 'code', label: 'Code', icon: 'code' },
     { id: 'markdown', label: 'Markdown', icon: 'file-text' },
     { id: 'url', label: 'Links', icon: 'link' },
@@ -48,7 +49,16 @@ export class AirVaultClipboardStore {
 
     const tab = this.activeTab();
     if (tab === 'pinned') return list.filter(i => i.isPinned);
-    if (tab !== 'all') return list.filter(i => i.content.category === tab);
+    if (tab === 'batch') return list.filter(i => !!i.isBatchParent || i.content.category === 'batch');
+    if (tab !== 'all') {
+      return list.filter(i => {
+        if (i.content.category === tab) return true;
+        if (i.isBatchParent && i.batchFiles && i.batchFiles.length > 0) {
+          return i.batchFiles.some(sub => sub.content?.category === tab);
+        }
+        return false;
+      });
+    }
 
     return list;
   });
@@ -63,11 +73,12 @@ export class AirVaultClipboardStore {
     return {
       all: all.length,
       pinned: all.filter(i => i.isPinned).length,
-      code: all.filter(i => i.content.category === 'code').length,
-      markdown: all.filter(i => i.content.category === 'markdown').length,
-      url: all.filter(i => i.content.category === 'url').length,
-      image: all.filter(i => i.content.category === 'image').length,
-      file: all.filter(i => i.content.category === 'file').length,
+      batch: all.filter(i => !!i.isBatchParent || i.content.category === 'batch').length,
+      code: all.filter(i => i.content.category === 'code' || (i.isBatchParent && i.batchFiles?.some(s => s.content?.category === 'code'))).length,
+      markdown: all.filter(i => i.content.category === 'markdown' || (i.isBatchParent && i.batchFiles?.some(s => s.content?.category === 'markdown'))).length,
+      url: all.filter(i => i.content.category === 'url' || (i.isBatchParent && i.batchFiles?.some(s => s.content?.category === 'url'))).length,
+      image: all.filter(i => i.content.category === 'image' || (i.isBatchParent && i.batchFiles?.some(s => s.content?.category === 'image'))).length,
+      file: all.filter(i => i.content.category === 'file' || (i.isBatchParent && i.batchFiles?.some(s => s.content?.category === 'file'))).length,
       text: all.filter(i => i.content.category === 'text').length
     };
   });

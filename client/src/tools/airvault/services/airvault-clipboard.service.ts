@@ -5,7 +5,7 @@ import { detectActionShortcut, computeDedupKeySync } from './airvault-action-det
 import { AirVaultSyncDebugLogger } from './airvault-sync-debug.service';
 import { isHtmlContent, isStrictCodeMarkup, looksLikeMarkdown, stripMarkdownToPlainText, renderMarkdownToSafeHtml } from './airvault-markdown.util';
 
-export type ContentCategory = 'code' | 'url' | 'image' | 'video' | 'audio' | 'pdf' | 'spreadsheet' | 'archive' | 'font' | 'file' | 'text' | 'json' | 'markdown';
+export type ContentCategory = 'code' | 'url' | 'image' | 'video' | 'audio' | 'pdf' | 'spreadsheet' | 'archive' | 'font' | 'file' | 'text' | 'json' | 'markdown' | 'batch';
 export type CollapseState = 'expanded' | 'collapsed' | 'pending';
 
 export interface LineBlameSegment {
@@ -77,6 +77,14 @@ export interface ClassifiedContent {
   missingInfoHint?: string;
   /** Semantic deduplication key */
   dedupKey?: string;
+}
+
+export interface ResourceCapabilities {
+  canCopy: boolean;
+  canDownload: boolean;
+  canPreview: boolean;
+  previewType: 'text' | 'code' | 'json' | 'markdown' | 'url' | 'table' | 'image' | 'file-metadata' | 'none';
+  primaryAction: 'copy' | 'download' | 'none';
 }
 
 export const MAX_PAYLOAD_SIZE_BYTES = 1024 * 1024 * 1024; // 1 GB Max single file
@@ -701,5 +709,178 @@ export class AirVaultClipboardService {
     h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
     h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
     return `${str.length}_${(h2 >>> 0).toString(16)}${(h1 >>> 0).toString(16)}`;
+  }
+
+  /**
+   * Single source of truth policy for resource capabilities (Copy, Download, Preview).
+   * Used across Clipboard tiles, Preview modal, Review screens, and Quick Actions.
+   */
+  public getResourceCapabilities(item?: {
+    content?: {
+      category?: ContentCategory | string;
+      filename?: string;
+      raw?: string;
+      previewUrl?: string;
+      byteSize?: number;
+    };
+    isBatchParent?: boolean;
+    batchFiles?: any[];
+  } | null): ResourceCapabilities {
+    if (!item || !item.content) {
+      return {
+        canCopy: false,
+        canDownload: false,
+        canPreview: false,
+        previewType: 'none',
+        primaryAction: 'none'
+      };
+    }
+
+    // 1. Batch Parent Handling (Multi-file bundle or Mixed Note + Attachments)
+    if (item.isBatchParent) {
+      const raw = item.content.raw?.trim() || '';
+      const hasMixedText = !!raw && !/^Batch of \d+ files/i.test(raw);
+      return {
+        canCopy: hasMixedText,
+        canDownload: false, // Batch download all handled via batch zip action
+        canPreview: true,
+        previewType: hasMixedText ? 'text' : 'none',
+        primaryAction: hasMixedText ? 'copy' : 'none'
+      };
+    }
+
+    const cat = item.content.category || 'text';
+    const filename = (item.content.filename || '').toLowerCase();
+    const raw = item.content.raw || '';
+    const hasFilename = !!item.content.filename && item.content.filename.trim().length > 0;
+    const isBlobOrData = raw.startsWith('blob:') || raw.startsWith('data:');
+    const isEncryptedPlaceholder = raw.startsWith('[Encrypted');
+
+    // Categorization normalization
+    const isCsvOrTsv = cat === 'spreadsheet' && (filename.endsWith('.csv') || filename.endsWith('.tsv') || (!filename && !isBlobOrData && !isEncryptedPlaceholder));
+    const isSpreadsheetBinary = cat === 'spreadsheet' && !isCsvOrTsv;
+
+    switch (cat) {
+      case 'text':
+      case 'code':
+      case 'json':
+      case 'markdown': {
+        const isFileBacked = hasFilename || (item.content.byteSize && item.content.byteSize > 1024 * 1024);
+        return {
+          canCopy: true,
+          canDownload: !!isFileBacked,
+          canPreview: true,
+          previewType: cat === 'code' ? 'code' : cat === 'json' ? 'json' : cat === 'markdown' ? 'markdown' : 'text',
+          primaryAction: 'copy'
+        };
+      }
+
+      case 'url': {
+        return {
+          canCopy: true,
+          canDownload: false,
+          canPreview: true,
+          previewType: 'url',
+          primaryAction: 'copy'
+        };
+      }
+
+      case 'spreadsheet': {
+        if (isCsvOrTsv) {
+          return {
+            canCopy: true,
+            canDownload: true,
+            canPreview: true,
+            previewType: 'table',
+            primaryAction: 'copy'
+          };
+        }
+        // Binary spreadsheet (.xlsx, .xls)
+        return {
+          canCopy: false,
+          canDownload: true,
+          canPreview: false,
+          previewType: 'file-metadata',
+          primaryAction: 'download'
+        };
+      }
+
+      case 'image': {
+        return {
+          canCopy: true,
+          canDownload: true,
+          canPreview: true,
+          previewType: 'image',
+          primaryAction: 'download'
+        };
+      }
+
+      case 'video': {
+        // Thumbnail-only policy, no video playback preview engine
+        return {
+          canCopy: false,
+          canDownload: true,
+          canPreview: false,
+          previewType: 'file-metadata',
+          primaryAction: 'download'
+        };
+      }
+
+      case 'audio': {
+        return {
+          canCopy: false,
+          canDownload: true,
+          canPreview: true, // Audio player supported
+          previewType: 'file-metadata',
+          primaryAction: 'download'
+        };
+      }
+
+      case 'pdf': {
+        return {
+          canCopy: false,
+          canDownload: true,
+          canPreview: true, // PDF viewer iframe supported
+          previewType: 'file-metadata',
+          primaryAction: 'download'
+        };
+      }
+
+      case 'archive':
+      case 'font': {
+        return {
+          canCopy: false,
+          canDownload: true,
+          canPreview: true, // Archive list or font specimen supported
+          previewType: 'file-metadata',
+          primaryAction: 'download'
+        };
+      }
+
+      case 'file':
+      default: {
+        // Check if this generic file has a known text extension and non-binary raw text
+        const isTextDoc = /\.(txt|rtf|md|log|cfg|ini|env|json|js|ts|html|css|py|sh|csv|tsv|xml|yaml|yml|sql)$/i.test(filename) ||
+          (!hasFilename && !isBlobOrData && !isEncryptedPlaceholder && raw.length > 0);
+
+        if (isTextDoc) {
+          return {
+            canCopy: true,
+            canDownload: hasFilename,
+            canPreview: true,
+            previewType: 'text',
+            primaryAction: 'copy'
+          };
+        }
+
+        return {
+          canCopy: false,
+          canDownload: true,
+          canPreview: false,
+          previewType: 'file-metadata',
+          primaryAction: 'download'
+        };
+      }
+    }
   }
 }

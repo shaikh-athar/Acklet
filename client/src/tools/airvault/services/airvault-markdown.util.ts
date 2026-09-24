@@ -148,8 +148,10 @@ function applyInlineMarkdown(escapedLine: string): string {
  *
  * @param markdownOrHtml  Raw content string (Markdown, plain text, or HTML).
  * @param isSnippet       If true, output is truncated to ≤3 blocks for compact tile cards.
+ * @param highlightQuery  Optional search keyword to highlight with <mark class="av-search-match">.
+ * @param activeMatchIndex Optional 0-based index of current match to highlight with current-match class.
  */
-export function renderMarkdownToSafeHtml(markdownOrHtml: string, isSnippet: boolean = false): string {
+export function renderMarkdownToSafeHtml(markdownOrHtml: string, isSnippet: boolean = false, highlightQuery?: string, activeMatchIndex?: number): string {
   if (!markdownOrHtml) return '';
 
   const text = markdownOrHtml.trim();
@@ -159,10 +161,14 @@ export function renderMarkdownToSafeHtml(markdownOrHtml: string, isSnippet: bool
   // that happens to contain angle-bracket generics/JSX as HTML.
   if (isHtmlContent(text) && !isStrictCodeMarkup(text)) {
     const sanitized = sanitizeHtmlSnippet(text);
+    let result = sanitized;
     if (isSnippet) {
-      return sanitized.replace(/<p>\s*<\/p>/gi, '').replace(/(?:<br\s*\/?>\s*){2,}/gi, '<br/>');
+      result = sanitized.replace(/<p>\s*<\/p>/gi, '').replace(/(?:<br\s*\/?>\s*){2,}/gi, '<br/>');
     }
-    return sanitized;
+    if (highlightQuery) {
+      result = highlightSafeHtml(result, highlightQuery, activeMatchIndex);
+    }
+    return result;
   }
 
   // ── Branch B: Markdown / plain text — line-by-line block parser ─────────────
@@ -352,34 +358,79 @@ export function renderMarkdownToSafeHtml(markdownOrHtml: string, isSnippet: bool
     flushCurrent();
   }
 
-  if (isSnippet && out.length > 3) {
-    return out.slice(0, 3).join('');
+  const rendered = (isSnippet && out.length > 3) ? out.slice(0, 3).join('') : out.join('');
+  if (highlightQuery) {
+    return highlightSafeHtml(rendered, highlightQuery, activeMatchIndex);
   }
-
-  return out.join('');
+  return rendered;
 }
 
-// ─── Typed convenience renderers ─────────────────────────────────────────────
+/**
+ * Safely wraps matched search text inside rendered HTML with <mark class="av-search-match">
+ * and active match with <mark class="av-search-match current-match">, ignoring HTML tags.
+ */
+export function highlightSafeHtml(html: string, query?: string, activeMatchIndex?: number): string {
+  if (!html || !query || !query.trim()) return html;
+  const q = query.trim();
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = q.length <= 2
+    ? new RegExp(`(\\b${escaped}\\b)`, 'gi')
+    : new RegExp(`(${escaped})`, 'gi');
+
+  // Split HTML into HTML tags and text content
+  const tokens = html.split(/(<[^>]+>)/g);
+  let globalMatchIndex = 0;
+  const activeIdx = typeof activeMatchIndex === 'number' ? activeMatchIndex : -1;
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token.startsWith('<') && token.endsWith('>')) {
+      // Don't touch HTML tags
+      continue;
+    }
+    if (!token) continue;
+
+    const parts = token.split(pattern);
+    if (parts.length > 1) {
+      tokens[i] = parts.map(part => {
+        if (part.toLowerCase() === q.toLowerCase()) {
+          const isCurrent = globalMatchIndex === activeIdx;
+          globalMatchIndex++;
+          const currentClass = isCurrent ? ' current-match' : '';
+          return `<mark class="av-search-match${currentClass}">${part}</mark>`;
+        }
+        return part;
+      }).join('');
+    }
+  }
+
+  return tokens.join('');
+}
 
 /**
  * Renders plain text with all characters HTML-escaped and whitespace/newlines
  * preserved using a <pre> block. Does NOT apply any Markdown interpretation.
  * Use for TXT, logs, configs, raw code — anything definitely not Markdown.
  */
-export function renderPlainTextToSafeHtml(text: string): string {
+export function renderPlainTextToSafeHtml(text: string, highlightQuery?: string, activeMatchIndex?: number): string {
   if (!text) return '';
-  return `<pre class="av-plain-text-pre">${escapeHtml(text)}</pre>`;
+  const escaped = escapeHtml(text);
+  const highlighted = highlightQuery ? highlightSafeHtml(escaped, highlightQuery, activeMatchIndex) : escaped;
+  return `<pre class="av-plain-text-pre">${highlighted}</pre>`;
 }
 
 /**
  * Sanitizes rich HTML and returns it ready for [innerHTML] binding.
  * Removes only XSS vectors; preserves all structural and formatting tags.
  */
-export function renderHtmlToSafeHtml(html: string, isSnippet: boolean = false): string {
+export function renderHtmlToSafeHtml(html: string, isSnippet: boolean = false, highlightQuery?: string, activeMatchIndex?: number): string {
   if (!html) return '';
-  const sanitized = sanitizeHtmlSnippet(html);
+  let sanitized = sanitizeHtmlSnippet(html);
   if (isSnippet) {
-    return sanitized.replace(/<p>\s*<\/p>/gi, '').replace(/(?:<br\s*\/?>\s*){2,}/gi, '<br/>');
+    sanitized = sanitized.replace(/<p>\s*<\/p>/gi, '').replace(/(?:<br\s*\/?>\s*){2,}/gi, '<br/>');
+  }
+  if (highlightQuery) {
+    sanitized = highlightSafeHtml(sanitized, highlightQuery, activeMatchIndex);
   }
   return sanitized;
 }

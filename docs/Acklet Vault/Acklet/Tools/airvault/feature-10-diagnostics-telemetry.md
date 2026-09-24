@@ -64,3 +64,39 @@ To isolate microsecond bottlenecks across multi-device synchronizations:
 - **Telemetry Modal**: [`AirVaultDiagnosticsModalComponent`](file:///Users/ayaz/Acklet/client/src/tools/airvault/components/airvault-diagnostics-modal.component.ts).
 - **Feedback Integration**: Native `FeedbackModalComponent` for submitting bug reports or suggestions.
 
+---
+
+## 6. Centralized Error-to-User Mapping & Sanitization Policy
+
+To uphold privacy and user trust, technical errors, stack traces, and backend responses are never rendered directly in the UI.
+
+### Architecture
+
+```text
+Technical Error (Exception / HTTP Failure / Worker Crash)
+                       ↓
+         AirVaultUIStore.reportOperationError()
+         AirVaultUIStore.getUserFriendlyErrorMessage()
+                       ↓
+   ┌───────────────────┴───────────────────┐
+   │                                       │
+Developer Telemetry & Console       Safe User-Facing Toast/UI
+(console.error + Tracer + Logs)     ("We couldn't send this resource. Please try again.")
+```
+
+### Contextual Error Mappings
+
+| Context | User-Facing Message | Technical Preservation |
+| :--- | :--- | :--- |
+| `sending` | *"We couldn't send this resource. Please try again."* | Logged via `console.error` & `AirVaultSendTracer` |
+| `pairing` | *"We couldn't pair this device. Please try again."* | Logged via `console.error` with peer details |
+| `syncing` | *"Sync couldn't be completed. Please try again."* | Logged via `console.error` with sync packet metadata |
+| `deleting` | *"We couldn't complete the deletion. Please try again."* | Logged via `console.error` with target ID |
+| `loading` | *"We couldn't load this resource. Please try again."* | Logged via `console.error` with resource key |
+| `searching` | *"We couldn't complete the search. Please try again."* | Logged via `console.error` with query trace |
+| `import` | *"Unable to import this backup file. Please try again."* | Logged via `console.error` with JSON/schema parsing trace |
+| `export` | *"Unable to export vault data. Please try again."* | Logged via `console.error` with serialization trace |
+| `erasing` | *"AirVault could not complete the account erase. Please try again."* | Logged via `console.error` with wipe lifecycle failure |
+| `clipboard` | *"Unable to access clipboard. Please check browser permissions and try again."* | Logged via `console.error` with DOMException |
+| `general` | *"Something went wrong. Please try again."* | Logged via `console.error` with stack trace |
+

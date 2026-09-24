@@ -86,6 +86,11 @@
 - **Clipboard Item Retention Guarantee**:
   - Beaming content to peer devices never acts as a move or delete. Both the sending device and receiving devices retain their respective items in their active stream, feeds, and IndexedDB history.
   - Safari clipboard suggestion support integrates native clipboard read with synchronous focus, `visibilitychange`, and in-session fallback listeners.
+- **Binary Resource Persistence & Multi-Resource External Sharing**:
+  - **IndexedDB `vault_payloads` Store**: The primary offline source of truth for raw binary bytes (Blobs / base64 payloads) for all file categories (`image`, `pdf`, `spreadsheet`/XLSX, `document`/DOCX, `archive`/ZIP, audio, video).
+  - **Receiver-Side Sub-file Ingestion**: When receiving single files or multi-file batches, the receiver unpacks each item and persists its authentic binary payload directly into `vault_payloads` keyed by `id`, `packetId`, and sub-file IDs.
+  - **Metadata-First Reactive Tiering**: Angular Signals store lightweight metadata (`name`, `byteSize`, `category`, `previewUrl`) to protect memory and render times, while binary payloads are retrieved on-demand via `fetchResourcePayload()` for Sharing and Downloading.
+  - **Native OS External Share Flow**: Synchronous pre-resolution creates genuine, non-zero `File` instances with accurate MIME types before user click activation expires, invoking `navigator.share({ files: [...] })` as a unified single invocation.
 
 ---
 

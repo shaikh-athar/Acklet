@@ -22,6 +22,7 @@ import { AirVaultCollapseService } from './services/airvault-collapse.service';
 import { AirVaultColorService } from './services/airvault-color.service';
 import { AirVaultSyncDebugLogger, AirVaultLogger } from './services/airvault-sync-debug.service';
 import { AirVaultWsTransportService } from './services/airvault-ws-transport.service';
+import { AirVaultShortcutService } from './services/airvault-shortcut.service';
 import { checkDuplicateResource } from './services/airvault-action-detector';
 
 // Subcomponents
@@ -102,6 +103,7 @@ export class AirVaultComponent implements OnInit, OnDestroy {
   private cdr = inject(ChangeDetectorRef);
   private ngZone = inject(NgZone);
   prefService = inject(PreferenceService);
+  shortcutService = inject(AirVaultShortcutService);
 
   private sdk = new AckletToolSDK('airvault');
 
@@ -401,6 +403,8 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     await this.syncService.broadcastItem(updated || item);
   }
 
+
+
   onLiveTextChange(event: { text: string; lineBlameMap?: LineBlameEntry[] } | string) {
     if (typeof event === 'string') {
       this.syncService.broadcastLiveText(event);
@@ -556,17 +560,38 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     }
   }
 
-  onExecuteGlobalDelete(itemId: string) {
+  onExecuteGlobalDelete(targetId?: string) {
+    if (!targetId) return;
     this.uiStore.closeDeleteConfirm();
-    this.storageService.deleteItemGlobally(itemId);
-    this.syncService.broadcastGlobalDelete(itemId);
-    this.uiStore.triggerToast(`✓ Resource deleted from all connected devices (Available in 30-day Restorable History)`);
+
+    const cardEl = document.querySelector(`[data-card-id="${targetId}"]`) as HTMLElement;
+    if (cardEl) {
+      this.motionService.animateCardDelete(cardEl, () => {
+        this.storageService.deleteItemGlobally(targetId);
+        this.syncService.broadcastGlobalDelete(targetId);
+        this.uiStore.triggerToast(`✓ Resource deleted from all connected devices (Available in 30-day Restorable History)`);
+      });
+    } else {
+      this.storageService.deleteItemGlobally(targetId);
+      this.syncService.broadcastGlobalDelete(targetId);
+      this.uiStore.triggerToast(`✓ Resource deleted from all connected devices (Available in 30-day Restorable History)`);
+    }
   }
 
-  onExecuteLocalDelete(itemId: string) {
+  onExecuteLocalDelete(targetId?: string) {
+    if (!targetId) return;
     this.uiStore.closeDeleteConfirm();
-    this.storageService.deleteItemLocally(itemId);
-    this.uiStore.triggerToast(`✓ Resource removed from this device locally (Available in 30-day Restorable History)`);
+
+    const cardEl = document.querySelector(`[data-card-id="${targetId}"]`) as HTMLElement;
+    if (cardEl) {
+      this.motionService.animateCardDelete(cardEl, () => {
+        this.storageService.deleteItemLocally(targetId);
+        this.uiStore.triggerToast(`✓ Resource removed from your device`);
+      });
+    } else {
+      this.storageService.deleteItemLocally(targetId);
+      this.uiStore.triggerToast(`✓ Resource removed from your device`);
+    }
   }
 
   onOverrideDuplicate() {
@@ -675,6 +700,7 @@ export class AirVaultComponent implements OnInit, OnDestroy {
   showFilterPopover = signal<boolean>(false);
 
   filterCategories = [
+    { id: 'batch', label: 'Multi-Resource / Mixed', icon: 'layers' },
     { id: 'text', label: 'Plain Text', icon: 'align-left' },
     { id: 'markdown', label: 'Markdown', icon: 'file-text' },
     { id: 'code', label: 'Code Snippets', icon: 'code-2' },
@@ -1155,10 +1181,10 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     this.uiStore.openPreview(itemToPreview, currentQuery);
   }
 
-  getHighlightSegments(text: string, query: string): { text: string; isMatch: boolean }[] {
+  getHighlightSegments(text: string, query: string, activeIndex?: number): { text: string; isMatch: boolean; isCurrent: boolean }[] {
     if (!text) return [];
     const q = query ? query.trim() : '';
-    if (!q) return [{ text, isMatch: false }];
+    if (!q) return [{ text, isMatch: false, isCurrent: false }];
 
     let pattern: RegExp;
     if (q.length <= 2) {
@@ -1167,15 +1193,19 @@ export class AirVaultComponent implements OnInit, OnDestroy {
       pattern = new RegExp(this.escapeRegex(q), 'gi');
     }
 
-    const segments: { text: string; isMatch: boolean }[] = [];
+    const segments: { text: string; isMatch: boolean; isCurrent: boolean }[] = [];
     let lastIndex = 0;
     let match: RegExpExecArray | null;
+    let matchCount = 0;
+    const active = typeof activeIndex === 'number' ? activeIndex : -1;
 
     while ((match = pattern.exec(text)) !== null) {
       if (match.index > lastIndex) {
-        segments.push({ text: text.substring(lastIndex, match.index), isMatch: false });
+        segments.push({ text: text.substring(lastIndex, match.index), isMatch: false, isCurrent: false });
       }
-      segments.push({ text: match[0], isMatch: true });
+      const isCurrent = active >= 0 ? matchCount === active : false;
+      matchCount++;
+      segments.push({ text: match[0], isMatch: true, isCurrent });
       lastIndex = pattern.lastIndex;
       if (match.index === pattern.lastIndex) {
         pattern.lastIndex++;
@@ -1183,7 +1213,7 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     }
 
     if (lastIndex < text.length) {
-      segments.push({ text: text.substring(lastIndex), isMatch: false });
+      segments.push({ text: text.substring(lastIndex), isMatch: false, isCurrent: false });
     }
 
     return segments;
@@ -1246,20 +1276,47 @@ export class AirVaultComponent implements OnInit, OnDestroy {
 
   @HostListener('window:keydown', ['$event'])
   onKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
-      if (this.showNavbarSearch()) {
-        this.closeNavbarSearch();
-      } else {
-        this.uiStore.closeAllModals();
-      }
-    }
-    if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'k')) {
+    const isTyping = this.shortcutService.isTypingContext(e.target);
+    const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+
+    // ── 1. Global / Top Priority Shortcuts ──
+    // Focus search: ⌘/Ctrl + K or ⌘/Ctrl + F
+    if (isCmdOrCtrl && (e.key.toLowerCase() === 'k' || e.key.toLowerCase() === 'f')) {
       e.preventDefault();
       this.openNavbarSearch();
+      return;
     }
-    if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
+
+    // History: ⌘/Ctrl + H
+    if (isCmdOrCtrl && e.key.toLowerCase() === 'h') {
       e.preventDefault();
       this.uiStore.showHistoryModal.update(v => !v);
+      return;
+    }
+
+    // ── 2. Escape Dismissal Hierarchy ──
+    if (e.key === 'Escape') {
+      // If navbar search is active
+      if (this.showNavbarSearch()) {
+        this.closeNavbarSearch();
+        return;
+      }
+      // Close any active modal or drawer
+      this.uiStore.closeAllModals();
+      return;
+    }
+
+    // ── 3. Non-Typing Context Shortcuts ──
+    // If user is typing in input, textarea, or contenteditable, do NOT intercept editor keys
+    if (isTyping) {
+      return;
+    }
+
+    // Open Keyboard Shortcuts reference: ? (Shift + /)
+    if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+      e.preventDefault();
+      this.uiStore.openSettings('shortcuts');
+      return;
     }
   }
 }

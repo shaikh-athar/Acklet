@@ -217,14 +217,23 @@
 }
 
 /* Card header top actions: open tooltip downward so it is never clipped by top container */
-.card-actions [data-tooltip]::after {
+.card-actions [data-tooltip]::after,
+.card-header-left [data-tooltip]::after,
+.sender-badge[data-tooltip]::after {
   bottom: auto;
   top: calc(100% + 6px);
+  left: 0;
+  right: auto;
+  transform: translateX(0) translateY(-4px);
+  z-index: 99999;
+}
+.card-actions [data-tooltip]::after {
   left: auto;
   right: 0;
-  transform: translateX(0) translateY(-4px);
 }
-.card-actions [data-tooltip]:hover::after {
+.card-actions [data-tooltip]:hover::after,
+.card-header-left [data-tooltip]:hover::after,
+.sender-badge[data-tooltip]:hover::after {
   opacity: 1;
   transform: translateX(0) translateY(0);
 }
@@ -362,32 +371,43 @@ mark.av-search-match {
   font-weight: 600;
   border-radius: 3px;
   padding: 1px 3px;
-  border-bottom: none;
+  border: 1px solid rgba(234, 179, 8, 0.4);
   box-shadow: none;
-  transition: background-color 0.15s ease;
+  transition: all 0.15s ease;
 }
 
 mark.av-search-match.current-match {
-  background: rgba(249, 115, 22, 0.55);
-  color: inherit;
-  font-weight: 700;
-  border-bottom: none;
-  box-shadow: none;
-  filter: none;
+  background: #f97316 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-radius: 3px !important;
+  padding: 1px 4px !important;
+  border: 1px solid #ea580c !important;
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.6), 0 0 2px rgba(249, 115, 22, 0.9) !important;
+  animation: currentMatchPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes currentMatchPulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(249, 115, 22, 0.65), 0 0 2px rgba(249, 115, 22, 0.9);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(249, 115, 22, 0.95), 0 0 4px rgba(249, 115, 22, 1);
+  }
 }
 
 :host-context([data-theme="dark"]) mark.av-search-match {
   background: rgba(234, 179, 8, 0.35);
   color: #FEF08A;
-  border-bottom: none;
+  border: 1px solid rgba(234, 179, 8, 0.5);
   box-shadow: none;
 }
 
 :host-context([data-theme="dark"]) mark.av-search-match.current-match {
-  background: rgba(249, 115, 22, 0.65);
-  color: #FFEDD5;
-  border-bottom: none;
-  box-shadow: none;
+  background: #ea580c !important;
+  color: #ffffff !important;
+  border: 1px solid #fb923c !important;
+  box-shadow: 0 0 12px rgba(234, 88, 12, 0.75), 0 0 3px rgba(251, 146, 60, 0.9) !important;
 }
 
 /* ── Rich-text snippet (rendered in history/cards from Tiptap / Markdown content) ── */
@@ -563,6 +583,25 @@ mark.av-search-match.current-match {
   border-color: #dbe0e8;
   color: #1e293b;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* ── Word-Wrap / No-Wrap Toggle Overrides ── */
+.nowrap-pre,
+.nowrap-pre p,
+.nowrap-pre pre,
+.nowrap-pre code,
+.nowrap-pre blockquote,
+.nowrap-pre li,
+.nowrap-pre div,
+.nowrap-pre .av-plain-text-pre,
+.nowrap-pre .stage-code-pre,
+.nowrap-pre.av-rich-document-preview,
+.nowrap-pre.av-rich-document-preview p,
+.nowrap-pre.av-rich-document-preview li {
+  white-space: pre !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  overflow-x: auto !important;
 }
 
 /* Syntax Highlighting Tokens in Preview Document */
@@ -1171,15 +1210,18 @@ mark.av-search-match.current-match {
   40%       { opacity: 0.45; }
 }
 
-/* ── Item Sync / Update Halo Pulse (GPU-friendly) ───────────── */
+/* ── Item Sync / Update Halo Pulse (GPU-friendly live beacon) ───────────── */
 @keyframes avSyncPulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7);
-    border-color: #2196F3;
+    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.75), 0 4px 16px rgba(33, 150, 243, 0.25);
+    border-color: var(--device-accent, #2196F3);
   }
-  50% {
-    box-shadow: 0 0 0 6px rgba(33, 150, 243, 0);
-    border-color: #2196F3;
+  35% {
+    box-shadow: 0 0 0 8px rgba(33, 150, 243, 0.3), 0 6px 20px rgba(33, 150, 243, 0.35);
+    border-color: var(--device-accent, #2196F3);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(33, 150, 243, 0), 0 2px 8px rgba(33, 150, 243, 0.1);
   }
   100% {
     box-shadow: 0 0 0 0 rgba(33, 150, 243, 0);
@@ -1187,7 +1229,7 @@ mark.av-search-match.current-match {
 }
 
 .av-sync-pulse-active {
-  animation: avSyncPulse 0.8s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  animation: avSyncPulse 0.95s cubic-bezier(0.16, 1, 0.3, 1) both !important;
 }
 
 /* ── Utility classes that components can apply directly ──────── */
