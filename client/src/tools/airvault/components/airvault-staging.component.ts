@@ -483,6 +483,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   filteredVaultItems = computed(() => {
     let items = this.vaultItems();
     const cats = this.uiStore.activeCategoryFilters();
+    const tags = this.uiStore.activeTagFilters();
     const times = this.uiStore.activeTimeFilters();
     const senders = this.uiStore.activeSenderFilters();
     const sizes = this.uiStore.activeSizeFilters();
@@ -515,6 +516,16 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
           return false;
         });
+      });
+    }
+
+    // Multi-select Labels / Tags (OR condition between selected tags)
+    if (tags.length > 0) {
+      const lowerTags = tags.map(t => t.toLowerCase().replace(/^#+/, ''));
+      items = items.filter(it => {
+        if (!it.tag) return false;
+        const itemTag = it.tag.toLowerCase().replace(/^#+/, '');
+        return lowerTags.includes(itemTag);
       });
     }
 
@@ -764,7 +775,9 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   retentionPopoverOpen = signal<boolean>(false);
   tagInputOpen = signal<boolean>(false);
   currentTag = signal<string>('');
+  currentTagColor = signal<string>('');
   tagDraft = signal<string>('');
+  tagDraftColor = signal<string>('');
 
   /** Tracks briefly clicked toolbar button to trigger lively pulse feedback */
   clickedButtonId = signal<string | null>(null);
@@ -1191,11 +1204,40 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   }
 
   popularTags = ['work', 'secret', 'temp', 'api', 'notes'];
+  tagColorPalette = [
+    { name: 'Default Cyan', hex: '#06B6D4' },
+    { name: 'Emerald Mint', hex: '#10B981' },
+    { name: 'Crimson Flame', hex: '#EF4444' },
+    { name: 'Electric Violet', hex: '#8B5CF6' },
+    { name: 'Hot Pink', hex: '#EC4899' },
+    { name: 'Radiant Tangerine', hex: '#F97316' },
+    { name: 'Forest Lime', hex: '#84CC16' },
+    { name: 'Amber Gold', hex: '#F59E0B' },
+    { name: 'Midnight Indigo', hex: '#4F46E5' },
+    { name: 'Persian Teal', hex: '#14B8A6' },
+    { name: 'Rose Coral', hex: '#E11D48' },
+    { name: 'Cobalt Blue', hex: '#3B82F6' }
+  ];
 
   selectPresetTag(tag: string) {
     this.currentTag.set(tag);
+    if (!this.currentTagColor()) {
+      this.currentTagColor.set(this.colorService.getTagColor(tag));
+    }
     this.closeTagInput();
     this.uiStore.triggerToast(`🏷️ Tag "#${tag}" attached to item`);
+  }
+
+  setDraftTagColor(hex: string) {
+    this.tagDraftColor.set(hex);
+  }
+
+  getEffectiveComposerTagColor(): string {
+    return this.colorService.getTagColor(this.currentTag(), this.currentTagColor());
+  }
+
+  getDraftEffectiveColor(): string {
+    return this.colorService.getTagColor(this.tagDraft(), this.tagDraftColor());
   }
 
   toggleTagInput(e?: Event) {
@@ -1210,6 +1252,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       this.closeRetentionPopover(true);
       this.closeUploadMenu(true);
       this.tagDraft.set(this.currentTag());
+      this.tagDraftColor.set(this.currentTagColor() || this.colorService.getTagColor(this.currentTag()));
       this.tagInputOpen.set(true);
       setTimeout(() => this.tagInputRef?.nativeElement?.focus(), 60);
     }
@@ -1232,6 +1275,8 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   saveTagFromDraft() {
     const raw = this.tagDraft().trim().replace(/^#+/, '');
     this.currentTag.set(raw);
+    const chosenColor = this.tagDraftColor() || (raw ? this.colorService.getTagColor(raw) : '');
+    this.currentTagColor.set(chosenColor);
     this.closeTagInput();
     if (raw) {
       this.uiStore.triggerToast(`🏷️ Tag "#${raw}" attached to item`);
@@ -1241,7 +1286,9 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   removeTag(e?: Event) {
     if (e) e.stopPropagation();
     this.currentTag.set('');
+    this.currentTagColor.set('');
     this.tagDraft.set('');
+    this.tagDraftColor.set('');
     this.closeTagInput();
   }
 
@@ -2622,6 +2669,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
     const beamOpts = {
       tag: this.currentTag() || undefined,
+      tagColor: this.currentTag() ? (this.currentTagColor() || this.colorService.getTagColor(this.currentTag())) : undefined,
       customCategory: this.isCodeJsonHintActive() ? 'code' : undefined,
       retentionTtlMs: this.perItemRetentionTtl() !== null ? this.perItemRetentionTtl()! : undefined
     };
@@ -2662,9 +2710,9 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       markStart(operationId, 'WORKER');
       const richContentToSend = plainText.trim() ? (this.richEditor.getMarkdown() || plainText) : undefined;
       if (files.length === 1 && !richContentToSend) {
-        this.handleFile(files[0]);
+        this.handleFile(files[0], undefined, undefined, beamOpts);
       } else {
-        this.handleBatchFiles(files, richContentToSend);
+        this.handleBatchFiles(files, richContentToSend, beamOpts);
       }
 
       // ── §3 Snapshot IMMEDIATELY after handleFile is called (sync part only) ─
@@ -2685,7 +2733,9 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     // ── §3 Snapshot per-item setting clears ──────────────────────────────────
     // Reset per-item settings immediately (transient per item)
     this.currentTag.set('');
+    this.currentTagColor.set('');
     this.tagDraft.set('');
+    this.tagDraftColor.set('');
     this.isCodeJsonHintActive.set(false);
     this.perItemRetentionTtl.set(null);
     this.retentionPopoverOpen.set(false);
@@ -3042,7 +3092,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
    * Enforces max 20 files per batch and total combined storage cap before starting.
    * Creates a single parent batch item containing individual items.
    */
-  private async handleBatchFiles(files: File[], richTextCaption?: string) {
+  private async handleBatchFiles(files: File[], richTextCaption?: string, beamOpts?: { tag?: string; tagColor?: string; customCategory?: string; retentionTtlMs?: number }) {
     if (!files || files.length === 0) return;
 
     // 1. Enforce batch item count limit (max 20)
@@ -3082,6 +3132,10 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
         targetDeviceId: this.selectedTargetId(),
         timestamp: Date.now(),
         isPinned: false,
+        tag: beamOpts?.tag,
+        tagColor: beamOpts?.tagColor,
+        retentionTtlMs: beamOpts?.retentionTtlMs,
+        burnAfterRead: beamOpts?.retentionTtlMs === -1,
         batchId: batchId,
         deliveryStatus: 'pending',
         processingState: 'processing',
@@ -3119,6 +3173,10 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       targetDeviceId: this.selectedTargetId(),
       timestamp: Date.now(),
       isPinned: false,
+      tag: beamOpts?.tag,
+      tagColor: beamOpts?.tagColor,
+      retentionTtlMs: beamOpts?.retentionTtlMs,
+      burnAfterRead: beamOpts?.retentionTtlMs === -1,
       deliveryStatus: 'pending',
       processingState: 'processing',
       progressPercent: 0,
@@ -3140,11 +3198,11 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const childItem = childItems[i];
-      this.handleFile(file, childItem.id, batchId);
+      this.handleFile(file, childItem.id, batchId, beamOpts);
     }
   }
 
-  private async handleFile(file: File, explicitItemId?: string, batchId?: string) {
+  private async handleFile(file: File, explicitItemId?: string, batchId?: string, beamOpts?: { tag?: string; tagColor?: string; customCategory?: string; retentionTtlMs?: number }) {
     if (!file) return;
 
     AirVaultLogger.debug('[upload] file received:', file.name, file.size);
@@ -3255,6 +3313,10 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
         targetDeviceId: this.selectedTargetId(),
         timestamp: Date.now(),
         isPinned: false,
+        tag: beamOpts?.tag,
+        tagColor: beamOpts?.tagColor,
+        retentionTtlMs: beamOpts?.retentionTtlMs,
+        burnAfterRead: beamOpts?.retentionTtlMs === -1,
         deliveryStatus: 'pending',
         processingState: this.activeUploadsCount >= this.MAX_CONCURRENT_UPLOADS ? 'queued' : 'processing',
         progressPercent: 0,
@@ -3275,8 +3337,8 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       this.storageService.allItems.update(list => [pendingItem, ...list]);
     }
 
-    // Add to concurrency queue with server session ID and batchId
-    this.uploadQueue.push({ file, itemId, uploadSessionId, batchId } as any);
+    // Add to concurrency queue with server session ID, batchId, and beamOpts
+    this.uploadQueue.push({ file, itemId, uploadSessionId, batchId, beamOpts } as any);
     this.processNextInQueue();
   }
 
@@ -3285,7 +3347,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       return;
     }
 
-    const { file, itemId, uploadSessionId, batchId } = this.uploadQueue.shift() as any;
+    const { file, itemId, uploadSessionId, batchId, beamOpts } = this.uploadQueue.shift() as any;
     this.activeUploadsCount++;
     this.storageService.updateItemProcessingState(itemId, 'processing');
 
@@ -3409,7 +3471,13 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
                   timestamp: bf.timestamp
                 }))
               });
-              this.beamPayload.emit({ text: batchPayload, targetDeviceId: this.selectedTargetId(), filename: `${parentBatch.batchFiles?.length || 0} Files Batch`, existingItemId: parentBatch.id });
+              this.beamPayload.emit({ 
+                text: batchPayload, 
+                targetDeviceId: this.selectedTargetId(), 
+                filename: `${parentBatch.batchFiles?.length || 0} Files Batch`, 
+                existingItemId: parentBatch.id,
+                options: { ...beamOpts, byteSize: parentBatch.batchTotalBytes }
+              });
             }
           } else {
             // ── §4 Log individual file beam before emit ──────────────────────────────────
@@ -3423,7 +3491,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
               targetDeviceId: this.selectedTargetId(), 
               filename: classified.filename, 
               existingItemId: itemId,
-              options: { byteSize: classified.byteSize }
+              options: { ...beamOpts, byteSize: classified.byteSize }
             });
             // §4/§16 Finalise the run record
             const activeRun: any = (this as any)._activeRun;
@@ -3440,7 +3508,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
           this.isProcessingPaste.set(false);
           AirVaultLogger.warn('[AirVault Worker] Worker reported failure. Falling back to inline processing.');
           this.cleanupWorker(itemId);
-          this.processFileInline(file, itemId, uploadSessionId, batchId);
+          this.processFileInline(file, itemId, uploadSessionId, batchId, beamOpts);
         } else if (type === 'CANCELLED') {
           this.isProcessingPaste.set(false);
           this.storageService.deleteItem(itemId);
@@ -3451,7 +3519,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       worker.onerror = (err) => {
         AirVaultLogger.warn('[AirVault Worker] Worker load error. Falling back to inline processing:', err);
         this.cleanupWorker(itemId);
-        this.processFileInline(file, itemId, uploadSessionId, batchId);
+        this.processFileInline(file, itemId, uploadSessionId, batchId, beamOpts);
       };
 
       // ── §4/§7: Measure structured-clone cost + queue delay ─────────────────
@@ -3486,11 +3554,11 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       });
     } catch (err: unknown) {
       AirVaultLogger.warn('[AirVault Worker] Worker instantiation failed, executing inline fallback.');
-      this.processFileInline(file, itemId, uploadSessionId);
+      this.processFileInline(file, itemId, uploadSessionId, batchId, beamOpts);
     }
   }
 
-  private async processFileInline(file: File, itemId: string, uploadSessionId?: string, batchId?: string) {
+  private async processFileInline(file: File, itemId: string, uploadSessionId?: string, batchId?: string, beamOpts?: { tag?: string; tagColor?: string; customCategory?: string; retentionTtlMs?: number }) {
     const isImg = file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(file.name);
     const isVid = file.type.startsWith('video/') || /\.(mp4|webm|mov|avi|mkv)$/i.test(file.name);
     const CHUNK_SIZE = 4 * 1024 * 1024;
@@ -3628,7 +3696,13 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
               timestamp: bf.timestamp
             }))
           });
-          this.beamPayload.emit({ text: batchPayload, targetDeviceId: this.selectedTargetId(), filename: `${parentBatch.batchFiles?.length || 0} Files Batch`, existingItemId: parentBatch.id });
+          this.beamPayload.emit({ 
+            text: batchPayload, 
+            targetDeviceId: this.selectedTargetId(), 
+            filename: `${parentBatch.batchFiles?.length || 0} Files Batch`, 
+            existingItemId: parentBatch.id,
+            options: { ...beamOpts, byteSize: parentBatch.batchTotalBytes }
+          });
         }
       } else {
         // Broadcast encrypted file payload to paired peer devices without duplicate local tiles
@@ -3637,7 +3711,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
           targetDeviceId: this.selectedTargetId(), 
           filename: classified.filename, 
           existingItemId: itemId,
-          options: { byteSize: classified.byteSize }
+          options: { ...beamOpts, byteSize: classified.byteSize }
         });
       }
     } catch (err: any) {

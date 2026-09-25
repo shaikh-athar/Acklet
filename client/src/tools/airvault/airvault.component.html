@@ -268,7 +268,7 @@
                         [class.active]="uiStore.activeSenderFilters().includes(dev.id)"
                         (click)="toggleSenderFilter(dev.id)">
                         <span class="device-dot" [style.background]="dev.accentColor || '#10B981'"></span>
-                        <span>{{ dev.username ? '@' + dev.username.replace('@', '') : dev.name }}</span>
+                        <span>{{ deviceStore.getDisplayLabel(dev) }}</span>
                       </button>
                     }
                   </div>
@@ -294,7 +294,32 @@
                   </div>
                 </div>
 
-                <!-- Section 5: Attributes (Pinned & Sensitive) -->
+                <!-- Section 5: Labels / Tags -->
+                @if (availableTags().length > 0) {
+                  <div class="filter-section">
+                    <div class="filter-section-header-row">
+                      <span class="filter-section-title">Labels / Tags</span>
+                      @if (uiStore.activeTagFilters().length > 0) {
+                        <span class="section-badge">{{ uiStore.activeTagFilters().length }} selected</span>
+                      }
+                    </div>
+                    <div class="filter-chips-row">
+                      @for (t of availableTags(); track t.tag) {
+                        <button
+                          class="filter-chip"
+                          [class.active]="uiStore.activeTagFilters().includes(t.tag)"
+                          [style.--chip-accent]="t.color"
+                          (click)="toggleTagFilter(t.tag)">
+                          <span class="filter-tag-dot" [style.background]="t.color"></span>
+                          <span>#{{ t.tag }}</span>
+                          <span class="filter-tag-count">({{ t.count }})</span>
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+
+                <!-- Section 6: Attributes (Pinned & Sensitive) -->
                 <div class="filter-section">
                   <span class="filter-section-title">Attributes</span>
                   <div class="filter-chips-row">

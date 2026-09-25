@@ -60,7 +60,31 @@ public class AirVaultDeviceService {
 
         AirVaultIdentity identity = null;
         if (username != null) {
-            identity = identityRepository.findByUsernameIgnoreCase(username).orElseGet(() -> {
+            Optional<AirVaultIdentity> existingIdent = identityRepository.findByUsernameIgnoreCase(username);
+            if (existingIdent.isPresent()) {
+                AirVaultIdentity existingTarget = existingIdent.get();
+                // If existing device with this clientDeviceId already has this identity, keep it
+                if (existing.isPresent() && existing.get().getIdentity() != null && existing.get().getIdentity().getId().equals(existingTarget.getId())) {
+                    identity = existingTarget;
+                    if (rawPin != null && (identity.getPinHash() == null || passwordEncoder.matches(rawPin, identity.getPinHash()))) {
+                        // Valid existing session
+                    }
+                } else if (rawPin != null && existingTarget.getPinHash() != null && passwordEncoder.matches(rawPin, existingTarget.getPinHash())) {
+                    // Valid PIN match -> attach device to this identity
+                    identity = existingTarget;
+                } else {
+                    // PIN did not match OR new device attempting to use an already taken username without correct PIN -> assign unique username
+                    String uniqueUsername = generateUniqueUsername(username);
+                    String pinHash = rawPin != null ? passwordEncoder.encode(rawPin) : passwordEncoder.encode("1234");
+                    AirVaultIdentity newIdent = AirVaultIdentity.builder()
+                            .username(uniqueUsername)
+                            .pinHash(pinHash)
+                            .isCustomized(false)
+                            .build();
+                    identity = identityRepository.saveAndFlush(newIdent);
+                    username = uniqueUsername;
+                }
+            } else {
                 String pinHash = rawPin != null ? passwordEncoder.encode(rawPin) : passwordEncoder.encode("1234");
                 AirVaultIdentity newIdent = AirVaultIdentity.builder()
                         .username(username)
@@ -68,23 +92,22 @@ public class AirVaultDeviceService {
                         .isCustomized(false)
                         .build();
                 try {
-                    return identityRepository.saveAndFlush(newIdent);
+                    identity = identityRepository.saveAndFlush(newIdent);
                 } catch (Exception ex) {
-                    return identityRepository.findByUsernameIgnoreCase(username).orElse(null);
+                    identity = identityRepository.findByUsernameIgnoreCase(username).orElse(null);
                 }
-            });
-
-            // Update pinHash on identity if rawPin is provided and identity pinHash was missing or changed
-            if (identity != null && rawPin != null && (identity.getPinHash() == null || !passwordEncoder.matches(rawPin, identity.getPinHash()))) {
-                identity.setPinHash(passwordEncoder.encode(rawPin));
-                identity = identityRepository.save(identity);
             }
+        }
+
+        String resolvedDeviceName = req.getDeviceName();
+        if (resolvedDeviceName == null || resolvedDeviceName.isBlank() || resolvedDeviceName.startsWith("@")) {
+            resolvedDeviceName = username != null ? "@" + username : "@device";
         }
 
         AirVaultDevice device;
         if (existing.isPresent()) {
             device = existing.get();
-            device.setDeviceName(req.getDeviceName());
+            device.setDeviceName(resolvedDeviceName);
             if (userId != null) {
                 device.setUserId(userId);
             }
@@ -109,7 +132,7 @@ public class AirVaultDeviceService {
             device = AirVaultDevice.builder()
                     .userId(userId)
                     .clientDeviceId(req.getClientDeviceId())
-                    .deviceName(req.getDeviceName())
+                    .deviceName(resolvedDeviceName)
                     .username(username)
                     .pinHash(identity != null ? identity.getPinHash() : (rawPin != null ? passwordEncoder.encode(rawPin) : null))
                     .identity(identity)
@@ -302,16 +325,30 @@ public class AirVaultDeviceService {
     }
 
     /**
-     * Update pairing state between two device installations.
+     * Unpair: Dissolves only the specific pairing between sourceClientDeviceId and targetClientDeviceId.
+     * Does NOT revoke or delete the target device record itself.
      */
     @Transactional
-    public void updatePairingState(String sourceClientDeviceId, String targetClientDeviceId, String newState) {
+    public void unpairDevice(String sourceClientDeviceId, String targetClientDeviceId) {
         devicePairingRepository.findBySourceClientDeviceIdAndTargetClientDeviceId(sourceClientDeviceId, targetClientDeviceId)
                 .ifPresent(p -> {
-                    p.setPairingState(newState);
+                    p.setPairingState("REVOKED");
                     devicePairingRepository.save(p);
-                    log.info("AirVault pairing state updated: source={}, target={}, state={}", sourceClientDeviceId, targetClientDeviceId, newState);
+                    log.info("AirVault device unpair: {} -> {} link marked REVOKED", sourceClientDeviceId, targetClientDeviceId);
                 });
+    }
+
+    private String generateUniqueUsername(String base) {
+        String clean = (base != null && !base.isBlank()) ? base.replaceAll("[^a-zA-Z0-9_-]", "").toLowerCase() : "user";
+        if (clean.isBlank()) clean = "user";
+        String candidate = clean;
+        int attempts = 0;
+        while (identityRepository.findByUsernameIgnoreCase(candidate).isPresent() && attempts < 50) {
+            int randomSuffix = (int)(Math.random() * 9000) + 1000;
+            candidate = clean + "-" + randomSuffix;
+            attempts++;
+        }
+        return candidate;
     }
 
     private AirVaultDeviceDto toDto(AirVaultDevice d) {

@@ -240,16 +240,16 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
         deviceOfflineGraceTimers.put(deviceId, future);
     }
 
-    // Two-stage timeout thresholds: 15s soft monitoring window, 25s hard eviction cutoff
-    private static final long SOFT_TIMEOUT_MS = 10_000L;
-    private static final long HARD_TIMEOUT_MS = 20_000L;
+    // Two-stage timeout thresholds: 45s soft monitoring window, 90s hard eviction cutoff (browser background throttling tolerant)
+    private static final long SOFT_TIMEOUT_MS = 45_000L;
+    private static final long HARD_TIMEOUT_MS = 90_000L;
 
     // sessionId -> boolean (flagged at risk during soft window to avoid log spam)
     private final Map<String, Boolean> sessionAtRiskMap = new ConcurrentHashMap<>();
 
     /**
      * Scheduled check: runs every 5 seconds.
-     * Uses two-stage timeout (soft monitoring at 10s, hard eviction at 20s) to gracefully tolerate
+     * Uses two-stage timeout (soft monitoring at 45s, hard eviction at 90s) to gracefully tolerate
      * brief browser background throttling and GC pauses without prematurely severing connections.
      */
     private void scanForHeartbeatTimeouts() {
@@ -272,7 +272,7 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
                         if (s.getId().equals(sessionId)) {
                             try {
                                 if (s.isOpen()) {
-                                    s.close(CloseStatus.GOING_AWAY.withReason("Heartbeat hard timeout (25s)"));
+                                    s.close(CloseStatus.GOING_AWAY.withReason("Heartbeat hard timeout (90s)"));
                                 }
                             } catch (Exception ignored) {}
                             handleSessionClosed(s, "Heartbeat hard timeout", "heartbeat_timeout");
@@ -317,6 +317,8 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
         metricsService.recordMessageReceived();
 
         long now = System.currentTimeMillis();
+        // Any incoming frame from this session proves liveness
+        sessionHeartbeatMap.put(session.getId(), now);
 
         // 1. APPLICATION-LEVEL HEARTBEAT HANDLING
         if ("HEARTBEAT".equalsIgnoreCase(msg.getType())) {

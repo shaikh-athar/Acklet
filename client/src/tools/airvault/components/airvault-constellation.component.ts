@@ -19,7 +19,7 @@ import { AirVaultSyncService } from '../services/airvault-sync.service';
           (click)="selectTarget.emit(undefined)"
           [style.borderColor]="currentDevice().accentColor || '#2196F3'"
           [style.color]="currentDevice().accentColor || '#2196F3'"
-          [attr.data-tooltip]="currentDevice().username ? ('@' + currentDevice().username + ' (You)') : ((currentDevice().name || 'Your Device') + ' (You)')"
+          [attr.data-tooltip]="getDisplayLabel(currentDevice()) + ' (You)'"
         >
           <app-icon name="user" class="icon-sm"></app-icon>
           <span class="dot live" [style.background]="currentDevice().accentColor || '#2196F3'"></span>
@@ -71,7 +71,7 @@ import { AirVaultSyncService } from '../services/airvault-sync.service';
                     (click)="startInlineRename(device, $event)"
                     title="Click to rename"
                   >
-                    {{ device.username ? '@' + device.username : device.name }}
+                    {{ getDisplayLabel(device) }}
                   </span>
                 }
               </div>
@@ -99,10 +99,10 @@ import { AirVaultSyncService } from '../services/airvault-sync.service';
                 </button>
               }
 
-              <!-- Copy Username / Handle -->
+              <!-- Copy Actual Username / Handle -->
               <button class="hover-act-btn" (click)="copyHandle(device, $event); $event.stopPropagation()">
                 <app-icon name="copy" class="icon-xs text-muted"></app-icon>
-                <span>Copy &#64;{{ device.username || device.name }}</span>
+                <span>Copy &#64;{{ getActualUsername(device) }}</span>
               </button>
 
               <!-- Reconnect / Disconnect -->
@@ -646,6 +646,14 @@ export class AirVaultConstellationComponent {
   editingNameValue = signal<string>('');
   deviceToConfirmRemove = signal<AirVaultDevice | null>(null);
 
+  getDisplayLabel(device?: AirVaultDevice | null): string {
+    return this.deviceService.getDisplayLabel(device);
+  }
+
+  getActualUsername(device?: AirVaultDevice | null): string {
+    return this.deviceService.getActualUsername(device);
+  }
+
   toggleMenu(deviceId: string) {
     this.activeMenuDeviceId.set(this.activeMenuDeviceId() === deviceId ? null : deviceId);
   }
@@ -653,15 +661,15 @@ export class AirVaultConstellationComponent {
   startInlineRename(device: AirVaultDevice, event: Event) {
     event.stopPropagation();
     this.editingDeviceId.set(device.id);
-    this.editingNameValue.set(device.name);
+    this.editingNameValue.set(this.getDisplayLabel(device));
   }
 
   saveInlineRename(device: AirVaultDevice, val: string) {
     const trimmed = (val || '').trim();
-    if (trimmed && trimmed !== device.name) {
+    if (trimmed && trimmed !== this.getDisplayLabel(device)) {
       this.rename.emit({ deviceId: device.id, newName: trimmed });
     }
-    // If empty or unchanged, reverts back naturally to device.name
+    // If empty or unchanged, reverts back naturally to device label
     this.editingDeviceId.set(null);
   }
 
@@ -679,7 +687,8 @@ export class AirVaultConstellationComponent {
   }
 
   copyHandle(device: AirVaultDevice, event: Event) {
-    const handle = device.username ? `@${device.username}` : (device.name || device.id);
+    const actual = this.getActualUsername(device);
+    const handle = `@${actual}`;
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(handle);
     }

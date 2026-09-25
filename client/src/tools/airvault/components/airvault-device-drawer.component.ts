@@ -14,7 +14,7 @@ import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-devi
         <!-- Header -->
         <div class="drawer-header">
           <div class="header-badge">
-            <app-icon name="hard-drive" class="icon-sm text-cyan"></app-icon>
+            <app-icon name="monitor-smartphone" class="icon-sm text-cyan"></app-icon>
             <h2>Connected Devices</h2>
           </div>
           <button class="close-btn" (click)="onClose()" title="Close (Esc)">
@@ -107,31 +107,27 @@ import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-devi
           } @else {
             <div class="paired-devices-list">
               @for (session of otherRegisteredSessions(); track session.id) {
-                <div class="device-item" [class.device-offline]="session.status === 'offline'">
-                  <div class="device-icon-box" [style.borderColor]="session.accentColor || '#2196F3'">
-                    <app-icon [name]="getDeviceIcon(session.type)" class="icon-sm" [style.color]="session.accentColor || '#2196F3'"></app-icon>
-                  </div>
-                  <div class="device-details">
-                    <div class="device-title-row">
-                      <span class="device-name">{{ session.name }}</span>
-                      <span class="session-badge" [class.online]="session.status === 'active'" [class.offline]="session.status !== 'active'">
-                        {{ session.status === 'active' ? '● Online' : '○ Offline' }}
-                      </span>
+                <div class="session-item" [class.device-offline]="session.status === 'offline'">
+                  <div class="session-item-main">
+                    <div class="device-icon-box" [style.borderColor]="session.accentColor || '#2196F3'">
+                      <app-icon [name]="getDeviceIcon(session.type)" class="icon-sm" [style.color]="session.accentColor || '#2196F3'"></app-icon>
                     </div>
-                    <div class="device-identity-row">
-                      @if (session.username) {
-                        <span class="device-handle">&#64;{{ session.username }}</span>
+                    <div class="device-details">
+                      <div class="device-title-row">
+                        <span class="session-device-title">&#64;{{ session.username || session.name }}</span>
+                        <span class="session-badge" [class.online]="session.status === 'active'" [class.offline]="session.status !== 'active'">
+                          {{ session.status === 'active' ? '● Online' : '○ Offline' }}
+                        </span>
+                      </div>
+                      <div class="device-identity-row">
+                        <span class="device-type-badge">{{ session.type | titlecase }}</span>
                         <span class="meta-sep">·</span>
-                      }
-                      <span class="device-keyword-badge">{{ session.deviceKeyword || 'AirVault-Node' }}</span>
+                        <span class="device-info-text">{{ session.os }} · {{ session.browser }}</span>
+                      </div>
+                      <span class="device-last-seen">Last active: {{ formatLastSeen(session.lastActive) }}</span>
                     </div>
-                    <span class="device-info-text">{{ session.os }} · {{ session.browser }}</span>
-                    <span class="device-last-seen">Last active: {{ formatLastSeen(session.lastActive) }}</span>
                   </div>
-                  <button class="logout-instance-btn" (click)="promptRemoteLogout(session)" data-tooltip="Remove my session from this device">
-                    <app-icon name="log-out" class="icon-xs"></app-icon>
-                    <span>Log Out</span>
-                  </button>
+
                 </div>
               }
             </div>
@@ -154,51 +150,60 @@ import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-devi
             <div class="paired-devices-list">
               @for (device of pairedDevices(); track device.id) {
                 <div class="device-item" [class.device-item-disabled]="device.syncEnabled === false">
-                  <div class="device-icon-box" [style.borderColor]="device.accentColor || '#10B981'">
-                    <app-icon [name]="getDeviceIcon(device.type)" class="icon-sm" [style.color]="device.accentColor || '#10B981'"></app-icon>
-                  </div>
-                  <div class="device-details">
-                    <div class="device-title-row">
-                      @if (editingDeviceId() === device.id) {
-                        <input
-                          type="text"
-                          class="inline-rename-input"
-                          [(ngModel)]="editNameValue"
-                          (keydown.enter)="saveRename(device.id)"
-                          (keydown.escape)="cancelRename()"
-                        />
-                        <button class="icon-save-btn" (click)="saveRename(device.id)">
-                          <app-icon name="check" class="icon-xs"></app-icon>
-                        </button>
-                        <button class="icon-cancel-btn" (click)="cancelRename()">
-                          <app-icon name="x" class="icon-xs"></app-icon>
-                        </button>
-                      } @else {
-                        <span class="device-name">&#64;{{ device.username || device.name }}</span>
-                        <button class="icon-edit-btn" (click)="startRename(device.id, device.name)" data-tooltip="Rename device">
-                          <app-icon name="edit-2" class="icon-xs"></app-icon>
-                        </button>
-                        <span class="device-status-badge" [ngClass]="device.status">{{ device.status }}</span>
-                      }
+                  <div class="device-item-main">
+                    <div class="device-icon-box" [style.borderColor]="device.accentColor || '#10B981'">
+                      <app-icon [name]="getDeviceIcon(device.type)" class="icon-sm" [style.color]="device.accentColor || '#10B981'"></app-icon>
                     </div>
-                    <div class="device-identity-row">
-                      <span class="device-type-badge">{{ device.type | titlecase }}</span>
-                      <span class="meta-sep">·</span>
-                      <span class="device-info-text">{{ device.os || 'Unknown OS' }} · {{ device.ipHint || 'Direct P2P' }}</span>
-                    </div>
-                    
-                    <!-- Sync Toggle Switch Row -->
-                    <div class="sync-switch-row">
-                      <button class="sync-toggle-chip" 
-                              [class.sync-on]="device.syncEnabled !== false" 
-                              [class.sync-off]="device.syncEnabled === false"
-                              (click)="toggleSync.emit(device.id)">
-                        <app-icon [name]="device.syncEnabled !== false ? 'check' : 'slash'" class="icon-xs"></app-icon>
-                        <span>{{ device.syncEnabled !== false ? 'Sync ON' : 'Sync OFF' }}</span>
-                      </button>
-                      <span class="sync-caption-text">
-                        {{ device.syncEnabled !== false ? 'Auto-sync active' : 'Clipboard sync disabled' }}
-                      </span>
+                    <div class="device-details">
+                      <div class="device-title-row">
+                        @if (editingDeviceId() === device.id) {
+                          <input
+                            type="text"
+                            class="inline-rename-input"
+                            [(ngModel)]="editNameValue"
+                            (keydown.enter)="saveRename(device.id)"
+                            (keydown.escape)="cancelRename()"
+                            placeholder="Custom device label..."
+                            autoFocus
+                          />
+                          <button class="icon-save-btn" (click)="saveRename(device.id)" data-tooltip="Save label">
+                            <app-icon name="check" class="icon-xs"></app-icon>
+                          </button>
+                          <button class="icon-cancel-btn" (click)="cancelRename()" data-tooltip="Cancel">
+                            <app-icon name="x" class="icon-xs"></app-icon>
+                          </button>
+                        } @else {
+                          <span class="device-name">{{ getDisplayLabel(device) }}</span>
+                          @if (device.customLabel && device.username) {
+                            <span class="device-actual-handle-pill" [attr.data-tooltip]="'Actual network username: @' + device.username">
+                              (&#64;{{ device.username }})
+                            </span>
+                          }
+                          <button class="icon-edit-btn" (click)="startRename(device)" data-tooltip="Rename device label">
+                            <app-icon name="edit-2" class="icon-xs"></app-icon>
+                          </button>
+                          <span class="device-status-badge" [ngClass]="device.status">{{ device.status }}</span>
+                        }
+                      </div>
+                      <div class="device-identity-row">
+                        <span class="device-type-badge">{{ device.type | titlecase }}</span>
+                        <span class="meta-sep">·</span>
+                        <span class="device-info-text">{{ device.os || 'Unknown OS' }} · {{ device.ipHint || 'Direct P2P' }}</span>
+                      </div>
+                      
+                      <!-- Sync Toggle Switch Row -->
+                      <div class="sync-switch-row">
+                        <button class="sync-toggle-chip" 
+                                [class.sync-on]="device.syncEnabled !== false" 
+                                [class.sync-off]="device.syncEnabled === false"
+                                (click)="toggleSync.emit(device.id)">
+                          <app-icon [name]="device.syncEnabled !== false ? 'refresh-cw' : 'refresh-cw-off'" class="icon-xs"></app-icon>
+                          <span>{{ device.syncEnabled !== false ? 'Sync ON' : 'Sync OFF' }}</span>
+                        </button>
+                        <span class="sync-caption-text">
+                          {{ device.syncEnabled !== false ? 'Auto-sync active' : 'Clipboard sync disabled' }}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   
@@ -230,47 +235,6 @@ import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-devi
           }
         </div>
 
-        <!-- Remote Logout Confirmation Modal Overlay -->
-        @if (confirmLogoutDevice(); as target) {
-          <div class="logout-confirm-overlay" (click)="confirmLogoutDevice.set(null)">
-            <div class="logout-confirm-card" (click)="$event.stopPropagation()">
-              <div class="confirm-card-icon">
-                <app-icon name="shield-alert" class="icon-md text-red"></app-icon>
-              </div>
-              <h4 class="confirm-card-title">Log out {{ target.name }}?</h4>
-              <p class="confirm-card-desc">
-                This will remove your AirVault session and credentials from <strong>{{ target.name }}</strong> ({{ target.os }}).
-              </p>
-
-              <!-- Data Retention / Erase Option -->
-              <div class="erase-option-box">
-                <label class="erase-option-item" [class.selected]="!eraseDataOnLogout()">
-                  <input type="radio" name="eraseData" [checked]="!eraseDataOnLogout()" (change)="eraseDataOnLogout.set(false)" />
-                  <div class="erase-option-text">
-                    <span class="erase-title">Keep local data on device</span>
-                    <span class="erase-sub">Leave existing clipboard history intact on the remote device</span>
-                  </div>
-                </label>
-
-                <label class="erase-option-item danger-border" [class.selected]="eraseDataOnLogout()">
-                  <input type="radio" name="eraseData" [checked]="eraseDataOnLogout()" (change)="eraseDataOnLogout.set(true)" />
-                  <div class="erase-option-text">
-                    <span class="erase-title text-red">Erase all data from device</span>
-                    <span class="erase-sub">Wipe all synced clipboard items and cached files on remote device</span>
-                  </div>
-                </label>
-              </div>
-
-              <div class="confirm-actions-row">
-                <button class="av-btn-secondary" (click)="confirmLogoutDevice.set(null)">Cancel</button>
-                <button class="av-btn-danger" (click)="executeRemoteLogout(target.id)">
-                  <app-icon name="log-out" class="icon-xs"></app-icon>
-                  <span>{{ eraseDataOnLogout() ? 'Erase & Log Out' : 'Log Out Device' }}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        }
       </div>
     </div>
   `,
@@ -406,13 +370,18 @@ import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-devi
 
     .device-item {
       display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px 14px;
       background: var(--av-surface-secondary);
       border: 1px solid var(--av-border);
-      border-radius: 8px;
+      border-radius: 10px;
       margin-bottom: 10px;
+      transition: all 0.15s ease;
+    }
+
+    .device-item:hover {
+      border-color: var(--av-border-hover, rgba(255, 255, 255, 0.15));
     }
 
     .device-item.current {
@@ -420,122 +389,164 @@ import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-devi
       background: var(--av-surface-elevated);
     }
 
+    .device-item-main {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      width: 100%;
+    }
+
     .device-icon-box {
-      width: 36px;
-      height: 36px;
+      width: 38px;
+      height: 38px;
       background: var(--av-surface-primary);
-      border: 1px solid var(--av-border);
-      border-radius: 8px;
+      border: 1.5px solid var(--av-border);
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
     }
 
     .device-details {
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 3px;
+      min-width: 0;
     }
 
     .device-title-row {
       display: flex;
       align-items: center;
       gap: 6px;
+      flex-wrap: wrap;
     }
 
     .device-name {
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 700;
-      color: var(--av-text-main);
+      color: var(--av-text-primary, #101828);
+      letter-spacing: -0.01em;
+      word-break: break-word;
     }
 
     .self-tag {
-      font-size: 8px;
+      font-size: 8.5px;
       font-weight: 700;
-      background: var(--av-accent-subtle);
-      color: var(--av-accent);
-      padding: 1px 4px;
-      border-radius: 3px;
+      background: var(--av-accent-subtle, rgba(33, 150, 243, 0.12));
+      color: var(--av-accent, #2196F3);
+      padding: 1.5px 5px;
+      border-radius: 4px;
+      text-transform: uppercase;
     }
 
     .device-status-badge {
-      font-size: 8px;
+      font-size: 8.5px;
       font-weight: 700;
       text-transform: uppercase;
-      padding: 1px 4px;
-      border-radius: 3px;
+      letter-spacing: 0.04em;
+      padding: 1.5px 6px;
+      border-radius: 4px;
+      margin-left: auto;
     }
-    .device-status-badge.active { background: rgba(63, 185, 80, 0.15); color: var(--av-success); }
-    .device-status-badge.idle { background: rgba(210, 153, 34, 0.15); color: var(--av-warning); }
-    .device-status-badge.offline { background: rgba(248, 81, 73, 0.15); color: var(--av-error); }
+    .device-status-badge.active { background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.25); }
+    .device-status-badge.idle { background: rgba(245, 158, 11, 0.15); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.25); }
+    .device-status-badge.offline { background: rgba(239, 68, 68, 0.12); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.22); }
+    .device-status-badge.connecting { background: rgba(33, 150, 243, 0.12); color: #2196F3; border: 1px solid rgba(33, 150, 243, 0.22); }
+
+    .device-type-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--av-text-primary, #101828);
+    }
 
     .device-info-text {
-      font-size: 10px;
-      color: var(--av-text-muted);
+      font-size: 11px;
+      color: var(--av-text-muted, #94A3B8);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .device-thumb-code {
       font-family: monospace;
-      font-size: 9px;
+      font-size: 9.5px;
       color: var(--av-text-muted);
     }
 
-    .reconnect-btn {
+    .device-item-actions {
       display: flex;
       align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
-      background: rgba(33, 150, 243, 0.1);
-      border: 1px solid var(--av-accent);
-      border-radius: 4px;
-      color: var(--av-accent);
-      font-size: 10px;
+      justify-content: flex-end;
+      gap: 8px;
+      width: 100%;
+      padding-top: 8px;
+      margin-top: 2px;
+      border-top: 1px solid var(--av-border-subtle, rgba(255, 255, 255, 0.06));
+    }
+
+    .reconnect-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4.5px 10px;
+      background: rgba(33, 150, 243, 0.08);
+      border: 1px solid rgba(33, 150, 243, 0.35);
+      border-radius: 6px;
+      color: var(--av-accent, #2196F3);
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.15s ease;
     }
     .reconnect-btn:hover {
-      background: var(--av-accent);
-      color: #000000;
+      background: rgba(33, 150, 243, 0.18);
+      border-color: var(--av-accent, #2196F3);
+    }
+    .reconnect-btn.is-connecting {
+      opacity: 0.7;
+      cursor: wait;
     }
 
     .disconnect-btn {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
+      gap: 5px;
+      padding: 4.5px 10px;
       background: rgba(245, 158, 11, 0.08);
       border: 1px solid rgba(245, 158, 11, 0.35);
-      border-radius: 4px;
+      border-radius: 6px;
       color: #F59E0B;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.15s ease;
     }
     .disconnect-btn:hover {
-      background: rgba(245, 158, 11, 0.2);
+      background: rgba(245, 158, 11, 0.18);
       border-color: #F59E0B;
     }
 
     .revoke-btn {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
-      background: transparent;
+      gap: 5px;
+      padding: 4.5px 10px;
+      background: var(--av-surface-primary, rgba(255, 255, 255, 0.03));
       border: 1px solid var(--av-border);
-      border-radius: 4px;
-      color: var(--av-text-muted);
-      font-size: 10px;
+      border-radius: 6px;
+      color: var(--av-text-muted, #94A3B8);
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.15s ease;
     }
     .revoke-btn:hover {
-      color: var(--av-error);
-      border-color: var(--av-error);
+      color: var(--av-error, #EF4444);
+      border-color: rgba(239, 68, 68, 0.4);
+      background: rgba(239, 68, 68, 0.06);
     }
 
     .no-paired-devices p {
@@ -555,6 +566,17 @@ import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-devi
       width: 140px;
     }
 
+    .device-actual-handle-pill {
+      font-size: 10px;
+      color: var(--av-text-muted);
+      background: var(--av-surface-secondary);
+      border: 1px solid var(--av-border);
+      padding: 1px 5px;
+      border-radius: 4px;
+      margin-left: 2px;
+      white-space: nowrap;
+    }
+
     .icon-edit-btn, .icon-save-btn, .icon-cancel-btn {
       background: transparent;
       border: none;
@@ -564,6 +586,7 @@ import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-devi
       align-items: center;
       padding: 2px;
       border-radius: 4px;
+      transition: color 0.15s ease;
     }
     .icon-edit-btn:hover { color: var(--av-accent); }
     .icon-save-btn { color: var(--av-success); }
@@ -573,7 +596,7 @@ import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-devi
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-top: 6px;
+      margin-top: 4px;
     }
 
     .sync-toggle-chip {
@@ -581,7 +604,7 @@ import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-devi
       align-items: center;
       gap: 4px;
       padding: 3px 8px;
-      border-radius: 4px;
+      border-radius: 5px;
       font-size: 10px;
       font-weight: 700;
       cursor: pointer;
@@ -627,12 +650,59 @@ import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-devi
       gap: 6px;
       margin-top: 2px;
     }
-    .meta-sep { opacity: 0.4; font-size: 10px; }
+    .session-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      background: var(--av-surface-secondary);
+      border: 1px solid var(--av-border);
+      border-radius: var(--av-radius-md, 8px);
+      margin-bottom: 8px;
+      transition: all 0.15s ease;
+    }
+
+    .session-item:hover {
+      border-color: var(--av-border-hover, rgba(255, 255, 255, 0.15));
+    }
+
+    .session-item.device-offline {
+      opacity: 0.85;
+    }
+
+    .session-item-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .session-device-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--av-text-primary, #101828);
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    :host-context([data-theme="dark"]) .session-device-title {
+      color: var(--av-text-primary, #F0F3F6);
+    }
+
+    .session-item-actions {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
 
     .session-badge {
       font-size: 9.5px;
       font-weight: 700;
-      padding: 1px 6px;
+      padding: 1.5px 6px;
       border-radius: 4px;
     }
     .session-badge.online {
@@ -641,28 +711,30 @@ import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-devi
     }
     .session-badge.offline {
       color: var(--av-text-muted);
-      background: var(--av-surface-secondary);
+      background: var(--av-surface-primary);
+      border: 1px solid var(--av-border-subtle);
     }
 
     .device-last-seen {
       font-size: 10px;
       color: var(--av-text-muted);
-      margin-top: 2px;
+      margin-top: 1px;
     }
 
     .logout-instance-btn {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
-      border-radius: 4px;
+      gap: 5px;
+      padding: 5px 9px;
+      border-radius: var(--av-radius-sm, 6px);
       border: 1px solid rgba(239, 68, 68, 0.3);
       background: rgba(239, 68, 68, 0.08);
       color: #EF4444;
-      font-size: 10.5px;
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.15s ease;
+      white-space: nowrap;
       flex-shrink: 0;
     }
     .logout-instance-btn:hover {
@@ -949,46 +1021,6 @@ import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-devi
       100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
     }
 
-    .device-item-actions {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-left: auto;
-    }
-
-    .reconnect-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
-      border-radius: 4px;
-      border: 1px solid rgba(33, 150, 243, 0.3);
-      background: rgba(33, 150, 243, 0.08);
-      color: var(--av-accent, #2196F3);
-      font-size: 10.5px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      flex-shrink: 0;
-    }
-    .reconnect-btn:hover {
-      background: rgba(33, 150, 243, 0.18);
-      border-color: var(--av-accent, #2196F3);
-    }
-    .reconnect-btn.is-connecting {
-      opacity: 0.7;
-      cursor: wait;
-    }
-
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(360deg); }
-    }
-    .spin-anim {
-      animation: spin 0.8s linear infinite;
-      display: inline-block;
-    }
-
     .device-item-disabled {
       opacity: 0.75;
     }
@@ -1154,9 +1186,17 @@ export class AirVaultDeviceDrawerComponent {
     this.confirmLogoutDevice.set(null);
   }
 
-  startRename(id: string, currentName: string) {
-    this.editingDeviceId.set(id);
-    this.editNameValue = currentName;
+  getDisplayLabel(device?: AirVaultDevice | null): string {
+    return this.deviceService.getDisplayLabel(device);
+  }
+
+  getActualUsername(device?: AirVaultDevice | null): string {
+    return this.deviceService.getActualUsername(device);
+  }
+
+  startRename(device: AirVaultDevice) {
+    this.editingDeviceId.set(device.id);
+    this.editNameValue = this.deviceService.getDisplayLabel(device);
   }
 
   saveRename(id: string) {

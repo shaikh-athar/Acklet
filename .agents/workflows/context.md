@@ -598,6 +598,27 @@ When a significant architectural change is completed, update this section:
 
 ## Latest Changes
 
+### 2026-09-25 - Cross-Device Sender Attribution, WebSocket Heartbeat Resilience & Unique Usernames
+
+Files:
+
+* `client/src/tools/airvault/services/airvault-sync.service.ts`
+* `client/src/tools/airvault/services/airvault-device.service.ts`
+* `client/src/tools/airvault/services/airvault-ws-transport.service.ts`
+* `client/src/tools/airvault/components/airvault-card.component.ts`
+* `client/src/tools/airvault/components/airvault-preview-modal.component.ts`
+* `server/acklet/src/main/java/com/code/acklet/airvault/websocket/AirVaultWebSocketHandler.java`
+* `server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultDeviceService.java`
+* `server/acklet/src/main/java/com/code/acklet/airvault/service/AirVaultRedisTracker.java`
+
+Change:
+
+* Embedded authoritative sender metadata (`senderDeviceId`, `senderDeviceName`, `senderUsername`, `originOwnerId`, `senderDeviceAccent`, `senderDeviceType`) into encrypted payload strings in `beamContent` and `serializeItemForSync`. Receivers decode sender directly from payload, eliminating device attribution confusion across multi-hop peer topologies.
+* Removed fuzzy matching in `airvault-card.component.ts` and `airvault-preview-modal.component.ts`, strictly mapping remote devices by ID and prioritizing payload sender handles.
+* Fixed session ID mutation bug in `airvault-device.service.ts` where identical usernames clobbered peer session IDs.
+* Increased server WebSocket soft/hard timeouts to 45s / 90s in `AirVaultWebSocketHandler.java` and Redis presence TTL to 90s/120s to prevent background browser tab throttling from terminating sockets.
+* Enforced identity PIN verification during device registration in `AirVaultDeviceService.java`, automatically generating guaranteed unique usernames (`${username}-XXXX`) when handles collide. Default frontend username generator expanded with random 4-digit suffixes.
+
 ### 2026-09-22 - AirVault Media Storage, Byte-Range Streaming & Dual-Path Retention
 
 Files:
@@ -647,7 +668,24 @@ Do NOT put here:
 * temporary task details
 * large implementation explanations
 
-Keep this file concise and useful for fast agent navigation.
+---
+
+# 12. UNIFIED FEEDBACK SYSTEM
+
+## Overview
+A centralized multi-tool feedback system for Acklet capturing bug reports, feature requests, improvements, performance, and general feedback across all tools and platform services.
+
+## Key Files & Entry Points
+- Frontend Component: `client/src/app/shared/components/feedback-modal/`
+- Frontend Service: `client/src/app/core/services/feedback.service.ts`
+- Admin Dashboard Console: `client/src/app/pages/workspace/admin/admin.ts`
+- User Dashboard Widget: `client/src/app/pages/workspace/dashboard/dashboard.ts`
+- Backend Controller: `server/acklet/src/main/java/com/code/acklet/feedback/controller/FeedbackController.java`
+- Backend Service: `server/acklet/src/main/java/com/code/acklet/feedback/service/FeedbackService.java`
+- Backend Repository: `server/acklet/src/main/java/com/code/acklet/feedback/repository/FeedbackRepository.java`
+- Backend Entity: `server/acklet/src/main/java/com/code/acklet/feedback/entity/Feedback.java`
+- Database Migration: `server/acklet/src/main/resources/db/migration/V45__unified_feedback_system.sql`
+- Architecture Documentation: `docs/Acklet Vault/Acklet/Architecture/Feedback-System.md`
 
 ---
 

@@ -135,7 +135,7 @@ export class FeedbackModalComponent {
 
   isClosing = signal<boolean>(false);
   rating = signal<number>(5);
-  category = signal<'general' | 'bug' | 'feature_request' | 'usability' | 'performance'>('general');
+  category = signal<'GENERAL' | 'BUG' | 'FEATURE_REQUEST' | 'IMPROVEMENT' | 'USABILITY' | 'PERFORMANCE'>('GENERAL');
   message = signal<string>('');
   email = signal<string>('');
   isSubmitting = signal<boolean>(false);
@@ -144,11 +144,12 @@ export class FeedbackModalComponent {
   readonly deviceType = window.innerWidth < 768 ? 'Mobile' : window.innerWidth < 1024 ? 'Tablet' : 'Desktop';
 
   readonly categories = [
-    { id: 'general', label: 'General' },
-    { id: 'bug', label: 'Bug Report' },
-    { id: 'feature_request', label: 'Feature Request' },
-    { id: 'usability', label: 'Usability' },
-    { id: 'performance', label: 'Performance' }
+    { id: 'GENERAL', label: 'General' },
+    { id: 'BUG', label: 'Bug Report' },
+    { id: 'FEATURE_REQUEST', label: 'Feature Request' },
+    { id: 'IMPROVEMENT', label: 'Improvement' },
+    { id: 'USABILITY', label: 'Usability' },
+    { id: 'PERFORMANCE', label: 'Performance' }
   ] as const;
 
   onClose() {
@@ -191,7 +192,10 @@ export class FeedbackModalComponent {
       category: this.category(),
       message: this.message().trim(),
       email: this.email().trim(),
-      toolId: this.toolId()
+      toolId: this.toolId(),
+      toolName: this.toolName(),
+      source: 'IN_APP',
+      pageUrl: window.location.href
     }).subscribe({
       next: () => {
         this.isSubmitting.set(false);

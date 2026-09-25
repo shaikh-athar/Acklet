@@ -348,4 +348,36 @@ export class AirVaultColorService {
   setCustomColorOverride(identityIdOrUsername: string, hexColor: string) {
     this.registerDeviceAccent(identityIdOrUsername, hexColor, undefined, undefined, false);
   }
+
+  /**
+   * Returns curated list of named palette colors for tag selection.
+   */
+  getNamedTagPalette(): PeerPaletteColor[] {
+    return [
+      { name: 'Default Cyan', hex: '#06B6D4' },
+      { name: 'Emerald Mint', hex: '#10B981' },
+      { name: 'Crimson Flame', hex: '#EF4444' },
+      { name: 'Electric Violet', hex: '#8B5CF6' },
+      { name: 'Hot Pink', hex: '#EC4899' },
+      { name: 'Radiant Tangerine', hex: '#F97316' },
+      { name: 'Forest Lime', hex: '#84CC16' },
+      { name: 'Amber Gold', hex: '#F59E0B' },
+      { name: 'Midnight Indigo', hex: '#4F46E5' },
+      { name: 'Persian Teal', hex: '#14B8A6' },
+      { name: 'Rose Coral', hex: '#E11D48' },
+      { name: 'Cobalt Blue', hex: '#3B82F6' }
+    ];
+  }
+
+  /**
+   * Resolves color for a label/tag:
+   * 1. Returns explicit custom tagColor if provided.
+   * 2. Defaults to deterministic color based on the tag name.
+   */
+  getTagColor(tag?: string, explicitColor?: string): string {
+    if (explicitColor && explicitColor.trim()) return explicitColor.trim();
+    if (!tag || !tag.trim()) return '#06B6D4';
+    const cleanTag = tag.trim().toLowerCase().replace(/^#+/, '');
+    return this.computePeerDeterministicColor(cleanTag);
+  }
 }

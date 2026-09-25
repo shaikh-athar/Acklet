@@ -212,6 +212,10 @@ import {
   LucideSquare,
   LucideCheckSquare,
   LucideSquareCheck,
+  LucideRefreshCwOff,
+  LucideMonitorSmartphone,
+  LucideShredder,
+  LucideClockFading,
 } from '@lucide/angular';
 
 @Component({
@@ -528,6 +532,10 @@ export class IconComponent {
     square: LucideSquare,
     'check-square': LucideCheckSquare,
     'square-check': LucideSquareCheck,
+    'refresh-cw-off': LucideRefreshCwOff,
+    'monitor-smartphone': LucideMonitorSmartphone,
+    'shredder': LucideShredder,
+    'clock-fading': LucideClockFading
   };
 
   readonly lucideIconComponent = computed(() => {

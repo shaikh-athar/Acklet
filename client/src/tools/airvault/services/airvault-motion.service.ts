@@ -387,10 +387,10 @@ export class AirVaultMotionService {
 
     gsap.to(element, {
       opacity: 0,
-      y: -12,
-      scale: 0.95,
-      filter: 'blur(4px)',
-      duration: 0.4,
+      y: -24,
+      scale: 0.94,
+      filter: 'blur(3px) brightness(1.25)',
+      duration: 0.42,
       ease: 'power2.out',
       onComplete: () => {
         if (onComplete) onComplete();

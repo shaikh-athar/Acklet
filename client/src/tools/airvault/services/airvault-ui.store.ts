@@ -37,6 +37,7 @@ export class AirVaultUIStore {
 
   // Multi-select Filter criteria signals
   readonly activeCategoryFilters = signal<string[]>([]); // ['text', 'code', 'json', ...]
+  readonly activeTagFilters = signal<string[]>([]);      // ['work', 'temp', 'custom', ...]
   readonly activeTimeFilters = signal<string[]>([]);     // ['today', '7d', '30d']
   readonly activeSenderFilters = signal<string[]>([]);   // ['self', deviceId1, ...]
   readonly activeSizeFilters = signal<string[]>([]);     // ['small', 'medium', 'large']
@@ -303,6 +304,7 @@ export class AirVaultUIStore {
   activeFiltersCount() {
     let count = 0;
     count += this.activeCategoryFilters().length;
+    count += this.activeTagFilters().length;
     count += this.activeTimeFilters().length;
     count += this.activeSenderFilters().length;
     count += this.activeSizeFilters().length;
@@ -313,6 +315,7 @@ export class AirVaultUIStore {
 
   resetAllFilters() {
     this.activeCategoryFilters.set([]);
+    this.activeTagFilters.set([]);
     this.activeTimeFilters.set([]);
     this.activeSenderFilters.set([]);
     this.activeSizeFilters.set([]);

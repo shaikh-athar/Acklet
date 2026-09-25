@@ -11,9 +11,10 @@ import { AirVaultClipboardService } from '../services/airvault-clipboard.service
 import { AirVaultDeviceService } from '../services/airvault-device.service';
 import { AirVaultSyncService } from '../services/airvault-sync.service';
 import { AirVaultFilePreviewComponent } from './airvault-file-preview.component';
-import { renderMarkdownToSafeHtml, renderPlainTextToSafeHtml, looksLikeMarkdown } from '../services/airvault-markdown.util';
+import { renderMarkdownToSafeHtml, renderPlainTextToSafeHtml, looksLikeMarkdown, isHtmlContent } from '../services/airvault-markdown.util';
 import { AirVaultQuickActionsService } from '../services/airvault-quick-actions.service';
 import { getPreviewCapabilities, PreviewCapabilities } from '../services/preview-capability.config';
+import { AirVaultLogger } from '../services/airvault-sync-debug.service';
 import { Subscription } from 'rxjs';
 
 export interface PreviewToolbarAction {
@@ -238,11 +239,30 @@ export interface PreviewToolbarAction {
               <span class="preview-owner-username" [style.color]="getOwnerAccentColor()">{{ getOwnerDisplay() }}</span>
             </div>
 
+            <!-- Code / JSON format indicator badge -->
+            @if (resolvedCategory() === 'code' || resolvedCategory() === 'json') {
+              <div class="preview-code-badge" data-tooltip="Code / JSON format">
+                <app-icon name="code" class="icon-xs"></app-icon>
+              </div>
+            }
+
+            <!-- Tag Badge -->
+            @if (currentDisplayItem().tag) {
+              <div class="preview-tag-badge" [style.--tag-color]="getTagColor()" [attr.data-tooltip]="'Tag: #' + currentDisplayItem().tag">
+                <span class="preview-tag-hash">#</span>{{ currentDisplayItem().tag }}
+              </div>
+            }
+
             <!-- Resource Timelimit / Retention Pill -->
             @if (currentDisplayItem().isPinned) {
               <div class="preview-retention-pill permanent-pill" data-tooltip="Pinned item · Stored permanently in AirHold">
                 <app-icon name="pin" class="icon-xs text-cyan"></app-icon>
                 <span>Permanent</span>
+              </div>
+            } @else if (isBurnItem()) {
+              <div class="preview-retention-pill burn-pill" [attr.data-tooltip]="isOwnerItem() ? '🔥 Burn After Read · Burns on destination devices after they view it' : '🔥 Burn After Read · Permanently deleted when preview is closed'">
+                <app-icon name="clock-fading" class="icon-xs"></app-icon>
+                <span>{{ isOwnerItem() ? 'Burn for receiver' : 'Burn on view' }}</span>
               </div>
             } @else {
               <div class="preview-retention-pill" [class.expiring-soon]="expiryInfo().isExpiringSoon"
@@ -509,8 +529,64 @@ export interface PreviewToolbarAction {
     .preview-header-left {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       z-index: 2;
+    }
+
+    .av-btn-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      background: var(--av-surface-primary);
+      color: var(--av-text-muted);
+      border: 1px solid var(--av-border);
+      border-radius: 6px;
+      cursor: pointer;
+      box-sizing: border-box;
+      flex-shrink: 0;
+      transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, transform 0.1s ease;
+    }
+
+    .av-btn-icon:hover {
+      background: var(--av-surface-secondary);
+      color: var(--av-text-primary);
+      border-color: var(--av-border-strong);
+    }
+
+    .av-btn-icon:active {
+      transform: scale(0.95);
+    }
+
+    .av-btn-icon.active {
+      background: rgba(33, 150, 243, 0.12);
+      color: #2196F3;
+      border-color: #2196F3;
+    }
+
+    .av-btn-icon:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .av-btn-icon.danger:hover {
+      background: var(--av-danger-soft);
+      color: var(--av-danger);
+      border-color: var(--av-danger);
+    }
+
+    .av-btn-icon.download-btn:hover {
+      color: #2196F3;
+      border-color: rgba(33, 150, 243, 0.4);
+    }
+
+    .av-btn-icon app-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .preview-header-center {
@@ -953,14 +1029,27 @@ export interface PreviewToolbarAction {
       max-width: 600px;
       text-align: center;
     }
-    .url-big-icon { color: #3B82F6; }
+    .url-big-icon { color: #2196F3; }
+    :host-context([data-theme="light"]) .url-big-icon { color: #1565C0; }
     .big-url-text {
       font-size: 16px;
       font-weight: 500;
-      color: #3B82F6;
+      color: #2196F3;
       word-break: break-all;
       line-height: 1.5;
       text-decoration: underline;
+      cursor: pointer;
+      transition: color 0.12s ease;
+    }
+    .big-url-text:hover {
+      color: #60A5FA;
+      text-decoration: underline;
+    }
+    :host-context([data-theme="light"]) .big-url-text {
+      color: #1565C0;
+    }
+    :host-context([data-theme="light"]) .big-url-text:hover {
+      color: #0D47A1;
     }
     .url-open-btn {
       display: inline-flex;
@@ -1051,6 +1140,54 @@ export interface PreviewToolbarAction {
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    /* Code / JSON indicator badge */
+    .preview-code-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: var(--av-radius-sm, 6px);
+      background: var(--av-surface-primary);
+      border: 1px solid var(--av-border);
+      color: var(--av-accent, #2196F3);
+      flex-shrink: 0;
+      box-sizing: border-box;
+      transition: all 0.15s ease;
+    }
+    .preview-code-badge:hover {
+      border-color: var(--av-border-strong, rgba(255, 255, 255, 0.2));
+      background: var(--av-surface-secondary);
+    }
+    .preview-code-badge app-icon {
+      color: var(--av-accent, #2196F3);
+    }
+
+    /* Tag Badge in preview header */
+    .preview-tag-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 3px 10px;
+      border-radius: var(--av-radius-pill, 9999px);
+      font-size: 11px;
+      font-weight: 700;
+      font-family: var(--av-font-mono, monospace);
+      color: var(--tag-color, #06B6D4);
+      background: color-mix(in srgb, var(--tag-color, #06B6D4) 14%, transparent);
+      border: 1px solid color-mix(in srgb, var(--tag-color, #06B6D4) 30%, transparent);
+      line-height: 1;
+      height: 28px;
+      box-sizing: border-box;
+      white-space: nowrap;
+      cursor: default;
+      flex-shrink: 0;
+    }
+    .preview-tag-badge .preview-tag-hash {
+      opacity: 0.7;
+      font-weight: 800;
+    }
+
     .preview-retention-pill {
       display: inline-flex;
       align-items: center;
@@ -1081,6 +1218,28 @@ export interface PreviewToolbarAction {
       color: #F59E0B;
       border-color: rgba(245, 158, 11, 0.35);
       background: rgba(245, 158, 11, 0.08);
+    }
+    .preview-retention-pill.burn-pill {
+      color: #EF4444;
+      font-weight: 600;
+      border-color: rgba(239, 68, 68, 0.38);
+      background: rgba(239, 68, 68, 0.12);
+    }
+    .preview-retention-pill.burn-pill .burn-rotate-icon,
+    .preview-retention-pill.burn-pill app-icon {
+      color: #EF4444;
+      transition: transform 0.4s ease;
+    }
+    .preview-retention-pill.burn-pill:hover .burn-rotate-icon {
+      transform: rotate(180deg);
+    }
+    :host-context([data-theme="dark"]) .preview-retention-pill.burn-pill {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.5);
+      color: #F87171;
+    }
+    :host-context([data-theme="dark"]) .preview-retention-pill.burn-pill .burn-rotate-icon {
+      color: #F87171;
     }
     .gallery-nav-box {
       display: inline-flex;
@@ -1226,12 +1385,27 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
   isBurnedMessageVisible = signal<boolean>(false);
   isClosing = signal<boolean>(false);
   slideDirection = signal<'prev' | 'next' | null>(null);
+  hasBeenViewed = signal<boolean>(false);
   private slideTimer?: any;
   private burnSub?: Subscription;
 
   requestClose(): void {
     if (this.isClosing()) return;
     this.isClosing.set(true);
+
+    // If this item is marked Burn-After-Read and was viewed on a connected/destination device,
+    // trigger the destination-only burn upon dismissal / close.
+    // The OWNER device NEVER burns its own items.
+    const it = this.currentDisplayItem();
+    const isOwner = this.isOwnerItem(it);
+    if (it && (it.burnAfterRead || it.retentionTtlMs === -1) && !it.isBurned && this.hasBeenViewed() && !isOwner) {
+      const curDev = this.deviceService.currentDevice();
+      const filename = it.content?.filename || it.content?.raw?.slice(0, 40) || 'Item';
+      AirVaultLogger.info(`[AirVault Burn] 🚪 PREVIEW CLOSED (Destination Device) | Viewer "${curDev.name}" (${curDev.id}) closed preview for Burn-After-Read file/item "${filename}" (${it.id}). Triggering atomic CAS burn...`);
+      console.log(`%c[AirVault Burn: Preview Closed]%c Destination Device: "${curDev.name}" (${curDev.id}) | Closed File: "${filename}" | ID: ${it.id} -> Emitting CAS Item Viewed`, 'background: #EA580C; color: #fff; font-weight: bold; padding: 2px 6px; border-radius: 4px;', 'color: #EA580C; font-weight: normal; margin-left: 6px;');
+      this.syncService.emitItemViewed(it.id, it.content?.category);
+    }
+
     setTimeout(() => {
       this.close.emit();
     }, 480);
@@ -1240,28 +1414,48 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
   constructor() {
     effect(() => {
       const it = this.currentDisplayItem();
-      if (it && it.burnAfterRead && !it.isBurned) {
-        this.syncService.emitItemViewed(it.id, it.content?.category);
+      if (it && (it.burnAfterRead || it.retentionTtlMs === -1) && !it.isBurned) {
+        if (!this.hasBeenViewed()) {
+          const curDev = this.deviceService.currentDevice();
+          const filename = it.content?.filename || it.content?.raw?.slice(0, 40) || 'Item';
+          AirVaultLogger.info(`[AirVault Burn] 👁️ PREVIEW OPENED | Device "${curDev.name}" (${curDev.id}) opened Burn-After-Read file/item "${filename}" (ID: ${it.id}, Origin: "${it.senderDeviceName || it.originDeviceId}")`);
+          console.log(`%c[AirVault Burn: Preview Opened]%c Device: "${curDev.name}" (${curDev.id}) | File: "${filename}" | ID: ${it.id} | Origin: "${it.senderDeviceName || it.originDeviceId}" | Retention: Burn-After-Read`, 'background: #F97316; color: #000; font-weight: bold; padding: 2px 6px; border-radius: 4px;', 'color: #F97316; font-weight: normal; margin-left: 6px;');
+        }
+        this.hasBeenViewed.set(true);
       }
     });
   }
 
   ngOnInit(): void {
     const it = this.currentDisplayItem();
-    if (it && it.burnAfterRead && !it.isBurned) {
-      this.syncService.emitItemViewed(it.id, it.content?.category);
+    if (it && (it.burnAfterRead || it.retentionTtlMs === -1) && !it.isBurned) {
+      this.hasBeenViewed.set(true);
     }
 
     this.burnSub = this.syncService.onItemBurned.subscribe(event => {
       const current = this.currentDisplayItem();
       const parent = this.item();
       if (event.itemId === current.id || event.itemId === parent.id) {
+        if (this.isOwnerItem(current)) {
+          AirVaultLogger.info(`[AirVault Burn] 🛡️ Preview modal guard: Item "${current.content?.filename || current.id}" is owned by this device and will not burn.`);
+          return;
+        }
         this.handleBurnEvent();
       }
     });
   }
 
   ngOnDestroy(): void {
+    // If modal unmounts while burnAfterRead item was viewed on destination device without going through requestClose()
+    const it = this.currentDisplayItem();
+    const isOwner = this.isOwnerItem(it);
+    if (it && (it.burnAfterRead || it.retentionTtlMs === -1) && !it.isBurned && this.hasBeenViewed() && !isOwner) {
+      const curDev = this.deviceService.currentDevice();
+      const filename = it.content?.filename || it.content?.raw?.slice(0, 40) || 'Item';
+      AirVaultLogger.info(`[AirVault Burn] 🚪 PREVIEW UNMOUNTED (Destination Device) | Viewer "${curDev.name}" (${curDev.id}) unmounted preview for Burn-After-Read file/item "${filename}" (${it.id}). Triggering atomic CAS burn...`);
+      this.syncService.emitItemViewed(it.id, it.content?.category);
+    }
+
     if (this.burnSub) {
       this.burnSub.unsubscribe();
     }
@@ -1272,6 +1466,12 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
 
   private handleBurnEvent(): void {
     if (this.isBurnedMessageVisible()) return;
+
+    const curDev = this.deviceService.currentDevice();
+    const it = this.currentDisplayItem();
+    const filename = it?.content?.filename || it?.content?.raw?.slice(0, 40) || 'Item';
+    AirVaultLogger.info(`[AirVault Burn] 🔥 DISSOLVE ANIMATION | Modal executing burn particle dissolve for file "${filename}" (${it?.id}) on Device "${curDev.name}" (${curDev.id})`);
+    console.log(`%c[AirVault Burn: Dissolve Animation]%c Modal executing burn dissolve for "${filename}" (${it?.id}) on Device "${curDev.name}" (${curDev.id})`, 'background: #B91C1C; color: #fff; font-weight: bold; padding: 2px 6px; border-radius: 4px;', 'color: #B91C1C; font-weight: normal; margin-left: 6px;');
 
     const el = this.stageContainer?.nativeElement;
     if (el) {
@@ -1612,7 +1812,7 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
     const q = this.searchHighlightQuery();
     const activeIdx = this.activeMatchIndex();
     let safeHtml: string;
-    if (cat === 'markdown') {
+    if (cat === 'markdown' || cat === 'text' || isHtmlContent(raw) || looksLikeMarkdown(raw)) {
       safeHtml = renderMarkdownToSafeHtml(raw, false, q, activeIdx);
     } else {
       safeHtml = renderPlainTextToSafeHtml(raw, q, activeIdx);
@@ -1718,39 +1918,58 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
     }
   }
 
+  isOwnerItem(it?: AirVaultItem): boolean {
+    const target = it || this.currentDisplayItem();
+    if (!target) return true;
+    const cur = this.deviceService.currentDevice();
+    if (target.originDeviceId && target.originDeviceId === cur.id) return true;
+    if (target.senderDeviceId && target.senderDeviceId === cur.id) return true;
+    if (target.originOwnerId && cur.username && (target.originOwnerId.toLowerCase().replace(/^@/, '') === cur.username.toLowerCase().replace(/^@/, ''))) {
+      if (!target.originDeviceId || target.originDeviceId === cur.id) return true;
+    }
+    return !target.originDeviceId && !target.senderDeviceId && !target.senderDeviceName;
+  }
+
   getOwnerDisplay(): string {
     const it = this.currentDisplayItem();
+    if (!it) return '@User';
     const cur = this.deviceService.currentDevice();
-    const isSelf = !it.originDeviceId || it.originDeviceId === cur.id || it.senderDeviceId === cur.id || it.senderDeviceName === 'MacBook' || it.senderDeviceName === cur.name;
+    const isSelf = this.isOwnerItem(it);
     if (isSelf) {
       return cur.username ? `@${cur.username}` : (cur.name?.startsWith('@') ? cur.name : `@${cur.name || 'User'}`);
+    }
+    if (it.senderDeviceName && it.senderDeviceName !== 'MacBook' && !it.senderDeviceName.startsWith('dev-')) {
+      return it.senderDeviceName.startsWith('@') ? it.senderDeviceName : `@${it.senderDeviceName}`;
     }
     if (it.originOwnerId && it.originOwnerId !== 'MacBook' && !it.originOwnerId.startsWith('dev-')) {
       return it.originOwnerId.startsWith('@') ? it.originOwnerId : `@${it.originOwnerId}`;
     }
-    if (it.senderDeviceName && it.senderDeviceName !== 'MacBook') {
-      return it.senderDeviceName.startsWith('@') ? it.senderDeviceName : `@${it.senderDeviceName}`;
+    const matchedDevice = this.deviceService.pairedDevices().find(d =>
+      (it.senderDeviceId && d.id === it.senderDeviceId) ||
+      (it.originDeviceId && d.id === it.originDeviceId)
+    );
+    if (matchedDevice) {
+      return this.deviceService.getDisplayLabel(matchedDevice);
     }
-    return cur.username ? `@${cur.username}` : '@User';
+    return '@Peer';
   }
 
   getOwnerAccentColor(): string {
     const it = this.currentDisplayItem();
+    if (!it) return '#2196F3';
     if (it.authorColor) return it.authorColor;
     if (it.author_color) return it.author_color;
     if (it.senderDeviceAccent) return it.senderDeviceAccent;
 
     const cur = this.deviceService.currentDevice();
-    const isSelf = !it.originDeviceId || it.originDeviceId === cur.id || it.senderDeviceId === cur.id || it.senderDeviceName === 'MacBook' || it.senderDeviceName === cur.name;
+    const isSelf = this.isOwnerItem(it);
     if (isSelf && cur.accentColor) {
       return cur.accentColor;
     }
 
-    const matchedDevice = this.deviceService.pairedDevices().find(d => 
-      d.id === it.originDeviceId || 
-      d.id === it.senderDeviceId || 
-      (it.originOwnerId && (d.username === it.originOwnerId || `@${d.username}` === it.originOwnerId || d.name === it.originOwnerId)) ||
-      (it.senderDeviceName && (d.name === it.senderDeviceName || d.username === it.senderDeviceName))
+    const matchedDevice = this.deviceService.pairedDevices().find(d =>
+      (it.senderDeviceId && d.id === it.senderDeviceId) ||
+      (it.originDeviceId && d.id === it.originDeviceId)
     );
     if (matchedDevice?.accentColor) {
       return matchedDevice.accentColor;
@@ -1758,6 +1977,11 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
 
     const owner = it.originOwnerId || it.senderDeviceName || this.getOwnerDisplay();
     return this.colorService.getColorForIdentity(owner, isSelf ? cur.accentColor : undefined);
+  }
+
+  getTagColor(): string {
+    const it = this.currentDisplayItem();
+    return this.colorService.getTagColor(it.tag, it.tagColor);
   }
 
   expiryInfo = computed(() => {
@@ -1784,6 +2008,11 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
   isLifetimeRetention = computed(() => {
     const it = this.currentDisplayItem();
     return (it.content?.byteSize || 0) > (5 * 1024 * 1024) || it.isLifetimeRetention === true;
+  });
+
+  isBurnItem = computed<boolean>(() => {
+    const it = this.currentDisplayItem();
+    return !!(it && (it.burnAfterRead || it.retentionTtlMs === -1 || this.expiryInfo().isBurnAfterRead));
   });
 
   resolvedCategory = computed(() => {
@@ -1813,10 +2042,13 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
     if (explicitCat === 'font' || /\.(ttf|otf|woff|woff2)$/i.test(filename)) {
       return 'font';
     }
+    if (explicitCat === 'markdown' || /\.(md|markdown)$/i.test(filename)) {
+      return 'markdown';
+    }
     if (explicitCat === 'code' || explicitCat === 'json' || /\.(js|ts|jsx|tsx|py|java|cpp|c|html|css|json|xml|sql|sh|yaml|yml|rs|go|php)$/i.test(filename)) {
       return explicitCat === 'json' ? 'json' : 'code';
     }
-    if (explicitCat === 'url' || /^https?:\/\//i.test(raw)) {
+    if (explicitCat === 'url' || /^https?:\/\//i.test(raw) || /^<https?:\/\/[^>]+>$/i.test(raw.trim())) {
       return 'url';
     }
     return explicitCat || 'file';
@@ -1901,7 +2133,7 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
         this.isCopied.set(true);
         setTimeout(() => this.isCopied.set(false), 2000);
       }
-    } catch {}
+    } catch { }
   }
 
   async onCopy(e?: Event) {
@@ -1913,7 +2145,7 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
         this.isCopied.set(true);
         setTimeout(() => this.isCopied.set(false), 2000);
       }
-    } catch {}
+    } catch { }
   }
 
   async onDownload() {
@@ -1940,7 +2172,7 @@ export class AirVaultPreviewModalComponent implements OnInit, OnDestroy {
         if (res?.blob) {
           downloadBlob = res.blob;
         }
-      } catch {}
+      } catch { }
     }
 
     let downloadUrl = '';

@@ -2311,8 +2311,11 @@ export class AirVaultPairingModalComponent implements OnDestroy {
           syncEnabled: true
         };
 
+        this.deviceService.clearManualDisconnect(peerDevice.id);
         const added = this.deviceService.addPairedDevice(peerDevice);
         if (added) {
+          this.deviceService.setDeviceStatus(peerDevice.id, 'active');
+          this.deviceService.fetchRegisteredSessions();
           const cur = this.deviceService.currentDevice();
           const confirmPayload = {
             targetDeviceId: peerDevice.id,

@@ -32,6 +32,7 @@ export interface AirVaultItem {
   progressPercent?: number;
   errorMessage?: string;
   tag?: string;
+  tagColor?: string;
   isLifetimeRetention?: boolean;
   retentionTtlMs?: number;
   isDeletedLocally?: boolean;
@@ -704,7 +705,17 @@ export class AirVaultStorageService {
         } catch {}
       }
 
-      // 2. Fetch from backend raw streaming endpoint
+      // 2. Fetch from backend raw streaming endpoint (only for actual file resources, not text/code/json/url)
+      const cat = item.content?.category || '';
+      const isTextItem = cat === 'text' || cat === 'code' || cat === 'json' || cat === 'url' || cat === 'markdown';
+      if (isTextItem) {
+        if (item.content?.raw) {
+          const mime = cat === 'json' ? 'application/json' : (cat === 'code' ? 'text/plain' : 'text/plain;charset=utf-8');
+          return new Blob([item.content.raw], { type: mime });
+        }
+        return null;
+      }
+
       try {
         const streamUrl = getAirVaultApiUrl(`/api/v1/airvault/clipboards/default/files/${fileId}/raw`);
         const resp = await fetch(streamUrl);
@@ -905,13 +916,15 @@ export class AirVaultStorageService {
       const isExplicitResendOrRestore = !!(
         options?.isExplicitRestore ||
         (item as any).isResend ||
+        item.burnAfterRead ||
+        item.retentionTtlMs === -1 ||
         (item.resendCount && item.resendCount > 0)
       );
       if (!isExplicitResendOrRestore) {
         AirVaultLogger.debug(`[AirVault Storage] 🛡️ Item ${item.id} was locally removed by user on this device. Preserving suppression.`);
         return { added: false, isDuplicate: false, item };
       }
-      // If explicit resend by owner or restore, clear local suppression
+      // If explicit resend by owner, restore, or burn-after-read resend, clear local suppression
       this.removeLocalSuppression(item.id);
       if (item.packetId) this.removeLocalSuppression(item.packetId);
       if (item.batchId) this.removeLocalSuppression(item.batchId);
@@ -923,7 +936,7 @@ export class AirVaultStorageService {
     const existingLocal = this.allItems().find(i => i.id === item.id || (i.packetId && i.packetId === item.id));
 
     if (existingLocal && existingLocal.isDeletedFromActive) {
-      const isResendOrRestore = !!(options?.isExplicitRestore || (item.resendCount && item.resendCount > 0));
+      const isResendOrRestore = !!(options?.isExplicitRestore || (item.resendCount && item.resendCount > 0) || item.burnAfterRead || item.retentionTtlMs === -1);
       if (!isResendOrRestore) {
         AirVaultLogger.debug(`[AirVault Storage] 🛡️ Item ${item.id} is owner-deleted/in history. Preserving history status.`);
         return { added: false, isDuplicate: true, item: existingLocal };
@@ -936,18 +949,26 @@ export class AirVaultStorageService {
       if (item.resendCount) existingLocal.resendCount = item.resendCount;
       if (item.lastResentAt) existingLocal.lastResentAt = item.lastResentAt;
       if (item.content) existingLocal.content = item.content;
+      if (item.burnAfterRead || item.retentionTtlMs === -1) {
+        existingLocal.burnAfterRead = true;
+        existingLocal.isBurned = false;
+      }
       this.allItems.update(list => [existingLocal, ...list.filter(i => i.id !== existingLocal.id)]);
       this.persistAll();
       return { added: true, isDuplicate: false, item: existingLocal };
     }
 
     if (existingLocal) {
-      const isExplicitResend = !!(options?.isExplicitRestore || (item.resendCount && item.resendCount > 0));
+      const isExplicitResend = !!(options?.isExplicitRestore || (item.resendCount && item.resendCount > 0) || item.burnAfterRead || item.retentionTtlMs === -1);
       existingLocal.isDeletedFromActive = false;
       existingLocal.timestamp = item.timestamp || Date.now();
       if (item.resendCount) existingLocal.resendCount = item.resendCount;
       if (item.lastResentAt) existingLocal.lastResentAt = item.lastResentAt;
       if (item.content) existingLocal.content = item.content;
+      if (item.burnAfterRead || item.retentionTtlMs === -1) {
+        existingLocal.burnAfterRead = true;
+        existingLocal.isBurned = false;
+      }
 
       if (isExplicitResend || isLocalCreate) {
         // Explicit resend or local create moves item to top of this local device's clipboard
@@ -994,7 +1015,7 @@ export class AirVaultStorageService {
     const isResource = !isTextOrCode;
 
     // Only burn after read if explicitly set on the item itself (never automatically inherited from global custom TTL)
-    const isBurnAfterRead = isResource && item.burnAfterRead === true;
+    const isBurnAfterRead = item.burnAfterRead === true || item.retentionTtlMs === -1;
     const effectiveTtl = isLifetime ? 0 : (isBurnAfterRead ? -1 : (item.retentionTtlMs && item.retentionTtlMs > 0 ? item.retentionTtlMs : (customTtl > 0 ? customTtl : (7 * 24 * 60 * 60 * 1000))));
 
     const enrichedItem: AirVaultItem = {
@@ -1057,10 +1078,7 @@ export class AirVaultStorageService {
     label: string;
     isBurnAfterRead?: boolean;
   } {
-    const cat = item.content?.category || '';
-    const isResource = cat !== 'text' && cat !== 'code' && cat !== 'json' && cat !== 'url';
-
-    if (isResource && (item.burnAfterRead || item.retentionTtlMs === -1)) {
+    if (item.burnAfterRead || item.retentionTtlMs === -1) {
       return {
         expiresAt: 0,
         remainingMs: 0,
@@ -1362,6 +1380,10 @@ export class AirVaultStorageService {
 
       if (isBurn) {
         // Permanently purge burn-after-read item immediately — completely zeroed out from disk
+        const filename = target.content?.filename || target.content?.raw?.slice(0, 40) || 'Item';
+        AirVaultLogger.info(`[AirVault Burn] 🗑️ DISK PURGE | Permanently zeroing out Burn-After-Read file/item "${filename}" (${target.id}) from IndexedDB on Device "${curDev.name}" (${curDev.id}). Zero traces retained.`);
+        console.log(`%c[AirVault Burn: Disk Purge]%c File: "${filename}" (${target.id}) wiped permanently from IndexedDB on "${curDev.name}" (${curDev.id}) | Restorable History: Skipped (0-day retention)`, 'background: #7F1D1D; color: #fff; font-weight: bold; padding: 2px 6px; border-radius: 4px;', 'color: #7F1D1D; font-weight: normal; margin-left: 6px;');
+
         this.allItems.update(list => list.filter(i =>
           i.id !== id &&
           (!i.packetId || i.packetId !== id) &&

@@ -168,8 +168,8 @@ public class AirVaultRedisTracker {
     private static final String PRESENCE_SESSION_PREFIX = "airvault:presence:session:";
     private static final String PRESENCE_DEVICE_SESSIONS_PREFIX = "airvault:presence:device_sessions:";
     private static final String PRESENCE_PREFIX = "airvault:presence:";
-    private static final Duration SESSION_PRESENCE_TTL = Duration.ofSeconds(25);
-    private static final Duration DEVICE_PRESENCE_TTL = Duration.ofSeconds(30);
+    private static final Duration SESSION_PRESENCE_TTL = Duration.ofSeconds(90);
+    private static final Duration DEVICE_PRESENCE_TTL = Duration.ofSeconds(120);
 
     /**
      * Mark a WebSocket session as online with timestamp.
@@ -294,5 +294,15 @@ public class AirVaultRedisTracker {
         String val = (viewerDeviceId != null ? viewerDeviceId : "unknown") + ":" + Instant.now().toEpochMilli();
         Boolean wasSet = redisTemplate.opsForValue().setIfAbsent(key, val, VIEWED_ITEM_TTL);
         return Boolean.TRUE.equals(wasSet);
+    }
+
+    /**
+     * Clears the viewed status of an item in Redis so a resent burn-after-read item
+     * can undergo a fresh first-view-then-burn cycle on destination.
+     */
+    public void resetItemViewed(String itemId) {
+        if (itemId == null || itemId.isBlank()) return;
+        String key = VIEWED_ITEM_PREFIX + itemId.trim();
+        redisTemplate.delete(key);
     }
 }

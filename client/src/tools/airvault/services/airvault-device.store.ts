@@ -51,6 +51,14 @@ export class AirVaultDeviceStore {
     this.deviceService.renameDevice(deviceId, newName);
   }
 
+  getDisplayLabel(device?: AirVaultDevice | null): string {
+    return this.deviceService.getDisplayLabel(device);
+  }
+
+  getActualUsername(device?: AirVaultDevice | null): string {
+    return this.deviceService.getActualUsername(device);
+  }
+
   generatePairingPin() {
     this.deviceService.generatePairingPin();
   }

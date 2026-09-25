@@ -26,10 +26,14 @@ export function isValidHttpUrl(candidate: string): boolean {
 }
 
 /**
- * Normalizes URL for opening in a browser tab
+ * Normalizes URL for opening in a browser tab (strips enclosing < > if present)
  */
 export function normalizeUrlForNavigation(candidate: string): string {
-  const trimmed = candidate.trim();
+  if (!candidate || typeof candidate !== 'string') return '';
+  let trimmed = candidate.trim();
+  if (trimmed.startsWith('<') && trimmed.endsWith('>')) {
+    trimmed = trimmed.slice(1, -1).trim();
+  }
   if (/^www\./i.test(trimmed)) {
     return `https://${trimmed}`;
   }
@@ -37,12 +41,17 @@ export function normalizeUrlForNavigation(candidate: string): string {
 }
 
 /**
- * Visually shortens long URLs with middle ellipsis while preserving the full URL
+ * Visually shortens long URLs with middle ellipsis while preserving the full URL (strips enclosing < >)
  */
 export function formatDisplayUrl(url: string, maxLength: number = 38): string {
-  if (!url || url.length <= maxLength) return url;
+  if (!url) return '';
+  let cleanUrl = url.trim();
+  if (cleanUrl.startsWith('<') && cleanUrl.endsWith('>')) {
+    cleanUrl = cleanUrl.slice(1, -1).trim();
+  }
+  if (cleanUrl.length <= maxLength) return cleanUrl;
   const half = Math.floor((maxLength - 3) / 2);
-  return `${url.slice(0, half)}...${url.slice(url.length - half)}`;
+  return `${cleanUrl.slice(0, half)}...${cleanUrl.slice(cleanUrl.length - half)}`;
 }
 
 /**

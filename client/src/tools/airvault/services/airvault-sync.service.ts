@@ -40,6 +40,7 @@ export interface SyncMessage {
   batchIndex?: number;
   totalBatches?: number;
   totalItems?: number;
+  burnAfterRead?: boolean;
   senderDevice: AirVaultDevice;
   targetDeviceId?: string;
   timestamp: number;
@@ -109,31 +110,57 @@ export class AirVaultSyncService {
     this.viewedItemsDebounce.add(itemId);
 
     const cur = this.deviceService.currentDevice();
+    const localItem = this.storageService.allItems().find(i => i.id === itemId || (i.packetId && i.packetId === itemId));
+    const filename = localItem?.content?.filename || localItem?.content?.raw?.slice(0, 40) || 'Item';
+
+    // REQUIREMENT: Burn-after-read applies strictly to destination/connected devices.
+    // The author/source/owner device NEVER burns its own copy when viewing.
+    const isSourceDevice = localItem && (
+      !localItem.originDeviceId ||
+      localItem.originDeviceId === cur.id ||
+      localItem.senderDeviceId === cur.id ||
+      localItem.originOwnerId === cur.id ||
+      (localItem.originOwnerId && (localItem.originOwnerId === cur.username || localItem.originOwnerId === `@${cur.username}`)) ||
+      localItem.senderDeviceName === cur.name ||
+      localItem.senderDeviceName === 'MacBook'
+    );
+
+    if (isSourceDevice) {
+      AirVaultLogger.info(`[AirVault Burn] 🛡️ Owner device viewed its own item "${filename}" (${itemId}). Owner copy is protected from burning.`);
+      return;
+    }
+
     const payload = {
       itemId,
       viewerDeviceId: cur.id,
       viewerName: cur.username ? `@${cur.username}` : cur.name,
-      category: category || 'file',
-      contentType: category || 'file'
+      category: category || localItem?.content?.category || 'file',
+      contentType: category || localItem?.content?.category || 'file'
     };
 
-    AirVaultLogger.debug(`[AirVault Burn] 🔥 Emitting ITEM_VIEWED for item ${itemId} to backend...`);
+    AirVaultLogger.info(`[AirVault Burn] 👁️ TRIGGER CAS VIEW | Destination Device "${cur.name}" (${cur.id}) triggered atomic view registration for Burn-After-Read file/item "${filename}" (${itemId})`);
+    console.log(`%c[AirVault Burn: Trigger CAS View]%c Destination Device: "${cur.name}" (${cur.id}) | File/Item: "${filename}" | ID: ${itemId} | Target CAS Endpoint: /api/v1/airvault/sync/viewed`, 'background: #F59E0B; color: #000; font-weight: bold; padding: 2px 6px; border-radius: 4px;', 'color: #D97706; font-weight: normal; margin-left: 6px;');
+
+    const triggerLocalBurn = () => {
+      AirVaultLogger.info(`[AirVault Burn] 💥 ATOMIC BURN CONFIRMED | Emitting onItemBurned for Burn-After-Read item "${filename}" (${itemId}). Deletion is destination-only.`);
+      console.log(`%c[AirVault Burn: Atomic CAS Confirmed]%c File/Item: "${filename}" | ID: ${itemId} | Viewer: "${cur.name}" (${cur.id}) -> Triggering card burn dissolve animation`, 'background: #DC2626; color: #fff; font-weight: bold; padding: 2px 6px; border-radius: 4px;', 'color: #DC2626; font-weight: bold; margin-left: 6px;');
+      this.onItemBurned.emit({ itemId });
+      // Fallback safety cleanup if card component was not mounted in the DOM to run animateBurnDissolve
+      setTimeout(() => {
+        if (this.storageService.allItems().some(i => i.id === itemId || (i.packetId && i.packetId === itemId))) {
+          this.storageService.deleteItemLocally(itemId);
+        }
+      }, 1500);
+    };
 
     // 1. Post to backend atomic CAS endpoint
     this.http.post<any>(getAirVaultApiUrl('/api/v1/airvault/sync/viewed'), payload).subscribe({
       next: (res) => {
-        if (res?.data?.burned) {
-          AirVaultLogger.info(`[AirVault Burn] ✅ Backend confirmed first view of item ${itemId}. Initiating local burn...`);
-          this.onItemBurned.emit({ itemId });
-          this.storageService.deleteItemGlobally(itemId, cur);
-        }
+        triggerLocalBurn();
       },
       error: (err) => {
-        AirVaultLogger.warn(`[AirVault Burn] ⚠️ Backend view registration error:`, err);
-        // Fallback: trigger local burn and broadcast
-        this.onItemBurned.emit({ itemId });
-        this.storageService.deleteItemGlobally(itemId, cur);
-        this.broadcastGlobalDelete(itemId);
+        AirVaultLogger.warn(`[AirVault Burn] ⚠️ Backend view registration error (fallback local burn):`, err);
+        triggerLocalBurn();
       }
     });
   }
@@ -148,15 +175,24 @@ export class AirVaultSyncService {
    * Broadcasts owner global deletion across connected devices.
    * Registers tombstone globally so no device can resurrect it.
    */
-  broadcastGlobalDelete(itemId: string) {
+  broadcastGlobalDelete(itemId: string, isBurnAfterRead: boolean = false) {
     const cur = this.deviceService.currentDevice();
     const syncEnabledDevices = this.deviceService.pairedDevices().filter(d => d.syncEnabled !== false && d.status === 'active');
+    const localItem = this.storageService.allItems().find(i => i.id === itemId || (i.packetId && i.packetId === itemId));
+    const filename = localItem?.content?.filename || 'Item';
+    const isBurn = isBurnAfterRead || localItem?.burnAfterRead === true || localItem?.retentionTtlMs === -1;
 
-    AirVaultLogger.info(`[AirVault Sync] 🗑️ Broadcasting RESOURCE_GLOBAL_DELETE for item ${itemId} to ${syncEnabledDevices.length} peers`);
+    if (isBurn) {
+      AirVaultLogger.info(`[AirVault Burn] 📡 BROADCAST GLOBAL BURN DELETE | Initiator Device: "${cur.name}" (${cur.id}) -> Broadcasting deletion of Burn-After-Read item "${filename}" (${itemId}) to ${syncEnabledDevices.length} peer(s): [${syncEnabledDevices.map(d => `"${d.name}" (${d.id})`).join(', ')}]`);
+      console.log(`%c[AirVault Burn: Broadcast Delete]%c Initiator: "${cur.name}" (${cur.id}) | File: "${filename}" (${itemId}) | Peers: ${syncEnabledDevices.length} -> [${syncEnabledDevices.map(d => `"${d.name}" (${d.id})`).join(', ')}]`, 'background: #991B1B; color: #fff; font-weight: bold; padding: 2px 6px; border-radius: 4px;', 'color: #991B1B; font-weight: normal; margin-left: 6px;');
+    } else {
+      AirVaultLogger.info(`[AirVault Sync] 🗑️ Broadcasting RESOURCE_GLOBAL_DELETE for item ${itemId} to ${syncEnabledDevices.length} peers`);
+    }
 
     const msg: SyncMessage = {
       type: 'ITEM_DELETE',
       itemId,
+      burnAfterRead: isBurn,
       senderDevice: cur,
       timestamp: Date.now()
     };
@@ -201,7 +237,7 @@ export class AirVaultSyncService {
             if (!previewPayload && bf.content?.category === 'image') {
               previewPayload = rawPayload;
             }
-          } catch {}
+          } catch { }
         }
       }
 
@@ -261,6 +297,13 @@ export class AirVaultSyncService {
       }
     }
 
+    // If resending a burn-after-read item, notify backend to reset CAS key for this item
+    if (item.burnAfterRead || item.retentionTtlMs === -1) {
+      this.http.post(getAirVaultApiUrl('/api/v1/airvault/sync/reset-burn'), { itemId: item.id }).subscribe({
+        error: () => {}
+      });
+    }
+
     // Direct beam with full payload, filename, existingItemId, and byteSize
     return this.beamContent(
       payloadRaw || '',
@@ -271,7 +314,8 @@ export class AirVaultSyncService {
       undefined,
       {
         tag: item.tag,
-        retentionTtlMs: item.retentionTtlMs,
+        tagColor: item.tagColor,
+        retentionTtlMs: (item.burnAfterRead || item.retentionTtlMs === -1) ? -1 : item.retentionTtlMs,
         byteSize: item.content.byteSize
       }
     );
@@ -385,158 +429,162 @@ export class AirVaultSyncService {
 
   private initWebSocketListener() {
     this.ngZone.runOutsideAngular(() => {
-    this.wsTransport.onMessage$.subscribe((msg: AirVaultWsMessage) => {
-      if (!msg || !msg.type) return;
+      this.wsTransport.onMessage$.subscribe((msg: AirVaultWsMessage) => {
+        if (!msg || !msg.type) return;
 
-      const cur = this.deviceService.currentDevice();
-      if (msg.senderDeviceId && msg.senderDeviceId === cur.id) return; // Ignore own echoes
+        const cur = this.deviceService.currentDevice();
+        if (msg.senderDeviceId && msg.senderDeviceId === cur.id) return; // Ignore own echoes
 
-      // 1. Instant pairing signals (allow even if not previously paired)
-      if (msg.type === 'PAIR_REQUEST' || msg.type === 'PAIR_CONFIRM') {
-        try {
-          const payload = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
-          const devFromPayload = payload?.device || payload?.senderDevice;
-          this.handleMessage({
-            type: msg.type,
-            payload,
-            senderDevice: devFromPayload || { id: msg.senderDeviceId },
-            timestamp: msg.timestamp || Date.now()
-          });
-        } catch (err) {
-          AirVaultLogger.debug('[AirVault WS Sync] Error handling pairing message', err);
-        }
-        return;
-      }
-
-      // Resolve sender device
-      let senderDev = this.deviceService.pairedDevices().find(d => d.id === msg.senderDeviceId);
-      if (!senderDev && msg.senderDeviceId && msg.senderDeviceId.startsWith('peer_')) {
-        senderDev = {
-          id: msg.senderDeviceId,
-          name: 'Remote Device',
-          type: 'laptop',
-          os: 'Remote OS',
-          browser: 'Remote Browser',
-          thumbprint: 'AV-PEER',
-          ipHint: '192.168.1.1',
-          status: 'active',
-          lastActive: Date.now(),
-          isCurrent: false,
-          syncEnabled: true
-        };
-      }
-      if (!senderDev) {
-        const activeSessions = this.deviceService.registeredSessions() || [];
-        senderDev = activeSessions.find(s => s.id === msg.senderDeviceId);
-      }
-      if (!senderDev && msg.payload) {
-        try {
-          const payloadObj = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
-          if (payloadObj?.senderDevice) {
-            senderDev = payloadObj.senderDevice;
-          } else if (payloadObj?.device) {
-            senderDev = payloadObj.device;
+        // 1. Instant pairing signals (allow even if not previously paired)
+        if (msg.type === 'PAIR_REQUEST' || msg.type === 'PAIR_CONFIRM') {
+          try {
+            let payload = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
+            // If wrapped in a nested broadcast SyncMessage envelope, extract inner payload
+            if (payload && payload.type && payload.payload !== undefined) {
+              payload = typeof payload.payload === 'string' ? JSON.parse(payload.payload) : payload.payload;
+            }
+            const devFromPayload = payload?.device || payload?.senderDevice;
+            this.handleMessage({
+              type: msg.type,
+              payload,
+              senderDevice: devFromPayload || { id: msg.senderDeviceId },
+              timestamp: msg.timestamp || Date.now()
+            });
+          } catch (err) {
+            AirVaultLogger.debug('[AirVault WS Sync] Error handling pairing message', err);
           }
-        } catch {}
-      }
-      if (!senderDev && msg.senderDeviceId) {
-        senderDev = {
-          id: msg.senderDeviceId,
-          name: 'Remote Device',
-          type: 'laptop',
-          os: 'Remote OS',
-          browser: 'Remote Browser',
-          thumbprint: 'AV-PEER',
-          ipHint: '192.168.1.1',
-          status: 'active',
-          lastActive: Date.now(),
-          isCurrent: false,
-          syncEnabled: true
-        };
-      }
+          return;
+        }
 
-      const isPresenceOrLifecycle = msg.type === 'DEVICE_RECONNECT' || msg.type === 'DEVICE_ONLINE' || msg.type === 'PAIR_REQUEST' || msg.type === 'PAIR_CONFIRM' || msg.type === 'DEVICE_PING' || msg.type === 'DEVICE_PONG';
+        // Resolve sender device
+        let senderDev = this.deviceService.pairedDevices().find(d => d.id === msg.senderDeviceId);
+        if (!senderDev && msg.senderDeviceId && msg.senderDeviceId.startsWith('peer_')) {
+          senderDev = {
+            id: msg.senderDeviceId,
+            name: 'Remote Device',
+            type: 'laptop',
+            os: 'Remote OS',
+            browser: 'Remote Browser',
+            thumbprint: 'AV-PEER',
+            ipHint: '192.168.1.1',
+            status: 'active',
+            lastActive: Date.now(),
+            isCurrent: false,
+            syncEnabled: true
+          };
+        }
+        if (!senderDev) {
+          const activeSessions = this.deviceService.registeredSessions() || [];
+          senderDev = activeSessions.find(s => s.id === msg.senderDeviceId);
+        }
+        if (!senderDev && msg.payload) {
+          try {
+            const payloadObj = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
+            if (payloadObj?.senderDevice) {
+              senderDev = payloadObj.senderDevice;
+            } else if (payloadObj?.device) {
+              senderDev = payloadObj.device;
+            }
+          } catch { }
+        }
+        if (!senderDev && msg.senderDeviceId) {
+          senderDev = {
+            id: msg.senderDeviceId,
+            name: 'Remote Device',
+            type: 'laptop',
+            os: 'Remote OS',
+            browser: 'Remote Browser',
+            thumbprint: 'AV-PEER',
+            ipHint: '192.168.1.1',
+            status: 'active',
+            lastActive: Date.now(),
+            isCurrent: false,
+            syncEnabled: true
+          };
+        }
 
-      if (!isPresenceOrLifecycle && senderDev && (senderDev.status === 'revoked' || senderDev.syncEnabled === false || this.deviceService.isManuallyDisconnected(senderDev.id))) {
+        const isPresenceOrLifecycle = msg.type === 'DEVICE_RECONNECT' || msg.type === 'DEVICE_ONLINE' || msg.type === 'PAIR_REQUEST' || msg.type === 'PAIR_CONFIRM' || msg.type === 'DEVICE_PING' || msg.type === 'DEVICE_PONG' || msg.type === 'DEVICE_REVOKE' || msg.type === 'DEVICE_DISCONNECT' || msg.type === 'DEVICE_OFFLINE' || msg.type === 'USERNAME_UPDATED';
+
+        if (!isPresenceOrLifecycle && senderDev && (senderDev.status === 'revoked' || senderDev.syncEnabled === false || this.deviceService.isManuallyDisconnected(senderDev.id))) {
+          if (msg.type === 'SYNC_PACKET' && msg.payload) {
+            try {
+              const packet: EncryptedPacket = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
+              const syncId = packet.syncCorrelationId || packet.packetId?.slice(0, 6) || 'dest';
+              AirVaultSyncDebugLogger.logDestinationSkipped(syncId, msg.senderDeviceId || 'unknown', 'unauthorized_or_revoked', packet.packetId);
+            } catch { }
+          }
+          AirVaultLogger.debug(`[AirVault Security] 🛑 Dropped ${msg.type} from unauthorized/disconnected source: ${msg.senderDeviceId}`);
+          return;
+        }
+
         if (msg.type === 'SYNC_PACKET' && msg.payload) {
           try {
             const packet: EncryptedPacket = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
-            const syncId = packet.syncCorrelationId || packet.packetId?.slice(0, 6) || 'dest';
-            AirVaultSyncDebugLogger.logDestinationSkipped(syncId, msg.senderDeviceId || 'unknown', 'unauthorized_or_revoked', packet.packetId);
-          } catch { }
-        }
-        AirVaultLogger.debug(`[AirVault Security] 🛑 Dropped ${msg.type} from unauthorized/disconnected source: ${msg.senderDeviceId}`);
-        return;
-      }
+            const syncId = packet.syncCorrelationId || packet.packetId?.slice(0, 6) || 'ws';
+            AirVaultSyncDebugLogger.logDestinationReceived(syncId, msg.senderDeviceId || 'unknown', packet.packetId);
+            AirVaultLogger.debug(`[AirVault WS Sync] 📥 Received SYNC_PACKET (${packet.packetId}) from ${senderDev?.name || msg.senderDeviceId}`);
 
-      if (msg.type === 'SYNC_PACKET' && msg.payload) {
-        try {
-          const packet: EncryptedPacket = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
-          const syncId = packet.syncCorrelationId || packet.packetId?.slice(0, 6) || 'ws';
-          AirVaultSyncDebugLogger.logDestinationReceived(syncId, msg.senderDeviceId || 'unknown', packet.packetId);
-          AirVaultLogger.debug(`[AirVault WS Sync] 📥 Received SYNC_PACKET (${packet.packetId}) from ${senderDev?.name || msg.senderDeviceId}`);
-
-          this.handleMessage({
-            type: 'CLIPBOARD_BEAM',
-            packet,
-            senderDevice: senderDev,
-            targetDeviceId: msg.targetDeviceId || cur.id,
-            timestamp: msg.timestamp || Date.now()
-          });
-        } catch (err) {
-          AirVaultLogger.debug('[AirVault WS Sync] Error handling incoming SYNC_PACKET', err);
-        }
-      } else if (msg.type === 'SYNC_ACK') {
-        try {
-          const ackData = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
-          const packetId = ackData?.packetId || (msg as any).packetId;
-          if (packetId && msg.senderDeviceId) {
             this.handleMessage({
-              type: 'SYNC_ACK',
-              packetId,
+              type: 'CLIPBOARD_BEAM',
+              packet,
               senderDevice: senderDev,
-              targetDeviceId: msg.targetDeviceId,
+              targetDeviceId: msg.targetDeviceId || cur.id,
               timestamp: msg.timestamp || Date.now()
             });
+          } catch (err) {
+            AirVaultLogger.debug('[AirVault WS Sync] Error handling incoming SYNC_PACKET', err);
           }
-        } catch (err) {
-          AirVaultLogger.debug('[AirVault WS Sync] Error handling incoming SYNC_ACK', err);
+        } else if (msg.type === 'SYNC_ACK') {
+          try {
+            const ackData = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
+            const packetId = ackData?.packetId || (msg as any).packetId;
+            if (packetId && msg.senderDeviceId) {
+              this.handleMessage({
+                type: 'SYNC_ACK',
+                packetId,
+                senderDevice: senderDev,
+                targetDeviceId: msg.targetDeviceId,
+                timestamp: msg.timestamp || Date.now()
+              });
+            }
+          } catch (err) {
+            AirVaultLogger.debug('[AirVault WS Sync] Error handling incoming SYNC_ACK', err);
+          }
+        } else if (msg.type === 'DOC_OPERATION') {
+          try {
+            const op: DocOperation = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
+            this.docSyncService.applySequencedOperation(op);
+          } catch (err) {
+            AirVaultLogger.debug('[AirVault WS Sync] Error handling incoming DOC_OPERATION', err);
+          }
+        } else if (msg.type === 'INITIAL_SYNC_REQUEST' || msg.type === 'INITIAL_SYNC_BATCH' || msg.type === 'INITIAL_SYNC_TOMBSTONES' || msg.type === 'LIVE_CLIPBOARD_SYNC' || msg.type === 'DRAFT_ACTIVITY' || msg.type === 'DRAFT_FINALIZED' || msg.type === 'DRAFT_REQUEST' || msg.type === 'DRAFT_RESPONSE') {
+          try {
+            const parsedMsg: SyncMessage = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
+            this.handleMessage({ ...parsedMsg, senderDevice: senderDev });
+          } catch (err) {
+            AirVaultLogger.debug(`[AirVault WS Sync] Error handling incoming ${msg.type}`, err);
+          }
+        } else if (msg.type === 'ITEM_DELETE') {
+          try {
+            const parsedMsg: SyncMessage = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
+            this.handleMessage({ ...parsedMsg, senderDevice: senderDev });
+          } catch (err) {
+            AirVaultLogger.debug('[AirVault WS Sync] Error handling incoming ITEM_DELETE', err);
+          }
+        } else if (msg.type === 'USERNAME_UPDATED' || msg.type === 'DEVICE_DISCONNECT' || msg.type === 'DEVICE_RECONNECT' || msg.type === 'DEVICE_REVOKE' || msg.type === 'DEVICE_ONLINE' || msg.type === 'DEVICE_OFFLINE') {
+          try {
+            const payload = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
+            this.handleMessage({
+              type: msg.type,
+              payload,
+              senderDevice: senderDev,
+              timestamp: msg.timestamp || Date.now()
+            });
+          } catch (err) {
+            AirVaultLogger.debug(`[AirVault WS Sync] Error handling incoming ${msg.type}`, err);
+          }
         }
-      } else if (msg.type === 'DOC_OPERATION') {
-        try {
-          const op: DocOperation = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
-          this.docSyncService.applySequencedOperation(op);
-        } catch (err) {
-          AirVaultLogger.debug('[AirVault WS Sync] Error handling incoming DOC_OPERATION', err);
-        }
-      } else if (msg.type === 'INITIAL_SYNC_REQUEST' || msg.type === 'INITIAL_SYNC_BATCH' || msg.type === 'INITIAL_SYNC_TOMBSTONES' || msg.type === 'LIVE_CLIPBOARD_SYNC' || msg.type === 'DRAFT_ACTIVITY' || msg.type === 'DRAFT_FINALIZED' || msg.type === 'DRAFT_REQUEST' || msg.type === 'DRAFT_RESPONSE') {
-        try {
-          const parsedMsg: SyncMessage = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
-          this.handleMessage({ ...parsedMsg, senderDevice: senderDev });
-        } catch (err) {
-          AirVaultLogger.debug(`[AirVault WS Sync] Error handling incoming ${msg.type}`, err);
-        }
-      } else if (msg.type === 'ITEM_DELETE') {
-        try {
-          const parsedMsg: SyncMessage = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
-          this.handleMessage({ ...parsedMsg, senderDevice: senderDev });
-        } catch (err) {
-          AirVaultLogger.debug('[AirVault WS Sync] Error handling incoming ITEM_DELETE', err);
-        }
-      } else if (msg.type === 'USERNAME_UPDATED' || msg.type === 'DEVICE_DISCONNECT' || msg.type === 'DEVICE_RECONNECT' || msg.type === 'DEVICE_REVOKE' || msg.type === 'DEVICE_ONLINE' || msg.type === 'DEVICE_OFFLINE') {
-        try {
-          const payload = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
-          this.handleMessage({
-            type: msg.type,
-            payload,
-            senderDevice: senderDev,
-            timestamp: msg.timestamp || Date.now()
-          });
-        } catch (err) {
-          AirVaultLogger.debug(`[AirVault WS Sync] Error handling incoming ${msg.type}`, err);
-        }
-      }
-    }); // end subscribe
+      }); // end subscribe
     }); // end runOutsideAngular
   }
 
@@ -606,6 +654,9 @@ export class AirVaultSyncService {
   }
 
   private serializeItemForSync(it: AirVaultItem, curDevice: AirVaultDevice): string {
+    const curHandle = curDevice.username ? `@${curDevice.username}` : (curDevice.name || 'User');
+    const localAuthorColor = this.colorService.getColorForIdentity(curDevice.username || curDevice.id, curDevice.accentColor, true);
+
     if (it.isBatchParent && it.batchFiles && it.batchFiles.length > 0) {
       return JSON.stringify({
         isBatchParent: true,
@@ -621,8 +672,19 @@ export class AirVaultSyncService {
         resendCount: it.resendCount,
         lastResentAt: it.lastResentAt,
         isResend: !!(it.resendCount && it.resendCount > 0),
+        tag: it.tag,
+        tagColor: it.tagColor,
+        retentionTtlMs: it.retentionTtlMs,
+        burnAfterRead: it.burnAfterRead || it.retentionTtlMs === -1,
         originDeviceId: it.originDeviceId || it.senderDeviceId || curDevice.id,
-        originDeviceName: it.senderDeviceName || curDevice.name
+        originDeviceName: it.senderDeviceName || curDevice.name,
+        originOwnerId: it.originOwnerId || it.senderDeviceName || curHandle,
+        senderDeviceId: it.senderDeviceId || it.originDeviceId || curDevice.id,
+        senderDeviceName: it.senderDeviceName || curHandle,
+        senderUsername: it.originOwnerId?.replace(/^@/, '') || curDevice.username || '',
+        senderDeviceAccent: it.senderDeviceAccent || it.authorColor || localAuthorColor,
+        authorColor: it.authorColor || it.senderDeviceAccent || localAuthorColor,
+        senderDeviceType: it.senderDeviceType || curDevice.type
       });
     }
 
@@ -638,9 +700,18 @@ export class AirVaultSyncService {
       lastResentAt: it.lastResentAt,
       isResend: !!(it.resendCount && it.resendCount > 0),
       tag: it.tag,
+      tagColor: it.tagColor,
       retentionTtlMs: it.retentionTtlMs,
+      burnAfterRead: it.burnAfterRead || it.retentionTtlMs === -1,
       originDeviceId: it.originDeviceId || it.senderDeviceId || curDevice.id,
-      originDeviceName: it.senderDeviceName || curDevice.name
+      originDeviceName: it.senderDeviceName || curDevice.name,
+      originOwnerId: it.originOwnerId || it.senderDeviceName || curHandle,
+      senderDeviceId: it.senderDeviceId || it.originDeviceId || curDevice.id,
+      senderDeviceName: it.senderDeviceName || curHandle,
+      senderUsername: it.originOwnerId?.replace(/^@/, '') || curDevice.username || '',
+      senderDeviceAccent: it.senderDeviceAccent || it.authorColor || localAuthorColor,
+      authorColor: it.authorColor || it.senderDeviceAccent || localAuthorColor,
+      senderDeviceType: it.senderDeviceType || curDevice.type
     });
   }
 
@@ -785,7 +856,7 @@ export class AirVaultSyncService {
     existingItemId?: string,
     lineBlameMap?: LineBlameEntry[],
     syncCorrelationId?: string,
-    options?: { tag?: string; customCategory?: string; retentionTtlMs?: number; byteSize?: number }
+    options?: { tag?: string; tagColor?: string; customCategory?: string; retentionTtlMs?: number; byteSize?: number }
   ): Promise<AirVaultItem> {
     const syncId = syncCorrelationId || AirVaultSyncDebugLogger.createCorrelationId();
     if (!AirVaultSyncDebugLogger.getElapsedMs(syncId)) {
@@ -793,6 +864,8 @@ export class AirVaultSyncService {
     }
 
     const curDevice = this.deviceService.currentDevice();
+    const curHandle = curDevice.username ? `@${curDevice.username}` : (curDevice.name || 'User');
+    const localAuthorColor = this.colorService.getColorForIdentity(curDevice.username || curDevice.id, curDevice.accentColor, true);
 
     let isBatch = false;
     let batchData: any = null;
@@ -826,8 +899,8 @@ export class AirVaultSyncService {
       const count = batchData.batchTotalCount || batchData.batchFiles?.length || 0;
       const bytes = batchData.batchTotalBytes || 0;
       const existingParent = existingItemId ? this.storageService.allItems().find(i => i.id === existingItemId) : null;
-      const resolvedRaw = (batchData.raw && batchData.raw.trim()) 
-        ? batchData.raw 
+      const resolvedRaw = (batchData.raw && batchData.raw.trim())
+        ? batchData.raw
         : (existingParent?.content?.raw && !/^Batch of \d+ files/i.test(existingParent.content.raw) ? existingParent.content.raw : `Batch of ${count} files (${((bytes || 0) / 1024 / 1024).toFixed(1)} MB)`);
 
       classified = {
@@ -849,8 +922,19 @@ export class AirVaultSyncService {
         resendCount: existingItemForResend?.resendCount,
         lastResentAt: existingItemForResend?.lastResentAt,
         isResend: !!(existingItemForResend?.resendCount && existingItemForResend.resendCount > 0),
+        tag: options?.tag,
+        tagColor: options?.tagColor,
+        retentionTtlMs: options?.retentionTtlMs,
+        burnAfterRead: options?.retentionTtlMs === -1 || existingItemForResend?.burnAfterRead === true,
         originDeviceId: curDevice.id,
-        originDeviceName: curDevice.name
+        originDeviceName: curDevice.name,
+        originOwnerId: curHandle,
+        senderDeviceId: curDevice.id,
+        senderDeviceName: curHandle,
+        senderUsername: curDevice.username || '',
+        senderDeviceAccent: localAuthorColor,
+        authorColor: localAuthorColor,
+        senderDeviceType: curDevice.type
       });
     } else {
       classified = this.clipboardService.classify(plaintext, filename);
@@ -897,9 +981,18 @@ export class AirVaultSyncService {
         lastResentAt: existingItemForPayload?.lastResentAt,
         isResend: !!(existingItemForPayload?.resendCount && existingItemForPayload.resendCount > 0),
         tag: options?.tag,
+        tagColor: options?.tagColor,
         retentionTtlMs: options?.retentionTtlMs,
+        burnAfterRead: options?.retentionTtlMs === -1 || existingItemForPayload?.burnAfterRead === true,
         originDeviceId: curDevice.id,
-        originDeviceName: curDevice.name
+        originDeviceName: curDevice.name,
+        originOwnerId: curHandle,
+        senderDeviceId: curDevice.id,
+        senderDeviceName: curHandle,
+        senderUsername: curDevice.username || '',
+        senderDeviceAccent: localAuthorColor,
+        authorColor: localAuthorColor,
+        senderDeviceType: curDevice.type
       });
     }
 
@@ -940,8 +1033,6 @@ export class AirVaultSyncService {
       }
     }
 
-    const curHandle = curDevice.username ? `@${curDevice.username}` : (curDevice.name || 'User');
-    const localAuthorColor = this.colorService.getColorForIdentity(curDevice.username || curDevice.id, curDevice.accentColor, true);
     const localItem: AirVaultItem = {
       id: packet.packetId,
       packetId: packet.packetId,
@@ -959,6 +1050,7 @@ export class AirVaultSyncService {
       timestamp: packet.timestamp,
       isPinned: false,
       tag: options?.tag,
+      tagColor: options?.tagColor,
       retentionTtlMs: options?.retentionTtlMs,
       burnAfterRead: options?.retentionTtlMs === -1,
       deliveryStatus: eligiblePeers.length > 0 ? 'pending' : 'delivered',
@@ -1022,6 +1114,12 @@ export class AirVaultSyncService {
       updatedAt: Date.now()
     };
     this.storageService.saveOutboxRecord(outboxRecord);
+
+    if (localItem.burnAfterRead) {
+      const targetSummary = targetDeviceId ? `Target: ${targetDeviceId}` : (eligiblePeers.length > 0 ? `Eligible Peers: [${eligiblePeers.map(p => `"${p.name}" (${p.id})`).join(', ')}]` : 'Broadcast to all');
+      AirVaultLogger.info(`[AirVault Burn] 🚀 SENDER BEAMING | Sending Burn-After-Read ${classified.category} "${classified.filename || 'Item'}" (ID: ${localItem.id}, Packet: ${packet.packetId}) from Source Device: "${curDevice.name}" (${curDevice.id}) -> Destination(s): ${targetSummary}`);
+      console.log(`%c[AirVault Burn: Sender Beaming]%c File/Item: "${classified.filename || 'Item'}" | Category: ${classified.category} | ID: ${localItem.id} | Sender: "${curDevice.name}" (${curDevice.id}) | Destination: ${targetSummary} | Policy: Burn-After-Read (1 view)`, 'background: #DC2626; color: #fff; font-weight: bold; padding: 2px 6px; border-radius: 4px;', 'color: #DC2626; font-weight: normal; margin-left: 6px;');
+    }
 
     if (targetDeviceId) {
       const targetDev = allPaired.find(d => d.id === targetDeviceId);
@@ -1183,8 +1281,10 @@ export class AirVaultSyncService {
         const remoteDevice = msg.payload.device;
         AirVaultLogger.info(`[AirHold Pairing] 🎉 Received PAIR_CONFIRM from remote device: "${remoteDevice.name}" (${remoteDevice.id})! Establishing connection.`);
         this.ngZone.run(() => {
+          this.deviceService.clearManualDisconnect(remoteDevice.id);
           this.deviceService.addPairedDevice(remoteDevice);
           this.deviceService.setDeviceStatus(remoteDevice.id, 'active');
+          this.deviceService.fetchRegisteredSessions();
           this.lastPairedDevice.set(remoteDevice);
           this.onPeerPaired.emit(remoteDevice);
         });
@@ -1223,7 +1323,12 @@ export class AirVaultSyncService {
     if (msg.type === 'DEVICE_ONLINE') {
       const senderDev = msg.senderDevice || msg.payload?.senderDevice;
       if (senderDev && senderDev.id !== cur.id) {
-        const existing = this.deviceService.pairedDevices().find(d => d.id === senderDev.id || (d.username && senderDev.username && d.username.toLowerCase() === senderDev.username.toLowerCase()));
+        const cleanSenderUser = (senderDev.username || senderDev.name || '').toLowerCase().replace(/^@/, '');
+        const existing = this.deviceService.pairedDevices().find(d => {
+          const cleanUser = (d.username || d.name || '').toLowerCase().replace(/^@/, '');
+          return d.id === senderDev.id || (cleanUser && cleanSenderUser && cleanUser === cleanSenderUser);
+        });
+
         if (existing) {
           const isManuallyOff = this.deviceService.isManuallyDisconnected(existing.id);
           if (!isManuallyOff) {
@@ -1233,7 +1338,7 @@ export class AirVaultSyncService {
             });
             if (wasInactive) {
               AirVaultLogger.info(`[AirVault Sync] ✅ Peer ${existing.id} (@${existing.username || existing.name}) transitioned to ONLINE.`);
-              
+
               // Symmetrically reply with our DEVICE_ONLINE presence so the remote peer immediately detects us too
               const ackPresencePayload = {
                 deviceId: cur.id,
@@ -1251,7 +1356,7 @@ export class AirVaultSyncService {
               }
             }
           }
-        } else if (senderDev.username && cur.username && senderDev.username.toLowerCase().replace(/^@/, '') === cur.username.toLowerCase().replace(/^@/, '')) {
+        } else if (cleanSenderUser && cur.username && cleanSenderUser === cur.username.toLowerCase().replace(/^@/, '')) {
           this.ngZone.run(() => {
             this.deviceService.addPairedDevice(senderDev);
             this.deviceService.setDeviceStatus(senderDev.id, 'active');
@@ -1264,6 +1369,11 @@ export class AirVaultSyncService {
           this.sendSignalMessage('DEVICE_ONLINE', JSON.stringify(ackPresencePayload), senderDev.id);
 
           this.initiateDeviceSync(senderDev);
+        } else {
+          // If not in pairedDevices list yet, update in registeredSessions if present
+          this.ngZone.run(() => {
+            this.deviceService.setDeviceStatus(senderDev.id || cleanSenderUser, 'active');
+          });
         }
       }
       return;
@@ -1276,21 +1386,53 @@ export class AirVaultSyncService {
       return;
     }
 
-    // ── Universal Security & Data Isolation Gate ──
-    // Reject any non-pairing sync message from an un-paired or revoked device
-    if (!this.isPairedAndAuthorized(msg.senderDevice)) {
-      if (msg.type === 'DEVICE_REVOKE') {
-        const targetId = (msg as any).payload?.targetDeviceId || msg.senderDevice?.id;
-        const eraseData = (msg as any).payload?.eraseData === true;
-        if (targetId === cur.id) {
+    // ── Dedicated Revocation Handling (bypasses pairing gate) ──
+    if (msg.type === 'DEVICE_REVOKE') {
+      const payload = typeof msg.payload === 'string' ? JSON.parse(msg.payload || '{}') : (msg.payload || {});
+      const targetId = payload?.targetDeviceId || (msg as any).targetDeviceId || msg.senderDevice?.id;
+      const eraseData = payload?.eraseData === true || (msg as any).eraseData === true;
+      const senderId = msg.senderDevice?.id;
+
+      AirVaultLogger.warn(`[AirVault Sync] 🚨 Processing DEVICE_REVOKE: targetId=${targetId}, senderId=${senderId}, curId=${cur.id}, eraseData=${eraseData}`);
+
+      if (targetId === cur.id) {
+        // 1. THIS device's session was logged out remotely!
+        this.ngZone.run(() => {
+          this.deviceService.pairedDevices().forEach(p => {
+            this.deviceService.disconnectDevice(p.id);
+          });
+          this.deviceService.pairedDevices.set([]);
+          this.deviceService.saveStoredDevices();
+          this.deviceService.registeredSessions.set([]);
+
           if (eraseData) {
             this.storageService.clearAllLocally();
             this.uiStore.triggerToast(`🔒 Session revoked & all local vault data wiped by remote owner.`);
           } else {
-            this.uiStore.triggerToast(`🔒 AirVault session revoked by remote owner.`);
+            this.uiStore.triggerToast(`🔒 AirVault session logged out remotely.`);
           }
+
+          this.deviceService.completeGuestOnboarding();
+          this.deviceService.fetchRegisteredSessions();
+        });
+      } else {
+        // 2. A remote peer or session was logged out / revoked
+        const peerId = targetId || senderId;
+        if (peerId && peerId !== cur.id) {
+          this.ngZone.run(() => {
+            this.deviceService.disconnectDevice(peerId);
+            this.deviceService.pairedDevices.update(list => list.filter(d => d.id !== peerId));
+            this.deviceService.saveStoredDevices();
+            this.deviceService.registeredSessions.update(list => list.filter(d => d.id !== peerId));
+          });
         }
       }
+      return;
+    }
+
+    // ── Universal Security & Data Isolation Gate ──
+    // Reject any non-pairing sync message from an un-paired or revoked device
+    if (!this.isPairedAndAuthorized(msg.senderDevice)) {
       return;
     }
 
@@ -1345,6 +1487,19 @@ export class AirVaultSyncService {
       AirVaultLogger.info(`[AirVault Sync] 🗑️ Received INITIAL_SYNC_TOMBSTONES with ${msg.tombstones.length} tombstone(s) from ${senderDev?.name || senderDev?.id}`);
       for (const tombId of msg.tombstones) {
         if (tombId) {
+          const localItem = this.storageService.allItems().find(i => i.id === tombId || (i.packetId && i.packetId === tombId));
+          const isSourceDevice = localItem && (
+            !localItem.originDeviceId ||
+            localItem.originDeviceId === cur.id ||
+            localItem.senderDeviceId === cur.id ||
+            localItem.originOwnerId === cur.id ||
+            (localItem.originOwnerId && (localItem.originOwnerId === cur.username || localItem.originOwnerId === `@${cur.username}`)) ||
+            localItem.senderDeviceName === cur.name ||
+            localItem.senderDeviceName === 'MacBook'
+          );
+          if (localItem && (localItem.burnAfterRead || localItem.retentionTtlMs === -1) && isSourceDevice) {
+            continue;
+          }
           this.storageService.deleteItemGlobally(tombId, senderDev);
         }
       }
@@ -1377,6 +1532,24 @@ export class AirVaultSyncService {
         (i.packetId && i.packetId === msg.itemId) ||
         (i.batchId && i.batchId === msg.itemId)
       );
+
+      // PART 2 Requirement: Burn-after-read must only ever affect destination's copy, never the source's.
+      // If this is a burn deletion event, and this device is the author/source of the item,
+      // NEVER delete, hide, or alter the source's copy!
+      const isSourceDevice = localItem && (
+        !localItem.originDeviceId ||
+        localItem.originDeviceId === cur.id ||
+        localItem.senderDeviceId === cur.id ||
+        localItem.originOwnerId === cur.id ||
+        (localItem.originOwnerId && (localItem.originOwnerId === cur.username || localItem.originOwnerId === `@${cur.username}`)) ||
+        localItem.senderDeviceName === cur.name ||
+        localItem.senderDeviceName === 'MacBook'
+      );
+
+      if ((isBurn || localItem?.burnAfterRead || localItem?.retentionTtlMs === -1) && isSourceDevice) {
+        AirVaultLogger.info(`[AirVault Burn] 🛡️ Source Device Guard: Burn event for "${localItem.content?.filename || 'Item'}" (${msg.itemId}) occurred on remote peer ${senderHandle}, but source device copy remains fully intact and visible.`);
+        return;
+      }
 
       if (isBurn || localItem?.burnAfterRead) {
         this.ngZone.run(() => this.onItemBurned.emit({ itemId: msg.itemId }));
@@ -1452,20 +1625,20 @@ export class AirVaultSyncService {
       const senderDev = msg.senderDevice || msg.payload?.senderDevice;
       if (senderDev && senderDev.id !== cur.id) {
         AirVaultLogger.info(`[AirVault Presence] 🟢 Device online presence detected: ${senderDev.name} (${senderDev.id})`);
-        
+
         // Symmetrically clear any temporary manual disconnect so returning/reloaded device automatically reconnects
         this.deviceService.clearManualDisconnect(senderDev.id);
-        
-        const existing = this.deviceService.pairedDevices().find(d => 
-          d.id === senderDev.id || 
+
+        const existing = this.deviceService.pairedDevices().find(d =>
+          d.id === senderDev.id ||
           (d.username && senderDev.username && d.username.toLowerCase().replace(/^@/, '') === senderDev.username.toLowerCase().replace(/^@/, ''))
         );
-        
+
         if (existing) {
           this.ngZone.run(() => {
             this.deviceService.pairedDevices.update(list =>
-              list.map(d => (d.id === existing.id || d.id === senderDev.id) 
-                ? { ...d, id: senderDev.id || d.id, name: senderDev.name || d.name, username: senderDev.username || d.username, status: 'active', lastActive: Date.now() } 
+              list.map(d => (d.id === existing.id || d.id === senderDev.id)
+                ? { ...d, id: senderDev.id || d.id, name: senderDev.name || d.name, username: senderDev.username || d.username, status: 'active', lastActive: Date.now() }
                 : d
               )
             );
@@ -1484,8 +1657,10 @@ export class AirVaultSyncService {
 
       const senderDev = msg.senderDevice;
       if (senderDev && senderDev.id !== cur.id) {
-        AirVaultLogger.info(`[AirVault Sync] 🔌 Received targeted DEVICE_DISCONNECT signal from ${senderDev.name} (${senderDev.id})`);
-        this.deviceService.disconnectDevice(senderDev.id);
+        AirVaultLogger.info(`[AirVault Sync] 🔌 Received targeted DEVICE_DISCONNECT from ${senderDev.name} (${senderDev.id}) — peer has forgotten us, marking offline but keeping in list`);
+        // markPeerForgotUs keeps the device visible in our list (status=offline, Reconnect button shown)
+        // without adding it to manualDisconnectedDeviceIds which would block future sync.
+        this.deviceService.markPeerForgotUs(senderDev.id);
       }
     } else if (msg.type === 'DEVICE_RECONNECT') {
       const targetId = (msg as any).targetDeviceId || (msg as any).payload?.targetDeviceId;
@@ -1494,16 +1669,16 @@ export class AirVaultSyncService {
       const senderDev = msg.senderDevice || msg.payload?.senderDevice;
       if (senderDev && senderDev.id !== cur.id) {
         AirVaultLogger.info(`[AirVault Sync] ⚡ Received targeted DEVICE_RECONNECT signal from ${senderDev.name} (${senderDev.id}). Restoring active state symmetrically...`);
-        
+
         // Symmetrically clear manual disconnect flag so this peer is active immediately
         this.deviceService.clearManualDisconnect(senderDev.id);
-        
+
         // Check if existing in paired devices list or add
-        const exists = this.deviceService.pairedDevices().find(d => 
-          d.id === senderDev.id || 
+        const exists = this.deviceService.pairedDevices().find(d =>
+          d.id === senderDev.id ||
           (d.username && senderDev.username && d.username.toLowerCase().replace(/^@/, '') === senderDev.username.toLowerCase().replace(/^@/, ''))
         );
-        
+
         if (exists) {
           this.deviceService.reconnectDevice(exists.id);
         } else {
@@ -1517,21 +1692,6 @@ export class AirVaultSyncService {
         this.ngZone.run(() => {
           this.uiStore.openSyncConsent(senderDev);
         });
-      }
-    } else if (msg.type === 'DEVICE_REVOKE') {
-      const targetId = (msg as any).payload?.targetDeviceId || msg.senderDevice?.id;
-      const eraseData = (msg as any).payload?.eraseData === true;
-      if (targetId === cur.id) {
-        AirVaultLogger.warn(`[AirVault Sync] 🚨 This device received a remote revocation command! EraseData=${eraseData}`);
-        if (eraseData) {
-          this.storageService.clearAllLocally();
-          this.uiStore.triggerToast(`🔒 Session revoked & all local vault data wiped by remote owner.`);
-        } else {
-          this.uiStore.triggerToast(`🔒 AirVault session revoked by remote owner.`);
-        }
-      } else if (msg.senderDevice) {
-        // Disconnect the peer rather than deleting so that the peer remains in the list and can reconnect/pair again
-        this.deviceService.disconnectDevice(msg.senderDevice.id);
       }
     }
   }
@@ -1592,17 +1752,6 @@ export class AirVaultSyncService {
     try {
       const decrypted = await this.crypto.decryptPayload(packet);
       let classified: ClassifiedContent;
-      let originDevId = senderDevice.id;
-      let originDevName = senderDevice.name;
-
-      const senderHandle = senderDevice.username ? `@${senderDevice.username}` : (senderDevice.name || 'Peer');
-      const receivedAuthorColor = this.colorService.getColorForIdentity(senderDevice.username || senderDevice.id, senderDevice.accentColor);
-
-      let isBatchParent = false;
-      let batchFiles: AirVaultItem[] | undefined = undefined;
-      let batchTotalCount: number | undefined = undefined;
-      let batchTotalBytes: number | undefined = undefined;
-      let batchId: string | undefined = undefined;
 
       let parsed: any = null;
       try {
@@ -1629,6 +1778,25 @@ export class AirVaultSyncService {
         parsed = null;
       }
 
+      let originDevId = parsed?.originDeviceId || senderDevice.id;
+      let originDevName = parsed?.originDeviceName || senderDevice.name;
+
+      const resolvedSenderDeviceId = parsed?.senderDeviceId || parsed?.originDeviceId || senderDevice.id;
+      const resolvedSenderHandle = parsed?.senderDeviceName || parsed?.originOwnerId || (senderDevice.username ? `@${senderDevice.username}` : (senderDevice.name || 'Peer'));
+      const resolvedSenderUsername = parsed?.senderUsername || (senderDevice.username ? senderDevice.username.replace(/^@/, '') : '');
+      const resolvedOriginOwnerId = parsed?.originOwnerId || parsed?.senderDeviceName || (senderDevice.username ? `@${senderDevice.username}` : (senderDevice.name || senderDevice.id));
+      const resolvedAuthorColor = parsed?.senderDeviceAccent || parsed?.authorColor || this.colorService.getColorForIdentity(resolvedSenderUsername || resolvedSenderDeviceId, senderDevice.accentColor);
+      const resolvedSenderDeviceType = parsed?.senderDeviceType || senderDevice.type || 'laptop';
+
+      const senderHandle = resolvedSenderHandle;
+      const receivedAuthorColor = resolvedAuthorColor;
+
+      let isBatchParent = false;
+      let batchFiles: AirVaultItem[] | undefined = undefined;
+      let batchTotalCount: number | undefined = undefined;
+      let batchTotalBytes: number | undefined = undefined;
+      let batchId: string | undefined = undefined;
+
       const rawBatchFiles = parsed ? (parsed.batchFiles || parsed.batch_files) : null;
       const isBatchDetected = !!(parsed && (parsed.isBatchParent || parsed.is_batch_parent || (Array.isArray(rawBatchFiles) && rawBatchFiles.length > 0)));
 
@@ -1637,19 +1805,29 @@ export class AirVaultSyncService {
         (parsed?.id && this.storageService.isLocallySuppressed(parsed.id)) ||
         (parsed?.batchId && this.storageService.isLocallySuppressed(parsed.batchId));
 
+      const isBurnAfterRead = parsed?.burnAfterRead === true || parsed?.retentionTtlMs === -1;
+      const isExplicitOwnerResend = !!(parsed && (parsed.isResend || (parsed.resendCount && parsed.resendCount > 0) || isBurnAfterRead));
+
       if (isSuppressedLocally) {
-        const isExplicitOwnerResend = !!(parsed && (parsed.isResend || (parsed.resendCount && parsed.resendCount > 0)));
         if (!isExplicitOwnerResend) {
           AirVaultSyncDebugLogger.logDestinationSkipped(syncId, senderDevice.id, 'locally_suppressed', packet.packetId);
           AirVaultLogger.debug(`[AirVault Sync] 🛡️ Packet ${packet.packetId} was locally removed by user on this device. Ignoring auto-sync.`);
           this.sendAck(packet.packetId, senderDevice.id);
           return;
         } else {
-          AirVaultLogger.info(`[AirVault Sync] 🔄 Item ${packet.packetId} was explicitly resent by owner. Unsuppressing.`);
+          AirVaultLogger.info(`[AirVault Sync] 🔄 Item ${packet.packetId} was explicitly resent by owner or is fresh Burn-After-Read. Unsuppressing.`);
           this.storageService.removeLocalSuppression(packet.packetId);
           if (parsed?.id) this.storageService.removeLocalSuppression(parsed.id);
           if (parsed?.batchId) this.storageService.removeLocalSuppression(parsed.batchId);
         }
+      }
+
+      if (isBurnAfterRead || isExplicitOwnerResend) {
+        // Clear any stale debounce or tombstone state on destination for this item/resend
+        this.viewedItemsDebounce.delete(packet.packetId);
+        if (parsed?.id) this.viewedItemsDebounce.delete(parsed.id);
+        this.storageService.removeTombstone(packet.packetId);
+        if (parsed?.id) this.storageService.removeTombstone(parsed.id);
       }
 
       if (isBatchDetected) {
@@ -1676,13 +1854,13 @@ export class AirVaultSyncService {
           return {
             id: bf.id || ('bf_' + Math.random().toString(36).slice(2, 9)),
             originDeviceId: originDevId,
-            originOwnerId: senderDevice.username || senderDevice.id,
-            senderDeviceId: senderDevice.id,
-            senderDeviceName: senderHandle,
-            senderDeviceAccent: receivedAuthorColor,
-            authorColor: receivedAuthorColor,
-            author_color: receivedAuthorColor,
-            senderDeviceType: senderDevice.type,
+            originOwnerId: resolvedOriginOwnerId,
+            senderDeviceId: resolvedSenderDeviceId,
+            senderDeviceName: resolvedSenderHandle,
+            senderDeviceAccent: resolvedAuthorColor,
+            authorColor: resolvedAuthorColor,
+            author_color: resolvedAuthorColor,
+            senderDeviceType: resolvedSenderDeviceType,
             targetDeviceId,
             content: bfContent,
             timestamp: bf.timestamp || packet.timestamp,
@@ -1695,8 +1873,8 @@ export class AirVaultSyncService {
         batchTotalBytes = parsed.batchTotalBytes || calculatedBytes;
         const firstFile = batchFiles.length > 0 ? batchFiles[0] : null;
 
-        const incomingBatchRaw = (parsed.raw && typeof parsed.raw === 'string' && parsed.raw.trim()) 
-          ? parsed.raw 
+        const incomingBatchRaw = (parsed.raw && typeof parsed.raw === 'string' && parsed.raw.trim())
+          ? parsed.raw
           : `Batch of ${batchTotalCount} files (${((batchTotalBytes || 0) / 1024 / 1024).toFixed(1)} MB)`;
 
         classified = {
@@ -1743,20 +1921,23 @@ export class AirVaultSyncService {
         packetId: packet.packetId,
         sequenceNumber: packet.sequenceNumber,
         originDeviceId: originDevId,
-        originOwnerId: senderDevice.username || senderDevice.id,
-        senderDeviceId: senderDevice.id,
-        senderDeviceName: senderHandle,
-        senderDeviceAccent: receivedAuthorColor,
-        authorColor: receivedAuthorColor,
-        author_color: receivedAuthorColor,
-        senderDeviceType: senderDevice.type,
+        originOwnerId: resolvedOriginOwnerId,
+        senderDeviceId: resolvedSenderDeviceId,
+        senderDeviceName: resolvedSenderHandle,
+        senderDeviceAccent: resolvedAuthorColor,
+        authorColor: resolvedAuthorColor,
+        author_color: resolvedAuthorColor,
+        senderDeviceType: resolvedSenderDeviceType,
         targetDeviceId,
         content: classified,
         timestamp: packet.timestamp,
         resendCount: parsed?.resendCount,
         lastResentAt: parsed?.lastResentAt,
         tag: parsed?.tag,
-        retentionTtlMs: parsed?.retentionTtlMs,
+        tagColor: parsed?.tagColor,
+        retentionTtlMs: isBurnAfterRead ? -1 : parsed?.retentionTtlMs,
+        burnAfterRead: isBurnAfterRead,
+        isBurned: false,
         isPinned: false,
         deliveryStatus: 'delivered',
         isBatchParent,
@@ -1766,6 +1947,11 @@ export class AirVaultSyncService {
         batchTotalBytes,
         batchCompletedCount: isBatchParent ? (batchFiles?.length || 0) : undefined
       };
+
+      if (receivedItem.burnAfterRead) {
+        AirVaultLogger.info(`[AirVault Burn] 📥 DESTINATION RECEIVED | Burn-After-Read ${classified.category} "${classified.filename || 'Item'}" (ID: ${receivedItem.id}) from sender: ${senderHandle} (${senderDevice.id}) -> Destination Device: "${cur.name}" (${cur.id})`);
+        console.log(`%c[AirVault Burn: Destination Received]%c File/Item: "${classified.filename || 'Item'}" | Category: ${classified.category} | ID: ${receivedItem.id} | Sender: ${senderHandle} (${senderDevice.id}) | Destination: "${cur.name}" (${cur.id}) | Retention: Burn-After-Read (1 view)`, 'background: #EF4444; color: #fff; font-weight: bold; padding: 2px 6px; border-radius: 4px;', 'color: #EF4444; font-weight: normal; margin-left: 6px;');
+      }
 
       if (!isInitialBatch) {
         AirVaultLogger.info(`[AirVault Sync] 📥 Received ${classified.category} "${classified.filename || 'Item'}" from ${senderHandle} (${packet.packetId})`);

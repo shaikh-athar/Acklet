@@ -24,6 +24,7 @@ import java.util.UUID;
 public class AirVaultDeviceController {
 
     private final AirVaultDeviceService deviceService;
+    private final com.code.acklet.airvault.websocket.AirVaultWebSocketHandler webSocketHandler;
 
     private UUID resolveUserId(User user) {
         return user != null ? user.getId() : UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -78,9 +79,34 @@ public class AirVaultDeviceController {
     @Operation(summary = "Revoke device", description = "Marks the device as revoked so it can no longer participate in sync")
     public ResponseEntity<ApiResponse<Void>> revoke(
             @AuthenticationPrincipal User user,
-            @PathVariable String clientDeviceId) {
+            @PathVariable String clientDeviceId,
+            @RequestParam(required = false, defaultValue = "false") boolean eraseData) {
         deviceService.revokeDevice(resolveUserId(user), clientDeviceId);
+
+        try {
+            com.code.acklet.airvault.websocket.dto.AirVaultWsMessage revokeMsg = com.code.acklet.airvault.websocket.dto.AirVaultWsMessage.builder()
+                    .type("DEVICE_REVOKE")
+                    .senderDeviceId("server")
+                    .targetDeviceId(clientDeviceId)
+                    .payload(String.format("{\"targetDeviceId\":\"%s\",\"eraseData\":%b,\"timestamp\":%d}",
+                            clientDeviceId, eraseData, System.currentTimeMillis()))
+                    .timestamp(System.currentTimeMillis())
+                    .build();
+            webSocketHandler.sendToDevice(clientDeviceId, revokeMsg);
+            webSocketHandler.broadcastToAll(revokeMsg, null);
+        } catch (Exception ignored) {}
+
         return ResponseEntity.ok(ApiResponse.success(null, "Device revoked"));
+    }
+
+    @DeleteMapping("/{targetDeviceId}/pairing")
+    @Operation(summary = "Unpair specific device link", description = "Dissolves only the specific pairing relationship between the calling device and target device without deleting or revoking either device record")
+    public ResponseEntity<ApiResponse<Void>> unpair(
+            @AuthenticationPrincipal User user,
+            @PathVariable String targetDeviceId,
+            @RequestParam String fromDeviceId) {
+        deviceService.unpairDevice(fromDeviceId, targetDeviceId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Device pairing removed"));
     }
 
     @GetMapping("/{clientDeviceId}/presence")

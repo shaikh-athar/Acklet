@@ -38,7 +38,7 @@ import { AirVaultDevice } from '../services/airvault-device.service';
         <!-- Actions -->
         <div class="consent-modal-actions">
           <button class="av-btn-secondary skip-btn" (click)="skip.emit(device())" data-tooltip="Keep current data as-is">
-            <app-icon name="slash" class="icon-xs"></app-icon>
+            <app-icon name="refresh-cw-off" class="icon-xs"></app-icon>
             <span>No, Skip</span>
           </button>
           <button class="consent-sync-btn" (click)="sync.emit(device())" data-tooltip="Pull existing clipboard items from this device">

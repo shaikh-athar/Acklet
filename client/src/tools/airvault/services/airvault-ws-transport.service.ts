@@ -294,12 +294,12 @@ export class AirVaultWsTransportService implements OnDestroy {
 
   private startPingInterval(): void {
     this.stopPingInterval();
-    // 20 second keepalive interval
+    // 12 second keepalive interval
     this.pingIntervalTimer = setInterval(() => {
       if (this.connectionState() === 'CONNECTED') {
         this.ping();
       }
-    }, 20000);
+    }, 12000);
   }
 
   private stopPingInterval(): void {

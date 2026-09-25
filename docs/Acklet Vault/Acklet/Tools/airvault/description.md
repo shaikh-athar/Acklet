@@ -165,6 +165,41 @@ Every piece of data — whether a snippet of code, an API key, an image, a URL, 
 
 ---
 
+### 2.5 Burn-After-Read (1-View Policy) & Resend Lifecycle Workflow
+
+```text
+[ Source Device A ]                                 [ Destination Device B ]
+        │                                                     │
+  1. Sets policy "Burn-After-Read (1 view)"                   │
+  2. Beams item with `burnAfterRead: true`                    │
+  3. Saves local copy in Vault (status = 'delivered')         │
+        │                                                     │
+        ├──────────────── SYNC_PACKET ───────────────────────►│
+        │                                                     │
+        │                                           4. Receives item with `burnAfterRead: true`
+        │                                           5. Displays card with Clock-Fading chip
+        │                                           6. User opens Preview Modal
+        │                                           7. User closes Preview Modal (requestClose)
+        │                                           8. Emits CAS view request to backend (/sync/viewed)
+        │                                           9. Dispatches `onItemBurned` event
+        │                                          10. Card executes `animateBurnDissolve`
+        │                                              (420ms fade-up y:-24px, scale:0.94, blur 3px)
+        │                                          11. Card unmounts and purges from IndexedDB locally
+        │                                                     │
+  [ Source Device A Copy Remains Intact & Untouched ]         │
+        │                                                     │
+  12. Source clicks "Resend" on intact item                   │
+  13. Calls POST /sync/reset-burn & beams fresh packet        │
+        │                                                     │
+        ├──────────────── SYNC_PACKET (isResend=true) ────────►│
+        │                                                     │
+        │                                           14. Clears local suppression & debounce
+        │                                           15. Mounts fresh Burn-After-Read item
+        │                                           16. Begins fresh 1-view burn lifecycle
+```
+
+---
+
 ---
 
 ## 3. 4-Tier Identity & Connection Model

@@ -814,7 +814,7 @@
   margin-bottom: 8px;
   animation: avSlideDown 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
-  padding: 0 16px 0 60px;
+  padding: 0 16px 0 16px;
   pointer-events: auto;
   z-index: 20;
 }
@@ -823,6 +823,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  margin-left: 50px;
   max-width: 100%;
   padding: 4px 10px;
   background: var(--av-surface-secondary);
@@ -927,80 +928,83 @@
   color: var(--av-text-primary);
 }
 
-/* ── Outer Composer Row: Left Action Buttons + Main Capsule ── */
+/* ── Outer Composer Row: Main Capsule ── */
 .chat-composer-outer-row {
   position: relative;
   z-index: 50;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   box-sizing: border-box;
   pointer-events: auto;
 }
 
-/* Left Controls Group (Clear + Send Button) */
-.composer-left-actions-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-/* Standalone Clear Clipboard Button (Outside & Left of Input) */
-.composer-standalone-clear-btn {
-  position: relative;
-  z-index: 100;
+/* External Left Erase Active Clipboard Button (Positioned outside the input capsule) */
+.composer-outer-erase-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--av-radius-full, 9999px);
-  background: var(--av-surface-secondary);
-  border: none;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
-  color: var(--av-text-secondary, #94a3b8);
-  cursor: pointer;
+  width: 38px;
+  height: 38px;
   flex-shrink: 0;
-  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-  box-sizing: border-box;
+  border-radius: 12px;
+  background: var(--av-surface-secondary);
+  border: 1px solid var(--av-border);
+  color: var(--av-text-muted);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  z-index: 100;
 }
 
-.composer-standalone-clear-btn:hover:not(:disabled) {
-  background: var(--av-danger-soft, rgba(239, 68, 68, 0.12));
-  color: var(--av-danger, #EF4444);
-  border-radius: var(--av-radius-full, 9999px);
-  transform: scale(1.04);
+.composer-outer-erase-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #EF4444;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(239, 68, 68, 0.18);
+  z-index: 101;
 }
 
-.composer-standalone-clear-btn:active:not(:disabled) {
-  border-radius: var(--av-radius-full, 9999px);
-  transform: scale(0.96);
+.composer-outer-erase-btn:active:not(:disabled) {
+  transform: scale(0.92);
 }
 
-:host-context([data-theme="light"]) .composer-standalone-clear-btn:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.08);
-  color: #dc2626;
+.composer-outer-erase-btn.clicked:not(:disabled) {
+  background: rgba(239, 68, 68, 0.2);
+  transform: scale(0.94);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25);
 }
 
-/* Position tooltip above and shifted right so it never clips against the left screen edge or behind the input */
-.composer-standalone-clear-btn[data-tooltip]::after {
-  left: 0;
-  right: auto;
-  bottom: calc(100% + 8px);
-  transform: translateX(0) translateY(4px);
-  z-index: 9999 !important;
-}
-
-.composer-standalone-clear-btn[data-tooltip]:hover::after {
-  opacity: 1;
-  transform: translateX(0) translateY(0);
-}
-
-.composer-standalone-clear-btn:disabled {
+.composer-outer-erase-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+  pointer-events: none;
+  border-color: var(--av-border-subtle, var(--av-border));
+  color: var(--av-text-faint, #64748b);
+  box-shadow: none;
+}
+
+:host-context([data-theme="dark"]) .composer-outer-erase-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.55);
+  color: #F87171;
+}
+
+/* Tooltip for outer erase button anchored leftward upward without getting obscured */
+.composer-outer-erase-btn[data-tooltip]::after {
+  left: 0;
+  right: auto;
+  bottom: calc(100% + 10px);
+  transform: translateY(4px);
+  z-index: 100000 !important;
+}
+
+.composer-outer-erase-btn[data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Send Button: Circular filled accent on the right inside controls */
@@ -1204,46 +1208,40 @@
   box-shadow: 0 2px 6px rgba(33,150,243,0.2);
 }
 
-/* ── ZONE 2: Top-Right Label / Tag Chip Row (Moves smoothly to the left when expand/collapse button exists) ── */
-.composer-label-chip-group {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  left: auto;
-  z-index: 15;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  max-width: calc(100% - 60px);
-  transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s ease;
-}
-
-/* When expand/collapse button exists on top-right, smoothly offset labels to the left of the button */
-.chat-composer-capsule.has-expand-btn .composer-label-chip-group,
-.chat-composer-capsule.expanded .composer-label-chip-group {
-  right: 44px;
-}
-
+/* ── Bottom Toolbar Active Retention & Tag Badges (Docked cleanly without overlapping text inputs) ── */
 .composer-active-tag-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-size: 11px;
   font-weight: 600;
-  font-family: var(--av-font-mono);
-  color: var(--av-accent, #2196F3);
-  background: rgba(33, 150, 243, 0.12);
-  border: 1px solid rgba(33, 150, 243, 0.28);
-  padding: 1px 6px 1px 8px;
+  font-family: var(--av-font-mono, monospace);
+  color: var(--tag-color, #06B6D4);
+  background: color-mix(in srgb, var(--tag-color, #06B6D4) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tag-color, #06B6D4) 30%, transparent);
+  padding: 2px 7px 2px 8px;
   border-radius: 9999px;
   cursor: pointer;
-  transition: all 0.5s ease;
+  user-select: none;
+  transition: all 0.25s ease;
+  animation: avFadeInScale 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.composer-active-tag-chip:hover {
+  background: color-mix(in srgb, var(--tag-color, #06B6D4) 22%, transparent);
+  border-color: color-mix(in srgb, var(--tag-color, #06B6D4) 50%, transparent);
+  box-shadow: 0 2px 6px rgba(6, 182, 212, 0.15);
+}
+
+.composer-active-tag-chip app-icon {
+  color: var(--tag-color, #06B6D4);
 }
 
 .tag-chip-remove-btn {
   background: transparent;
   border: none;
-  color: var(--av-accent, #2196F3);
+  color: var(--tag-color, #06B6D4);
   cursor: pointer;
   padding: 1px;
   display: inline-flex;
@@ -1251,7 +1249,7 @@
   justify-content: center;
   border-radius: 50%;
   opacity: 0.8;
-  transition: opacity 0.5s;
+  transition: opacity 0.2s ease;
 }
 
 .tag-chip-remove-btn:hover {
@@ -1264,14 +1262,59 @@
   gap: 4px;
   font-size: 11px;
   font-weight: 600;
-  font-family: var(--av-font-mono);
+  font-family: var(--av-font-mono, monospace);
   color: #F59E0B;
   background: rgba(245, 158, 11, 0.12);
   border: 1px solid rgba(245, 158, 11, 0.28);
-  padding: 1px 7px;
+  padding: 2px 8px;
   border-radius: 9999px;
   cursor: pointer;
-  transition: all 0.5s ease;
+  user-select: none;
+  transition: all 0.25s ease;
+  animation: avFadeInScale 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.composer-active-retention-chip:hover {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(245, 158, 11, 0.55);
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.18);
+}
+
+.composer-active-retention-chip.is-burn {
+  color: #EF4444;
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.32);
+}
+
+.composer-active-retention-chip.is-burn:hover {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.58);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+}
+
+:host-context([data-theme="light"]) .composer-active-retention-chip {
+  background: #fef3c7;
+  border-color: #fcd34d;
+  color: #b45309;
+}
+
+:host-context([data-theme="light"]) .composer-active-retention-chip:hover {
+  background: #fde68a;
+  border-color: #f59e0b;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.2);
+}
+
+:host-context([data-theme="light"]) .composer-active-retention-chip.is-burn {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+:host-context([data-theme="light"]) .composer-active-retention-chip.is-burn:hover {
+  background: #fecaca;
+  border-color: #ef4444;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.2);
 }
 
 /* ── ZONE 3: Bottom-Left Standalone (+) Attach & Clear Input Icons ── */
@@ -2076,10 +2119,7 @@
   padding-right: 48px; /* Room for collapse button on the right */
 }
 
-.chat-composer-capsule.has-labels .chat-composer-textarea .ProseMirror,
-.chat-composer-capsule.has-labels :host ::ng-deep .ProseMirror {
-  padding-top: 36px;
-}
+
 
 /* Inline tag pill in collapsed input */
 .composer-inline-tag-badge {
@@ -2135,9 +2175,7 @@
   transition: padding-left 0.35s ease, padding-top 0.35s ease;
 }
 
-.chat-composer-capsule.has-labels .composer-highlights-backdrop {
-  padding-top: 36px;
-}
+
 
 .chat-composer-capsule.expanded .composer-highlights-backdrop {
   padding-top: 14px;
@@ -2202,9 +2240,7 @@
   transition: padding-left 0.35s ease, padding-top 0.35s ease;
 }
 
-.chat-composer-capsule.has-labels .composer-detection-backdrop {
-  padding-top: 36px;
-}
+
 
 .chat-composer-capsule.expanded .composer-detection-backdrop {
   padding-top: 14px;
@@ -2833,6 +2869,77 @@
   color: var(--av-danger, #EF4444);
 }
 
+/* ── Tag Color Swatches Section ─────────────────────────────── */
+.tag-color-swatches-section {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--av-border-subtle, var(--av-border));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tag-color-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.custom-color-picker-label {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+}
+
+.custom-color-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--av-surface-primary);
+  box-shadow: 0 0 0 1px var(--av-border-strong);
+  transition: transform 0.12s ease;
+}
+
+.custom-color-dot:hover {
+  transform: scale(1.15);
+}
+
+.custom-color-native-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.tag-swatches-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 5px;
+}
+
+.tag-color-swatch-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.tag-color-swatch-btn:hover {
+  transform: scale(1.2);
+}
+
+.tag-color-swatch-btn.selected {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px var(--av-accent, #2196F3), 0 2px 4px rgba(0, 0, 0, 0.3);
+  transform: scale(1.1);
+}
+
 /* ── Preset Tag Chips Inside Popover ────────────────────────── */
 .tag-presets-row {
   margin-top: 8px;
@@ -2858,11 +2965,11 @@
 }
 
 .tag-preset-chip {
-  background: var(--av-surface-secondary);
-  border: 1px solid var(--av-border);
-  color: var(--av-text-secondary);
+  background: color-mix(in srgb, var(--preset-color, #06B6D4) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--preset-color, #06B6D4) 28%, transparent);
+  color: var(--preset-color, #06B6D4);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   font-family: var(--av-font-mono, monospace);
   padding: 2px 7px;
   border-radius: var(--av-radius-full, 9999px);
@@ -2872,20 +2979,13 @@
 }
 
 .tag-preset-chip:hover {
-  background: rgba(33, 150, 243, 0.12);
-  border-color: rgba(33, 150, 243, 0.35);
-  color: var(--av-accent, #2196F3);
+  background: color-mix(in srgb, var(--preset-color, #06B6D4) 22%, transparent);
+  border-color: var(--preset-color, #06B6D4);
   transform: translateY(-1px);
 }
 
 .tag-preset-chip:active {
   transform: translateY(0);
-}
-
-:host-context([data-theme="light"]) .tag-preset-chip {
-  background: #f8fafc;
-  border-color: #e2e8f0;
-  color: #475569;
 }
 
 :host-context([data-theme="light"]) .tag-preset-chip:hover {

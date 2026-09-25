@@ -18,6 +18,7 @@ Every motion in **AirVault** communicates **state or causality**. No animation e
 | **8. Tile Reflow & FLIP Layout Shift** | Item Arrival, Deletion, Reorder | GSAP FLIP (`First Last Invert Play`) delta calculation smoothly animating sibling tiles to their new grid positions (`power2.out` in `320ms`) when any resource arrives or is deleted. |
 | **9. Peer Arrival & Live Beacon** | Remote Cross-Device Arrival | Slide-down (`y: -18px`, `scale: 0.94 -> 1`, `back.out(1.6)`) + expanding radial GPU accent halo pulse (`avSyncPulse` over `950ms`). |
 | **10. Smooth Tile Dismissal** | Item Delete / Removal | Shrink and slide-out (`scale: 1 -> 0.88`, `y: 12px`, `opacity: 1 -> 0` in `240ms` with `power2.inOut`) before removing from state. |
+| **11. Burn Dissolve Fade-Up** | Burn-After-Read Dismissal | Dedicated fade-up + blur + scale-down (`y: -24px`, `scale: 0.94`, `filter: blur(3px) brightness(1.25)`, `opacity: 0` in `420ms` with `power2.out`) triggered on destination upon preview dismissal, followed by destination-only local purging. |
 
 ---
 

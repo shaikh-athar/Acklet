@@ -15,6 +15,7 @@ export interface AirVaultDevice {
   id: string;
   name: string;
   username?: string;
+  customLabel?: string;
   deviceKeyword?: string;
   type: DeviceType;
   os: string;
@@ -112,8 +113,10 @@ export class AirVaultDeviceService {
       if (res?.data?.isPaired && res.data.pairedUsername) {
         const d = res.data;
         AirVaultLogger.info(`[AirVault Device] 🤝 Reconciled server pairing state: Paired with @${d.pairedUsername} (${d.pairedDeviceId})`);
+        const peerId = d.pairedDeviceId || `peer_${d.pairedUsername}`;
+        const isManuallyOff = this.isManuallyDisconnected(peerId);
         const reconciledPeer: AirVaultDevice = {
-          id: d.pairedDeviceId || `peer_${d.pairedUsername}`,
+          id: peerId,
           name: d.pairedDeviceName || `@${d.pairedUsername}`,
           username: d.pairedUsername,
           type: (d.pairedDeviceType as DeviceType) || 'laptop',
@@ -121,14 +124,12 @@ export class AirVaultDeviceService {
           browser: 'Remote Browser',
           thumbprint: d.pairedThumbprint || `AV-${d.pairedUsername.toUpperCase().slice(0, 4)}`,
           ipHint: '192.168.1.50',
-          status: 'active',
+          status: isManuallyOff ? 'offline' : 'offline', // Start as offline until verified via live socket presence
           lastActive: Date.now(),
           isCurrent: false,
           syncEnabled: true
         };
         this.addPairedDevice(reconciledPeer);
-        // Ensure presence is refreshed immediately
-        this.broadcastDeviceOnlineSignal();
       }
     });
   }
@@ -157,16 +158,17 @@ export class AirVaultDeviceService {
         }));
         this.registeredSessions.set(mapped);
 
-        // Symmetrically restore status to active for any paired devices that are currently active in registered sessions
+        // Sync status only for peers that are NOT manually disconnected
         const activeRemoteSessions = mapped.filter(s => !s.isCurrent && s.status === 'active');
         if (activeRemoteSessions.length > 0) {
           this.pairedDevices.update(list =>
             list.map(d => {
-              const matchedSession = activeRemoteSessions.find(s => s.id === d.id || (s.username && d.username && s.username.toLowerCase().replace(/^@/, '') === d.username.toLowerCase().replace(/^@/, '')));
+              if (this.isManuallyDisconnected(d.id)) {
+                return { ...d, status: 'offline' };
+              }
+              const matchedSession = activeRemoteSessions.find(s => s.id === d.id);
               if (matchedSession) {
-                // If backend shows the session is active, auto-activate and clear stale manual disconnect flag
-                this.clearManualDisconnect(d.id);
-                return { ...d, id: matchedSession.id || d.id, status: 'active', lastActive: matchedSession.lastActive };
+                return { ...d, status: 'active', lastActive: matchedSession.lastActive };
               }
               return d;
             })
@@ -223,14 +225,15 @@ export class AirVaultDeviceService {
   private getOrCreateUsername(): string {
     try {
       const stored = localStorage.getItem('acklet_airvault_username');
-      // If stored username is legacy random format like user_XXXX or airvault-XXXX, replace with clean memorable handle
+      // If stored username is valid and not legacy random format like user_XXXX or airvault-XXXX, use it
       if (stored && stored.trim() && !stored.startsWith('user_') && !stored.startsWith('airvault-')) {
         return stored.trim().toLowerCase();
       }
     } catch { }
     const adj = AirVaultDeviceService.FALLBACK_ADJECTIVES[Math.floor(Math.random() * AirVaultDeviceService.FALLBACK_ADJECTIVES.length)];
     const noun = AirVaultDeviceService.FALLBACK_NOUNS[Math.floor(Math.random() * AirVaultDeviceService.FALLBACK_NOUNS.length)];
-    const memorableUser = `${adj}-${noun}`;
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const memorableUser = `${adj}-${noun}-${randomSuffix}`;
     try {
       localStorage.setItem('acklet_airvault_username', memorableUser);
     } catch { }
@@ -665,6 +668,17 @@ export class AirVaultDeviceService {
   }
 
   /**
+   * Mark Peer Forgot Us: Called when the remote peer has forgotten (un-paired) us from their
+   * side and sent a DEVICE_DISCONNECT. We keep the device in our paired list (visible with a
+   * Reconnect button) but set it to "offline". We do NOT add it to manualDisconnectedDeviceIds
+   * so it doesn't permanently block sync on reconnect.
+   */
+  markPeerForgotUs(deviceId: string) {
+    AirVaultLogger.info(`[AirHold Device] 👋 Peer forgot us — marking ${deviceId} as offline (stays visible for reconnect)`);
+    this.setDeviceStatus(deviceId, 'offline');
+  }
+
+  /**
    * Reconnect: Restores device status to active and resumes synchronization.
    */
   reconnectDevice(deviceId: string) {
@@ -689,26 +703,92 @@ export class AirVaultDeviceService {
     this.pairedDevices.update(list => list.filter(d => d.id !== deviceId));
     this.saveStoredDevices();
 
+    const cur = this.currentDevice();
+    const revokePayload = { targetDeviceId: deviceId, eraseData };
+
+    // Broadcast revocation locally across tabs
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        const ch = new BroadcastChannel('acklet_airvault_sync_channel');
+        ch.postMessage({
+          type: 'DEVICE_REVOKE',
+          payload: revokePayload,
+          senderDevice: cur,
+          timestamp: Date.now()
+        });
+      } catch { }
+    }
+
+    // Send revocation packet via WebSocket directly to target device and broadcast to constellation
+    this.wsTransport.send({
+      type: 'DEVICE_REVOKE',
+      senderDeviceId: cur.id,
+      targetDeviceId: deviceId,
+      payload: JSON.stringify(revokePayload),
+      timestamp: Date.now()
+    });
+
+    this.wsTransport.send({
+      type: 'DEVICE_REVOKE',
+      senderDeviceId: cur.id,
+      targetDeviceId: 'broadcast',
+      payload: JSON.stringify(revokePayload),
+      timestamp: Date.now()
+    });
+
     // Call backend to revoke server-side
     this.http.delete(`${this.baseUrl}/${deviceId}?eraseData=${eraseData}`).pipe(
       catchError(() => of(null))
     ).subscribe(() => {
       this.fetchRegisteredSessions();
+
     });
   }
 
   /**
-   * Remove / Forget: Permanently unpairs device from local constellation & backend.
+   * Forget / Unpair: Removes only the specific pairing link between the current device and the
+   * target device. The target device record itself is NOT revoked — it remains active for all
+   * of its other connections. This is the correct operation for "Forget & unpair device" in
+   * the Manage Devices UI.
    */
   revokeDevice(deviceId: string) {
     const dev = this.pairedDevices().find(d => d.id === deviceId);
-    AirVaultLogger.info(`[AirHold Device] 🗑️ Permanently removing/forgetting device: "${dev?.name || deviceId}" (${deviceId})`);
+    const cur = this.currentDevice();
+    AirVaultLogger.info(`[AirHold Device] 🗑️ Unpair device: "${dev?.name || deviceId}" (${deviceId}) from current device (${cur.id})`);
+
+    // Remove from local paired list immediately (optimistic update)
     this.clearManualDisconnect(deviceId);
     this.pairedDevices.update(list => list.filter(d => d.id !== deviceId));
     this.saveStoredDevices();
-    this.http.delete(`${this.baseUrl}/${deviceId}`).pipe(catchError(() => of(null))).subscribe(() => {
-      this.fetchRegisteredSessions();
-    });
+
+    // Call the targeted pairing-removal endpoint — does NOT revoke/delete the device itself,
+    // only dissolves the specific link between cur.id and deviceId.
+    this.http.delete(`${this.baseUrl}/${deviceId}/pairing`, {
+      params: { fromDeviceId: cur.id }
+    }).pipe(catchError(() => of(null))).subscribe();
+  }
+
+  getDisplayLabel(device?: AirVaultDevice | null): string {
+    if (!device) return '@device';
+    if (device.customLabel && device.customLabel.trim()) {
+      const cl = device.customLabel.trim();
+      return cl.startsWith('@') ? cl : `@${cl}`;
+    }
+    if (device.name && device.name.trim() && !device.name.startsWith('dev-') && !device.name.startsWith('peer_')) {
+      return device.name.startsWith('@') ? device.name : (device.username ? `@${device.username.replace(/^@/, '')}` : device.name);
+    }
+    if (device.username && device.username.trim()) {
+      return `@${device.username.replace(/^@/, '')}`;
+    }
+    return device.name || '@device';
+  }
+
+  getActualUsername(device?: AirVaultDevice | null): string {
+    if (!device) return 'device';
+    if (device.username && device.username.trim()) {
+      return device.username.replace(/^@/, '');
+    }
+    return (device.name || 'device').replace(/^@/, '');
   }
 
   renameDevice(deviceId: string, newName: string) {
@@ -716,16 +796,25 @@ export class AirVaultDeviceService {
     if (!trimmed) return;
     AirVaultLogger.info(`[AirHold Device] 🏷️ Renaming device ${deviceId} ➔ "${trimmed}"`);
 
+    const formattedLabel = trimmed.startsWith('@') ? trimmed : `@${trimmed}`;
+
     if (deviceId === this.currentDevice().id) {
-      this.currentDevice.update(d => ({ ...d, name: trimmed }));
+      this.currentDevice.update(d => ({ ...d, customLabel: formattedLabel, name: formattedLabel }));
+      try {
+        const stored = localStorage.getItem('acklet_airvault_self_custom');
+        const customObj = stored ? JSON.parse(stored) : {};
+        customObj.customLabel = formattedLabel;
+        customObj.name = formattedLabel;
+        localStorage.setItem('acklet_airvault_self_custom', JSON.stringify(customObj));
+      } catch { }
     } else {
       this.pairedDevices.update(list =>
-        list.map(d => d.id === deviceId ? { ...d, name: trimmed } : d)
+        list.map(d => d.id === deviceId ? { ...d, customLabel: formattedLabel, name: formattedLabel } : d)
       );
       this.saveStoredDevices();
     }
 
-    this.http.patch(`${this.baseUrl}/${deviceId}/rename`, { name: trimmed })
+    this.http.patch(`${this.baseUrl}/${deviceId}/rename`, { name: formattedLabel })
       .pipe(catchError(() => of(null)))
       .subscribe();
   }
@@ -761,16 +850,43 @@ export class AirVaultDeviceService {
     }
   }
 
-  setDeviceStatus(deviceId: string, status: DevicePresenceState) {
-    if (deviceId === this.currentDevice().id) {
+  setDeviceStatus(idOrUsername: string, status: DevicePresenceState) {
+    const cur = this.currentDevice();
+    const cleanTarget = (idOrUsername || '').toLowerCase().replace(/^@/, '');
+    const cleanCurUser = (cur.username || '').toLowerCase().replace(/^@/, '');
+
+    if (idOrUsername === cur.id || (cleanTarget && cleanCurUser && cleanTarget === cleanCurUser)) {
       this.currentDevice.update(d => ({ ...d, status, lastActive: Date.now() }));
     } else {
-      const effectiveStatus = (status === 'active' && this.isManuallyDisconnected(deviceId)) ? 'offline' : status;
+      const isManuallyOff = this.isManuallyDisconnected(idOrUsername);
+      const effectiveStatus = (status === 'active' && isManuallyOff) ? 'offline' : status;
+
       this.pairedDevices.update(list =>
-        list.map(d => d.id === deviceId ? { ...d, status: effectiveStatus, lastActive: Date.now() } : d)
+        list.map(d => {
+          const dCleanUser = (d.username || '').toLowerCase().replace(/^@/, '');
+          const isMatch = d.id === idOrUsername || (cleanTarget && dCleanUser && dCleanUser === cleanTarget);
+          if (isMatch) {
+            const devManuallyOff = this.isManuallyDisconnected(d.id);
+            const devEffectiveStatus = (status === 'active' && devManuallyOff) ? 'offline' : status;
+            return { ...d, status: devEffectiveStatus, lastActive: Date.now() };
+          }
+          return d;
+        })
       );
       this.saveStoredDevices();
     }
+
+    // Also keep registeredSessions signal in sync if this device exists in registered sessions list
+    this.registeredSessions.update(sessions =>
+      sessions.map(s => {
+        const sCleanUser = (s.username || '').toLowerCase().replace(/^@/, '');
+        const isMatch = s.id === idOrUsername || (cleanTarget && sCleanUser && sCleanUser === cleanTarget);
+        if (isMatch) {
+          return { ...s, status, lastActive: Date.now() };
+        }
+        return s;
+      })
+    );
   }
 
   /**

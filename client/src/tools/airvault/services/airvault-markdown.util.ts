@@ -122,9 +122,31 @@ function applyInlineMarkdown(escapedLine: string): string {
   s = s.replace(/_([^_\n]+)_/g, '<em>$1</em>');
   // Strikethrough
   s = s.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
-  // Links
-  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-    '<a href="$2" target="_blank" rel="noopener noreferrer" class="av-rich-link" onclick="event.stopPropagation()">$1</a>');
+  // Markdown Links [title](url) - stash into placeholder tokens first to prevent double-matching
+  const links: string[] = [];
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, title, url) => {
+    const idx = links.length;
+    links.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="av-rich-link" style="color:#2196F3;text-decoration:underline;cursor:pointer;" onclick="event.stopPropagation()">${title}</a>`);
+    return `\x00MDLINK${idx}\x00`;
+  });
+
+  // Autolink angle-bracket URLs: <https://example.com> or <ftp://...>
+  s = s.replace(/&lt;((?:https?|ftp):\/\/[^\s&>]+)&gt;/gi, (_m, url) => {
+    const idx = links.length;
+    links.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="av-rich-link" style="color:#2196F3;text-decoration:underline;cursor:pointer;" onclick="event.stopPropagation()">${url}</a>`);
+    return `\x00MDLINK${idx}\x00`;
+  });
+
+  // Autolink bare URLs (http://, https://, and www.) that aren't inside markdown links or code
+  s = s.replace(/(?:(https?:\/\/[^\s<>&"']+)|(?:\b(www\.[^\s<>&"']+)))/gi, (match, p1, p2) => {
+    const fullUrl = p1 || `https://${p2}`;
+    return `<a href="${fullUrl}" target="_blank" rel="noopener noreferrer" class="av-rich-link" style="color:#2196F3;text-decoration:underline;cursor:pointer;" onclick="event.stopPropagation()">${match}</a>`;
+  });
+
+  // Restore markdown links
+  for (let i = 0; i < links.length; i++) {
+    s = s.split(`\x00MDLINK${i}\x00`).join(links[i]);
+  }
 
   // Restore inline codes
   for (let i = 0; i < codes.length; i++) {
@@ -409,12 +431,34 @@ export function highlightSafeHtml(html: string, query?: string, activeMatchIndex
 
 /**
  * Renders plain text with all characters HTML-escaped and whitespace/newlines
- * preserved using a <pre> block. Does NOT apply any Markdown interpretation.
- * Use for TXT, logs, configs, raw code — anything definitely not Markdown.
+ * preserved using a <pre> block. Autolinks URLs (including angle-bracket URLs).
+ * Use for TXT, logs, configs, and plain notes.
  */
 export function renderPlainTextToSafeHtml(text: string, highlightQuery?: string, activeMatchIndex?: number): string {
   if (!text) return '';
-  const escaped = escapeHtml(text);
+  let escaped = escapeHtml(text);
+
+  // Autolink angle-bracket URLs: <https://example.com>
+  const links: string[] = [];
+  escaped = escaped.replace(/&lt;((?:https?|ftp):\/\/[^\s&>]+)&gt;/gi, (_m, url) => {
+    const idx = links.length;
+    links.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="av-rich-link" style="color:#2196F3;text-decoration:underline;cursor:pointer;" onclick="event.stopPropagation()">${url}</a>`);
+    return `\x00MDLINK${idx}\x00`;
+  });
+
+  // Autolink bare URLs (http://, https://, and www.)
+  escaped = escaped.replace(/(?:(https?:\/\/[^\s<>&"']+)|(?:\b(www\.[^\s<>&"']+)))/gi, (match, p1, p2) => {
+    const fullUrl = p1 || `https://${p2}`;
+    const idx = links.length;
+    links.push(`<a href="${fullUrl}" target="_blank" rel="noopener noreferrer" class="av-rich-link" style="color:#2196F3;text-decoration:underline;cursor:pointer;" onclick="event.stopPropagation()">${match}</a>`);
+    return `\x00MDLINK${idx}\x00`;
+  });
+
+  // Restore autolinked URL tokens
+  for (let i = 0; i < links.length; i++) {
+    escaped = escaped.split(`\x00MDLINK${i}\x00`).join(links[i]);
+  }
+
   const highlighted = highlightQuery ? highlightSafeHtml(escaped, highlightQuery, activeMatchIndex) : escaped;
   return `<pre class="av-plain-text-pre">${highlighted}</pre>`;
 }

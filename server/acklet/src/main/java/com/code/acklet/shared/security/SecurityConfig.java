@@ -57,6 +57,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/blog/**").permitAll()
                 // Public reviews
                 .requestMatchers(HttpMethod.GET, "/api/v1/tools/*/reviews").permitAll()
+                // Unified Feedback submission
+                .requestMatchers(HttpMethod.POST, "/api/v1/feedback").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/feedback/**").permitAll()
+                .requestMatchers(HttpMethod.PATCH, "/api/v1/feedback/**").permitAll()
+                .requestMatchers(HttpMethod.PUT, "/api/v1/feedback/**").permitAll()
                 // Public GitHub webhooks
                 .requestMatchers("/api/v1/github/webhooks").permitAll()
                 // Fallback: any other request requires authentication

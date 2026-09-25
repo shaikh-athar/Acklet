@@ -414,12 +414,26 @@ export class AirVaultComponent implements OnInit, OnDestroy {
   }
 
   async onRefreshClipboard() {
+    this.storageService.isRefreshing.set(true);
+    // 1. Re-sync storage items from local storage/IndexedDB
     await this.storageService.refreshFromStorage();
-    const paired = this.deviceService.pairedDevices().filter(d => d.status === 'active' && d.syncEnabled !== false);
+
+    // 2. Re-fetch session presence and server pairing state
+    this.deviceService.fetchRegisteredSessions();
+    this.deviceService.reconcileServerPairing();
+
+    // 3. Send lightweight WS heartbeat & online broadcast so all active peers immediately handshake
+    this.deviceService.sendHeartbeat();
+
+    // 4. Synchronize items across connected peers
+    const paired = this.deviceService.pairedDevices().filter(d => d.status === 'active' && d.syncEnabled !== false && !this.deviceService.isManuallyDisconnected(d.id));
     if (paired.length > 0) {
-      this.uiStore.triggerToast(`🔄 Syncing entire clipboard across connected devices...`);
+      this.uiStore.triggerToast(`🔄 Re-syncing clipboard across ${paired.length} connected device${paired.length > 1 ? 's' : ''}...`);
       await this.syncService.syncAllDevices();
+    } else {
+      this.uiStore.triggerToast(`✓ Clipboard & device state refreshed`);
     }
+    setTimeout(() => this.storageService.isRefreshing.set(false), 500);
   }
 
   onClearActiveClipboard() {
@@ -564,17 +578,28 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     if (!targetId) return;
     this.uiStore.closeDeleteConfirm();
 
+    const item = this.storageService.allItems().find(i => i.id === targetId || (i.packetId && i.packetId === targetId));
+    const isBurn = !!(item && (item.burnAfterRead || item.retentionTtlMs === -1));
     const cardEl = document.querySelector(`[data-card-id="${targetId}"]`) as HTMLElement;
+
     if (cardEl) {
-      this.motionService.animateCardDelete(cardEl, () => {
-        this.storageService.deleteItemGlobally(targetId);
-        this.syncService.broadcastGlobalDelete(targetId);
-        this.uiStore.triggerToast(`✓ Resource deleted from all connected devices (Available in 30-day Restorable History)`);
-      });
+      if (isBurn) {
+        this.motionService.animateBurnDissolve(cardEl, () => {
+          this.storageService.deleteItemGlobally(targetId);
+          this.syncService.broadcastGlobalDelete(targetId, true);
+          this.uiStore.triggerToast(`✓ Burn-After-Read resource purged from all connected devices`);
+        });
+      } else {
+        this.motionService.animateCardDelete(cardEl, () => {
+          this.storageService.deleteItemGlobally(targetId);
+          this.syncService.broadcastGlobalDelete(targetId, false);
+          this.uiStore.triggerToast(`✓ Resource deleted from all connected devices (Available in 30-day Restorable History)`);
+        });
+      }
     } else {
       this.storageService.deleteItemGlobally(targetId);
-      this.syncService.broadcastGlobalDelete(targetId);
-      this.uiStore.triggerToast(`✓ Resource deleted from all connected devices (Available in 30-day Restorable History)`);
+      this.syncService.broadcastGlobalDelete(targetId, isBurn);
+      this.uiStore.triggerToast(isBurn ? `✓ Burn-After-Read resource purged from all connected devices` : `✓ Resource deleted from all connected devices (Available in 30-day Restorable History)`);
     }
   }
 
@@ -582,12 +607,22 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     if (!targetId) return;
     this.uiStore.closeDeleteConfirm();
 
+    const item = this.storageService.allItems().find(i => i.id === targetId || (i.packetId && i.packetId === targetId));
+    const isBurn = !!(item && (item.burnAfterRead || item.retentionTtlMs === -1));
     const cardEl = document.querySelector(`[data-card-id="${targetId}"]`) as HTMLElement;
+
     if (cardEl) {
-      this.motionService.animateCardDelete(cardEl, () => {
-        this.storageService.deleteItemLocally(targetId);
-        this.uiStore.triggerToast(`✓ Resource removed from your device`);
-      });
+      if (isBurn) {
+        this.motionService.animateBurnDissolve(cardEl, () => {
+          this.storageService.deleteItemLocally(targetId);
+          this.uiStore.triggerToast(`✓ Resource removed from your device`);
+        });
+      } else {
+        this.motionService.animateCardDelete(cardEl, () => {
+          this.storageService.deleteItemLocally(targetId);
+          this.uiStore.triggerToast(`✓ Resource removed from your device`);
+        });
+      }
     } else {
       this.storageService.deleteItemLocally(targetId);
       this.uiStore.triggerToast(`✓ Resource removed from your device`);
@@ -797,6 +832,40 @@ export class AirVaultComponent implements OnInit, OnDestroy {
         return current.filter(s => s !== size);
       } else {
         return [...current, size];
+      }
+    });
+  }
+
+  /** Dynamically derives all unique tags present across stored items */
+  availableTags = computed(() => {
+    const items = this.storageService.items();
+    const tagMap = new Map<string, { tag: string; color: string; count: number }>();
+    for (const item of items) {
+      if (item.tag && item.tag.trim()) {
+        const rawTag = item.tag.trim();
+        const lower = rawTag.toLowerCase();
+        const existing = tagMap.get(lower);
+        if (existing) {
+          existing.count++;
+        } else {
+          tagMap.set(lower, {
+            tag: rawTag,
+            color: this.colorService.getTagColor(rawTag, item.tagColor),
+            count: 1
+          });
+        }
+      }
+    }
+    return Array.from(tagMap.values());
+  });
+
+  toggleTagFilter(tag: string) {
+    const lower = tag.toLowerCase();
+    this.uiStore.activeTagFilters.update(current => {
+      if (current.map(t => t.toLowerCase()).includes(lower)) {
+        return current.filter(t => t.toLowerCase() !== lower);
+      } else {
+        return [...current, tag];
       }
     });
   }

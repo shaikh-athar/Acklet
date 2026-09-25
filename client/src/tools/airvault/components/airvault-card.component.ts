@@ -11,9 +11,10 @@ import { AirVaultColorService } from '../services/airvault-color.service';
 import { AirVaultBlameService } from '../services/airvault-blame.service';
 import { AirVaultSyncService } from '../services/airvault-sync.service';
 import { detectUrlsAsync, isValidHttpUrl, normalizeUrlForNavigation, formatDisplayUrl, DetectedUrlSpan } from '../services/airvault-url-detector';
-import { renderMarkdownToSafeHtml, renderPlainTextToSafeHtml, looksLikeMarkdown } from '../services/airvault-markdown.util';
+import { renderMarkdownToSafeHtml, renderPlainTextToSafeHtml, looksLikeMarkdown, isHtmlContent } from '../services/airvault-markdown.util';
 import { AirVaultActionPopoverComponent } from './airvault-action-popover.component';
 import { AirVaultQuickActionsService } from '../services/airvault-quick-actions.service';
+import { AirVaultLogger } from '../services/airvault-sync-debug.service';
 import { Subscription } from 'rxjs';
 
 interface TextSegment {
@@ -26,7 +27,6 @@ interface TextSegment {
   selector: 'app-airvault-card',
   standalone: true,
   imports: [CommonModule, IconComponent, AirVaultActionPopoverComponent],
-  styleUrls: ['../airvault.shared.css'],
   template: `
     <div class="av-card"
       [attr.data-card-id]="item().id"
@@ -53,7 +53,7 @@ interface TextSegment {
         </app-airvault-action-popover>
       }
 
-      <!-- Header: Sender Badge + Timestamp (top-left) & Actions (top-right) -->
+      <!-- Header: Sender Badge + Timestamp/Burn (top-left) & Actions (top-right) -->
       <div class="card-header">
         <div class="card-header-left">
           <span class="sender-badge" [attr.data-tooltip]="'Content from ' + getDisplayOwner()">
@@ -65,25 +65,45 @@ interface TextSegment {
         </div>
         
         <div class="card-header-right">
-          <!-- Actions (visible on card hover) -->
-          <div class="card-actions hover-reveal">
-            @if (isCurrentDevice()) {
-              <button class="card-action-btn" [class.is-resending]="isResending()" (click)="onResend($event)" [attr.data-tooltip]="isResending() ? 'Resending…' : (getResendTooltip(item().resendCount, item().lastResentAt) || 'Resend to connected devices')" aria-label="Resend item">
-                <app-icon name="refresh-cw" class="icon-xs" [class.spin-anim]="isResending()"></app-icon>
-              </button>
+          <div class="card-header-action-slot">
+            <!-- Tag Label and Code Indicator Badge (Default resting state: anchored in corner slot) -->
+            @if (item().tag || item().content?.category === 'code' || item().content?.category === 'json') {
+              <div class="card-tag-slot-group">
+                @if (item().content?.category === 'code' || item().content?.category === 'json') {
+                  <span class="card-code-badge" data-tooltip="Code / JSON format">
+                    <app-icon name="code" class="icon-xs"></app-icon>
+                  </span>
+                }
+                @if (item().tag) {
+                  <span class="card-tag-badge card-tag-slot"
+                        [style.--tag-color]="getTagColor()"
+                        [attr.data-tooltip]="'Tag: #' + item().tag">
+                    <span class="tag-hash">#</span>{{ item().tag }}
+                  </span>
+                }
+              </div>
             }
-            @if (item().content?.isSensitive) {
-              <button class="card-action-btn" (click)="onToggleReveal($event)" [attr.data-tooltip]="item().isRevealed ? 'Hide credential' : 'Reveal credential'" aria-label="Reveal credential">
-                <app-icon [name]="item().isRevealed ? 'eye-off' : 'eye'" class="icon-xs"></app-icon>
+
+            <!-- Actions (Hover state: swaps in place in the EXACT same slot with zero layout shift) -->
+            <div class="card-actions card-actions-slot">
+              @if (isCurrentDevice()) {
+                <button class="card-action-btn" [class.is-resending]="isResending()" (click)="onResend($event)" [attr.data-tooltip]="isResending() ? 'Resending…' : (getResendTooltip(item().resendCount, item().lastResentAt) || 'Resend to connected devices')" aria-label="Resend item">
+                  <app-icon name="refresh-cw" class="icon-xs" [class.spin-anim]="isResending()"></app-icon>
+                </button>
+              }
+              @if (item().content?.isSensitive) {
+                <button class="card-action-btn" (click)="onToggleReveal($event)" [attr.data-tooltip]="item().isRevealed ? 'Hide credential' : 'Reveal credential'" aria-label="Reveal credential">
+                  <app-icon [name]="item().isRevealed ? 'eye-off' : 'eye'" class="icon-xs"></app-icon>
+                </button>
+              }
+              <button class="card-action-btn" [class.card-action-pinned]="item().isPinned"
+                (click)="onTogglePin($event)" [attr.data-tooltip]="item().isPinned ? 'Unpin item' : 'Pin item'">
+                <app-icon name="pin" class="icon-xs"></app-icon>
               </button>
-            }
-            <button class="card-action-btn" [class.card-action-pinned]="item().isPinned"
-              (click)="onTogglePin($event)" [attr.data-tooltip]="item().isPinned ? 'Unpin item' : 'Pin item'">
-              <app-icon name="pin" class="icon-xs"></app-icon>
-            </button>
-            <button class="card-action-btn card-action-danger" (click)="onDelete($event)" [attr.aria-label]="isCurrentDevice() ? 'Delete item' : 'Remove from my device'" [attr.data-tooltip]="isCurrentDevice() ? 'Delete item' : 'Remove from my device'">
-              <app-icon name="trash-2" class="icon-xs"></app-icon>
-            </button>
+              <button class="card-action-btn card-action-danger" (click)="onDelete($event)" [attr.aria-label]="isCurrentDevice() ? 'Delete item' : 'Remove from my device'" [attr.data-tooltip]="isCurrentDevice() ? 'Delete item' : 'Remove from my device'">
+                <app-icon name="trash-2" class="icon-xs"></app-icon>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -412,10 +432,9 @@ interface TextSegment {
             <span class="byte-chip permanent-chip" data-tooltip="Pinned item · Stored permanently">
               <app-icon name="pin" class="icon-xs text-cyan"></app-icon>
             </span>
-          } @else if (!isTextOrCodeEntry() && (item().burnAfterRead || expiryInfo().isBurnAfterRead)) {
-            <span class="byte-chip burn-chip" data-tooltip="👁️ View Once · Permanently deleted across all devices after 1st view">
-              <app-icon name="eye" class="icon-xs text-amber"></app-icon>
-              <span>View once</span>
+          } @else if (isBurnItem()) {
+            <span class="byte-chip burn-chip" data-tooltip="🔥 Burn After Read · Permanently deleted after preview is closed">
+              <app-icon name="clock-fading" class="icon-xs"></app-icon>
             </span>
           } @else {
             <span class="byte-chip expiry-chip" [class.expiring-soon]="expiryInfo().isExpiringSoon"
@@ -506,7 +525,7 @@ interface TextSegment {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 10px 4px 10px;
+      padding: 6px 6px 4px 10px;
       gap: 6px;
       min-height: 24px;
       box-sizing: border-box;
@@ -580,13 +599,6 @@ interface TextSegment {
       color: #60A5FA;
     }
 
-    .card-header-right {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      margin-left: auto;
-      flex-shrink: 0;
-    }
     .card-timestamp {
       font-size: 11px;
       color: var(--av-text-muted);
@@ -594,18 +606,138 @@ interface TextSegment {
       font-family: var(--av-font-ui);
     }
 
-    /* Hover-revealed action controls */
-    .hover-reveal {
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.15s ease;
-    }
-    .av-card:hover .hover-reveal {
-      opacity: 1;
-      pointer-events: auto;
+    .card-header-right {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      margin-left: auto;
+      flex-shrink: 0;
+      position: relative;
     }
 
-    .card-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; position: relative; z-index: 20; }
+    /* Timeline Burn Indicator in header left next to timestamp */
+    .timeline-burn-indicator {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #EF4444;
+      margin-left: 2px;
+      cursor: default;
+    }
+    .timeline-burn-indicator .burn-timeline-icon,
+    .timeline-burn-indicator app-icon {
+      color: #EF4444;
+      transition: transform 0.4s ease;
+    }
+    .av-card:hover .timeline-burn-indicator .burn-timeline-icon {
+      transform: rotate(180deg);
+    }
+    :host-context([data-theme="dark"]) .timeline-burn-indicator,
+    :host-context([data-theme="dark"]) .timeline-burn-indicator .burn-timeline-icon {
+      color: #F87171;
+    }
+
+    /* Fixed-anchor corner slot: both the tag badge/code indicator and the action icons share this exact bounding box */
+    .card-header-action-slot {
+      position: relative;
+      display: inline-grid;
+      grid-template-areas: "action-slot";
+      align-items: center;
+      justify-items: end;
+      min-height: 22px;
+      flex-shrink: 0;
+    }
+
+    .card-tag-slot-group {
+      grid-area: action-slot;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.14s ease, visibility 0.14s ease;
+      user-select: none;
+      pointer-events: auto;
+      z-index: 10;
+    }
+
+    /* Code/JSON format indicator */
+    .card-code-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      background: var(--av-surface-secondary);
+      border: 1px solid var(--av-border);
+      color: var(--av-text-muted);
+      font-size: 10px;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+    .card-code-badge app-icon {
+      color: var(--av-accent, #2196F3);
+    }
+    :host-context([data-theme="dark"]) .card-code-badge {
+      background: var(--av-surface-secondary);
+      border-color: var(--av-border);
+    }
+
+    /* Tag label badge on top-right corner of card */
+    .card-tag-badge.card-tag-slot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 2px;
+      font-size: 9.5px;
+      font-weight: 700;
+      font-family: var(--av-font-mono, monospace);
+      color: var(--tag-color, #06B6D4);
+      background: color-mix(in srgb, var(--tag-color, #06B6D4) 14%, transparent);
+      border: 1px solid color-mix(in srgb, var(--tag-color, #06B6D4) 30%, transparent);
+      padding: 1px 6px;
+      border-radius: 9999px;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .card-tag-badge .tag-hash {
+      opacity: 0.7;
+      font-weight: 800;
+    }
+
+    /* Action buttons in the exact same anchor */
+    .card-actions.card-actions-slot {
+      grid-area: action-slot;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 2px;
+      flex-shrink: 0;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.14s ease, visibility 0.14s ease;
+      z-index: 20;
+      white-space: nowrap;
+    }
+
+    /* In-place swap on tile hover with ZERO layout reflow or position jump */
+    .av-card:hover .card-tag-slot-group,
+    .av-card:hover .card-tag-badge.card-tag-slot {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .av-card:hover .card-actions.card-actions-slot {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
     .card-action-btn {
       display: flex;
       align-items: center;
@@ -706,8 +838,20 @@ interface TextSegment {
     .url-surface { padding: 10px 12px; }
     .url-favicon-row { display: flex; align-items: center; gap: 8px; }
     .url-favicon { width: 15px; height: 15px; border-radius: 3px; flex-shrink: 0; }
-    .url-link { color: #3B82F6; text-decoration: none; font-size: 12px; flex: 1; word-break: break-all; line-height: 1.5; }
-    .url-link:hover { text-decoration: underline; }
+    .url-link {
+      color: #2196F3;
+      text-decoration: underline;
+      font-size: 12px;
+      font-weight: 500;
+      flex: 1;
+      word-break: break-all;
+      line-height: 1.5;
+      cursor: pointer;
+      transition: color 0.12s ease;
+    }
+    .url-link:hover { color: #60A5FA; text-decoration: underline; }
+    :host-context([data-theme="light"]) .url-link { color: #1565C0; }
+    :host-context([data-theme="light"]) .url-link:hover { color: #0D47A1; }
     .url-ext-icon { color: var(--av-text-faint); flex-shrink: 0; }
 
     /* Per-User Color-Coded Gutter Bar */
@@ -762,16 +906,21 @@ interface TextSegment {
       display: inline-block;
     }
     .url-anchor-text {
-      color: #3B82F6;
+      color: #2196F3;
       text-decoration: underline;
-      text-decoration-style: dotted;
       cursor: pointer;
       font-weight: 500;
-      transition: color 0.12s ease, text-decoration-style 0.12s ease;
+      transition: color 0.12s ease;
     }
     .url-anchor-text:hover {
-      color: #2563EB;
-      text-decoration-style: solid;
+      color: #60A5FA;
+      text-decoration: underline;
+    }
+    :host-context([data-theme="light"]) .url-anchor-text {
+      color: #1565C0;
+    }
+    :host-context([data-theme="light"]) .url-anchor-text:hover {
+      color: #0D47A1;
     }
     .url-hover-popover {
       position: absolute;
@@ -843,6 +992,36 @@ interface TextSegment {
       line-height: 1.55;
       word-break: break-word;
       white-space: pre-wrap;
+    }
+
+    /* Rich snippet links & formatting inside card preview */
+    .av-rich-snippet {
+      font-size: var(--av-clipboard-font-size, 12px);
+      line-height: 1.5;
+      color: var(--av-text-primary);
+      word-break: break-word;
+      font-family: var(--av-clipboard-font-family, var(--av-font-ui));
+    }
+    .av-rich-snippet a,
+    .av-rich-snippet .av-rich-link {
+      color: #2196F3 !important;
+      text-decoration: underline !important;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 0.12s ease;
+    }
+    .av-rich-snippet a:hover,
+    .av-rich-snippet .av-rich-link:hover {
+      color: #60A5FA !important;
+      text-decoration: underline !important;
+    }
+    :host-context([data-theme="light"]) .av-rich-snippet a,
+    :host-context([data-theme="light"]) .av-rich-snippet .av-rich-link {
+      color: #1565C0 !important;
+    }
+    :host-context([data-theme="light"]) .av-rich-snippet a:hover,
+    :host-context([data-theme="light"]) .av-rich-snippet .av-rich-link:hover {
+      color: #0D47A1 !important;
     }
 
     .show-more-pill {
@@ -1354,19 +1533,34 @@ interface TextSegment {
     .permanent-chip { color: #06B6D4; flex-shrink: 0; }
     .permanent-chip app-icon { color: #06B6D4; }
     .burn-chip {
-      color: #F59E0B;
+      color: #EF4444;
       font-weight: 600;
-      background: rgba(245, 158, 11, 0.12);
+      background: rgba(239, 68, 68, 0.12);
       padding: 1px 6px;
       border-radius: 4px;
-      border: 1px solid rgba(245, 158, 11, 0.35);
+      border: 1px solid rgba(239, 68, 68, 0.38);
       display: inline-flex;
       align-items: center;
-      gap: 3px;
+      gap: 3.5px;
       white-space: nowrap;
       flex-shrink: 0;
     }
-    .burn-chip app-icon { color: #F59E0B; }
+    .burn-chip .burn-rotate-icon,
+    .burn-chip app-icon {
+      color: #EF4444;
+      transition: transform 0.4s ease;
+    }
+    .av-card:hover .burn-chip .burn-rotate-icon {
+      transform: rotate(180deg);
+    }
+    :host-context([data-theme="dark"]) .burn-chip {
+      background: rgba(239, 68, 68, 0.18);
+      border-color: rgba(239, 68, 68, 0.48);
+      color: #F87171;
+    }
+    :host-context([data-theme="dark"]) .burn-chip .burn-rotate-icon {
+      color: #F87171;
+    }
     .expiry-chip {
       color: var(--av-text-faint);
       white-space: nowrap;
@@ -1491,6 +1685,11 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
     return this.clipboardService.getResourceCapabilities(this.item());
   });
 
+  getTagColor(): string {
+    const it = this.item();
+    return this.colorService.getTagColor(it.tag, it.tagColor);
+  }
+
   effectiveAccentColor = computed(() => {
     return this.accentColor() || this.bubbleAccentColor() || this.getAuthorColor();
   });
@@ -1501,14 +1700,19 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
     const cat = this.item().content?.category;
     const q = this.searchHighlightQuery();
     let safeHtml: string;
-    if (cat === 'markdown') {
+    if (cat === 'markdown' || cat === 'text' || isHtmlContent(raw) || looksLikeMarkdown(raw)) {
       safeHtml = renderMarkdownToSafeHtml(raw, true, q);
     } else {
-      // Plain text snippet: truncate and escape without Markdown interpretation
+      // Plain text snippet: truncate and escape
       const preview = raw.length > 300 ? raw.slice(0, 300) + '…' : raw;
       safeHtml = renderPlainTextToSafeHtml(preview, q);
     }
     return this.sanitizer.bypassSecurityTrustHtml(safeHtml);
+  });
+
+  isBurnItem = computed<boolean>(() => {
+    const it = this.item();
+    return !!(it && (it.burnAfterRead || it.retentionTtlMs === -1 || this.expiryInfo().isBurnAfterRead));
   });
 
   hasMixedBatchText = computed<boolean>(() => {
@@ -1542,7 +1746,12 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
     this.motion.animateCardEnter(cardEl, isPeerSync);
 
     this.burnSub = this.syncService.onItemBurned.subscribe(event => {
-      if (event.itemId === this.item().id) {
+      const it = this.item();
+      if (it && (event.itemId === it.id || (it.packetId && it.packetId === event.itemId) || (it.batchId && it.batchId === event.itemId))) {
+        if (this.isCurrentDevice()) {
+          AirVaultLogger.info(`[AirVault Burn] 🛡️ Card guard: Item "${it.content?.filename || it.id}" is owned by this device and will not burn.`);
+          return;
+        }
         this.performBurnDissolve();
       }
     });
@@ -1555,10 +1764,17 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
   }
 
   private performBurnDissolve(): void {
+    if (this.isExiting()) return;
     this.isExiting.set(true);
+    const it = this.item();
+    const curDev = this.deviceService.currentDevice();
+    const filename = it?.content?.filename || it?.content?.raw?.slice(0, 40) || 'Item';
+    AirVaultLogger.info(`[AirVault Burn] 🔥 TILE DISSOLVE | Card tile triggering burn dissolve animation for "${filename}" (${it?.id}) on Device "${curDev.name}" (${curDev.id})`);
+    console.log(`%c[AirVault Burn: Card Dissolve]%c Tile executing burn dissolve for "${filename}" (${it?.id}) on Device "${curDev.name}" (${curDev.id})`, 'background: #B91C1C; color: #fff; font-weight: bold; padding: 2px 6px; border-radius: 4px;', 'color: #B91C1C; font-weight: normal; margin-left: 6px;');
+
     const cardEl = this.elementRef.nativeElement.querySelector('.av-card') || this.elementRef.nativeElement;
     this.motion.animateBurnDissolve(cardEl, () => {
-      this.deleteItem.emit(this.item().id);
+      this.storageService.deleteItemLocally(it.id);
     });
   }
 
@@ -1660,9 +1876,9 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
   getAuthorColor(): string {
     const it = this.item();
     const cur = this.deviceService.currentDevice();
-    const isSelf = !it.originDeviceId || it.originDeviceId === cur.id || it.senderDeviceId === cur.id || it.senderDeviceName === 'MacBook' || it.senderDeviceName === cur.name;
+    const isSelf = this.isCurrentDevice();
     const paired = this.deviceService.pairedDevices();
-    const matchedDev = !isSelf ? paired.find(d => (d.id && (d.id === it.senderDeviceId || d.id === it.originDeviceId)) || (d.username && (d.username === it.originOwnerId || d.name === it.senderDeviceName))) : undefined;
+    const matchedDev = !isSelf ? paired.find(d => (d.id && (d.id === it.senderDeviceId || d.id === it.originDeviceId))) : undefined;
     const candidate = it.senderDeviceAccent || it.authorColor || it.author_color || (isSelf ? cur.accentColor : matchedDev?.accentColor);
     const owner = it.originOwnerId || it.senderDeviceName || this.getDisplayOwner();
     return this.colorService.getColorForIdentity(owner, candidate, isSelf);
@@ -1758,7 +1974,12 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
     const it = this.item();
     if (!it) return false;
     const cur = this.deviceService.currentDevice();
-    return !it.originDeviceId || it.originDeviceId === cur.id || it.senderDeviceId === cur.id || it.senderDeviceName === 'MacBook' || it.senderDeviceName === cur.name;
+    if (it.originDeviceId && it.originDeviceId === cur.id) return true;
+    if (it.senderDeviceId && it.senderDeviceId === cur.id) return true;
+    if (it.originOwnerId && cur.username && (it.originOwnerId.toLowerCase().replace(/^@/, '') === cur.username.toLowerCase().replace(/^@/, ''))) {
+      if (!it.originDeviceId || it.originDeviceId === cur.id) return true;
+    }
+    return !it.originDeviceId && !it.senderDeviceId && !it.senderDeviceName;
   }
 
   getDisplayOwner(): string {
@@ -1767,19 +1988,27 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
     const cur = this.deviceService.currentDevice();
     const isSelf = this.isCurrentDevice();
     if (isSelf) {
-      return cur.username ? `@${cur.username.replace(/^@/, '')}` : (cur.name?.startsWith('@') ? cur.name : `@${cur.name || 'chr'}`);
+      return this.deviceService.getDisplayLabel(cur);
+    }
+
+    // 1. Authoritative explicit sender/owner embedded in item
+    if (it.senderDeviceName && it.senderDeviceName !== 'MacBook' && !it.senderDeviceName.startsWith('dev-')) {
+      return it.senderDeviceName.startsWith('@') ? it.senderDeviceName : `@${it.senderDeviceName}`;
     }
     if (it.originOwnerId && it.originOwnerId !== 'MacBook' && !it.originOwnerId.startsWith('dev-')) {
       return it.originOwnerId.startsWith('@') ? it.originOwnerId : `@${it.originOwnerId}`;
     }
-    if (it.senderDeviceName && it.senderDeviceName !== 'MacBook') {
-      return it.senderDeviceName.startsWith('@') ? it.senderDeviceName : `@${it.senderDeviceName}`;
-    }
-    const paired = this.deviceService.pairedDevices().find(d => d.id === it.senderDeviceId || d.id === it.originDeviceId);
+
+    // 2. Strict ID match against paired devices
+    const paired = this.deviceService.pairedDevices().find(d =>
+      (it.senderDeviceId && d.id === it.senderDeviceId) ||
+      (it.originDeviceId && d.id === it.originDeviceId)
+    );
     if (paired) {
-      return paired.username ? `@${paired.username.replace(/^@/, '')}` : (paired.name?.startsWith('@') ? paired.name : `@${paired.name}`);
+      return this.deviceService.getDisplayLabel(paired);
     }
-    return cur.username ? `@${cur.username}` : '@device';
+
+    return '@Peer';
   }
 
   isTextOrCodeEntry(): boolean {

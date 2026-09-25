@@ -319,9 +319,8 @@ public class AirVaultAuthService {
         String targetDeviceType = targetDevOpt.map(AirVaultDevice::getDeviceType).orElse("smartphone");
         String targetThumbprint = targetDevOpt.map(AirVaultDevice::getThumbprint).orElse("AV-" + username.toUpperCase());
 
-        // 3. Dual Notification: Publish PAIR_CONFIRM events to BOTH parties
+        // 3. Dual Notification: Publish PAIR_CONFIRM and DEVICE_ONLINE events to target device(s) and caller
         try {
-            // Confirmation to Target Device (B): "Paired with caller <A's device/username>"
             Map<String, Object> callerDevMap = new HashMap<>();
             callerDevMap.put("id", callerDevice.getClientDeviceId());
             callerDevMap.put("name", callerDevice.getDeviceName());
@@ -337,31 +336,56 @@ public class AirVaultAuthService {
             callerDevMap.put("syncEnabled", true);
             callerDevMap.put("accentColor", callerDevice.getAccentColor() != null ? callerDevice.getAccentColor() : "#10B981");
 
-            Map<String, Object> targetConfirmPayload = new HashMap<>();
-            targetConfirmPayload.put("targetDeviceId", targetDeviceId);
-            targetConfirmPayload.put("targetUsername", identity.getUsername());
-            targetConfirmPayload.put("pairingId", pairingId);
-            targetConfirmPayload.put("device", callerDevMap);
+            List<AirVaultDevice> targetDevices = deviceRepository.findByIdentity(identity).stream()
+                    .filter(d -> !d.getClientDeviceId().equals(req.getClientDeviceId()))
+                    .filter(d -> !"revoked".equalsIgnoreCase(d.getStatus()))
+                    .toList();
 
-            String targetPayloadJson = objectMapper.writeValueAsString(targetConfirmPayload);
-            SignalMessageDto targetSignal = SignalMessageDto.builder()
-                    .id(UUID.randomUUID().toString())
-                    .senderDeviceId(callerDevice.getClientDeviceId())
-                    .targetDeviceId(targetDeviceId)
-                    .signalType("PAIR_CONFIRM")
-                    .payload(targetPayloadJson)
-                    .pairingId(pairingId)
-                    .timestamp(Instant.now())
-                    .build();
-            com.code.acklet.airvault.websocket.dto.AirVaultWsMessage wsTargetMsg = com.code.acklet.airvault.websocket.dto.AirVaultWsMessage.builder()
+            // Confirmation to each Target Device: "Paired with caller <A's device/username>"
+            for (AirVaultDevice dev : targetDevices) {
+                String devId = dev.getClientDeviceId();
+                Map<String, Object> targetConfirmPayload = new HashMap<>();
+                targetConfirmPayload.put("targetDeviceId", devId);
+                targetConfirmPayload.put("targetUsername", identity.getUsername());
+                targetConfirmPayload.put("pairingId", pairingId);
+                targetConfirmPayload.put("device", callerDevMap);
+
+                String targetPayloadJson = objectMapper.writeValueAsString(targetConfirmPayload);
+                SignalMessageDto targetSignal = SignalMessageDto.builder()
+                        .id(UUID.randomUUID().toString())
+                        .senderDeviceId(callerDevice.getClientDeviceId())
+                        .targetDeviceId(devId)
+                        .signalType("PAIR_CONFIRM")
+                        .payload(targetPayloadJson)
+                        .pairingId(pairingId)
+                        .timestamp(Instant.now())
+                        .build();
+                com.code.acklet.airvault.websocket.dto.AirVaultWsMessage wsTargetMsg = com.code.acklet.airvault.websocket.dto.AirVaultWsMessage.builder()
+                        .type("PAIR_CONFIRM")
+                        .senderDeviceId(callerDevice.getClientDeviceId())
+                        .targetDeviceId(devId)
+                        .payload(targetPayloadJson)
+                        .timestamp(System.currentTimeMillis())
+                        .build();
+                webSocketHandler.sendToDevice(devId, wsTargetMsg);
+                syncRelayService.publishSyncEvent(targetSignal);
+            }
+
+            // Also broadcast PAIR_CONFIRM so any listening device for this targetUsername receives it
+            Map<String, Object> broadcastConfirmPayload = new HashMap<>();
+            broadcastConfirmPayload.put("targetDeviceId", "broadcast");
+            broadcastConfirmPayload.put("targetUsername", identity.getUsername());
+            broadcastConfirmPayload.put("pairingId", pairingId);
+            broadcastConfirmPayload.put("device", callerDevMap);
+            String broadcastPayloadJson = objectMapper.writeValueAsString(broadcastConfirmPayload);
+            com.code.acklet.airvault.websocket.dto.AirVaultWsMessage wsBroadcastMsg = com.code.acklet.airvault.websocket.dto.AirVaultWsMessage.builder()
                     .type("PAIR_CONFIRM")
                     .senderDeviceId(callerDevice.getClientDeviceId())
-                    .targetDeviceId(targetDeviceId)
-                    .payload(targetPayloadJson)
+                    .targetDeviceId("broadcast")
+                    .payload(broadcastPayloadJson)
                     .timestamp(System.currentTimeMillis())
                     .build();
-            webSocketHandler.sendToDevice(targetDeviceId, wsTargetMsg);
-            syncRelayService.publishSyncEvent(targetSignal);
+            webSocketHandler.broadcastToAll(wsBroadcastMsg, callerDevice.getClientDeviceId());
 
             // Confirmation to Caller Device (A): "Paired with target <B's device/username>"
             Map<String, Object> targetDevMap = new HashMap<>();
@@ -405,8 +429,23 @@ public class AirVaultAuthService {
             webSocketHandler.sendToDevice(callerDevice.getClientDeviceId(), wsCallerMsg);
             syncRelayService.publishSyncEvent(callerSignal);
 
-            log.info("[AirVault Pairing] 🚀 Published bidirectional PAIR_CONFIRM signals to initiator={} and target={}",
-                    callerDevice.getClientDeviceId(), targetDeviceId);
+            // Broadcast DEVICE_ONLINE immediately so connected UI status turns active in real time without refresh
+            Map<String, Object> callerOnlinePayload = new HashMap<>();
+            callerOnlinePayload.put("deviceId", callerDevice.getClientDeviceId());
+            callerOnlinePayload.put("senderDevice", callerDevMap);
+            callerOnlinePayload.put("timestamp", System.currentTimeMillis());
+            String callerOnlineJson = objectMapper.writeValueAsString(callerOnlinePayload);
+            com.code.acklet.airvault.websocket.dto.AirVaultWsMessage wsCallerOnlineMsg = com.code.acklet.airvault.websocket.dto.AirVaultWsMessage.builder()
+                    .type("DEVICE_ONLINE")
+                    .senderDeviceId(callerDevice.getClientDeviceId())
+                    .targetDeviceId("broadcast")
+                    .payload(callerOnlineJson)
+                    .timestamp(System.currentTimeMillis())
+                    .build();
+            webSocketHandler.broadcastToAll(wsCallerOnlineMsg, null);
+
+            log.info("[AirVault Pairing] 🚀 Published bidirectional PAIR_CONFIRM and DEVICE_ONLINE signals to initiator={} and targetUser=@{}",
+                    callerDevice.getClientDeviceId(), identity.getUsername());
         } catch (Exception ex) {
             log.warn("[AirVault Pairing] ⚠️ Non-fatal exception publishing PAIR_CONFIRM signals: {}", ex.getMessage());
         }
@@ -624,7 +663,15 @@ public class AirVaultAuthService {
             }
         }
 
-        identity.setPinHash(newPinHash);
+        // Only update the PIN hash if:
+        // 1. Identity was not previously customized (first-time setup), OR
+        // 2. The submitted PIN is genuinely different from the stored one (user intentionally changed it).
+        // This prevents routine page-refresh re-registrations from overwriting a user's custom PIN.
+        boolean pinChanged = identity.getPinHash() == null
+                || !passwordEncoder.matches(req.getPin(), identity.getPinHash());
+        if (pinChanged) {
+            identity.setPinHash(newPinHash);
+        }
         identity.setIsCustomized(true);
 
         try {
@@ -636,17 +683,22 @@ public class AirVaultAuthService {
 
         device.setIdentity(identity);
         device.setUsername(newUsername);
-        device.setPinHash(newPinHash);
+        if (pinChanged) {
+            device.setPinHash(newPinHash);
+        }
         device.setIsCustomized(true);
         device.setLastActiveAt(Instant.now());
         deviceRepository.save(device);
 
-        // Update all other devices associated with this identity so they reflect the new username
+        // Update all other devices associated with this identity so they reflect the new username.
+        // Only propagate the new PIN hash if the PIN actually changed — avoid clobbering siblings.
         List<AirVaultDevice> siblingDevices = deviceRepository.findByIdentity(identity);
         for (AirVaultDevice sibling : siblingDevices) {
             if (!sibling.getClientDeviceId().equals(device.getClientDeviceId())) {
                 sibling.setUsername(newUsername);
-                sibling.setPinHash(newPinHash);
+                if (pinChanged) {
+                    sibling.setPinHash(newPinHash);
+                }
                 sibling.setIsCustomized(true);
                 deviceRepository.save(sibling);
             }

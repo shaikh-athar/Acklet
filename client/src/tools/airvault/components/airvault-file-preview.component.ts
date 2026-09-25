@@ -6,7 +6,7 @@ import { AirVaultItem, AirVaultStorageService } from '../services/airvault-stora
 import { AirVaultUIStore } from '../services/airvault-ui.store';
 import { getAirVaultApiUrl } from '../services/airvault-api.util';
 import { AirVaultLogger } from '../services/airvault-sync-debug.service';
-import { renderMarkdownToSafeHtml, renderPlainTextToSafeHtml, looksLikeMarkdown } from '../services/airvault-markdown.util';
+import { renderMarkdownToSafeHtml, renderPlainTextToSafeHtml, looksLikeMarkdown, isHtmlContent } from '../services/airvault-markdown.util';
 import JSZip from 'jszip';
 
 export interface ArchiveFileEntry {
@@ -517,8 +517,27 @@ export interface ArchiveFileEntry {
     /* URL */
     .url-stage { background: var(--av-surface-primary); }
     .url-card { display: flex; flex-direction: column; align-items: center; gap: 16px; max-width: 580px; text-align: center; margin: 0 auto; }
-    .url-icon { color: #3B82F6; }
-    .url-text { font-size: 16px; font-weight: 500; color: #3B82F6; word-break: break-all; text-decoration: underline; }
+    .url-icon { color: #2196F3; }
+    :host-context([data-theme="light"]) .url-icon { color: #1565C0; }
+    .url-text {
+      font-size: 16px;
+      font-weight: 500;
+      color: #2196F3;
+      word-break: break-all;
+      text-decoration: underline;
+      cursor: pointer;
+      transition: color 0.12s ease;
+    }
+    .url-text:hover {
+      color: #60A5FA;
+      text-decoration: underline;
+    }
+    :host-context([data-theme="light"]) .url-text {
+      color: #1565C0;
+    }
+    :host-context([data-theme="light"]) .url-text:hover {
+      color: #0D47A1;
+    }
     .url-btn { display: inline-flex; align-items: center; gap: 6px; }
 
     /* In-Progress Upload Stage */
@@ -941,7 +960,7 @@ export class AirVaultFilePreviewComponent {
     const q = this.searchHighlightQuery();
     const activeIdx = this.activeMatchIndex();
     let safeHtml: string;
-    if (cat === 'markdown') {
+    if (cat === 'markdown' || cat === 'text' || isHtmlContent(raw) || looksLikeMarkdown(raw) || this.isTextDoc()) {
       safeHtml = renderMarkdownToSafeHtml(raw, false, q, activeIdx);
     } else {
       safeHtml = renderPlainTextToSafeHtml(raw, q, activeIdx);

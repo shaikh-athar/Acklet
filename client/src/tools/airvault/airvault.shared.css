@@ -438,9 +438,26 @@ mark.av-search-match.current-match {
 .av-rich-snippet ol ol  { list-style-type: lower-alpha; margin: 0 0 2px; }
 .av-rich-snippet li     { margin-bottom: 2px; }
 .av-rich-snippet a,
-.av-rich-snippet .av-rich-link { color: #2196F3; text-decoration: underline; }
+.av-rich-snippet .av-rich-link {
+  color: #2196F3 !important;
+  text-decoration: underline !important;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.12s ease;
+}
+.av-rich-snippet a:hover,
+.av-rich-snippet .av-rich-link:hover {
+  color: #60A5FA !important;
+  text-decoration: underline !important;
+}
 :host-context([data-theme="light"]) .av-rich-snippet a,
-:host-context([data-theme="light"]) .av-rich-snippet .av-rich-link { color: #1565C0; }
+:host-context([data-theme="light"]) .av-rich-snippet .av-rich-link {
+  color: #1565C0 !important;
+}
+:host-context([data-theme="light"]) .av-rich-snippet a:hover,
+:host-context([data-theme="light"]) .av-rich-snippet .av-rich-link:hover {
+  color: #0D47A1 !important;
+}
 .av-rich-snippet code,
 .av-rich-snippet .av-inline-code {
   font-family: var(--av-font-mono);
@@ -537,9 +554,24 @@ mark.av-search-match.current-match {
   border-radius: 0 4px 4px 0;
 }
 .av-rich-document-preview a,
-.av-rich-document-preview .av-rich-link { color: #2196F3; text-decoration: underline; }
+.av-rich-document-preview .av-rich-link {
+  color: #2196F3;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: color 0.12s ease;
+}
+.av-rich-document-preview a:hover,
+.av-rich-document-preview .av-rich-link:hover {
+  color: #60A5FA;
+}
 :host-context([data-theme="light"]) .av-rich-document-preview a,
-:host-context([data-theme="light"]) .av-rich-document-preview .av-rich-link { color: #1565C0; }
+:host-context([data-theme="light"]) .av-rich-document-preview .av-rich-link {
+  color: #1565C0;
+}
+:host-context([data-theme="light"]) .av-rich-document-preview a:hover,
+:host-context([data-theme="light"]) .av-rich-document-preview .av-rich-link:hover {
+  color: #0D47A1;
+}
 .av-rich-document-preview code,
 .av-rich-document-preview .av-inline-code {
   font-family: var(--av-font-mono, 'Fira Code', monospace);
@@ -721,7 +753,7 @@ mark.av-search-match.current-match {
 
 
 
-/* Plain text renderer: preserves all whitespace/indentation, never interprets Markdown */
+/* Plain text renderer: preserves all whitespace/indentation */
 .av-plain-text-pre {
   font-family: var(--av-font-mono, 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace);
   font-size: 0.85em;
@@ -733,6 +765,26 @@ mark.av-search-match.current-match {
   border: none;
   padding: 0;
   margin: 0;
+}
+.av-plain-text-pre a,
+.av-plain-text-pre .av-rich-link {
+  color: #2196F3;
+  text-decoration: underline;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: color 0.12s ease;
+}
+.av-plain-text-pre a:hover,
+.av-plain-text-pre .av-rich-link:hover {
+  color: #60A5FA;
+}
+:host-context([data-theme="light"]) .av-plain-text-pre a,
+:host-context([data-theme="light"]) .av-plain-text-pre .av-rich-link {
+  color: #1565C0;
+}
+:host-context([data-theme="light"]) .av-plain-text-pre a:hover,
+:host-context([data-theme="light"]) .av-plain-text-pre .av-rich-link:hover {
+  color: #0D47A1;
 }
 .av-rich-document-preview .av-plain-text-pre {
   margin: 4px 0;

@@ -123,10 +123,14 @@ Reachable via smooth scroll or the bottom dock info button:
 
 - **Top Bar Limits Pill**: `500 MB Max · 1 GB Cap · 7d Expiry` inline mono pill with tooltip guidance.
 - **Pre-Upload Warning Banner**: Amber container (`rgba(245, 158, 11, 0.12)`) triggered for files `> 50 MB`, highlighting off-thread encryption and 7-day retention notice.
-- **Card Expiry Chips**:
+- **Card Expiry & Policy Chips**:
   - `🕒 7d`: Standard countdown timer for active items.
   - `⚠️ Expiring Soon`: Animated amber pulsing chip when `< 24h` remaining, prompting users to pin critical items.
   - `📌 Permanent`: Cyan indicator for pinned items immune to auto-purging.
+  - `🔥 Burn on view` / `.burn-timeline-icon`: Crimson `rotate-cw` indicator positioned in the card header timeline (next to `@author · Xm ago`) for Burn-After-Read ephemeral items, freeing up the top-right corner action slot for `#tag` labels and `<>` format badges with 180° rotation on card hover.
+- **Top-Right Corner Slot Architecture**:
+  - Fixed-anchor corner slot (`.card-header-action-slot`): In resting state, hosts `.card-tag-slot-group` containing the Code/JSON indicator badge (`.card-code-badge` with `<app-icon name="code">`) alongside custom `#tag` pills.
+  - On tile hover, smoothly swaps in-place to quick action buttons (`.card-actions-slot`: resend, reveal, pin, trash) with zero layout shift or card reflow.
 - **Bottom Dock Storage Gauge**: Real-time `${used} MB / 1.0 GB vault storage used` display with color-coded fill gauge.
 
 ---

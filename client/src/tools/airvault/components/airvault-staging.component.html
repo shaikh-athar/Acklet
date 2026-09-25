@@ -107,18 +107,17 @@
   </div>
   }
 
-  <!-- Composer Row with Left Clear Button + Smart Input Capsule -->
+  <!-- Composer Row with Smart Input Capsule -->
   <div class="chat-composer-outer-row">
 
-    <!-- Standalone Clear Clipboard Button on Left -->
-    <button
-      type="button"
-      class="composer-standalone-clear-btn"
-      (click)="clearActiveClipboard.emit()"
-      data-tooltip="Clear clipboard (this device)"
+    <!-- External Left Erase Active Clipboard Button (Positioned outside input box on the left, disabled if clipboard is empty) -->
+    <button type="button" class="composer-outer-erase-btn"
+      [class.clicked]="clickedButtonId() === 'outer-erase-clipboard'"
       [disabled]="storageService.items().length === 0"
-      aria-label="Clear active clipboard items">
-      <app-icon name="eraser" class="icon-sm"></app-icon>
+      (click)="clearActiveClipboard.emit(); triggerClickPulse('outer-erase-clipboard')"
+      [attr.data-tooltip]="storageService.items().length === 0 ? 'Active clipboard is empty' : 'Erase active clipboard (' + storageService.items().length + ' items)'"
+      aria-label="Erase active clipboard">
+      <app-icon name="shredder" class="icon-sm"></app-icon>
     </button>
 
     <!-- Smart Composer Container (Card with 4 fixed anchor zones) -->
@@ -148,26 +147,7 @@
       </button>
       }
 
-      <!-- ZONE 2: Top-Left Label / Metadata Chip Row (Collapses if empty) -->
-      @if (currentTag() || perItemRetentionTtl() !== null) {
-      <div class="composer-label-chip-group">
-        @if (currentTag()) {
-        <span class="composer-active-tag-chip" (click)="toggleTagInput($event)" data-tooltip="Click to edit tag">
-          <app-icon name="tag" class="icon-xs"></app-icon>
-          <span>#{{ currentTag() }}</span>
-          <button class="tag-chip-remove-btn" (click)="removeTag($event)" title="Remove tag">
-            <app-icon name="x" class="icon-xs"></app-icon>
-          </button>
-        </span>
-        }
-        @if (perItemRetentionTtl() !== null) {
-        <span class="composer-active-retention-chip" (click)="toggleRetentionPopover($event)" data-tooltip="Custom retention active">
-          <app-icon name="hourglass" class="icon-xs"></app-icon>
-          <span>{{ getRetentionLabel(perItemRetentionTtl()) }}</span>
-        </span>
-        }
-      </div>
-      }
+
 
       <!-- Staged File Attachment Tiles Row (Rendered above textarea, grows composer smoothly) -->
       @if (stagedAttachments().length > 0) {
@@ -415,7 +395,7 @@
 
       </div>
 
-      <!-- ZONE 3: Bottom-Left Standalone (+) Attach Icon (Fixed position) -->
+      <!-- ZONE 3: Bottom-Left Standalone (+) Attach & Clear Input Icons (Fixed position) -->
       <div class="composer-popover-anchor composer-plus-icon" (click)="$event.stopPropagation()">
         <!-- Permanent Hidden File Inputs (Always alive in DOM so native pickers work reliably across all browsers) -->
         <input #docInput type="file" (change)="onFileInput($event); uploadMenuOpen.set(false)" hidden multiple />
@@ -480,8 +460,32 @@
         }
       </div>
 
-      <!-- ZONE 4: Bottom-Right Toolbar Row (clipboard, hourglass, <>, tag, send) (Fixed position) -->
+      <!-- ZONE 4: Bottom-Right Toolbar Row (active badges + clipboard, hourglass, <>, tag, send) (Fixed position) -->
       <div class="composer-icon-group composer-right-controls" (click)="$event.stopPropagation()">
+
+        <!-- Active Retention / Burn-After-Read Badge (Bottom-docked to prevent text overlap) -->
+        @if (perItemRetentionTtl() !== null) {
+        <span class="composer-active-retention-chip"
+              [class.is-burn]="perItemRetentionTtl() === -1"
+              (click)="toggleRetentionPopover($event)"
+              data-tooltip="Click to change retention policy">
+          <app-icon [name]="perItemRetentionTtl() === -1 ? 'clock-fading' : 'hourglass'" class="icon-xs"></app-icon>
+          <span>{{ getRetentionLabel(perItemRetentionTtl()) }}</span>
+        </span>
+        }
+
+        <!-- Active Tag Chip (Bottom-docked) -->
+        @if (currentTag()) {
+        <span class="composer-active-tag-chip"
+              [style.--tag-color]="getEffectiveComposerTagColor()"
+              (click)="toggleTagInput($event)" data-tooltip="Click to edit tag">
+          <app-icon name="tag" class="icon-xs"></app-icon>
+          <span>#{{ currentTag() }}</span>
+          <button class="tag-chip-remove-btn" (click)="removeTag($event)" title="Remove tag">
+            <app-icon name="x" class="icon-xs"></app-icon>
+          </button>
+        </span>
+        }
 
         <!-- 1. Paste from Clipboard Button -->
         <button type="button" class="composer-tool-btn"
@@ -591,16 +595,16 @@
             <app-icon name="tag" class="icon-sm" [class.text-accent]="!!currentTag()"></app-icon>
           </button>
 
-          <!-- Tag Input Popover with Examples -->
+          <!-- Tag Input Popover with Examples & Color Preference -->
           @if (tagInputOpen()) {
           <div class="composer-tag-popover" [class.is-closing]="isTagClosing()" (click)="$event.stopPropagation()">
-            <div class="tag-input-row">
-              <span class="tag-hash-prefix">#</span>
+            <div class="tag-input-row" [style.border-color]="'color-mix(in srgb, ' + getDraftEffectiveColor() + ' 40%, transparent)'">
+              <span class="tag-hash-prefix" [style.color]="getDraftEffectiveColor()">#</span>
               <input #tagInputRef type="text" class="tag-inline-input" placeholder="tag (e.g. work, temp)"
                 [(ngModel)]="tagDraft" (keydown.enter)="saveTagFromDraft()" (keydown.escape)="closeTagInput()"
                 maxlength="24" />
               <button class="tag-save-btn" (click)="saveTagFromDraft()" data-tooltip="Save tag (↵)">
-                <app-icon name="check" class="icon-xs"></app-icon>
+                <app-icon name="check" class="icon-xs" [style.color]="getDraftEffectiveColor()"></app-icon>
               </button>
               @if (currentTag()) {
               <button class="tag-clear-btn" (click)="removeTag($event)" data-tooltip="Remove tag">
@@ -609,12 +613,37 @@
               }
             </div>
 
+            <!-- Color Palette & Custom Picker Row -->
+            <div class="tag-color-swatches-section">
+              <div class="tag-color-header">
+                <span class="tag-presets-label">Color:</span>
+                <label class="custom-color-picker-label" [attr.data-tooltip]="'Custom color'">
+                  <span class="custom-color-dot" [style.background]="getDraftEffectiveColor()"></span>
+                  <input type="color" class="custom-color-native-input" [ngModel]="getDraftEffectiveColor()" (ngModelChange)="setDraftTagColor($event)" />
+                </label>
+              </div>
+              <div class="tag-swatches-grid">
+                @for (c of tagColorPalette; track c.hex) {
+                  <button type="button"
+                          class="tag-color-swatch-btn"
+                          [class.selected]="tagDraftColor() === c.hex || (!tagDraftColor() && getDraftEffectiveColor() === c.hex)"
+                          [style.background]="c.hex"
+                          [attr.data-tooltip]="c.name"
+                          (click)="setDraftTagColor(c.hex)"
+                          [attr.aria-label]="c.name">
+                  </button>
+                }
+              </div>
+            </div>
+
             <!-- Popular Preset Tag Suggestions -->
             <div class="tag-presets-row">
               <span class="tag-presets-label">Examples:</span>
               <div class="tag-presets-chips">
                 @for (t of popularTags; track t) {
-                <button type="button" class="tag-preset-chip" (click)="selectPresetTag(t)">
+                <button type="button" class="tag-preset-chip"
+                        [style.--preset-color]="colorService.getTagColor(t)"
+                        (click)="selectPresetTag(t)">
                   #{{ t }}
                 </button>
                 }
