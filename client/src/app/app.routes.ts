@@ -4,9 +4,16 @@ import { authGuard, publisherGuard, adminGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   // --- Standalone Tool Applications (Pure Tool UI, No Platform Shell/Navbar/Footer) ---
+  { path: 'tools/app/airvault/invite/:invitationId', loadComponent: () => import('../tools/airvault/airvault.component').then(m => m.AirVaultComponent), title: 'AirVault — Collaborator Invitation — Acklet' },
+  { path: 'tools/app/airvault/:clipboardId', loadComponent: () => import('../tools/airvault/airvault.component').then(m => m.AirVaultComponent), title: 'AirVault — Shared Clipboard — Acklet' },
   { path: 'tools/app/airvault', loadComponent: () => import('../tools/airvault/airvault.component').then(m => m.AirVaultComponent), title: 'AirVault — Cross-Device Clipboard & Sync — Acklet' },
   { path: 'tools/app/air-vault', loadComponent: () => import('../tools/airvault/airvault.component').then(m => m.AirVaultComponent), title: 'AirVault — Cross-Device Clipboard & Sync — Acklet' },
+  { path: 'invite/:invitationId', loadComponent: () => import('../tools/airvault/airvault.component').then(m => m.AirVaultComponent), title: 'AirVault — Collaborator Invitation — Acklet' },
+  { path: 'tools/airvault/invite/:invitationId', redirectTo: 'tools/app/airvault/invite/:invitationId' },
+  { path: 'tools/airvault/:clipboardId', redirectTo: 'tools/app/airvault/:clipboardId' },
   { path: 'tools/airvault', redirectTo: 'tools/app/airvault', pathMatch: 'full' },
+  { path: 'c/:clipboardId', redirectTo: 'tools/app/airvault/:clipboardId' },
+  { path: 'airvault/:clipboardId', redirectTo: 'tools/app/airvault/:clipboardId' },
   { path: 'tools/app/datalens', loadComponent: () => import('../tools/data-lens/data-lens.component').then(m => m.JsonLensComponent), title: 'DataLens — Multi-Format Data Workspace & Validator — Acklet' },
   { path: 'tools/app/data-lens', loadComponent: () => import('../tools/data-lens/data-lens.component').then(m => m.JsonLensComponent), title: 'DataLens — Multi-Format Data Workspace & Validator — Acklet' },
   // Backward-compatible route aliases for legacy links

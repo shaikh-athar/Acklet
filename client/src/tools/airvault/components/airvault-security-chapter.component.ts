@@ -13,9 +13,9 @@ import { IconComponent } from '../../../app/shared/components/icon/icon';
         <span>Section 01 · Cryptographic Engine</span>
       </div>
 
-      <h2 class="chapter-title">Zero-Knowledge Security Architecture</h2>
+      <h2 class="chapter-title">Security & Privacy Architecture</h2>
       <p class="chapter-desc">
-        All encryption, key negotiations, and privacy sanitization happen strictly inside your browser instance using W3C Web Crypto APIs.
+        Data in transit is encrypted using TLS and Web Crypto primitives. Shared clipboards are stored securely on the server until their expiration TTL.
       </p>
 
       <div class="chapter-grid-2x2">
@@ -23,15 +23,15 @@ import { IconComponent } from '../../../app/shared/components/icon/icon';
           <div class="feature-icon-box"><app-icon name="key" class="icon-xs"></app-icon></div>
           <div class="feature-content">
             <h4 class="feature-title">Web Crypto API Keys</h4>
-            <p class="feature-body">Non-extractable ECDH P-256 key pairs generated in volatile memory. Private keys never touch any server or disk.</p>
+            <p class="feature-body">Cryptographic key material generated in browser memory for active device signaling.</p>
           </div>
         </div>
 
         <div class="chapter-feature-tile">
           <div class="feature-icon-box"><app-icon name="lock" class="icon-xs"></app-icon></div>
           <div class="feature-content">
-            <h4 class="feature-title">AES-GCM-256 Encryption</h4>
-            <p class="feature-body">Payloads are encrypted client-side with an authenticating 96-bit initialization vector generated per transmission.</p>
+            <h4 class="feature-title">Encrypted Transport & Storage</h4>
+            <p class="feature-body">All payloads are encrypted in transit. Standalone shared clipboards remain stored until their expiration TTL.</p>
           </div>
         </div>
 

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IconComponent } from '../../../app/shared/components/icon/icon';
 import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-device.service';
+import { AirVaultStorageService } from '../services/airvault-storage.service';
 
 @Component({
   selector: 'app-airvault-device-drawer',
@@ -89,8 +90,6 @@ import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-devi
               <div class="device-meta-sub">
                 <span class="status-indicator-dot online"></span>
                 <span class="status-text">Online</span>
-                <span class="meta-sep">·</span>
-                <span class="device-thumb-code">ECDH: {{ currentDevice().thumbprint }}</span>
               </div>
             </div>
           </div>
@@ -233,8 +232,71 @@ import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-devi
               }
             </div>
           }
+
+          <!-- 4. ACCOUNT & SESSION LIFECYCLE -->
+          <div class="section-title signout-title">
+            <span>SESSION & DEVICE STORAGE</span>
+          </div>
+          <div class="session-actions-card">
+            <div class="session-actions-info">
+              <span class="session-user-label">Signed in as <strong>@{{ currentDevice().username || 'local' }}</strong></span>
+              <span class="session-user-sub">Manage local cached data or sign out of this device.</span>
+            </div>
+            <button class="drawer-signout-btn" (click)="promptSignOut()">
+              <app-icon name="log-out" class="icon-xs"></app-icon>
+              <span>Sign Out of this Device</span>
+            </button>
+          </div>
         </div>
 
+        <!-- Sign Out / Unsent Outbox Warning Modal -->
+        @if (showSignOutModal()) {
+          <div class="modal-overlay" (click)="cancelSignOut()">
+            <div class="signout-modal-card" (click)="$event.stopPropagation()">
+              <div class="modal-header">
+                <div class="modal-header-badge">
+                  <app-icon name="log-out" class="icon-sm text-red"></app-icon>
+                  <h3>Sign Out of AirVault</h3>
+                </div>
+                <button class="modal-close-btn" (click)="cancelSignOut()">
+                  <app-icon name="x" class="icon-xs"></app-icon>
+                </button>
+              </div>
+
+              <div class="modal-body">
+                @if (hasUnsentOutbox()) {
+                  <div class="outbox-warning-banner">
+                    <app-icon name="alert-triangle" class="icon-sm text-amber"></app-icon>
+                    <div class="outbox-warning-text">
+                      <strong>Unsent clipboard items detected!</strong>
+                      <p>You have items in your offline outbox waiting to sync to other devices. Signing out now without sending will discard them or keep them in local queue.</p>
+                    </div>
+                  </div>
+                }
+
+                <p class="modal-desc">
+                  Are you sure you want to sign out of <strong>@{{ currentDevice().username || 'this device' }}</strong>?
+                </p>
+
+                <label class="modal-checkbox-row">
+                  <input type="checkbox" [(ngModel)]="purgeLocalDataOnSignOut" />
+                  <span class="checkbox-label">
+                    <strong>Remove local cached data from this device</strong>
+                    <small>Purges local IndexedDB cache and offline data for this account.</small>
+                  </span>
+                </label>
+              </div>
+
+              <div class="modal-footer">
+                <button class="btn-secondary" (click)="cancelSignOut()">Cancel</button>
+                <button class="btn-danger" (click)="confirmSignOut()">
+                  <app-icon name="log-out" class="icon-xs"></app-icon>
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        }
       </div>
     </div>
   `,
@@ -1027,6 +1089,197 @@ import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-devi
 
     .text-cyan { color: var(--av-accent); }
 
+    .signout-title {
+      margin-top: 24px;
+    }
+    .session-actions-card {
+      background: var(--av-surface-secondary, rgba(255, 255, 255, 0.04));
+      border: 1px solid var(--av-border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .session-actions-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .session-user-label {
+      font-size: 12px;
+      color: var(--av-text-primary, #101828);
+    }
+    .session-user-sub {
+      font-size: 11px;
+      color: var(--av-text-muted, #94A3B8);
+    }
+    .drawer-signout-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 7px 12px;
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 6px;
+      color: #EF4444;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .drawer-signout-btn:hover {
+      background: rgba(239, 68, 68, 0.18);
+      border-color: #EF4444;
+    }
+
+    /* Modal Overlay & Card */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 1001;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      animation: fadeIn 0.2s ease;
+    }
+    .signout-modal-card {
+      background: var(--av-surface-elevated, #1E293B);
+      border: 1px solid var(--av-border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--av-border);
+    }
+    .modal-header-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .modal-header-badge h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--av-text-primary, #FFFFFF);
+      margin: 0;
+    }
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--av-text-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      display: flex;
+    }
+    .modal-close-btn:hover { color: var(--av-text-primary); }
+    .modal-body {
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .outbox-warning-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 8px;
+    }
+    .text-amber { color: #F59E0B; }
+    .outbox-warning-text strong {
+      display: block;
+      font-size: 12px;
+      color: #F59E0B;
+    }
+    .outbox-warning-text p {
+      font-size: 11px;
+      color: var(--av-text-muted, #CBD5E1);
+      margin: 2px 0 0 0;
+      line-height: 1.4;
+    }
+    .modal-desc {
+      font-size: 13px;
+      color: var(--av-text-primary, #E2E8F0);
+      margin: 0;
+    }
+    .modal-checkbox-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      cursor: pointer;
+      padding: 8px 10px;
+      background: var(--av-surface-secondary, rgba(255, 255, 255, 0.03));
+      border: 1px solid var(--av-border-subtle);
+      border-radius: 6px;
+    }
+    .modal-checkbox-row input {
+      margin-top: 2px;
+      cursor: pointer;
+    }
+    .checkbox-label {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .checkbox-label strong {
+      font-size: 12px;
+      color: var(--av-text-primary, #FFFFFF);
+    }
+    .checkbox-label small {
+      font-size: 10.5px;
+      color: var(--av-text-muted, #94A3B8);
+    }
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 12px 18px;
+      border-top: 1px solid var(--av-border);
+      background: var(--av-surface-secondary, rgba(0, 0, 0, 0.1));
+    }
+    .btn-secondary {
+      padding: 6px 14px;
+      background: transparent;
+      border: 1px solid var(--av-border);
+      border-radius: 6px;
+      color: var(--av-text-primary, #FFFFFF);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-danger {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: #EF4444;
+      border: 1px solid #DC2626;
+      border-radius: 6px;
+      color: #FFFFFF;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-danger:hover { background: #DC2626; }
+
     @keyframes slideLeft {
       from { transform: translateX(100%); }
       to { transform: translateX(0); }
@@ -1051,8 +1304,10 @@ export class AirVaultDeviceDrawerComponent {
   renameDevice = output<{ deviceId: string; newName: string }>();
   openPairingModal = output<void>();
   toggleSync = output<string>();
+  signOutDevice = output<{ purgeLocalData: boolean }>();
 
   public deviceService = inject(AirVaultDeviceService);
+  public storageService = inject(AirVaultStorageService);
 
   isClosing = signal<boolean>(false);
   editingDeviceId = signal<string | null>(null);
@@ -1060,6 +1315,26 @@ export class AirVaultDeviceDrawerComponent {
   eraseDataOnLogout = signal<boolean>(false);
   editNameValue = '';
   showPin = signal<boolean>(false);
+
+  showSignOutModal = signal<boolean>(false);
+  hasUnsentOutbox = signal<boolean>(false);
+  purgeLocalDataOnSignOut = false;
+
+  async promptSignOut() {
+    const unsent = await this.storageService.hasUnsentOutbox();
+    this.hasUnsentOutbox.set(unsent);
+    this.purgeLocalDataOnSignOut = false;
+    this.showSignOutModal.set(true);
+  }
+
+  cancelSignOut() {
+    this.showSignOutModal.set(false);
+  }
+
+  confirmSignOut() {
+    this.showSignOutModal.set(false);
+    this.signOutDevice.emit({ purgeLocalData: this.purgeLocalDataOnSignOut });
+  }
 
   onClose() {
     if (this.isClosing()) return;

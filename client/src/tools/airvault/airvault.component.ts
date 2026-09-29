@@ -19,11 +19,14 @@ import { AirVaultMotionService } from './services/airvault-motion.service';
 import { AirVaultIdentityService } from './services/airvault-identity.service';
 import { AirVaultClipboardService, LineBlameEntry } from './services/airvault-clipboard.service';
 import { AirVaultCollapseService } from './services/airvault-collapse.service';
+import { AirVaultPreferencesService } from './services/airvault-preferences.service';
 import { AirVaultColorService } from './services/airvault-color.service';
 import { AirVaultSyncDebugLogger, AirVaultLogger } from './services/airvault-sync-debug.service';
 import { AirVaultWsTransportService } from './services/airvault-ws-transport.service';
 import { AirVaultShortcutService } from './services/airvault-shortcut.service';
 import { checkDuplicateResource } from './services/airvault-action-detector';
+import { AirVaultTourService } from './services/airvault-tour.service';
+import { AirVaultTourComponent } from './components/airvault-tour.component';
 
 // Subcomponents
 import { AirVaultConstellationComponent } from './components/airvault-constellation.component';
@@ -47,6 +50,16 @@ import { AirVaultSyncConsentModalComponent } from './components/airvault-sync-co
 import { AirVaultSecurityChapterComponent } from './components/airvault-security-chapter.component';
 import { AirVaultTelemetryChapterComponent } from './components/airvault-telemetry-chapter.component';
 import { AirVaultProtocolsChapterComponent } from './components/airvault-protocols-chapter.component';
+
+import { AirVaultSharedClipboardService } from './services/airvault-shared-clipboard.service';
+import { AirVaultShareLinkModalComponent } from './components/airvault-share-link-modal.component';
+import { AirVaultSharedBannerComponent } from './components/airvault-shared-banner.component';
+
+import { AirVaultInvitationService } from './services/airvault-invitation.service';
+import { AirVaultInviteModalComponent } from './components/airvault-invite-modal.component';
+import { AirVaultNotificationInboxComponent } from './components/airvault-notification-inbox.component';
+import { AirVaultLimitsService } from './services/airvault-limits.service';
+import { AirVaultCreateClipboardModalComponent } from './components/airvault-create-clipboard-modal.component';
 
 import { AckletToolSDK } from '../../app/core/services/tool-sdk';
 import { PreferenceService } from '../../app/core/services/preference.service';
@@ -79,7 +92,12 @@ import { PreferenceService } from '../../app/core/services/preference.service';
     AirVaultSyncModalComponent,
     AirVaultSecurityChapterComponent,
     AirVaultTelemetryChapterComponent,
-    AirVaultProtocolsChapterComponent
+    AirVaultProtocolsChapterComponent,
+    AirVaultTourComponent,
+    AirVaultShareLinkModalComponent,
+    AirVaultInviteModalComponent,
+    AirVaultNotificationInboxComponent,
+    AirVaultCreateClipboardModalComponent
   ],
   templateUrl: './airvault.component.html',
   styleUrls: ['./airvault.component.css'],
@@ -90,6 +108,11 @@ export class AirVaultComponent implements OnInit, OnDestroy {
   clipboardStore = inject(AirVaultClipboardStore);
   deviceStore = inject(AirVaultDeviceStore);
   uiStore = inject(AirVaultUIStore);
+  sharedClipboardService = inject(AirVaultSharedClipboardService);
+  invitationService = inject(AirVaultInvitationService);
+  limitsService = inject(AirVaultLimitsService);
+
+  readonly isCreateModalOpen = signal<boolean>(false);
 
   deviceService = inject(AirVaultDeviceService);
   storageService = inject(AirVaultStorageService);
@@ -102,13 +125,149 @@ export class AirVaultComponent implements OnInit, OnDestroy {
   elRef = inject(ElementRef);
   private cdr = inject(ChangeDetectorRef);
   private ngZone = inject(NgZone);
-  prefService = inject(PreferenceService);
+  prefService = inject(AirVaultPreferencesService);
+  corePrefService = inject(PreferenceService);
   shortcutService = inject(AirVaultShortcutService);
+  tourService = inject(AirVaultTourService);
 
   private sdk = new AckletToolSDK('airvault');
 
   @ViewChild(AirVaultStagingComponent) stagingComp?: AirVaultStagingComponent;
   @ViewChild(AirVaultConstellationComponent) constellationComp?: AirVaultConstellationComponent;
+  @ViewChild('slugEditInput') slugEditInput?: ElementRef<HTMLInputElement>;
+
+  // ── Editable Clipboard Slug State & Collaborator Multi-Clipboard Dropdown ──
+  isEditingClipboardId = signal<boolean>(false);
+  editingSlugValue = signal<string>('');
+  isCheckingSlug = signal<boolean>(false);
+  isSavingSlug = signal<boolean>(false);
+  isSlugCopied = signal<boolean>(false);
+  slugCheckResult = signal<{ available: boolean; message: string } | null>(null);
+  private slugDebounceSubject = new Subject<string>();
+  readonly activeClipboardSlug = computed(() => this.sharedClipboardService.activeClipboardId());
+  
+  showClipboardDropdown = signal<boolean>(false);
+  activeBoardMenuId = signal<string | null>(null);
+
+  toggleBoardSubMenu(boardId: string, event?: Event) {
+    if (event) event.stopPropagation();
+    if (this.activeBoardMenuId() === boardId) {
+      this.activeBoardMenuId.set(null);
+    } else {
+      this.activeBoardMenuId.set(boardId);
+    }
+  }
+
+  closeBoardSubMenu() {
+    this.activeBoardMenuId.set(null);
+  }
+
+  /**
+   * List of all accessible clipboards:
+   * 1. Primary personal clipboard (Admin/Owner)
+   * 2. Connected/Accepted collaborator boards (paired devices)
+   * 3. Invite-granted collaborator boards (accepted via invitation flow)
+   * 4. Currently active shared board (if viewing via a link)
+   */
+  readonly availableClipboards = computed(() => {
+    const list: Array<{
+      id: string;
+      title: string;
+      ownerUsername: string;
+      isAdmin: boolean;
+      accessMode: 'read-only' | 'read-write';
+      isCurrent: boolean;
+      memberCount?: number;
+    }> = [];
+
+    const myId = this.sharedClipboardService.currentClipboardId();
+    const myUser = this.deviceService.currentDevice().username || 'You';
+    const activeId = this.sharedClipboardService.activeClipboardId();
+    const isViewingLink = this.sharedClipboardService.isViewingSharedLink();
+
+    const addedIds = new Set<string>();
+
+    // 1. My Personal Clipboard (Parent Admin)
+    list.push({
+      id: myId,
+      title: `${myUser}'s Vault`,
+      ownerUsername: myUser,
+      isAdmin: true,
+      accessMode: 'read-write',
+      isCurrent: !isViewingLink || activeId === myId,
+      memberCount: 1 + this.deviceStore.pairedDevices().length
+    });
+    addedIds.add(myId);
+
+    // 2. User's Created Standalone Clipboards (Admin/Owner)
+    for (const board of this.sharedClipboardService.myCreatedClipboards()) {
+      if (!addedIds.has(board.id)) {
+        addedIds.add(board.id);
+        list.push({
+          id: board.id,
+          title: board.title || `#${board.id}`,
+          ownerUsername: board.ownerUsername || myUser,
+          isAdmin: true,
+          accessMode: board.accessMode,
+          isCurrent: isViewingLink && activeId === board.id,
+          memberCount: board.itemCount || 1
+        });
+      }
+    }
+
+    // 3. Collaborator Boards from paired devices
+    for (const dev of this.deviceStore.pairedDevices()) {
+      if (dev.username && dev.username !== myUser) {
+        const collabId = dev.username.toLowerCase().replace(/^@/, '');
+        if (!addedIds.has(collabId)) {
+          addedIds.add(collabId);
+          list.push({
+            id: collabId,
+            title: `@${dev.username.replace(/^@/, '')}'s Board`,
+            ownerUsername: dev.username.replace(/^@/, ''),
+            isAdmin: false,
+            accessMode: 'read-write',
+            isCurrent: isViewingLink && activeId === collabId,
+            memberCount: 2
+          });
+        }
+      }
+    }
+
+    // 4. Invite-granted collaborator boards (accepted via invitation flow)
+    for (const board of this.invitationService.grantedCollaboratorBoards()) {
+      if (!addedIds.has(board.clipboardId)) {
+        addedIds.add(board.clipboardId);
+        list.push({
+          id: board.clipboardId,
+          title: board.clipboardTitle || `@${board.ownerUsername}'s Board`,
+          ownerUsername: board.ownerUsername || '',
+          isAdmin: false,
+          accessMode: board.accessLevel,
+          isCurrent: isViewingLink && activeId === board.clipboardId,
+          memberCount: 2
+        });
+      }
+    }
+
+    // 5. If currently visiting a shared link not yet in list
+    if (isViewingLink && this.sharedClipboardService.sharedClipboard()) {
+      const shared = this.sharedClipboardService.sharedClipboard()!;
+      if (!addedIds.has(shared.id)) {
+        list.push({
+          id: shared.id,
+          title: shared.title || `#${shared.id}`,
+          ownerUsername: shared.ownerUsername || 'VaultOwner',
+          isAdmin: shared.isOwner,
+          accessMode: shared.accessMode,
+          isCurrent: true,
+          memberCount: shared.items ? shared.items.length : 1
+        });
+      }
+    }
+
+    return list;
+  });
 
   // ── Global drag-and-drop state ────────────────────────────────
   /** True while a drag is active anywhere over the tool surface. */
@@ -191,6 +350,7 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     setTimeout(async () => {
       try {
         this.storageService.loadAuditLogs();
+        this.sharedClipboardService.fetchMyClipboards();
 
         // Check if this browser has made an identity choice (Guest vs Existing Identity)
         if (!this.deviceService.hasChosenIdentity()) {
@@ -254,23 +414,294 @@ export class AirVaultComponent implements OnInit, OnDestroy {
       })
     );
 
-    // Check if opened via QR Code containing ?pin=123456
+    // Check if opened via Standalone Shareable Clipboard link (:clipboardId) or Invitation (:invitationId)
     this.subs.push(
-      this.route.queryParams.subscribe(params => {
-        const rawPin = params['pin'];
-        if (rawPin) {
-          const match = String(rawPin).match(/\b\d{6}\b/) || String(rawPin).match(/\d{6}/);
-          if (match) {
-            const pin = match[0];
-            AirVaultLogger.info(`[AirHold QR Auto-Pair] 📱 Opened via QR code with PIN [${pin.slice(0, 2)}****]. Initiating automatic handshake...`);
-            this.syncService.pairWithPin(pin, this.deviceService.currentDevice().name);
+      this.route.paramMap.pipe(
+        switchMap(params => {
+          const invitationId = params.get('invitationId');
+          if (invitationId) {
+            // Use the new public preview endpoint first — no auth required.
+            // It returns the correct status (VALID / EXPIRED / REVOKED / etc.)
+            // and safe metadata so the inbox card renders correctly.
+            this.invitationService.previewInvitation(invitationId).subscribe({
+              next: (res) => {
+                if (!res?.data) return;
+                const preview = res.data;
+
+                if (preview.status === 'VALID' && preview.clipboardId) {
+                  // Build a minimal InvitationDto from the preview so the inbox
+                  // can render the accept/decline card without an authenticated call.
+                  const syntheticInvite = {
+                    id: invitationId,
+                    clipboardId: preview.clipboardId,
+                    clipboardTitle: preview.clipboardTitle || 'Shared Clipboard',
+                    inviterUserId: preview.inviterUsername || '',
+                    inviteType: (preview.inviteType || 'LINK') as 'USERNAME' | 'LINK',
+                    targetUsername: preview.targetUsernameMasked,
+                    status: 'PENDING' as const,
+                    accessLevel: (preview.accessLevel || 'read-only') as 'read-only' | 'read-write',
+                    usedCount: 0,
+                    createdAt: new Date().toISOString(),
+                    expiresAt: preview.expiresAt || new Date(Date.now() + 7 * 86400000).toISOString(),
+                    inviteUrl: `/invite/${invitationId}`,
+                    isValid: true
+                  };
+
+                  this.invitationService.pendingInbox.update(prev => {
+                    if (prev.some(inv => inv.id === syntheticInvite.id)) return prev;
+                    return [syntheticInvite, ...prev];
+                  });
+
+                  // Open the inbox drawer so the user immediately sees the card
+                  this.invitationService.toggleInbox(true);
+                } else if (preview.status === 'EXPIRED') {
+                  this.uiStore.triggerToast('⏰ This invitation link has expired.');
+                } else if (preview.status === 'REVOKED') {
+                  this.uiStore.triggerToast('🚫 This invitation has been revoked by the sender.');
+                } else if (preview.status === 'EXHAUSTED') {
+                  this.uiStore.triggerToast('This invitation link has already been used to its maximum.');
+                } else if (preview.status === 'NOT_FOUND' || preview.status === 'CLIPBOARD_GONE') {
+                  this.uiStore.triggerToast('❓ Invitation not found or the clipboard no longer exists.');
+                }
+              },
+              error: () => {
+                this.uiStore.triggerToast('Failed to load invitation details. Please try again.');
+              }
+            });
           }
+
+          const clipboardId = params.get('clipboardId');
+          if (clipboardId) {
+            // If it matches own board ID, return to regular view
+            if (clipboardId === this.sharedClipboardService.currentClipboardId()) {
+              this.sharedClipboardService.exitSharedView();
+              return of(null);
+            }
+            // If paired to this owner, return to regular view
+            const isPaired = this.deviceStore.pairedDevices().some(d => d.username === clipboardId || d.id === clipboardId);
+            if (isPaired) {
+              this.sharedClipboardService.exitSharedView();
+              return of(null);
+            }
+            // Fetch shared clipboard from backend
+            return this.sharedClipboardService.fetchSharedClipboard(clipboardId);
+          } else {
+            this.sharedClipboardService.exitSharedView();
+            return of(null);
+          }
+        })
+      ).subscribe(shared => {
+        if (shared) {
+          this.cdr.markForCheck();
         }
+      })
+    );
+
+    // Initial sync of local clipboard to backend for shareable link availability
+    setTimeout(() => {
+      if (!this.sharedClipboardService.isViewingSharedLink()) {
+        this.sharedClipboardService.syncMyClipboard(this.storageService.items());
+      }
+    }, 1500);
+
+    // Live availability check debounce for editable clipboard slug
+    this.subs.push(
+      this.slugDebounceSubject.pipe(
+        debounceTime(350),
+        distinctUntilChanged(),
+        switchMap(slug => {
+          if (!slug || slug.length < 3) {
+            return of({ available: false, message: 'Must be 3–32 characters' });
+          }
+          return this.sharedClipboardService.checkSlugAvailability(slug);
+        })
+      ).subscribe(res => {
+        this.isCheckingSlug.set(false);
+        this.slugCheckResult.set(res);
+        this.cdr.markForCheck();
       })
     );
 
     // Notify host shell that tool is mounted and ready
     this.sdk.ready({ version: '1.0.0', capabilities: ['e2ee', 'p2p', 'clipboard'] });
+  }
+
+  // ── Clipboard Slug Actions ─────────────────────────────────────
+
+  startEditingSlug(event?: Event) {
+    if (event) event.stopPropagation();
+    if (this.sharedClipboardService.isViewingSharedLink()) return;
+    this.editingSlugValue.set(this.sharedClipboardService.currentClipboardId());
+    this.slugCheckResult.set({ available: true, message: 'Current ID' });
+    this.isEditingClipboardId.set(true);
+    setTimeout(() => {
+      if (this.slugEditInput?.nativeElement) {
+        this.slugEditInput.nativeElement.focus();
+        this.slugEditInput.nativeElement.select();
+      }
+    }, 50);
+  }
+
+  cancelEditingSlug() {
+    this.isEditingClipboardId.set(false);
+    this.slugCheckResult.set(null);
+    this.isCheckingSlug.set(false);
+  }
+
+  onSlugInputChanged(value: string) {
+    const sanitized = value.toLowerCase().replace(/[^a-z0-9-_]/g, '').slice(0, 32);
+    this.editingSlugValue.set(sanitized);
+    this.slugDebounceSubject.next(sanitized);
+  }
+
+  onSlugInputKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      this.saveSlugRename();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      this.cancelEditingSlug();
+    }
+  }
+
+  async saveSlugRename() {
+    const slug = this.editingSlugValue().trim();
+    if (!slug || slug.length < 3) {
+      this.uiStore.triggerToast('⚠️ Clipboard ID must be at least 3 characters');
+      return;
+    }
+    if (this.slugCheckResult() && !this.slugCheckResult()?.available) {
+      this.uiStore.triggerToast('⚠️ This clipboard ID is already taken');
+      return;
+    }
+
+    this.isSavingSlug.set(true);
+    const result = await this.sharedClipboardService.renameClipboard(slug);
+    this.isSavingSlug.set(false);
+
+    if (result && result.success) {
+      this.isEditingClipboardId.set(false);
+      this.uiStore.triggerToast(`✨ Clipboard ID updated to #${slug}`);
+    } else {
+      this.uiStore.triggerToast(`⚠️ ${result?.error || 'Failed to update clipboard ID'}`);
+    }
+  }
+
+  // ── Multi-Clipboard Collaborator Dropdown Switcher Actions ───
+
+  toggleClipboardDropdown(event?: Event) {
+    if (event) event.stopPropagation();
+    const next = !this.showClipboardDropdown();
+    this.showClipboardDropdown.set(next);
+    if (!next) {
+      this.activeBoardMenuId.set(null);
+    }
+  }
+
+  closeClipboardDropdown() {
+    this.showClipboardDropdown.set(false);
+    this.activeBoardMenuId.set(null);
+  }
+
+  async selectClipboard(board: { id: string; isAdmin: boolean; title: string }) {
+    this.closeClipboardDropdown();
+    const myId = this.sharedClipboardService.currentClipboardId();
+
+    if (board.id === myId) {
+      this.sharedClipboardService.exitSharedView();
+      this.uiStore.triggerToast(`🏠 Switched to your primary clipboard (#${myId})`);
+    } else {
+      this.uiStore.triggerToast(`🔄 Loading @${board.id}'s clipboard...`);
+      const res = await this.sharedClipboardService.fetchSharedClipboard(board.id);
+      if (res) {
+        this.uiStore.triggerToast(`📋 Switched to @${board.id}'s clipboard`);
+      } else {
+        this.uiStore.triggerToast(`⚠️ Unable to connect to @${board.id}'s clipboard`);
+      }
+    }
+  }
+
+  copySpecificClipboardLink(boardId: string, event?: Event) {
+    if (event) event.stopPropagation();
+    const url = this.sharedClipboardService.getShareableUrl(boardId);
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        this.uiStore.triggerToast(`📋 Link for #${boardId} copied to clipboard!`);
+      });
+    }
+  }
+
+  openShareForClipboard(boardId: string, event?: Event) {
+    if (event) event.stopPropagation();
+    this.closeClipboardDropdown();
+    this.uiStore.showShareLinkModal.set(true);
+  }
+
+  startEditingSpecificSlug(boardId: string, isAdmin: boolean, event?: Event) {
+    if (event) event.stopPropagation();
+    if (!isAdmin) {
+      this.uiStore.triggerToast('🔒 Only the clipboard admin/owner can rename this board');
+      return;
+    }
+    this.closeClipboardDropdown();
+    this.startEditingSlug();
+  }
+
+  copyClipboardSlugUrl(event?: Event) {
+    if (event) event.stopPropagation();
+    const url = this.sharedClipboardService.getShareableUrl();
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        this.isSlugCopied.set(true);
+        this.uiStore.triggerToast('📋 Shareable link copied to clipboard!');
+        setTimeout(() => {
+          this.isSlugCopied.set(false);
+          this.cdr.markForCheck();
+        }, 2000);
+      });
+    }
+  }
+
+  openShareLinkModal() {
+    this.uiStore.showShareLinkModal.set(true);
+  }
+
+  openInviteModal() {
+    this.invitationService.openInviteModal(this.sharedClipboardService.currentClipboardId());
+  }
+
+  openCreateClipboardModal() {
+    this.closeClipboardDropdown();
+    this.isCreateModalOpen.set(true);
+  }
+
+  closeCreateClipboardModal() {
+    this.isCreateModalOpen.set(false);
+  }
+
+  async onClipboardCreated(board: any) {
+    this.isCreateModalOpen.set(false);
+    if (board && board.id) {
+      await this.selectClipboard({ id: board.id, isAdmin: true, title: board.title || `#${board.id}` });
+    }
+  }
+
+  async deleteCreatedBoard(boardId: string, event?: Event) {
+    if (event) event.stopPropagation();
+    this.closeClipboardDropdown();
+
+    const confirmed = confirm(`Are you sure you want to delete clipboard #${boardId}? This will free up 1 of your 5 clipboard slots.`);
+    if (!confirmed) return;
+
+    const res = await this.sharedClipboardService.deleteCreatedClipboard(boardId);
+    if (res.success) {
+      this.uiStore.triggerToast(`🗑️ Clipboard #${boardId} deleted`);
+      if (this.sharedClipboardService.activeClipboardId() === boardId) {
+        this.sharedClipboardService.exitSharedView();
+      }
+    } else {
+      this.uiStore.triggerToast(`⚠️ ${res.error || 'Failed to delete clipboard'}`);
+    }
   }
 
   ngOnDestroy() {
@@ -297,6 +728,35 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     lineBlameMap?: LineBlameEntry[];
     options?: { tag?: string; customCategory?: string; retentionTtlMs?: number; byteSize?: number };
   }) {
+    // If viewing a shared link as guest, contribute item to shared clipboard
+    if (this.sharedClipboardService.isViewingSharedLink()) {
+      const shared = this.sharedClipboardService.sharedClipboard();
+      if (!shared || !this.sharedClipboardService.canContribute()) {
+        this.uiStore.triggerToast('🔒 Read-only clipboard — cannot add items');
+        return;
+      }
+      const classified = this.clipboardService.classify(event.text, event.filename);
+      const curDev = this.deviceService.currentDevice();
+      const guestItem: AirVaultItem = {
+        id: 'item_' + Math.random().toString(36).substring(2, 11),
+        content: classified,
+        senderDeviceId: curDev.id,
+        senderDeviceName: curDev.username ? `@${curDev.username.replace(/^@/, '')}` : 'Guest Visitor',
+        senderDeviceType: 'guest',
+        timestamp: Date.now(),
+        isPinned: false,
+        deliveryStatus: 'delivered',
+        tag: event.options?.tag
+      };
+      const success = await this.sharedClipboardService.addItemToShared(shared.id, guestItem);
+      if (success) {
+        this.uiStore.triggerToast('⚡ Item added to shared clipboard');
+      } else {
+        this.uiStore.triggerToast('⚠️ Failed to add item to shared clipboard');
+      }
+      return;
+    }
+
     let itemIdToUse = event.existingItemId;
     if (!itemIdToUse) {
       const classified = this.clipboardService.classify(event.text, event.filename);
@@ -326,6 +786,9 @@ export class AirVaultComponent implements OnInit, OnDestroy {
       syncId,
       event.options
     );
+
+    // Sync own clipboard to backend for shareable link freshness
+    this.sharedClipboardService.syncMyClipboard(this.storageService.items());
 
     // Check connected peers to track delivery confirmation
     const curDev = this.deviceService.currentDevice();
@@ -406,10 +869,15 @@ export class AirVaultComponent implements OnInit, OnDestroy {
 
 
   onLiveTextChange(event: { text: string; lineBlameMap?: LineBlameEntry[] } | string) {
+    const text = typeof event === 'string' ? event : event.text;
     if (typeof event === 'string') {
       this.syncService.broadcastLiveText(event);
     } else {
       this.syncService.broadcastLiveText(event.text, event.lineBlameMap);
+    }
+    // Auto-advance tour step "Send Anything" when the user first enters content
+    if (text.length > 0) {
+      this.tourService.onComposerHasContent();
     }
   }
 
@@ -448,8 +916,16 @@ export class AirVaultComponent implements OnInit, OnDestroy {
   onConfirmClearActiveClipboard() {
     this.uiStore.showClearActiveModal.set(false);
     const count = this.storageService.items().length;
-    const cleared = this.storageService.clearActiveClipboardLocally();
-    this.uiStore.triggerToast(`✓ Cleared ${cleared} item${cleared > 1 ? 's' : ''} from local clipboard`);
+    const gridEl = document.querySelector('.vault-card-grid') as HTMLElement;
+    if (gridEl && count > 0) {
+      this.motionService.animateAllTilesErase(gridEl, () => {
+        const cleared = this.storageService.clearActiveClipboardLocally();
+        this.uiStore.triggerToast(`✓ Cleared ${cleared} item${cleared > 1 ? 's' : ''} from local clipboard`);
+      });
+    } else {
+      const cleared = this.storageService.clearActiveClipboardLocally();
+      this.uiStore.triggerToast(`✓ Cleared ${cleared} item${cleared > 1 ? 's' : ''} from local clipboard`);
+    }
   }
 
   onDeviceAdded(device: AirVaultDevice) {
@@ -538,6 +1014,24 @@ export class AirVaultComponent implements OnInit, OnDestroy {
       ? `🔐 Logged out & erased data on ${dev?.name || 'Remote Device'}`
       : `🔐 Logged out AirVault instance from ${dev?.name || 'Remote Device'}`;
     this.uiStore.triggerToast(msg);
+  }
+
+  async onSignOutCurrentDevice(event: { purgeLocalData: boolean }) {
+    this.uiStore.showDeviceDrawer.set(false);
+    const prevUser = this.deviceService.currentDevice().username || 'user';
+    
+    // 1. Invalidate session server-side & disconnect socket
+    this.deviceService.logoutCurrentDevice().subscribe();
+
+    // 2. Clear client-side cache / storage
+    await this.storageService.signOut(event.purgeLocalData);
+
+    // 3. Prompt user with Identity Login / Onboarding screen
+    this.uiStore.showIdentityOnboardingModal.set(true);
+    this.uiStore.triggerToast(event.purgeLocalData 
+      ? `🚪 Signed out of @${prevUser} and removed local cached data.`
+      : `🚪 Signed out of @${prevUser}. Local cache preserved.`
+    );
   }
 
   onDeviceRename(event: { deviceId: string; newName: string }) {
@@ -697,12 +1191,21 @@ export class AirVaultComponent implements OnInit, OnDestroy {
   }
 
   onClearAllItems() {
-    this.clipboardStore.clearAll();
-    this.uiStore.triggerToast(`✓ Vault history cleared`);
+    const gridEl = document.querySelector('.vault-card-grid') as HTMLElement;
+    if (gridEl && this.clipboardStore.items().length > 0) {
+      this.motionService.animateAllTilesErase(gridEl, () => {
+        this.clipboardStore.clearAll();
+        this.uiStore.triggerToast(`✓ Vault history cleared`);
+      });
+    } else {
+      this.clipboardStore.clearAll();
+      this.uiStore.triggerToast(`✓ Vault history cleared`);
+    }
   }
 
   onTtlChange(ttlMs: number) {
-    this.storageService.retentionTtlMs.set(ttlMs);
+    this.storageService.setTtl(ttlMs);
+    this.prefService.updatePref('retentionTtlMs', ttlMs);
     this.uiStore.triggerToast(`⚡ Vault retention policy updated`);
   }
 
@@ -710,6 +1213,11 @@ export class AirVaultComponent implements OnInit, OnDestroy {
     this.syncService.lastPairedDevice.set(null);
     this.deviceStore.generatePairingPin();
     this.uiStore.showPairingModal.set(true);
+  }
+
+  onToggleSyncDevice(deviceId: string) {
+    this.deviceStore.toggleSyncTarget(deviceId);
+    this.tourService.onDeviceToggled();
   }
 
   onSyncConsentAccept(device: AirVaultDevice | null) {
@@ -793,6 +1301,9 @@ export class AirVaultComponent implements OnInit, OnDestroy {
       if (!target.closest('.av-filter-popover') && !target.closest('.filter-popover-anchor') && !target.closest('.filter-trigger-btn')) {
         this.closeFilterPopover();
       }
+    }
+    if (this.showClipboardDropdown() && !target.closest('.av-clipboard-dropdown-anchor')) {
+      this.closeClipboardDropdown();
     }
   }
 

@@ -34,17 +34,44 @@ public class AirVaultDeviceService {
     private final AirVaultAuditService auditService;
 
     /**
-     * Returns all non-revoked devices for the given user.
+     * Returns all non-revoked devices for the given user/identity.
+     * Prevents leaking all devices across the database.
      */
     @Transactional(readOnly = true)
-    public List<AirVaultDeviceDto> getDevices(UUID userId) {
-        if (userId == null) {
-            return repo.findAll().stream()
-                    .filter(d -> !"revoked".equals(d.getStatus()))
-                    .map(this::toDto).toList();
+    public List<AirVaultDeviceDto> getDevices(UUID userId, String rawUsername, String clientDeviceId) {
+        if (userId != null) {
+            return repo.findByUserIdAndStatusNot(userId, "revoked")
+                    .stream().map(this::toDto).toList();
         }
-        return repo.findByUserIdAndStatusNot(userId, "revoked")
-                .stream().map(this::toDto).toList();
+
+        if (rawUsername != null && !rawUsername.isBlank()) {
+            String clean = rawUsername.trim().replace("@", "").toLowerCase();
+            Optional<AirVaultIdentity> identOpt = identityRepository.findByUsernameIgnoreCase(clean);
+            if (identOpt.isPresent()) {
+                return repo.findByIdentityAndStatusNot(identOpt.get(), "revoked")
+                        .stream().map(this::toDto).toList();
+            }
+            return repo.findByUsernameIgnoreCaseAndStatusNot(clean, "revoked")
+                    .stream().map(this::toDto).toList();
+        }
+
+        if (clientDeviceId != null && !clientDeviceId.isBlank()) {
+            Optional<AirVaultDevice> dev = repo.findByClientDeviceIdAndStatusNot(clientDeviceId, "revoked");
+            if (dev.isPresent()) {
+                if (dev.get().getIdentity() != null) {
+                    return repo.findByIdentityAndStatusNot(dev.get().getIdentity(), "revoked")
+                            .stream().map(this::toDto).toList();
+                }
+                return List.of(toDto(dev.get()));
+            }
+        }
+
+        return List.of();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AirVaultDeviceDto> getDevices(UUID userId) {
+        return getDevices(userId, null, null);
     }
 
     /**

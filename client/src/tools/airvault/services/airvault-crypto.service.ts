@@ -28,7 +28,11 @@ export class AirVaultCryptoService {
   private async initCrypto() {
     try {
       if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
-        // Derive shared AES-GCM-256 workspace key using PBKDF2 from shared constellation salt
+        // NOTE: Shared-clipboard content is encrypted in transit and stored on the server until expiry.
+        // TODO: Planned fix for full zero-knowledge End-to-End Encryption (E2EE):
+        // Replace this static workspace passphrase with a random, per-clipboard 256-bit AES key embedded
+        // in the client-side URL hash fragment (e.g. /c/<clipboardId>#key=<random-key>).
+        // The hash fragment is never transmitted to the backend server, ensuring true zero-knowledge encryption.
         const encoder = new TextEncoder();
         const baseKeyMaterial = await window.crypto.subtle.importKey(
           'raw',

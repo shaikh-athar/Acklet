@@ -76,7 +76,11 @@
 </div>
 
 <!-- ── Redesigned Smart Composer Input Bar (Bottom-Anchored) ── -->
-<div class="chat-composer-bar" [class.is-expanded]="isExpanded()">
+<div class="chat-composer-bar" [class.is-expanded]="isExpanded()" data-tour="composer-bar">
+
+  @if (sharedClipboardService.isViewingSharedLink()) {
+    <app-airvault-shared-banner></app-airvault-shared-banner>
+  } @else {
 
   @if (isLargePayload() && !forceFullFidelity()) {
   <app-large-input-notice [title]="'Large payload detected (' + formattedPayloadSize() + ')'"
@@ -86,7 +90,7 @@
   }
 
   <!-- Ghost text suggestion dock (Placed cleanly above composer row) -->
-  @if (ghostSuggestion()) {
+  @if (isGhostSuggestionVisible()) {
   <div class="ghost-floating-dock" role="region" aria-label="Clipboard suggestion">
     <div class="ghost-dock-pill">
       <div class="ghost-dock-lead">
@@ -520,7 +524,7 @@
             <div class="popover-options-list">
               <button type="button" class="popover-option-item" [class.selected]="perItemRetentionTtl() === null"
                 (click)="setPerItemRetention(null, $event)">
-                <span class="opt-label">Default (7 Days)</span>
+                <span class="opt-label">{{ defaultRetentionLabel() }}</span>
                 <span class="opt-desc">Standard auto-purge retention</span>
                 @if (perItemRetentionTtl() === null) {
                 <app-icon name="check" class="icon-xs text-accent"></app-icon>
@@ -662,7 +666,8 @@
           [disabled]="!canSend()"
           [attr.data-tooltip]="canSend() ? ('Beam to vault · ' + shortcutService.formatShortcut('composer-send')) : (stagedAttachments().length > 0 ? 'Waiting for resources to upload…' : null)"
           data-tooltip-pos="left"
-          aria-label="Beam item to AirVault">
+          aria-label="Beam item to AirVault"
+          data-tour="send-btn">
           <app-icon name="rocket" class="icon-sm"></app-icon>
         </button>
 
@@ -681,5 +686,7 @@
       <span class="paste-loader-sub">Chunked AES encryption · {{ pasteProgress() }}%</span>
     </div>
   </div>
+  }
+
   }
 </div>

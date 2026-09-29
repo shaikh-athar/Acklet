@@ -135,7 +135,9 @@ export class AirVaultDeviceService {
   }
 
   fetchRegisteredSessions() {
-    this.http.get<any>(this.baseUrl).pipe(
+    const cur = this.currentDevice();
+    const query = `?username=${encodeURIComponent(cur.username || '')}&clientDeviceId=${encodeURIComponent(cur.id)}`;
+    this.http.get<any>(this.baseUrl + query).pipe(
       catchError(() => of(null))
     ).subscribe(res => {
       if (res && res.data && Array.isArray(res.data)) {
@@ -741,8 +743,39 @@ export class AirVaultDeviceService {
       catchError(() => of(null))
     ).subscribe(() => {
       this.fetchRegisteredSessions();
-
     });
+  }
+
+  /**
+   * Complete Logout of Current Device:
+   * Invalidates token server-side, clears local storage state, removes paired peers,
+   * disconnects WebSocket connection, and resets device identity.
+   */
+  logoutCurrentDevice(): Observable<any> {
+    const cur = this.currentDevice();
+    const logoutUrl = getAirVaultApiUrl(`/api/v1/airvault/auth/logout?clientDeviceId=${encodeURIComponent(cur.id)}&username=${encodeURIComponent(cur.username || '')}`);
+    
+    // Disconnect WebSocket
+    this.wsTransport.disconnect();
+
+    // Clear local identity storage
+    try {
+      localStorage.removeItem('acklet_airvault_identity_chosen');
+      localStorage.removeItem('acklet_airvault_username');
+      localStorage.removeItem('acklet_airvault_keyword');
+      localStorage.removeItem('acklet_airvault_ephemeral_pin');
+      localStorage.removeItem('acklet_airvault_guest_token');
+      localStorage.removeItem('acklet_airvault_peers');
+      localStorage.removeItem('acklet_airvault_self_custom');
+    } catch {}
+
+    // Reset local in-memory peers
+    this.pairedDevices.set([]);
+    this.registeredSessions.set([]);
+
+    return this.http.post<any>(logoutUrl, {}).pipe(
+      catchError(() => of({ success: true }))
+    );
   }
 
   /**

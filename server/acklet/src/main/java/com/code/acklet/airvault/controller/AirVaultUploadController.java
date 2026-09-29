@@ -25,17 +25,30 @@ import java.util.UUID;
 @RequestMapping("/api/v1/airvault")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "AirVault File Upload Sessions", description = "Server-authoritative chunked uploads, 1 GB cap enforcement, 500 MB single file limits, and 7-day auto-expiry")
+@Tag(name = "AirVault File Upload Sessions", description = "Server-authoritative chunked uploads, 5 GB cap enforcement, 1 GB single file limits, and 7-day auto-expiry")
 public class AirVaultUploadController {
 
     private final AirVaultUploadService uploadService;
     private final AirVaultStorageAdapter storageAdapter;
+    private final com.code.acklet.airvault.security.AirVaultAuthorizationService authorizationService;
+
+    private com.code.acklet.airvault.security.AirVaultPrincipal getPrincipal() {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof com.code.acklet.airvault.security.AirVaultPrincipal principal) {
+            return principal;
+        }
+        return null;
+    }
 
     @PostMapping("/clipboards/{clipboardId}/uploads")
     @Operation(summary = "Initiate Upload Session", description = "Authoritative server-side check against 500 MB single file and 1 GB clipboard limit before initiating session")
     public ResponseEntity<ApiResponse<InitiateUploadResponse>> initiateUpload(
             @PathVariable String clipboardId,
             @Valid @RequestBody InitiateUploadRequest request) {
+        if (!authorizationService.canWrite(getPrincipal(), clipboardId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Unauthorized or read-only clipboard", "403"));
+        }
         InitiateUploadResponse res = uploadService.initiateUpload(clipboardId, request);
         return ResponseEntity.ok(ApiResponse.success(res, "Upload session initiated"));
     }
@@ -69,6 +82,10 @@ public class AirVaultUploadController {
     @GetMapping("/clipboards/{clipboardId}/usage")
     @Operation(summary = "Get Clipboard Usage", description = "Authoritative database calculation of total stored bytes vs 1 GB cap")
     public ResponseEntity<ApiResponse<ClipboardUsageResponse>> getUsage(@PathVariable String clipboardId) {
+        if (!authorizationService.canRead(getPrincipal(), clipboardId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Unauthorized to access clipboard", "403"));
+        }
         ClipboardUsageResponse res = uploadService.getClipboardUsage(clipboardId);
         return ResponseEntity.ok(ApiResponse.success(res, "Clipboard usage computed"));
     }
@@ -76,6 +93,10 @@ public class AirVaultUploadController {
     @DeleteMapping("/clipboards/{clipboardId}")
     @Operation(summary = "Reset Clipboard Storage", description = "Deletes all stored files and sessions for a clipboard, resetting usage to 0")
     public ResponseEntity<ApiResponse<Void>> resetClipboard(@PathVariable String clipboardId) {
+        if (!authorizationService.canWrite(getPrincipal(), clipboardId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Unauthorized or read-only clipboard", "403"));
+        }
         uploadService.resetClipboard(clipboardId);
         return ResponseEntity.ok(ApiResponse.success(null, "Clipboard storage reset successfully"));
     }
@@ -85,6 +106,10 @@ public class AirVaultUploadController {
     public ResponseEntity<ApiResponse<BatchStatusResponse>> getBatchStatus(
             @PathVariable String clipboardId,
             @PathVariable String batchId) {
+        if (!authorizationService.canRead(getPrincipal(), clipboardId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Unauthorized to access clipboard", "403"));
+        }
         BatchStatusResponse res = uploadService.getBatchStatus(clipboardId, batchId);
         return ResponseEntity.ok(ApiResponse.success(res, "Batch status retrieved"));
     }
@@ -95,6 +120,10 @@ public class AirVaultUploadController {
             @PathVariable String clipboardId,
             @PathVariable String batchId,
             jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+        if (!authorizationService.canRead(getPrincipal(), clipboardId)) {
+            response.sendError(HttpStatus.FORBIDDEN.value(), "Unauthorized to access clipboard");
+            return;
+        }
         response.setContentType("application/zip");
         response.setHeader("Content-Disposition", "attachment; filename=\"batch_" + batchId + ".zip\"");
         uploadService.streamBatchZip(clipboardId, batchId, response.getOutputStream());
@@ -106,6 +135,10 @@ public class AirVaultUploadController {
             @PathVariable String clipboardId,
             @PathVariable String fileId,
             @RequestHeader(value = "Range", required = false) String rangeHeader) throws java.io.IOException {
+
+        if (!authorizationService.canRead(getPrincipal(), clipboardId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
 
         log.info("[AirVault Streaming] 📥 Incoming raw stream request for clipboardId='{}', fileId='{}', Range='{}'",
                 clipboardId, fileId, rangeHeader);

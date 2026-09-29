@@ -14,7 +14,7 @@ import { AirVaultDeviceService } from '../services/airvault-device.service';
         <div class="modal-header">
           <div class="header-badge">
             <app-icon name="shield-check" class="icon-sm text-green"></app-icon>
-            <h2>Zero-Knowledge Security Architecture</h2>
+            <h2>Security & Privacy Architecture</h2>
           </div>
           <button class="close-btn" (click)="close.emit()">
             <app-icon name="x" class="icon-xs"></app-icon>
@@ -37,8 +37,8 @@ import { AirVaultDeviceService } from '../services/airvault-device.service';
               <span class="session-value">AES-GCM-256 (96-bit IV)</span>
             </div>
             <div class="session-row">
-              <span class="session-label">Privacy Guarantee</span>
-              <span class="session-value text-green">100% In-Browser Execution</span>
+              <span class="session-label">Data Privacy</span>
+              <span class="session-value text-green">Encrypted in Transit · Auto-Expiry</span>
             </div>
           </div>
 
@@ -48,7 +48,7 @@ import { AirVaultDeviceService } from '../services/airvault-device.service';
             </div>
             <div class="pillar-text">
               <h3>Web Crypto API Keys</h3>
-              <p>Non-extractable ECDH P-256 key pairs are generated directly in your browser session. Private keys never touch any server or cloud database.</p>
+              <p>Cryptographic key pairs and derivation material run client-side in your browser instance for active session signaling.</p>
             </div>
           </div>
 
@@ -57,8 +57,8 @@ import { AirVaultDeviceService } from '../services/airvault-device.service';
               <app-icon name="lock" class="icon-sm text-cyan"></app-icon>
             </div>
             <div class="pillar-text">
-              <h3>AES-GCM-256 Encryption</h3>
-              <p>Every clipboard payload is encrypted client-side with a unique 96-bit IV before transmission over WebRTC DataChannels or BroadcastChannel.</p>
+              <h3>Encrypted Transport & Storage</h3>
+              <p>Content is encrypted in transit using TLS and AES-GCM. Shared link clipboards are retained on the server until their configurable expiration TTL.</p>
             </div>
           </div>
 
@@ -77,8 +77,8 @@ import { AirVaultDeviceService } from '../services/airvault-device.service';
               <app-icon name="database" class="icon-sm text-cyan"></app-icon>
             </div>
             <div class="pillar-text">
-              <h3>Local IndexedDB Persistence</h3>
-              <p>History items are stored locally in your browser storage with automatic TTL retention cleanup and 1-click irreversible data purge.</p>
+              <h3>Local IndexedDB & Expiry Cleanup</h3>
+              <p>History items are cached in your local browser storage with automatic TTL retention cleanup and 1-click irreversible data purge.</p>
             </div>
           </div>
         </div>

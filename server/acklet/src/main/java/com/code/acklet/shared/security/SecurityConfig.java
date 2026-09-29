@@ -27,6 +27,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final RateLimitingFilter rateLimitingFilter;
+    private final com.code.acklet.airvault.security.AirVaultSecurityFilter airVaultSecurityFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -76,7 +77,8 @@ public class SecurityConfig {
                 .permissionsPolicy(permissions -> permissions.policy("camera=(), microphone=(), geolocation=()"))
             )
             .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(airVaultSecurityFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

@@ -50,6 +50,7 @@ class AirVaultDualPathCleanupTest {
     @BeforeEach
     void setUp() {
         cleanupService = new AirVaultStorageCleanupService(
+                new com.code.acklet.airvault.config.AirVaultLimitsProperties(),
                 storageAdapter,
                 clipboardFileRepository,
                 uploadSessionRepository,
@@ -59,8 +60,6 @@ class AirVaultDualPathCleanupTest {
         );
 
         ReflectionTestUtils.setField(cleanupService, "filesDryRun", false);
-        ReflectionTestUtils.setField(cleanupService, "filesGraceDays", 7);
-        ReflectionTestUtils.setField(cleanupService, "filesRetentionDays", 7);
         ReflectionTestUtils.setField(cleanupService, "chunksDryRun", false);
         ReflectionTestUtils.setField(cleanupService, "chunksGraceHours", 2);
         ReflectionTestUtils.setField(cleanupService, "activeGraceMinutes", 30);

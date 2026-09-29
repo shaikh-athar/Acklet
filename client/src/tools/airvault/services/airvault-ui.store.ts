@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, computed } from '@angular/core';
 
 @Injectable({
   providedIn: 'root'
@@ -17,6 +17,7 @@ export class AirVaultUIStore {
   readonly showPrivacyModal = signal<boolean>(false);
   readonly showSettingsDrawer = signal<boolean>(false);
   readonly settingsDrawerInitialTab = signal<'general' | 'retention' | 'backup' | 'shortcuts'>('general');
+  readonly showShareLinkModal = signal<boolean>(false);
 
   openSettings(tab: 'general' | 'retention' | 'backup' | 'shortcuts' = 'general') {
     this.settingsDrawerInitialTab.set(tab);
@@ -34,6 +35,31 @@ export class AirVaultUIStore {
   readonly duplicateModalData = signal<{ matchedUsername: string; resourceSnippet?: string; category?: string; resourceItem?: any } | null>(null);
   readonly showSyncConsentModal = signal<boolean>(false);
   readonly syncConsentDevice = signal<any | null>(null);
+  readonly deviceToConfirmRemove = signal<any | null>(null);
+
+  /** Computed guard to check if any modal, drawer, or confirmation popup is currently open */
+  readonly isAnyModalOrDrawerOpen = computed<boolean>(() => {
+    return (
+      this.showPairingModal() ||
+      this.showIdentityOnboardingModal() ||
+      this.showIdentityMergeModal() ||
+      this.showDeviceDrawer() ||
+      this.showPrivacyModal() ||
+      this.showSettingsDrawer() ||
+      this.showShareLinkModal() ||
+      this.showEraseModal() ||
+      this.showHistoryModal() ||
+      this.showTipsModal() ||
+      this.showFeedbackModal() ||
+      this.showDeleteConfirmModal() ||
+      this.showClearActiveModal() ||
+      this.showDuplicateModal() ||
+      this.showSyncConsentModal() ||
+      this.showSyncModal() ||
+      !!this.previewModalItem() ||
+      !!this.deviceToConfirmRemove()
+    );
+  });
 
   // Multi-select Filter criteria signals
   readonly activeCategoryFilters = signal<string[]>([]); // ['text', 'code', 'json', ...]

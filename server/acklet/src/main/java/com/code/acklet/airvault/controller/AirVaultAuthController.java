@@ -97,6 +97,23 @@ public class AirVaultAuthController {
         return ResponseEntity.ok(ApiResponse.success(res, "Pairing state reconciled"));
     }
 
+    @PostMapping("/logout")
+    @Operation(summary = "Logout Device", description = "Invalidates session token in Redis, removes device presence, and marks device offline")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @RequestParam String clientDeviceId,
+            @RequestParam(required = false) String username,
+            HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        String token = null;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7).trim();
+        } else if (request.getParameter("token") != null) {
+            token = request.getParameter("token").trim();
+        }
+        authService.logout(token, clientDeviceId, username);
+        return ResponseEntity.ok(ApiResponse.success(null, "Logged out successfully"));
+    }
+
     @PostMapping("/erase-everything")
     @Operation(summary = "Erase Everything", description = "Permanently deletes user identity, invalidates sessions, and unpairs/revokes all linked devices")
     public ResponseEntity<ApiResponse<Void>> eraseEverything(

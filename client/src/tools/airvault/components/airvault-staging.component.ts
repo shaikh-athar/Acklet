@@ -25,8 +25,10 @@ import { AirVaultDocSyncService } from '../services/airvault-doc-sync.service';
 import { AirVaultShortcutService } from '../services/airvault-shortcut.service';
 import { WordUndoManager } from '../services/airvault-undo.manager';
 import { AirVaultPreferencesService } from '../services/airvault-preferences.service';
+import { AirVaultInvitationService } from '../services/airvault-invitation.service';
 import { AirVaultLogger } from '../services/airvault-sync-debug.service';
 import { AirVaultOperationStateService } from '../services/airvault-operation-state.service';
+import { AirVaultSharedClipboardService } from '../services/airvault-shared-clipboard.service';
 import {
   sendLog, markStart, markEnd, getMeasureMs,
   countStage, resetCounters, getExecutionCounts,
@@ -65,10 +67,12 @@ export interface StagedAttachment {
   verifiedObjectUrl?: string;
 }
 
+import { AirVaultSharedBannerComponent } from './airvault-shared-banner.component';
+
 @Component({
   selector: 'app-airvault-staging',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent, LargeInputNoticeComponent, AirVaultCardComponent, AirVaultHandoffBannerComponent, AirVaultActionPopoverComponent],
+  imports: [CommonModule, FormsModule, IconComponent, LargeInputNoticeComponent, AirVaultCardComponent, AirVaultHandoffBannerComponent, AirVaultActionPopoverComponent, AirVaultSharedBannerComponent],
   providers: [AirvaultRichEditorService],
   templateUrl: './airvault-staging.component.html',
   styleUrls: ['../airvault.shared.css', './airvault-staging.component.css'],
@@ -94,10 +98,12 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   public colorService = inject(AirVaultColorService);
   public blameService = inject(AirVaultBlameService);
   public uiStore = inject(AirVaultUIStore);
+  public invitationService = inject(AirVaultInvitationService);
   public cryptoService = inject(AirVaultCryptoService);
   public prefService = inject(AirVaultPreferencesService);
   public operationState = inject(AirVaultOperationStateService);
   public shortcutService = inject(AirVaultShortcutService);
+  public sharedClipboardService = inject(AirVaultSharedClipboardService);
   private ngZone = inject(NgZone);
   motion = inject(AirVaultMotionService);
 
@@ -388,7 +394,12 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   }
 
   /** Items sorted newest-first for the tile grid */
-  vaultItems = computed(() => this.storageService.items());
+  vaultItems = computed(() => {
+    if (this.sharedClipboardService.isViewingSharedLink() && this.sharedClipboardService.sharedClipboard()) {
+      return this.sharedClipboardService.sharedClipboard()!.items || [];
+    }
+    return this.storageService.items();
+  });
   visibleItemCount = signal<number>(12);
   isLoadingMoreRailItems = signal<boolean>(false);
 
@@ -779,6 +790,19 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   tagDraft = signal<string>('');
   tagDraftColor = signal<string>('');
 
+  /** Dynamically resolves the global default retention policy label formatted for the dropdown */
+  defaultRetentionLabel = computed(() => {
+    const globalTtl = this.storageService.retentionTtlMs();
+    if (globalTtl === -1) return 'Default (Burn After Read)';
+    if (globalTtl === 0) return 'Default (Never Expire)';
+    if (globalTtl === 24 * 60 * 60 * 1000) return 'Default (24 Hours)';
+    if (globalTtl === 7 * 24 * 60 * 60 * 1000) return 'Default (7 Days)';
+    if (globalTtl === 30 * 24 * 60 * 60 * 1000) return 'Default (1 Month)';
+    if (globalTtl === 60 * 60 * 1000) return 'Default (1 Hour)';
+    if (globalTtl === 15 * 60 * 1000) return 'Default (15 Minutes)';
+    return `Default (${Math.round(globalTtl / (24 * 3600 * 1000))}d)`;
+  });
+
   /** Tracks briefly clicked toolbar button to trigger lively pulse feedback */
   clickedButtonId = signal<string | null>(null);
   private clickPulseTimer: any = null;
@@ -803,6 +827,9 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
   /** Computed signal that strictly gates the Send button until all staged attachments are fully READY */
   canSend = computed(() => {
+    if (this.sharedClipboardService.isViewingSharedLink() && !this.sharedClipboardService.canContribute()) {
+      return false;
+    }
     const atts = this.stagedAttachments();
     const text = this.stagedText();
     const hasText = text.trim().length > 0;
@@ -1184,7 +1211,17 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   }
 
   getRetentionLabel(ttl: number | null): string {
-    if (ttl === null) return 'Default (7d)';
+    if (ttl === null) {
+      const globalTtl = this.storageService.retentionTtlMs();
+      if (globalTtl === -1) return 'Default (Burn)';
+      if (globalTtl === 0) return 'Default (Never)';
+      if (globalTtl === 15 * 60 * 1000) return 'Default (15m)';
+      if (globalTtl === 60 * 60 * 1000) return 'Default (1h)';
+      if (globalTtl === 24 * 60 * 60 * 1000) return 'Default (24h)';
+      if (globalTtl === 7 * 24 * 60 * 60 * 1000) return 'Default (7d)';
+      if (globalTtl === 30 * 24 * 60 * 60 * 1000) return 'Default (1mo)';
+      return `Default (${Math.round(globalTtl / (24 * 3600 * 1000))}d)`;
+    }
     if (ttl === -1) return 'Burn after read';
     if (ttl === 0) return 'Never expire';
     if (ttl === 15 * 60 * 1000) return '15m';
@@ -1614,6 +1651,14 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   ghostPrefix = signal<string>('');
   isInputFocused = signal<boolean>(false);
 
+  /** Computed visibility for ghost suggestion pill: only shown in the normal clipboard view when no popup/modal/drawer is active */
+  isGhostSuggestionVisible = computed<boolean>(() => {
+    if (!this.ghostSuggestion()) return false;
+    if (this.uiStore.isAnyModalOrDrawerOpen()) return false;
+    if (this.invitationService.isInviteModalOpen() || this.invitationService.isInboxOpen()) return false;
+    return true;
+  });
+
   // Word-level Undo / Redo Manager
   private undoManager = new WordUndoManager(this.payloadText);
   canUndo = signal<boolean>(false);
@@ -1637,6 +1682,16 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
   private flipPending = false;
 
   constructor() {
+    // Dismiss ghost suggestion immediately whenever any modal, drawer, or popup opens
+    effect(() => {
+      const modalOpen = this.uiStore.isAnyModalOrDrawerOpen() || this.invitationService.isInviteModalOpen() || this.invitationService.isInboxOpen();
+      if (modalOpen) {
+        if (this.ghostSuggestion()) {
+          this.dismissGhostSuggestion();
+        }
+      }
+    });
+
     // Smooth FLIP layout animation: fires only when the ordered list of tile IDs changes.
     // Using displayedItemOrder (ID sequence) instead of displayedVaultItems (full objects)
     // prevents spurious animations on status/progress/sync-metadata updates.
@@ -2463,7 +2518,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     }
 
     // 3. Ghost suggestion key navigation
-    if (this.ghostSuggestion()) {
+    if (this.isGhostSuggestionVisible()) {
       if (e.key === 'Tab') {
         e.preventDefault();
         e.stopPropagation();
@@ -2485,6 +2540,12 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
 
   async checkClipboardForSuggestion(candidateText?: string) {
     try {
+      // 0. Do not suggest or show ghost pill if any modal, drawer, or popup is open
+      if (this.uiStore.isAnyModalOrDrawerOpen() || this.invitationService.isInviteModalOpen() || this.invitationService.isInboxOpen()) {
+        this.dismissGhostSuggestion();
+        return;
+      }
+
       // 1. Respect Auto-Capture on Focus state
       if (!this.prefService.prefs().autoCaptureOnFocus) {
         this.dismissGhostSuggestion();

@@ -135,6 +135,18 @@ public class AirVaultRedisTracker {
         return Boolean.TRUE.equals(redisTemplate.hasKey(SESSION_TOKEN_PREFIX + token));
     }
 
+    public void invalidateDeviceSession(String token) {
+        if (token == null || token.isBlank()) return;
+        String tokenKey = SESSION_TOKEN_PREFIX + token;
+        String val = redisTemplate.opsForValue().get(tokenKey);
+        if (val != null && val.contains(":")) {
+            String username = val.split(":")[0];
+            String userSessionsKey = USER_SESSIONS_PREFIX + username.toLowerCase().trim();
+            redisTemplate.opsForSet().remove(userSessionsKey, token);
+        }
+        redisTemplate.delete(tokenKey);
+    }
+
     public void invalidateAllUserSessions(String username) {
         String userSessionsKey = USER_SESSIONS_PREFIX + username.toLowerCase().trim();
         Set<String> tokens = redisTemplate.opsForSet().members(userSessionsKey);

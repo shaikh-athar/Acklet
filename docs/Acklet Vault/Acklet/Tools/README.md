@@ -25,7 +25,7 @@ Welcome to the **Acklet Tools Documentation Hub**. This directory documents the 
 
 ## 2. AirVault Overview
 
-**AirVault by Acklet** is a real-time, peer-to-peer cross-device clipboard synchronization platform with zero-knowledge End-to-End Encryption (E2EE), smart content classification, device pairing, and GSAP motion choreography.
+**AirVault by Acklet** is a real-time cross-device clipboard synchronization platform with encrypted transport, smart content classification, device pairing, and GSAP motion choreography.
 
 - **Primary URL**: `/tools/airvault`
 - **Component Root**: [client/src/tools/airvault/](file:///Users/ayaz/Acklet/client/src/tools/airvault/)

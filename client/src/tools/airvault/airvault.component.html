@@ -8,15 +8,212 @@
 
     <!-- ── Top Navbar ────────────────────────────────────────── -->
     <header class="av-navbar">
-      <!-- Left: Brand breadcrumb -->
+      <!-- Left: Brand breadcrumb with Editable Clipboard ID -->
       <div class="av-navbar-left">
         <div class="av-breadcrumb">
           <span class="root">Acklet</span>
           <span class="sep">/</span>
           <span class="brand-icon"><app-icon name="zap" class="icon-sm"></app-icon></span>
           <span class="name">AirVault</span>
+          <span class="sep">/</span>
+
+          <!-- Multi-Clipboard & Collaborators Dropdown Switcher Anchor -->
+          <div class="av-clipboard-dropdown-anchor" (click)="$event.stopPropagation()">
+            @if (!isEditingClipboardId()) {
+              <button 
+                type="button"
+                class="av-slug-chip" 
+                [class.is-shared]="sharedClipboardService.isViewingSharedLink()" 
+                [class.is-open]="showClipboardDropdown()"
+                (click)="toggleClipboardDropdown($event)"
+                [title]="'Current: #' + activeClipboardSlug() + ' • Click to switch boards or view collaborators'">
+                <span class="slug-icon">
+                  <app-icon [name]="sharedClipboardService.isViewingSharedLink() ? 'users' : 'clipboard'" class="icon-xxs"></app-icon>
+                </span>
+                <span class="slug-text">{{ activeClipboardSlug() }}</span>
+                
+                @if (sharedClipboardService.isViewingSharedLink()) {
+                  <span class="shared-tag">Shared</span>
+                }
+
+                <app-icon name="chevron-down" class="icon-xxs slug-chevron" [class.rotated]="showClipboardDropdown()"></app-icon>
+              </button>
+
+              <!-- Collaborator & Clipboard Dropdown Menu -->
+              @if (showClipboardDropdown()) {
+                <div class="av-clipboard-dropdown-menu" (click)="$event.stopPropagation()">
+                  <div class="dropdown-header">
+                    <span class="header-label">Switch Clipboard Board</span>
+                    <span class="header-badge" [class.badge-limit]="sharedClipboardService.myCreatedClipboards().length >= (limitsService.limits().maxClipboardsPerUser || 5)">
+                      {{ sharedClipboardService.myCreatedClipboards().length }} / {{ limitsService.limits().maxClipboardsPerUser || 5 }} Created
+                    </span>
+                  </div>
+
+                  <div class="boards-list">
+                    @for (board of availableClipboards(); track board.id) {
+                      <div 
+                        class="board-option-row" 
+                        [class.active-board]="board.isCurrent"
+                        (click)="selectClipboard(board)">
+                        
+                        <!-- Icon box -->
+                        <div class="board-icon-box" [class.admin-box]="board.isAdmin">
+                          <app-icon [name]="board.isAdmin ? 'shield' : 'users'" class="icon-xs"></app-icon>
+                        </div>
+
+                        <!-- Board Info -->
+                        <div class="board-info-col">
+                          <div class="board-name-row">
+                            <span class="board-name">{{ board.title }}</span>
+                            @if (board.isAdmin) {
+                              <span class="admin-pill">Admin</span>
+                            } @else {
+                              <span class="collab-pill">Collaborator</span>
+                            }
+                          </div>
+                          <div class="board-meta-row">
+                            <span class="board-slug">#{{ board.id }}</span>
+                            <span class="meta-dot">·</span>
+                            <span class="board-owner">&#64;{{ board.ownerUsername }}</span>
+                            @if (board.accessMode === 'read-only') {
+                              <span class="meta-dot">·</span>
+                              <span class="ro-tag">Read-Only</span>
+                            }
+                          </div>
+                        </div>
+
+                        <!-- Aside Flyout Sub-Dropdown Menu (Opens smoothly on row hover) -->
+                        <div 
+                          class="board-sub-dropdown-menu" 
+                          [class.is-open]="activeBoardMenuId() === board.id"
+                          (click)="$event.stopPropagation()">
+                          <!-- Option 1: Copy Link -->
+                          <button 
+                            type="button" 
+                            class="sub-menu-item" 
+                            (click)="copySpecificClipboardLink(board.id, $event); closeBoardSubMenu(); closeClipboardDropdown()">
+                            <app-icon name="copy" class="icon-xxs text-muted"></app-icon>
+                            <span>Copy Link</span>
+                          </button>
+
+                          <!-- Option 2: Share Clipboard -->
+                          <button 
+                            type="button" 
+                            class="sub-menu-item" 
+                            (click)="openShareForClipboard(board.id, $event); closeBoardSubMenu(); closeClipboardDropdown()">
+                            <app-icon name="share-2" class="icon-xxs text-muted"></app-icon>
+                            <span>Share Board</span>
+                          </button>
+
+                          <!-- Option 3: Edit / Rename (Admin/Owner only) -->
+                          @if (board.isAdmin) {
+                            <div class="sub-menu-divider"></div>
+                            <button 
+                              type="button" 
+                              class="sub-menu-item edit-item" 
+                              (click)="startEditingSpecificSlug(board.id, board.isAdmin, $event); closeBoardSubMenu(); closeClipboardDropdown()">
+                              <app-icon name="edit-2" class="icon-xxs text-indigo"></app-icon>
+                              <span>Rename ID (Admin)</span>
+                            </button>
+                          }
+
+                          <!-- Option 4: Delete Board (for custom created standalone boards) -->
+                          @if (board.isAdmin && board.id !== sharedClipboardService.currentClipboardId()) {
+                            <div class="sub-menu-divider"></div>
+                            <button 
+                              type="button" 
+                              class="sub-menu-item delete-item" 
+                              (click)="deleteCreatedBoard(board.id, $event); closeBoardSubMenu(); closeClipboardDropdown()">
+                              <app-icon name="trash-2" class="icon-xxs text-rose"></app-icon>
+                              <span>Delete Board</span>
+                            </button>
+                          }
+                        </div>
+
+                        <!-- Active Check indicator -->
+                        @if (board.isCurrent) {
+                          <div class="active-check">
+                            <app-icon name="check" class="icon-xs text-emerald"></app-icon>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+
+                  <!-- Footer: Create New Board & Invite Actions -->
+                  <div class="dropdown-footer">
+                    <button
+                      type="button"
+                      class="dropdown-footer-btn create-board-btn"
+                      (click)="openCreateClipboardModal()">
+                      <app-icon name="plus-circle" class="icon-xs text-cyan"></app-icon>
+                      <span>Create Standalone Clipboard</span>
+                      <span class="footer-limit-pill">
+                        {{ sharedClipboardService.myCreatedClipboards().length }}/{{ limitsService.limits().maxClipboardsPerUser || 5 }}
+                      </span>
+                    </button>
+                    <button type="button" class="dropdown-footer-btn" (click)="closeClipboardDropdown(); openInviteModal()">
+                      <app-icon name="user-plus" class="icon-xs text-indigo"></app-icon>
+                      <span>Invite Collaborators to Board</span>
+                    </button>
+                  </div>
+                </div>
+              }
+            } @else {
+            <!-- Inline Slug Editor -->
+            <div class="av-slug-editor" (click)="$event.stopPropagation()">
+              <span class="slug-prefix">c/</span>
+              <input
+                #slugEditInput
+                type="text"
+                class="slug-edit-input"
+                [ngModel]="editingSlugValue()"
+                (ngModelChange)="onSlugInputChanged($event)"
+                (keydown)="onSlugInputKeydown($event)"
+                placeholder="my-vault"
+                maxlength="32"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              
+              <!-- Availability status indicator -->
+              <div class="slug-status-indicator">
+                @if (isCheckingSlug()) {
+                  <app-icon name="loader" class="icon-xxs spin-icon text-accent"></app-icon>
+                } @else if (slugCheckResult()?.available) {
+                  <app-icon name="check-circle" class="icon-xxs text-emerald" title="Available!"></app-icon>
+                } @else if (slugCheckResult() && !slugCheckResult()?.available) {
+                  <app-icon name="alert-circle" class="icon-xxs text-rose" [title]="slugCheckResult()?.message || 'Unavailable'"></app-icon>
+                }
+              </div>
+
+              <!-- Save button -->
+              <button 
+                type="button"
+                class="slug-save-btn" 
+                [disabled]="isSavingSlug() || (slugCheckResult() && !slugCheckResult()?.available)" 
+                (click)="saveSlugRename()"
+                title="Save ID (Enter)">
+                @if (isSavingSlug()) {
+                  <app-icon name="loader" class="icon-xxs spin-icon"></app-icon>
+                } @else {
+                  <app-icon name="check" class="icon-xxs"></app-icon>
+                }
+              </button>
+
+              <!-- Cancel button -->
+              <button 
+                type="button"
+                class="slug-cancel-btn" 
+                (click)="cancelEditingSlug()" 
+                title="Cancel (Esc)">
+                <app-icon name="x" class="icon-xxs"></app-icon>
+              </button>
+            </div>
+          }
         </div>
       </div>
+    </div>
 
       <!-- Center: Permanent Centered Search Bar -->
       <div class="av-navbar-center">
@@ -165,8 +362,20 @@
         </div>
       </div>
 
-      <!-- Right: Refresh, Filter, Vault settings -->
+      <!-- Right: Notifications, Refresh, Filter, Vault settings -->
       <div class="av-navbar-right">
+        <!-- Collaborator Invitations Inbox Bell -->
+        <button
+          class="av-btn-icon inbox-bell-btn"
+          [class.has-notifications]="invitationService.unreadInviteCount() > 0"
+          (click)="invitationService.toggleInbox()"
+          data-tooltip="Collaborator Invitations Inbox">
+          <app-icon name="bell" class="icon-xs"></app-icon>
+          @if (invitationService.unreadInviteCount() > 0) {
+            <span class="unread-badge-dot">{{ invitationService.unreadInviteCount() }}</span>
+          }
+        </button>
+
         <!-- 1. Refresh clipboard items -->
         <button
           class="av-btn-icon"
@@ -354,7 +563,7 @@
         </div>
 
         <!-- Vault settings -->
-        <button class="av-btn-icon" (click)="uiStore.showSettingsDrawer.set(true)" [attr.data-tooltip]="'Vault settings · ?'">
+        <button class="av-btn-icon" (click)="uiStore.showSettingsDrawer.set(true)" [attr.data-tooltip]="'Vault settings'">
           <app-icon name="settings" class="icon-xs"></app-icon>
         </button>
       </div>
@@ -395,11 +604,11 @@
     }
     <div class="av-main-body">
       <!-- Left device rail (50px) -->
-      <div class="av-rail">
+      <div class="av-rail" data-tour="av-rail">
         <app-airvault-constellation [currentDevice]="deviceStore.currentDevice()"
           [pairedDevices]="deviceStore.pairedDevices()" [selectedTargetId]="deviceStore.selectedTargetId()"
           (selectTarget)="deviceStore.setSelectedTarget($event)"
-          (toggleSync)="deviceStore.toggleSyncTarget($event)"
+          (toggleSync)="onToggleSyncDevice($event)"
           (openPairingModal)="openPairing()"
           (openDeviceManager)="uiStore.showDeviceDrawer.set(true)"
           (syncNow)="onManualDeviceSync($event)"
@@ -442,7 +651,7 @@
 
     <!-- ── Tool Workspace Footer Bar ─────────────────────────── -->
     <app-airvault-footer
-      [currentTheme]="prefService.theme()"
+      [currentTheme]="corePrefService.theme()"
       [autoCaptureEnabled]="clipboardStore.autoCaptureEnabled()"
       [totalBytes]="storageService.totalBytes()"
       [activeBytes]="storageService.activeBytes()"
@@ -450,7 +659,9 @@
       (historyClick)="openHistory()"
       (toggleAutoCapture)="clipboardStore.toggleAutoCapture()"
       (pairDeviceClick)="openPairing()"
-      (toggleTheme)="prefService.toggleTheme()"
+      (inviteClick)="openInviteModal()"
+      (shareLinkClick)="openShareLinkModal()"
+      (toggleTheme)="corePrefService.toggleTheme()"
       (settingsClick)="uiStore.showSettingsDrawer.set(true)"
       (feedbackClick)="uiStore.showFeedbackModal.set(true)">
     </app-airvault-footer>
@@ -474,7 +685,7 @@
        ═══════════════════════════════════════════════════════════ -->
   <div info-screen class="av-info-layout">
     <main class="av-chapters-container">
-      <!-- Chapter 1: Zero-Knowledge Security Architecture -->
+      <!-- Chapter 1: Security & Privacy Architecture -->
       <app-airvault-security-chapter></app-airvault-security-chapter>
 
       <!-- Chapter 2: Real-Time Diagnostics & Telemetry -->
@@ -550,6 +761,7 @@
     (remoteLogout)="onRemoteLogout($event)"
     (renameDevice)="onRenameDevice($event)"
     (toggleSync)="deviceStore.toggleSyncTarget($event)"
+    (signOutDevice)="onSignOutCurrentDevice($event)"
     (openPairingModal)="uiStore.showDeviceDrawer.set(false); openPairing()">
   </app-airvault-device-drawer>
   }
@@ -645,3 +857,29 @@
     (dismissAlert)="uiStore.dismissDisconnectedSourceAlert()"
     (reconnect)="onDeviceReconnect($event); uiStore.dismissDisconnectedSourceAlert()">
   </app-airvault-toast>
+
+  <!-- ── Guided Onboarding Tour Spotlight Overlay ──────────── -->
+  <app-airvault-tour></app-airvault-tour>
+
+  <!-- ── Share Clipboard Link Modal ──────────────────────────── -->
+  @if (uiStore.showShareLinkModal()) {
+    <app-airvault-share-link-modal (close)="uiStore.showShareLinkModal.set(false)"></app-airvault-share-link-modal>
+  }
+
+  <!-- ── Invite Collaborator Modal ─────────────────────────────── -->
+  @if (invitationService.isInviteModalOpen()) {
+    <app-airvault-invite-modal (close)="invitationService.closeInviteModal()"></app-airvault-invite-modal>
+  }
+
+  <!-- ── Collaborator Notifications Inbox ──────────────────────── -->
+  @if (invitationService.isInboxOpen()) {
+    <app-airvault-notification-inbox (close)="invitationService.toggleInbox(false)"></app-airvault-notification-inbox>
+  }
+
+  <!-- ── Create Standalone Clipboard Modal ────────────────────── -->
+  @if (isCreateModalOpen()) {
+    <app-airvault-create-clipboard-modal
+      (close)="closeCreateClipboardModal()"
+      (created)="onClipboardCreated($event)">
+    </app-airvault-create-clipboard-modal>
+  }

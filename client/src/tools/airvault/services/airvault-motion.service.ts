@@ -117,6 +117,54 @@ export class AirVaultMotionService {
   }
 
   /**
+   * 1c-3. Smooth Multi-Tile Erase / Purge Transition:
+   * Smoothly dissolves all active clipboard tiles with a cascading dissolve & shrink transition.
+   */
+  animateAllTilesErase(container: HTMLElement, onComplete?: () => void) {
+    if (!container) {
+      if (onComplete) onComplete();
+      return;
+    }
+
+    const cards = container.querySelectorAll<HTMLElement>('.vault-card-cell, .av-card');
+    if (!cards || cards.length === 0) {
+      if (onComplete) onComplete();
+      return;
+    }
+
+    container.style.pointerEvents = 'none';
+
+    if (this.prefersReducedMotion) {
+      gsap.to(cards, {
+        opacity: 0,
+        duration: 0.12,
+        onComplete: () => {
+          container.style.pointerEvents = '';
+          if (onComplete) onComplete();
+        }
+      });
+      return;
+    }
+
+    gsap.to(cards, {
+      opacity: 0,
+      scale: 0.86,
+      y: 14,
+      filter: 'blur(4px)',
+      duration: 0.26,
+      stagger: {
+        each: 0.025,
+        from: 'start'
+      },
+      ease: 'power3.inOut',
+      onComplete: () => {
+        container.style.pointerEvents = '';
+        if (onComplete) onComplete();
+      }
+    });
+  }
+
+  /**
    * 1c-2. FLIP (First Last Invert Play) Grid Layout Transition:
    * Smoothly moves neighboring tiles when an item is added, removed, or reordered.
    */

@@ -100,12 +100,10 @@ export interface OutboxRecord {
 }
 
 export const MAX_ITEMS_CAPACITY = 500;
-const DB_NAME = 'acklet_airvault_db';
+const LEGACY_DB_NAME = 'acklet_airvault_db';
 const DB_VERSION = 4; // v4: added vault_outbox durable store
 const STORE_NAME = 'vault_items';
 const PAYLOAD_STORE_NAME = 'vault_payloads';
-const TOMBSTONE_STORE_NAME = 'vault_tombstones';
-const AUDIT_STORE_NAME = 'vault_audit_log';
 const DRAFT_STORE_NAME = 'vault_drafts';
 const OUTBOX_STORE_NAME = 'vault_outbox';
 export const LARGE_RESOURCE_RETENTION_THRESHOLD_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -120,11 +118,18 @@ export class AirVaultStorageService {
   private uiStore = inject(AirVaultUIStore);
   public resourceCache = inject(AirVaultResourceCacheService);
 
+  // In-memory payload map for guests (no persistent IndexedDB opened)
+  private guestInMemoryPayloads = new Map<string, Blob | string>();
+  // In-memory draft for guests
+  private guestInMemoryDraft: string = '';
+  // In-memory outbox for guests
+  private guestInMemoryOutbox = new Map<string, OutboxRecord>();
+
   // Set of globally deleted item IDs (tombstones) so old sync packets or reconnects cannot resurrect them
-  tombstones = signal<Set<string>>(this.loadTombstones());
+  tombstones = signal<Set<string>>(new Set());
 
   // Set of locally removed item IDs (non-owner local suppression) so auto-sync/reconnect/reload cannot resurrect them
-  localSuppressedIds = signal<Set<string>>(this.loadLocalSuppressions());
+  localSuppressedIds = signal<Set<string>>(new Set());
 
   // Master store contains all items (both active and restorable history)
   allItems = signal<AirVaultItem[]>([]);
@@ -226,19 +231,19 @@ export class AirVaultStorageService {
   serverTotalBytes = signal<number>(0);
   isReconcilingServerStorage = signal<boolean>(false);
 
-  /** Active clipboard bytes calculated from local IndexedDB state */
+  /** Active clipboard bytes calculated from local state */
   activeBytes = computed(() => {
     return this.items().reduce((acc, item) => acc + (item.content?.byteSize || 0), 0);
   });
 
-  /** Restorable history bytes calculated from local IndexedDB state */
+  /** Restorable history bytes calculated from local state */
   historyBytes = computed(() => {
     return this.restorableHistoryItems().reduce((acc, item) => acc + (item.content?.byteSize || 0), 0);
   });
 
   /**
    * Total storage bytes consumed = Active Clipboard + Restorable History.
-   * Local IndexedDB state is the single source of truth for displayed usage.
+   * Local storage state is the single source of truth for displayed usage.
    * Stale server telemetry NEVER overrides known local usage.
    */
   totalBytes = computed(() => {
@@ -247,17 +252,245 @@ export class AirVaultStorageService {
 
   isRefreshing = signal<boolean>(false);
 
-  retentionTtlMs = signal<number>(this.loadTtlPref());
+  retentionTtlMs = signal<number>(7 * 24 * 60 * 60 * 1000);
 
   constructor() {
+    this.tombstones.set(this.loadTombstones());
+    this.localSuppressedIds.set(this.loadLocalSuppressions());
+    this.retentionTtlMs.set(this.loadTtlPref());
+
     const fallback = this.loadLocalStorageFallback();
     if (fallback && fallback.length > 0) {
       this.allItems.set(fallback);
     }
     this.loadAuditLogs();
-    this.initIndexedDb();
+    this.initUserDatabase();
     this.startTtlCleaner();
     this.fetchServerUsage('default');
+  }
+
+  private getEffectiveUsername(): string {
+    const raw = this.deviceService.currentDevice()?.username || localStorage.getItem('acklet_airvault_username') || '';
+    return raw.trim().toLowerCase().replace(/^@/, '');
+  }
+
+  private isGuestSession(): boolean {
+    const username = this.getEffectiveUsername();
+    return !username || username.startsWith('guest_') || username === 'guest';
+  }
+
+  public getDbNameForUser(username: string): string | null {
+    const normalized = username.trim().toLowerCase().replace(/^@/, '');
+    if (!normalized || normalized.startsWith('guest_') || normalized === 'guest') {
+      return null;
+    }
+    const safeName = normalized.replace(/[^a-z0-9_.-]/g, '_');
+    return `acklet_airvault_${safeName}_db`;
+  }
+
+  /**
+   * Initializes namespaced IndexedDB for authenticated users,
+   * or skips persistent DB initialization for guest/unauthenticated sessions (in-memory only).
+   */
+  public initUserDatabase(targetUsername?: string) {
+    if (typeof window === 'undefined' || !window.indexedDB) return;
+
+    const username = targetUsername || this.getEffectiveUsername();
+    const dbName = this.getDbNameForUser(username);
+
+    // If no username or guest session, do NOT open persistent IndexedDB
+    if (!dbName) {
+      if (this.db) {
+        this.db.close();
+        this.db = null;
+      }
+      AirVaultLogger.info('[AirVault Storage] 🛡️ Guest / Unauthenticated session: using in-memory storage only.');
+      return;
+    }
+
+    try {
+      // First check and perform one-time migration from legacy acklet_airvault_db if present
+      this.migrateLegacyDatabase(username).then(() => {
+        const request = window.indexedDB.open(dbName, DB_VERSION);
+
+        request.onupgradeneeded = (event: any) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            store.createIndex('timestamp', 'timestamp', { unique: false });
+            store.createIndex('isPinned', 'isPinned', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(PAYLOAD_STORE_NAME)) {
+            db.createObjectStore(PAYLOAD_STORE_NAME, { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains(DRAFT_STORE_NAME)) {
+            db.createObjectStore(DRAFT_STORE_NAME, { keyPath: 'key' });
+          }
+          if (!db.objectStoreNames.contains(OUTBOX_STORE_NAME)) {
+            const outboxStore = db.createObjectStore(OUTBOX_STORE_NAME, { keyPath: 'packetId' });
+            outboxStore.createIndex('status', 'status', { unique: false });
+            outboxStore.createIndex('targetDeviceId', 'targetDeviceId', { unique: false });
+            outboxStore.createIndex('nextRetryAt', 'nextRetryAt', { unique: false });
+          }
+        };
+
+        request.onsuccess = (event: any) => {
+          this.db = event.target.result;
+          this.loadFromIndexedDb();
+        };
+
+        request.onerror = () => {
+          AirVaultLogger.warn(`[AirVault Storage] Could not open IndexedDB ${dbName}`);
+        };
+      });
+    } catch {
+      // IndexedDB fallback
+    }
+  }
+
+  /**
+   * One-time legacy database migration: if acklet_airvault_db exists, copy its records
+   * into the first account that signs in after the update, then delete the legacy DB.
+   */
+  private async migrateLegacyDatabase(targetUsername: string): Promise<void> {
+    if (typeof window === 'undefined' || !window.indexedDB) return;
+    const dbName = this.getDbNameForUser(targetUsername);
+    if (!dbName) return;
+
+    return new Promise<void>((resolve) => {
+      try {
+        const checkReq = window.indexedDB.open(LEGACY_DB_NAME);
+        checkReq.onsuccess = async (ev: any) => {
+          const legacyDb: IDBDatabase = ev.target.result;
+          if (!legacyDb.objectStoreNames.contains(STORE_NAME)) {
+            legacyDb.close();
+            resolve();
+            return;
+          }
+
+          try {
+            const tx = legacyDb.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const getAllReq = store.getAll();
+
+            getAllReq.onsuccess = () => {
+              const legacyItems: AirVaultItem[] = getAllReq.result || [];
+              legacyDb.close();
+
+              if (legacyItems.length > 0) {
+                AirVaultLogger.info(`[AirVault Storage] 🚚 Migrating ${legacyItems.length} legacy items into @${targetUsername}...`);
+                // Merge into memory
+                this.allItems.update(current => {
+                  const existingIds = new Set(current.map(i => i.id));
+                  const newItems = legacyItems.filter(i => !existingIds.has(i.id));
+                  return [...newItems, ...current];
+                });
+                this.persistAll();
+              }
+
+              // Delete the legacy database so no subsequent user ever sees it
+              try {
+                window.indexedDB.deleteDatabase(LEGACY_DB_NAME);
+                AirVaultLogger.info('[AirVault Storage] 🗑️ Legacy acklet_airvault_db deleted.');
+              } catch {}
+
+              resolve();
+            };
+
+            getAllReq.onerror = () => {
+              legacyDb.close();
+              resolve();
+            };
+          } catch {
+            legacyDb.close();
+            resolve();
+          }
+        };
+
+        checkReq.onerror = () => resolve();
+      } catch {
+        resolve();
+      }
+    });
+  }
+
+  /**
+   * Switches user database: closes existing connection, clears in-memory state,
+   * resets signals, and opens the new user's namespaced database.
+   */
+  public async switchUserDatabase(newUsername: string): Promise<void> {
+    // 1. Close existing DB connection
+    if (this.db) {
+      this.db.close();
+      this.db = null;
+    }
+
+    // 2. Clear in-memory signals & caches
+    this.allItems.set([]);
+    this.auditLogs.set([]);
+    this.guestInMemoryPayloads.clear();
+    this.guestInMemoryDraft = '';
+    this.guestInMemoryOutbox.clear();
+    this.resourceCache.clear();
+
+    // 3. Reload namespaced signals for new username
+    this.tombstones.set(this.loadTombstones(newUsername));
+    this.localSuppressedIds.set(this.loadLocalSuppressions(newUsername));
+    this.retentionTtlMs.set(this.loadTtlPref(newUsername));
+    this.loadAuditLogs(newUsername);
+
+    const fallback = this.loadLocalStorageFallback(newUsername);
+    if (fallback.length > 0) {
+      this.allItems.set(fallback);
+    }
+
+    // 4. Open new user's namespaced IndexedDB
+    this.initUserDatabase(newUsername);
+  }
+
+  /**
+   * Checks whether the current outbox has unsent / queued items.
+   */
+  public async hasUnsentOutbox(): Promise<boolean> {
+    const pending = await this.getPendingOutboxRecords();
+    return pending.length > 0;
+  }
+
+  /**
+   * Complete sign out: closes DB connection and optionally purges namespaced storage from device.
+   */
+  public async signOut(purgeLocalData: boolean = false): Promise<void> {
+    const username = this.getEffectiveUsername();
+    const dbName = this.getDbNameForUser(username);
+
+    if (this.db) {
+      this.db.close();
+      this.db = null;
+    }
+
+    this.allItems.set([]);
+    this.auditLogs.set([]);
+    this.guestInMemoryPayloads.clear();
+    this.guestInMemoryDraft = '';
+    this.guestInMemoryOutbox.clear();
+    this.resourceCache.clear();
+
+    if (purgeLocalData && dbName) {
+      try {
+        window.indexedDB.deleteDatabase(dbName);
+      } catch {}
+
+      if (typeof localStorage !== 'undefined') {
+        try {
+          localStorage.removeItem(`acklet_airvault_${username}_items`);
+          localStorage.removeItem(`acklet_airvault_${username}_audit_logs`);
+          localStorage.removeItem(`acklet_airvault_${username}_tombstones`);
+          localStorage.removeItem(`acklet_airvault_${username}_local_suppressions`);
+          localStorage.removeItem(`acklet_airvault_${username}_ttl`);
+          localStorage.removeItem(`acklet_airvault_${username}_preferences`);
+        } catch {}
+      }
+    }
   }
 
   async fetchServerUsage(clipboardId: string = 'default') {
@@ -296,52 +529,16 @@ export class AirVaultStorageService {
     return false;
   }
 
-  private initIndexedDb() {
-    if (typeof window === 'undefined' || !window.indexedDB) return;
-
-    try {
-      const request = window.indexedDB.open(DB_NAME, DB_VERSION);
-
-      request.onupgradeneeded = (event: any) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-          store.createIndex('timestamp', 'timestamp', { unique: false });
-          store.createIndex('isPinned', 'isPinned', { unique: false });
-        }
-        if (!db.objectStoreNames.contains(PAYLOAD_STORE_NAME)) {
-          db.createObjectStore(PAYLOAD_STORE_NAME, { keyPath: 'id' });
-        }
-        // v3: Local-only composer draft store — never synced to other devices
-        if (!db.objectStoreNames.contains(DRAFT_STORE_NAME)) {
-          db.createObjectStore(DRAFT_STORE_NAME, { keyPath: 'key' });
-        }
-        // v4: Durable outbox queue store for resilient cross-device sync
-        if (!db.objectStoreNames.contains(OUTBOX_STORE_NAME)) {
-          const outboxStore = db.createObjectStore(OUTBOX_STORE_NAME, { keyPath: 'packetId' });
-          outboxStore.createIndex('status', 'status', { unique: false });
-          outboxStore.createIndex('targetDeviceId', 'targetDeviceId', { unique: false });
-          outboxStore.createIndex('nextRetryAt', 'nextRetryAt', { unique: false });
-        }
-      };
-
-      request.onsuccess = (event: any) => {
-        this.db = event.target.result;
-        // Authoritative metadata-only load of all persistent vault items on initial startup/reload
-        this.loadFromIndexedDb();
-      };
-    } catch {
-      // IndexedDB fallback
-    }
-  }
-
-  // ── Durable Outbox Operations (IndexedDB v4) ──────────────────────────────
+  // ── Durable Outbox Operations (IndexedDB v4 / In-Memory for Guests) ──────────────
 
   /**
    * Persists an outbox record durably in IndexedDB so pending syncs survive page refresh/disconnect.
    */
   async saveOutboxRecord(record: OutboxRecord): Promise<void> {
-    if (!this.db) return;
+    if (!this.db) {
+      this.guestInMemoryOutbox.set(record.packetId, record);
+      return;
+    }
     return new Promise<void>((resolve) => {
       try {
         const tx = this.db!.transaction(OUTBOX_STORE_NAME, 'readwrite');
@@ -359,7 +556,15 @@ export class AirVaultStorageService {
    * Retrieves all pending outbox records needing transmission or retry.
    */
   async getPendingOutboxRecords(targetDeviceId?: string): Promise<OutboxRecord[]> {
-    if (!this.db) return [];
+    if (!this.db) {
+      const all = Array.from(this.guestInMemoryOutbox.values());
+      const now = Date.now();
+      return all.filter(r => {
+        if (r.status === 'SYNCED') return false;
+        if (targetDeviceId && r.targetDeviceId !== targetDeviceId && r.targetDeviceId !== 'broadcast') return false;
+        return r.status === 'QUEUED' || r.status === 'RETRY_BACKOFF' || r.status === 'WAITING_ACK' || (r.nextRetryAt && r.nextRetryAt <= now);
+      });
+    }
     return new Promise<OutboxRecord[]>((resolve) => {
       try {
         const tx = this.db!.transaction(OUTBOX_STORE_NAME, 'readonly');
@@ -386,7 +591,11 @@ export class AirVaultStorageService {
    * Marks an outbox record as successfully SYNCED and purges it or flags status.
    */
   async markOutboxSynced(packetId: string): Promise<void> {
-    if (!this.db || !packetId) return;
+    if (!packetId) return;
+    if (!this.db) {
+      this.guestInMemoryOutbox.delete(packetId);
+      return;
+    }
     return new Promise<void>((resolve) => {
       try {
         const tx = this.db!.transaction(OUTBOX_STORE_NAME, 'readwrite');
@@ -429,7 +638,14 @@ export class AirVaultStorageService {
    * Guards at 30 KB to avoid filling storage with runaway text.
    */
   async saveDraft(text: string): Promise<void> {
-    if (!this.db) return;
+    if (!this.db) {
+      if (!text || !text.trim() || text.length > 30000) {
+        this.guestInMemoryDraft = '';
+      } else {
+        this.guestInMemoryDraft = text;
+      }
+      return;
+    }
     // If text is empty or only whitespace, remove the draft so it is not restored on reload
     if (!text || !text.trim()) {
       return this.clearDraft();
@@ -453,7 +669,9 @@ export class AirVaultStorageService {
    * Returns an empty string when no draft exists or if IndexedDB is unavailable.
    */
   async loadDraft(): Promise<string> {
-    if (!this.db) return '';
+    if (!this.db) {
+      return this.guestInMemoryDraft || '';
+    }
     return new Promise<string>((resolve) => {
       try {
         const tx = this.db!.transaction(DRAFT_STORE_NAME, 'readonly');
@@ -472,7 +690,10 @@ export class AirVaultStorageService {
    * Called after a successful Beam so the cleared composer state is also reflected in storage.
    */
   async clearDraft(): Promise<void> {
-    if (!this.db) return;
+    if (!this.db) {
+      this.guestInMemoryDraft = '';
+      return;
+    }
     return new Promise<void>((resolve) => {
       try {
         const tx = this.db!.transaction(DRAFT_STORE_NAME, 'readwrite');
@@ -643,8 +864,30 @@ export class AirVaultStorageService {
     const batchId = item.batchId;
 
     return this.resourceCache.fetchDeduplicated(fileId, async () => {
-      // 1. Check local IndexedDB payload store (by fileId, packetId, or batchId)
-      if (this.db) {
+      // 1. Check local IndexedDB payload store (by fileId, packetId, or batchId) or in-memory guest map
+      if (!this.db) {
+        const candidateKeys = [fileId, packetId, batchId].filter((k): k is string => !!k && k.length > 0);
+        for (const k of candidateKeys) {
+          const inMem = this.guestInMemoryPayloads.get(k);
+          if (inMem) {
+            if (inMem instanceof Blob) {
+              const authenticMime = this.getMimeTypeForResource(item.content?.filename, item.content?.category, inMem.type);
+              return (authenticMime && inMem.type !== authenticMime) ? new Blob([inMem], { type: authenticMime }) : inMem;
+            } else if (typeof inMem === 'string' && inMem.startsWith('data:')) {
+              try {
+                const parts = inMem.split(',');
+                const mimeMatch = parts[0].match(/:(.*?);/);
+                const rawMime = mimeMatch ? mimeMatch[1] : '';
+                const bstr = atob(parts[1]);
+                const bytes = new Uint8Array(bstr.length);
+                for (let i = 0; i < bstr.length; i++) bytes[i] = bstr.charCodeAt(i);
+                const authenticMime = this.getMimeTypeForResource(item.content?.filename, item.content?.category, rawMime);
+                return new Blob([bytes], { type: authenticMime });
+              } catch {}
+            }
+          }
+        }
+      } else {
         try {
           const blobFromIdb = await new Promise<Blob | null>((resolve) => {
             const tx = this.db!.transaction(PAYLOAD_STORE_NAME, 'readonly');
@@ -776,7 +1019,10 @@ export class AirVaultStorageService {
    * Persists a binary payload to IndexedDB vault_payloads store without touching the active metadata array
    */
   public savePayloadToIndexedDb(id: string, payload: Blob | string) {
-    if (!this.db) return;
+    if (!this.db) {
+      this.guestInMemoryPayloads.set(id, payload);
+      return;
+    }
     try {
       const tx = this.db.transaction(PAYLOAD_STORE_NAME, 'readwrite');
       const store = tx.objectStore(PAYLOAD_STORE_NAME);
@@ -1577,9 +1823,15 @@ export class AirVaultStorageService {
     return this.tombstones().has(id);
   }
 
-  private loadTombstones(): Set<string> {
+  private getUserStorageKey(suffix: string, targetUser?: string): string {
+    const user = targetUser !== undefined ? targetUser.trim().toLowerCase().replace(/^@/, '') : this.getEffectiveUsername();
+    return user ? `acklet_airvault_${user}_${suffix}` : `acklet_airvault_${suffix}`;
+  }
+
+  private loadTombstones(targetUser?: string): Set<string> {
     try {
-      const raw = localStorage.getItem('acklet_airvault_tombstones');
+      const key = this.getUserStorageKey('tombstones', targetUser);
+      const raw = localStorage.getItem(key) || (!this.isGuestSession() ? localStorage.getItem('acklet_airvault_tombstones') : null);
       if (raw) {
         return new Set(JSON.parse(raw));
       }
@@ -1594,7 +1846,7 @@ export class AirVaultStorageService {
     this.tombstoneTimer = setTimeout(() => {
       try {
         const arr = Array.from(this.tombstones()).slice(-250); // Retain last 250 tombstones
-        localStorage.setItem('acklet_airvault_tombstones', JSON.stringify(arr));
+        localStorage.setItem(this.getUserStorageKey('tombstones'), JSON.stringify(arr));
       } catch {}
     }, 300);
   }
@@ -1624,9 +1876,10 @@ export class AirVaultStorageService {
     return this.localSuppressedIds().has(id);
   }
 
-  private loadLocalSuppressions(): Set<string> {
+  private loadLocalSuppressions(targetUser?: string): Set<string> {
     try {
-      const raw = localStorage.getItem('acklet_airvault_local_suppressions');
+      const key = this.getUserStorageKey('local_suppressions', targetUser);
+      const raw = localStorage.getItem(key) || (!this.isGuestSession() ? localStorage.getItem('acklet_airvault_local_suppressions') : null);
       if (raw) {
         return new Set(JSON.parse(raw));
       }
@@ -1641,7 +1894,7 @@ export class AirVaultStorageService {
     this.localSuppressionTimer = setTimeout(() => {
       try {
         const arr = Array.from(this.localSuppressedIds()).slice(-300); // Retain last 300 suppressions
-        localStorage.setItem('acklet_airvault_local_suppressions', JSON.stringify(arr));
+        localStorage.setItem(this.getUserStorageKey('local_suppressions'), JSON.stringify(arr));
       } catch {}
     }, 300);
   }
@@ -1718,6 +1971,7 @@ export class AirVaultStorageService {
     }
     if (typeof localStorage !== 'undefined') {
       try {
+        localStorage.removeItem(this.getUserStorageKey('items'));
         localStorage.removeItem('acklet_airvault_items');
       } catch {}
     }
@@ -1737,16 +1991,17 @@ export class AirVaultStorageService {
       if (this.auditTimer) clearTimeout(this.auditTimer);
       this.auditTimer = setTimeout(() => {
         try {
-          localStorage.setItem('acklet_airvault_audit_logs', JSON.stringify(this.auditLogs()));
+          localStorage.setItem(this.getUserStorageKey('audit_logs'), JSON.stringify(this.auditLogs()));
         } catch {}
       }, 300);
     }
   }
 
-  loadAuditLogs() {
+  loadAuditLogs(targetUser?: string) {
     if (typeof localStorage !== 'undefined') {
       try {
-        const raw = localStorage.getItem('acklet_airvault_audit_logs');
+        const key = this.getUserStorageKey('audit_logs', targetUser);
+        const raw = localStorage.getItem(key) || (!this.isGuestSession() ? localStorage.getItem('acklet_airvault_audit_logs') : null);
         if (raw) {
           const list = JSON.parse(raw);
           if (Array.isArray(list)) this.auditLogs.set(list.slice(0, 100));
@@ -1776,7 +2031,7 @@ export class AirVaultStorageService {
   setTtl(ttlMs: number) {
     this.retentionTtlMs.set(ttlMs);
     try {
-      localStorage.setItem('acklet_airvault_ttl', JSON.stringify(ttlMs));
+      localStorage.setItem(this.getUserStorageKey('ttl'), JSON.stringify(ttlMs));
     } catch {}
   }
 
@@ -1920,9 +2175,10 @@ export class AirVaultStorageService {
     }, 60000);
   }
 
-  private loadLocalStorageFallback(): AirVaultItem[] {
+  private loadLocalStorageFallback(targetUser?: string): AirVaultItem[] {
     try {
-      const raw = localStorage.getItem('acklet_airvault_items');
+      const key = this.getUserStorageKey('items', targetUser);
+      const raw = localStorage.getItem(key) || (!this.isGuestSession() ? localStorage.getItem('acklet_airvault_items') : null);
       if (raw) {
         const parsed: AirVaultItem[] = JSON.parse(raw);
         // Exclude any legacy mock items cached in user's browser localStorage and locally suppressed items
@@ -1953,13 +2209,14 @@ export class AirVaultStorageService {
         }
         return item;
       });
-      localStorage.setItem('acklet_airvault_items', JSON.stringify(fallbackItems));
+      localStorage.setItem(this.getUserStorageKey('items'), JSON.stringify(fallbackItems));
     } catch {}
   }
 
-  private loadTtlPref(): number {
+  private loadTtlPref(targetUser?: string): number {
     try {
-      const raw = localStorage.getItem('acklet_airvault_ttl');
+      const key = this.getUserStorageKey('ttl', targetUser);
+      const raw = localStorage.getItem(key) || (!this.isGuestSession() ? localStorage.getItem('acklet_airvault_ttl') : null);
       return raw ? JSON.parse(raw) : 7 * 24 * 60 * 60 * 1000;
     } catch {
       return 7 * 24 * 60 * 60 * 1000;

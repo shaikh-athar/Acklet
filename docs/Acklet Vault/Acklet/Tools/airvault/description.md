@@ -251,10 +251,44 @@ Every item in AirVault transitions through clearly defined lifecycle states:
 
 ---
 
-## 5. Related Documentation
+## 5. Three Distinct Access & Collaboration Mechanisms
+
+AirVault provides three independent, additive access layers:
+
+| Dimension | 1. Device Pairing | 2. Standalone Shareable Link | 3. Invite-Based Collaboration |
+| :--- | :--- | :--- | :--- |
+| **Primary Intent** | Auto-sync between user's own hardware | Instant anonymous read/write board link | Targeted collaborator access for a specific person |
+| **Target Scope** | Device-to-Device (Installation ID) | Clipboard ID (`/c/{clipboardId}`) | User Account (`@username` or `/invite/{id}`) |
+| **Identity Required** | Yes (PIN / QR handshake) | No (Anonymous / Guest) | Yes (Recipient must be identified to accept) |
+| **Relationship Formed** | Device pairing in local DB | None (Stateless URL access) | Permanent `ClipboardCollaborator` record |
+| **Acceptance Step** | Automatic upon entering PIN | None (Direct opening) | Explicit **Accept** or **Ignore** prompt |
+| **Device Coverage** | Specific paired device only | Browser instance holding the link | All current & future devices of the user account |
+| **Notification Route** | Peer-to-peer presence signals | None | Real-time WebSocket notice + Persistent Inbox |
+
+---
+
+## 5.1 Memorable Clipboard Slugs & Inline Breadcrumb Customization
+
+AirVault provides human-friendly, memorable clipboard IDs (e.g. `dez01788` — 3 letters + 5 numbers, or custom alphanumeric slugs) right in the top navigation breadcrumb:
+
+```text
+Acklet / ⚡ AirVault / [ 📋 dez01788 (Copy) (Edit) ]
+```
+
+### Key Capabilities:
+1. **Memorable Default Slugs**: Replaces unreadable 27-character hashes with concise 8-character memorable identifiers (e.g. `dez01788`).
+2. **Inline Breadcrumb Editor**: 1-click inline editing in the top navbar breadcrumb (`c/my-vault`) with instant live uniqueness verification (`/api/v1/airvault/clipboard/check-slug`).
+3. **Safe Migration & Rename**: Renaming seamlessly migrates existing items, files, active collaborator permissions, and pending invitations to the new slug without data loss.
+4. **Direct URL Resolution**: Resolves automatically from `/c/{clipboardId}`, `/airvault/{clipboardId}`, or `/tools/app/airvault/{clipboardId}`.
+
+---
+
+## 6. Related Documentation
 
 - Master Overview: [README.md](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/README.md)
 - Master Feature Matrix: [feature.md](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/feature.md)
+- UI Reference: [UI_REFERENCE.md](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/UI_REFERENCE.md)
 - Backend Architecture: [feature-12-backend-architecture.md](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/feature-12-backend-architecture.md)
 - Web Worker Pipeline: [feature-13-web-workers-pipeline.md](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/feature-13-web-workers-pipeline.md)
 - Legend & Shortcuts: [LEGEND.md](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/LEGEND.md)
+

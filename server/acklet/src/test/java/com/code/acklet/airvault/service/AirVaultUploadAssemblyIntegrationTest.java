@@ -39,6 +39,7 @@ class AirVaultUploadAssemblyIntegrationTest {
     private AirVaultAuditService auditService;
     private AirVaultUploadAssemblyWorker assemblyWorker;
     private AirVaultUploadController uploadController;
+    private com.code.acklet.airvault.security.AirVaultAuthorizationService authorizationService;
 
     @BeforeEach
     void setUp() {
@@ -48,6 +49,9 @@ class AirVaultUploadAssemblyIntegrationTest {
         redisTracker = Mockito.mock(AirVaultRedisTracker.class);
         uploadService = Mockito.mock(AirVaultUploadService.class);
         auditService = Mockito.mock(AirVaultAuditService.class);
+        authorizationService = Mockito.mock(com.code.acklet.airvault.security.AirVaultAuthorizationService.class);
+        Mockito.when(authorizationService.canRead(any(), Mockito.anyString())).thenReturn(true);
+        Mockito.when(authorizationService.canWrite(any(), Mockito.anyString())).thenReturn(true);
 
         assemblyWorker = new AirVaultUploadAssemblyWorker(
                 uploadSessionRepository,
@@ -58,7 +62,7 @@ class AirVaultUploadAssemblyIntegrationTest {
                 storageAdapter
         );
 
-        uploadController = new AirVaultUploadController(uploadService, storageAdapter);
+        uploadController = new AirVaultUploadController(uploadService, storageAdapter, authorizationService);
     }
 
     @Test

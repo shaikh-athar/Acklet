@@ -94,6 +94,52 @@
 
 ---
 
+## 3.1 Standalone Shareable Clipboard-ID Access Layer vs. Device Pairing
+
+AirVault supports two distinct, complementary sharing mechanisms:
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          AIRVAULT ACCESS LAYERS                             │
+├──────────────────────────────────────┬──────────────────────────────────────┤
+│       1. DEVICE PAIRING LAYER        │      2. CLIPBOARD-ID LINK LAYER      │
+├──────────────────────────────────────┼──────────────────────────────────────┤
+│ • Model: Account / Device pairing    │ • Model: Google Docs-style link      │
+│ • Authentication: Username + 6-digit │ • Authentication: None (URL Secret)  │
+│   ephemeral PIN or QR handshake      │ • ID: Unguessable `cb_` + 24-char    │
+│ • Access: Automatic, permanent       │ • Access: Scoped strictly to one     │
+│   bi-directional synchronization     │   specific clipboard board           │
+│ • Scope: Full access across all      │ • Scope: `read-only` (default) or    │
+│   owned devices                      │   `read-write` (guest attribution)   │
+│ • UI Action: "Pair Device"           │ • UI Action: "Share Link"            │
+└──────────────────────────────────────┴──────────────────────────────────────┘
+```
+
+- **Unguessable Clipboard ID**: Every clipboard is provisioned with a cryptographically strong memorable 8-character ID or custom slug from creation.
+- **Standalone Clipboard Creation & Quotas**:
+  - Users can create dedicated standalone clipboards via `POST /api/v1/airvault/clipboards/create` or the UI switcher menu.
+  - **Hard Quota Limit**: Each user can create a maximum of **5 clipboards**. Reaching this limit prevents new creation until an existing custom clipboard is deleted.
+  - **Storage & Payload Size Limit**: Enforces authoritative storage caps:
+    - `maxFileBytes`: 1 GB maximum single item/file upload.
+    - `maxClipboardBytes`: 5 GB total storage cap per clipboard board.
+    - `maxAccountBytes`: 10 GB total account storage cap.
+- **REST Endpoints (`com.code.acklet.airvault.controller.AirVaultClipboardController`)**:
+  - `POST /api/v1/airvault/clipboards/create`: Creates a new standalone clipboard with title, custom slug, access mode, and retention TTL. Enforces the 5-clipboard limit.
+  - `GET /api/v1/airvault/clipboards/my`: Lists all clipboards created by the user with active count vs max limit (`5`) and storage metadata.
+  - `DELETE /api/v1/airvault/clipboards/{clipboardId}`: Soft-deletes a custom created clipboard, freeing up a clipboard quota slot.
+  - `GET /api/v1/airvault/clipboard/{clipboardId}`: Resolves board by ID directly, independent of session/pairing check.
+  - `POST /api/v1/airvault/clipboard/sync`: Syncs local clipboard items to backend for link availability.
+  - `POST /api/v1/airvault/clipboard/{clipboardId}/items`: Submits new items to a `read-write` board as Guest/Visitor.
+  - `PUT /api/v1/airvault/clipboard/{clipboardId}/access-mode`: Toggles `read-only` vs `read-write`.
+  - `PUT /api/v1/airvault/clipboard/rename`: Renames clipboard ID with unique slug availability verification.
+- **Permission Enforcement**:
+  - `read-only` (default): Anonymous link visitors can view, copy, and download items; staging composer is replaced with an informational read-only dock.
+  - `read-write`: Anonymous link visitors can submit items; items are tagged with `senderDeviceName: "Guest Visitor"` and `senderDeviceType: "guest"`.
+- **7-Day Retention & Expiry Handling**: Expired shared links render an interactive fallback card with a 1-click CTA to open the visitor's own personal vault.
+- **Strict Data Isolation**: Link access grants zero implicit permissions or visibility into any other devices, clipboards, or private history of the board owner.
+
+---
+
 ## 4. Backend Signaling & Streaming Gateway (`com.code.acklet.airvault`)
 
 - **WebSocket Handler**: [`AirVaultWebSocketHandler.java`](file:///Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/airvault/websocket/AirVaultWebSocketHandler.java)

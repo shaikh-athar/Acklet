@@ -14,6 +14,7 @@ import { detectUrlsAsync, isValidHttpUrl, normalizeUrlForNavigation, formatDispl
 import { renderMarkdownToSafeHtml, renderPlainTextToSafeHtml, looksLikeMarkdown, isHtmlContent } from '../services/airvault-markdown.util';
 import { AirVaultActionPopoverComponent } from './airvault-action-popover.component';
 import { AirVaultQuickActionsService } from '../services/airvault-quick-actions.service';
+import { AirVaultSharedClipboardService } from '../services/airvault-shared-clipboard.service';
 import { AirVaultLogger } from '../services/airvault-sync-debug.service';
 import { Subscription } from 'rxjs';
 
@@ -100,9 +101,11 @@ interface TextSegment {
                 (click)="onTogglePin($event)" [attr.data-tooltip]="item().isPinned ? 'Unpin item' : 'Pin item'">
                 <app-icon name="pin" class="icon-xs"></app-icon>
               </button>
-              <button class="card-action-btn card-action-danger" (click)="onDelete($event)" [attr.aria-label]="isCurrentDevice() ? 'Delete item' : 'Remove from my device'" [attr.data-tooltip]="isCurrentDevice() ? 'Delete item' : 'Remove from my device'">
-                <app-icon name="trash-2" class="icon-xs"></app-icon>
-              </button>
+              @if (canDeleteItem()) {
+                <button class="card-action-btn card-action-danger" (click)="onDelete($event)" [attr.aria-label]="isCurrentDevice() ? 'Delete item' : (sharedClipboardService.isViewingSharedLink() ? 'Delete item' : 'Remove from my device')" [attr.data-tooltip]="isCurrentDevice() ? 'Delete item' : (sharedClipboardService.isViewingSharedLink() ? 'Delete item' : 'Remove from my device')">
+                  <app-icon name="trash-2" class="icon-xs"></app-icon>
+                </button>
+              }
             </div>
           </div>
         </div>
@@ -203,9 +206,11 @@ interface TextSegment {
                           <app-icon name="download" class="icon-xs"></app-icon>
                         </button>
                       }
-                      <button class="subfile-btn danger" (click)="onDeleteSubFile(subFile, $event)" aria-label="Delete file">
-                        <app-icon name="trash-2" class="icon-xs"></app-icon>
-                      </button>
+                      @if (canDeleteItem()) {
+                        <button class="subfile-btn danger" (click)="onDeleteSubFile(subFile, $event)" aria-label="Delete file">
+                          <app-icon name="trash-2" class="icon-xs"></app-icon>
+                        </button>
+                      }
                     </div>
                   </div>
                 }
@@ -498,10 +503,40 @@ interface TextSegment {
       box-sizing: border-box;
       position: relative;
     }
+
     .av-card.av-card-exiting {
       pointer-events: none !important;
       user-select: none !important;
-      opacity: 0.6;
+      animation: avCardExit 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    }
+
+    @keyframes avCardEnter {
+      from {
+        opacity: 0;
+        transform: scale(0.94) translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    @keyframes avCardExit {
+      0% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        filter: blur(0px);
+      }
+      50% {
+        opacity: 0.5;
+        transform: scale(0.95) translateY(4px);
+        filter: blur(1.5px);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(0.88) translateY(12px);
+        filter: blur(4px);
+      }
     }
     .av-card:hover {
       border-color: var(--device-accent, var(--av-accent, #2196F3)) !important;
@@ -1676,6 +1711,7 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
   syncService = inject(AirVaultSyncService);
   uiStore = inject(AirVaultUIStore);
   quickActions = inject(AirVaultQuickActionsService);
+  sharedClipboardService = inject(AirVaultSharedClipboardService);
 
   item = input.required<AirVaultItem>();
   accentColor = input<string>('');
@@ -1683,6 +1719,45 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
 
   capabilities = computed(() => {
     return this.clipboardService.getResourceCapabilities(this.item());
+  });
+
+  /**
+   * Delete permissions enforcement (Decision D2):
+   * - In personal/mesh clipboard: always allowed (delete or remove from device).
+   * - In shared clipboard: clipboard owner can delete any item, item author can delete own item.
+   * - Non-authors in read-only or read-write clipboards cannot delete other users' items.
+   */
+  canDeleteItem = computed<boolean>(() => {
+    const isShared = this.sharedClipboardService.isViewingSharedLink();
+    if (!isShared) {
+      return true;
+    }
+    const shared = this.sharedClipboardService.sharedClipboard();
+    if (!shared || shared.isExpired) {
+      return false;
+    }
+    if (shared.isOwner) {
+      return true;
+    }
+    if (shared.accessMode !== 'read-write') {
+      return false;
+    }
+
+    const it = this.item();
+    const cur = this.deviceService.currentDevice();
+    const curUser = cur.username ? cur.username.toLowerCase().replace(/^@/, '') : '';
+    const curDevId = cur.id;
+
+    if (it.originOwnerId && curUser && it.originOwnerId.toLowerCase().replace(/^@/, '') === curUser) {
+      return true;
+    }
+    if (it.originDeviceId && curDevId && it.originDeviceId === curDevId) {
+      return true;
+    }
+    if (it.senderDeviceId && curDevId && it.senderDeviceId === curDevId) {
+      return true;
+    }
+    return false;
   });
 
   getTagColor(): string {
@@ -2287,7 +2362,11 @@ export class AirVaultCardComponent implements OnInit, OnDestroy {
       e.stopPropagation();
       this.motion.animateButtonBounce(e.currentTarget as HTMLElement);
     }
-    this.deleteItem.emit(this.item().id);
+    this.isExiting.set(true);
+    const cardEl = this.elementRef.nativeElement.querySelector('.av-card') || this.elementRef.nativeElement;
+    this.motion.animateCardDelete(cardEl, () => {
+      this.deleteItem.emit(this.item().id);
+    });
   }
 
   getFaviconUrl(url: string): string {

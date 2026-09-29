@@ -1,5 +1,6 @@
 package com.code.acklet.airvault.service;
 
+import com.code.acklet.airvault.config.AirVaultLimitsProperties;
 import com.code.acklet.airvault.entity.AirVaultStorageCleanupLog;
 import com.code.acklet.airvault.entity.ClipboardFile;
 import com.code.acklet.airvault.entity.UploadSession;
@@ -37,6 +38,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AirVaultStorageCleanupService {
 
+    private final AirVaultLimitsProperties limitsProperties;
     private final AirVaultStorageAdapter storageAdapter;
     private final ClipboardFileRepository clipboardFileRepository;
     private final UploadSessionRepository uploadSessionRepository;
@@ -46,12 +48,6 @@ public class AirVaultStorageCleanupService {
 
     @Value("${airvault.cleanup.files.dry-run:false}")
     private boolean filesDryRun;
-
-    @Value("${airvault.cleanup.files.grace-days:7}")
-    private int filesGraceDays;
-
-    @Value("${airvault.cleanup.files.retention-days:7}")
-    private int filesRetentionDays;
 
     @Value("${airvault.cleanup.chunks.dry-run:false}")
     private boolean chunksDryRun;
@@ -77,7 +73,8 @@ public class AirVaultStorageCleanupService {
         log.info("[AirVault Cleanup Path A] 🔍 Starting Phase 1 File Retention Mark scan (dryRun={})", filesDryRun);
         Instant now = Instant.now();
         Instant activeGraceCutoff = now.minus(Duration.ofMinutes(activeGraceMinutes));
-        Instant retentionCutoff = now.minus(Duration.ofDays(filesRetentionDays));
+        int retentionDays = limitsProperties.getTrashRetentionDays();
+        Instant retentionCutoff = now.minus(Duration.ofDays(retentionDays));
 
         try {
             List<StorageObjectMetadata> allObjects = storageAdapter.listAll();
@@ -186,8 +183,9 @@ public class AirVaultStorageCleanupService {
     public void runFileRetentionPhase2Sweep() {
         log.info("[AirVault Cleanup Path A] 🧹 Starting Phase 2 File Retention Sweep (dryRun={})", filesDryRun);
         Instant now = Instant.now();
-        Instant sweepCutoff = now.minus(Duration.ofDays(filesGraceDays));
-        Instant retentionCutoff = now.minus(Duration.ofDays(filesRetentionDays));
+        int graceDays = limitsProperties.getTrashRetentionDays();
+        Instant sweepCutoff = now.minus(Duration.ofDays(graceDays));
+        Instant retentionCutoff = now.minus(Duration.ofDays(graceDays));
 
         List<AirVaultStorageCleanupLog> pendingLogs = cleanupLogRepository
                 .findAllByCleanupPathAndStatusAndPhase1MarkedAtBefore("FILE", "MARKED", sweepCutoff);
@@ -391,7 +389,7 @@ public class AirVaultStorageCleanupService {
         metrics.put("chunkBytesReclaimed", chunkReclaimed != null ? chunkReclaimed : 0L);
         metrics.put("filesDryRun", filesDryRun);
         metrics.put("chunksDryRun", chunksDryRun);
-        metrics.put("filesGraceDays", filesGraceDays);
+        metrics.put("filesGraceDays", limitsProperties.getTrashRetentionDays());
         metrics.put("chunksGraceHours", chunksGraceHours);
         return metrics;
     }

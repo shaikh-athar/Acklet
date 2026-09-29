@@ -52,6 +52,9 @@ class AirVaultAuthServiceTest {
     @Mock
     private AirVaultAuditService auditService;
 
+    @Mock
+    private com.code.acklet.airvault.security.AirVaultTokenService tokenService;
+
     @InjectMocks
     private AirVaultAuthService authService;
 
@@ -118,6 +121,7 @@ class AirVaultAuthServiceTest {
             if (p.getId() == null) p.setId(UUID.randomUUID());
             return p;
         });
+        when(tokenService.generateUserToken(any(), any())).thenReturn("mock-jwt-token");
 
         AuthResponse response = authService.verifyPin(request, "127.0.0.1");
 
@@ -162,5 +166,68 @@ class AirVaultAuthServiceTest {
         assertEquals("device-a", reconcile.getSelfUsername());
         assertEquals("device-b", reconcile.getPairedUsername());
         assertEquals("dev-b456", reconcile.getPairedDeviceId());
+    }
+
+    @Test
+    void testGenerateQrPairingToken_Uses120sExpiration() {
+        QrPairingInitResponse res = authService.generateQrPairingToken("device-a", "dev-a123");
+        assertNotNull(res);
+        assertNotNull(res.getQrToken());
+        assertEquals(120, res.getExpiresInSeconds());
+        verify(redisTracker).createQrPairingToken(eq(res.getQrToken()), eq("device-a"), eq("dev-a123"), eq(java.time.Duration.ofSeconds(120)));
+    }
+
+    @Test
+    void testCustomizeIdentity_EnforcesMin6Digits() {
+        CustomizeIdentityRequest shortPinReq = CustomizeIdentityRequest.builder()
+                .username("newuser")
+                .pin("1234") // 4 digits - invalid for custom
+                .clientDeviceId("dev-a123")
+                .build();
+
+        assertThrows(com.code.acklet.shared.exception.BadRequestException.class, () -> {
+            authService.customizeIdentity(shortPinReq, "127.0.0.1");
+        });
+
+        CustomizeIdentityRequest validPinReq = CustomizeIdentityRequest.builder()
+                .username("newuser")
+                .pin("123456") // 6 digits - valid
+                .clientDeviceId("dev-a123")
+                .build();
+
+        when(deviceRepository.findByClientDeviceId("dev-a123")).thenReturn(Optional.of(deviceA));
+        when(identityRepository.findByUsernameIgnoreCase("newuser")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("123456")).thenReturn("$2a$10$newHash");
+        when(identityRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(tokenService.generateUserToken(eq("newuser"), eq("dev-a123"))).thenReturn("jwt-custom");
+
+        AuthResponse customRes = authService.customizeIdentity(validPinReq, "127.0.0.1");
+        assertNotNull(customRes);
+        assertEquals("newuser", customRes.getUsername());
+    }
+
+    @Test
+    void testConfirmQrPairing_DispatchesNewDeviceSignedInNotification() {
+        QrPairingConfirmRequest req = QrPairingConfirmRequest.builder()
+                .qrToken("qr_test123")
+                .clientDeviceId("dev-new789")
+                .deviceName("iPad Pro")
+                .deviceType("tablet")
+                .build();
+
+        when(redisTracker.consumeQrPairingToken("qr_test123")).thenReturn("device-a:dev-a123");
+        when(identityRepository.findByUsername("device-a")).thenReturn(Optional.of(identityA));
+        when(deviceRepository.findByClientDeviceId("dev-new789")).thenReturn(Optional.empty());
+        when(deviceRepository.findByIdentity(identityA)).thenReturn(java.util.List.of(deviceA));
+        when(tokenService.generateUserToken(eq("device-a"), eq("dev-new789"))).thenReturn("jwt-new-dev");
+
+        AuthResponse res = authService.confirmQrPairing(req, "192.168.1.100");
+        assertNotNull(res);
+        assertEquals("device-a", res.getUsername());
+        assertEquals("dev-new789", res.getClientDeviceId());
+
+        // Verify WebSocket message dispatched to deviceA
+        verify(webSocketHandler).sendToDevice(eq("dev-a123"), any());
+        verify(syncRelayService).publishSyncEvent(any(SignalMessageDto.class));
     }
 }

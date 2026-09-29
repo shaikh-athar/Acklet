@@ -31,9 +31,19 @@ import { IconComponent } from '../../../app/shared/components/icon/icon';
 
         <!-- Center capsule -->
         <div class="footer-capsule">
-          <button class="capsule-btn" (click)="pairDeviceClick.emit()" data-tooltip="Pair a new device">
+          <button class="capsule-btn" (click)="pairDeviceClick.emit()" data-tooltip="Pair a new device (Auto-Sync)" data-tour="footer-pair-btn">
             <app-icon name="plus" class="icon-xs"></app-icon>
             <span>Pair Device</span>
+          </button>
+          <div class="capsule-sep"></div>
+          <button class="capsule-btn capsule-btn-invite" (click)="inviteClick.emit()" data-tooltip="Invite collaborator (@username or invite link)">
+            <app-icon name="user-plus" class="icon-xs"></app-icon>
+            <span>Invite</span>
+          </button>
+          <div class="capsule-sep"></div>
+          <button class="capsule-btn capsule-btn-share" (click)="shareLinkClick.emit()" data-tooltip="Copy shareable link (Standalone access)">
+            <app-icon name="share-2" class="icon-xs"></app-icon>
+            <span>Share Link</span>
           </button>
           <div class="capsule-sep"></div>
           <button class="capsule-btn" (click)="toggleTheme.emit()" [attr.data-tooltip]="currentTheme() === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
@@ -253,7 +263,7 @@ import { IconComponent } from '../../../app/shared/components/icon/icon';
       align-items: center;
       gap: 5px;
       height: 20px;
-      padding: 0 6px;
+      padding: 0 7px;
       background: transparent;
       border: none;
       border-radius: 9999px;
@@ -265,10 +275,48 @@ import { IconComponent } from '../../../app/shared/components/icon/icon';
       cursor: pointer;
       white-space: nowrap;
       box-sizing: border-box;
-      transition: background 0.12s ease, color 0.12s ease;
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .capsule-btn app-icon { color: inherit; }
-    .capsule-btn:hover { background: var(--av-border); color: var(--av-text-primary); }
+    .capsule-btn:hover { background: var(--av-border); color: var(--av-text-primary); transform: translateY(-0.5px); }
+    .capsule-btn:active { transform: translateY(0); }
+
+    /* Invite button branded color and hover highlight */
+    .capsule-btn.capsule-btn-invite {
+      color: #6366f1;
+    }
+    .capsule-btn.capsule-btn-invite:hover {
+      background: rgba(99, 102, 241, 0.14);
+      color: #4f46e5;
+      box-shadow: 0 1px 6px rgba(99, 102, 241, 0.25);
+    }
+    :host-context([data-theme="dark"]) .capsule-btn.capsule-btn-invite {
+      color: #818cf8;
+    }
+    :host-context([data-theme="dark"]) .capsule-btn.capsule-btn-invite:hover {
+      background: rgba(99, 102, 241, 0.22);
+      color: #a5b4fc;
+      box-shadow: 0 1px 8px rgba(99, 102, 241, 0.35);
+    }
+
+    /* Share Link button branded color and hover highlight */
+    .capsule-btn.capsule-btn-share {
+      color: #0284c7;
+    }
+    .capsule-btn.capsule-btn-share:hover {
+      background: rgba(33, 150, 243, 0.14);
+      color: #0369a1;
+      box-shadow: 0 1px 6px rgba(33, 150, 243, 0.25);
+    }
+    :host-context([data-theme="dark"]) .capsule-btn.capsule-btn-share {
+      color: #38bdf8;
+    }
+    :host-context([data-theme="dark"]) .capsule-btn.capsule-btn-share:hover {
+      background: rgba(33, 150, 243, 0.2);
+      color: #7dd3fc;
+      box-shadow: 0 1px 8px rgba(33, 150, 243, 0.35);
+    }
+
     .capsule-btn.capsule-btn-active {
       color: #D97706;
       background: rgba(245, 158, 11, 0.12);
@@ -526,6 +574,8 @@ export class AirVaultFooterComponent {
   historyClick = output<void>();
   toggleAutoCapture = output<void>();
   pairDeviceClick = output<void>();
+  inviteClick = output<void>();
+  shareLinkClick = output<void>();
   toggleTheme = output<void>();
   privacyClick = output<void>();
   settingsClick = output<void>();

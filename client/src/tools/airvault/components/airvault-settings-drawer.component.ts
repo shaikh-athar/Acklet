@@ -7,6 +7,7 @@ import { AirVaultPortabilityService } from '../services/airvault-portability.ser
 import { AirVaultStorageService } from '../services/airvault-storage.service';
 import { AirVaultNotificationService } from '../services/airvault-notification.service';
 import { AirVaultShortcutService } from '../services/airvault-shortcut.service';
+import { AirVaultTourService } from '../services/airvault-tour.service';
 
 type SettingsTab = 'general' | 'retention' | 'backup' | 'shortcuts';
 
@@ -92,6 +93,28 @@ type SettingsTab = 'general' | 'retention' | 'backup' | 'shortcuts';
                   [checked]="prefService.prefs().instantBeamOnPaste"
                   (change)="onToggle('instantBeamOnPaste', $event)"
                 />
+              </div>
+            </div>
+
+
+            <!-- GUIDED TOUR section -->
+            <div class="settings-section">
+              <div class="section-title">GUIDED TOUR</div>
+              <p class="section-desc">
+                Walk through pairing a device, setting up your identity, and sending content — step by step with spotlight highlights.
+              </p>
+              <div class="tour-replay-card">
+                <div class="tour-replay-steps">
+                  <span class="tour-step-pill"><app-icon name="smartphone" class="icon-xxs"></app-icon> Pair</span>
+                  <span class="tour-step-sep">&#8594;</span>
+                  <span class="tour-step-pill"><app-icon name="fingerprint" class="icon-xxs"></app-icon> Identity</span>
+                  <span class="tour-step-sep">&#8594;</span>
+                  <span class="tour-step-pill"><app-icon name="rocket" class="icon-xxs"></app-icon> Send</span>
+                </div>
+                <button class="tour-replay-btn" (click)="replayTour()">
+                  <app-icon name="binoculars" class="icon-xs"></app-icon>
+                  <span>Replay Tour</span>
+                </button>
               </div>
             </div>
 
@@ -709,6 +732,86 @@ type SettingsTab = 'general' | 'retention' | 'backup' | 'shortcuts';
       border-color: #DC2626;
     }
 
+    /* ── Guided Tour replay card ─────────────────────────────────────────── */
+    .icon-xxs { width: 11px; height: 11px; }
+    .icon-xs { width: 13px; height: 13px; }
+    .icon-sm { width: 15px; height: 15px; }
+
+    .tour-replay-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--av-surface-secondary);
+      border: 1px solid var(--av-border);
+      border-radius: 10px;
+    }
+
+    .tour-replay-steps {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: nowrap;
+      flex-shrink: 1;
+      min-width: 0;
+    }
+
+    .tour-step-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 7px;
+      background: rgba(33, 150, 243, 0.08);
+      border: 1px solid rgba(33, 150, 243, 0.22);
+      border-radius: 14px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #90caf9;
+      white-space: nowrap;
+      line-height: 1.2;
+    }
+
+    :host-context([data-theme="light"]) .tour-step-pill {
+      background: rgba(33, 150, 243, 0.1);
+      border-color: rgba(33, 150, 243, 0.3);
+      color: #1976d2;
+    }
+
+    .tour-step-sep {
+      font-size: 10px;
+      color: var(--av-text-muted);
+      opacity: 0.5;
+      flex-shrink: 0;
+    }
+
+    .tour-replay-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      background: #2196F3;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: filter 0.15s ease, transform 0.1s ease;
+      box-shadow: 0 2px 6px rgba(33, 150, 243, 0.25);
+    }
+    .tour-replay-btn:hover {
+      filter: brightness(1.12);
+      transform: translateY(-1px);
+      box-shadow: 0 3px 10px rgba(33, 150, 243, 0.35);
+    }
+    .tour-replay-btn:active {
+      transform: translateY(0);
+      filter: brightness(0.95);
+    }
+
     .backup-actions-grid {
       display: flex;
       flex-direction: column;
@@ -1144,6 +1247,7 @@ export class AirVaultSettingsDrawerComponent {
   storageService = inject(AirVaultStorageService);
   notificationService = inject(AirVaultNotificationService);
   shortcutService = inject(AirVaultShortcutService);
+  tourService = inject(AirVaultTourService);
 
   currentTtlMs = input.required<number>();
   totalItems = input<number>(0);
@@ -1171,6 +1275,7 @@ export class AirVaultSettingsDrawerComponent {
   selectedStrategy = signal<import('../services/airvault-portability.service').DuplicateStrategy>('skip');
   isImporting = signal<boolean>(false);
 
+
   onClose() {
     if (this.isClosing()) return;
     this.isClosing.set(true);
@@ -1178,6 +1283,18 @@ export class AirVaultSettingsDrawerComponent {
       this.close.emit();
     }, 220);
   }
+
+  replayTour() {
+    // Clear the persisted completed flag so the tour re-launches
+    try { localStorage.removeItem('acklet_airvault_tour_done'); } catch {}
+    this.onClose();
+    // Wait for the drawer close animation before the overlay appears
+    setTimeout(() => {
+      this.tourService.currentStepIndex.set(0);
+      this.tourService.isActive.set(true);
+    }, 280);
+  }
+
 
   onPurgeAllHistory() {
     if (this.isClosing()) return;

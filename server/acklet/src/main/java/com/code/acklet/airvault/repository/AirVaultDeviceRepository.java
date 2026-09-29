@@ -16,9 +16,15 @@ public interface AirVaultDeviceRepository extends JpaRepository<AirVaultDevice, 
 
     List<AirVaultDevice> findByIdentity(AirVaultIdentity identity);
 
+    List<AirVaultDevice> findByIdentityAndStatusNot(AirVaultIdentity identity, String excludedStatus);
+
+    List<AirVaultDevice> findByUsernameIgnoreCaseAndStatusNot(String username, String excludedStatus);
+
     Optional<AirVaultDevice> findByUserIdAndClientDeviceId(UUID userId, String clientDeviceId);
 
     Optional<AirVaultDevice> findByClientDeviceId(String clientDeviceId);
+
+    Optional<AirVaultDevice> findByClientDeviceIdAndStatusNot(String clientDeviceId, String excludedStatus);
 
     Optional<AirVaultDevice> findByUsername(String username);
 

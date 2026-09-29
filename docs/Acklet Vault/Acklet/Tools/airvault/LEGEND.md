@@ -16,6 +16,11 @@
 | **Reconnect** | `Zap` / `Rotate-Cw` | Restores active sync with disconnected peer and triggers bi-directional history synchronization. | Constellation / Drawer |
 | **Forget Device** | `Trash-2` | Unpairs device, removes server session, and transitions remote peer to disconnected state. | Constellation / Drawer |
 | **Pair New Device**| `Plus` / `QrCode` | Opens device pairing modal displaying QR code, 6-digit PIN, and username/keyword pairing. | Bottom Capsule / Dock |
+| **Clipboard ID Badge** | `Clipboard` / `Users` | Displays active memorable clipboard slug (e.g. `dez01788`) with 1-click shareable URL copy. | Top Navbar Breadcrumb |
+| **Customize Clipboard ID** | `Edit-2` | Opens inline slug editor in top breadcrumb to customize memorable unique ID with live check. | Top Navbar Breadcrumb |
+| **Invite Collaborator**| `UserPlus` | Opens collaborator invitation modal to invite specific persons via `@username` or generate shareable invite link with Accept/Decline flow. | Top Navbar / Bottom Capsule |
+| **Share Clipboard Link**| `Share-2` | Generates standalone unguessable board link (`/c/{clipboardId}`) for instant anonymous access. | Top Navbar / Bottom Capsule |
+| **Collaborator Inbox**| `Bell` | Displays incoming real-time and persistent collaborator invitations addressed to current user with Accept/Ignore actions. | Top Navbar |
 | **Sync Consent** | `Check` / `X` | Interactive prompt on peer connection allowing destination user to pull clipboard items or skip. | Consent Modal |
 | **Duplicate Alert** | `Info` / `AlertCircle` | Notification alert triggered when a staged/synced item matches a resource from a paired user. | Duplicate Modal |
 | **Author Highlight**| `Highlighter` | Toggles per-line author attribution highlights and blame gutter on/off in live editor. | Bottom Capsule |

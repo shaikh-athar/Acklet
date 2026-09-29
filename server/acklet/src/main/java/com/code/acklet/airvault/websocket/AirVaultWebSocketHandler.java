@@ -2,6 +2,8 @@ package com.code.acklet.airvault.websocket;
 
 import com.code.acklet.airvault.diagnostic.WsOperationTimer;
 import com.code.acklet.airvault.dto.SignalMessageDto;
+import com.code.acklet.airvault.security.AirVaultAuthorizationService;
+import com.code.acklet.airvault.security.AirVaultPrincipal;
 import com.code.acklet.airvault.service.AirVaultAuditService;
 import com.code.acklet.airvault.service.AirVaultRedisTracker;
 import com.code.acklet.airvault.service.AirVaultSyncRelayService;
@@ -37,12 +39,25 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
     private final WsOperationTimer wsOperationTimer;
     private final ExecutorService wsOffloadExecutor;
     private final AirVaultMetricsService metricsService;
+    private final AirVaultAuthorizationService authorizationService;
 
     // deviceId -> Set of WebSocketSession (multi-tab / multi-session support)
     private final Map<String, java.util.Set<WebSocketSession>> deviceSessions = new ConcurrentHashMap<>();
 
     // sessionId -> deviceId
     private final Map<String, String> sessionDeviceMap = new ConcurrentHashMap<>();
+
+    // username (lowercase) -> Set of WebSocketSession (multi-device user support)
+    private final Map<String, java.util.Set<WebSocketSession>> userSessions = new ConcurrentHashMap<>();
+
+    // sessionId -> username (lowercase)
+    private final Map<String, String> sessionUserMap = new ConcurrentHashMap<>();
+
+    // Room-scoped WebSocket: clipboardId -> Set of WebSocketSessions subscribed to that clipboard
+    private final Map<String, java.util.Set<WebSocketSession>> clipboardRooms = new ConcurrentHashMap<>();
+
+    // Reverse map: sessionId -> Set of clipboardIds this session is subscribed to
+    private final Map<String, java.util.Set<String>> sessionClipboardRooms = new ConcurrentHashMap<>();
 
     // sessionId -> lastHeartbeatReceivedServerTime (millis)
     private final Map<String, Long> sessionHeartbeatMap = new ConcurrentHashMap<>();
@@ -70,7 +85,8 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
             AirVaultAuditService auditService,
             WsOperationTimer wsOperationTimer,
             @Qualifier("wsOffloadExecutor") ExecutorService wsOffloadExecutor,
-            AirVaultMetricsService metricsService) {
+            AirVaultMetricsService metricsService,
+            AirVaultAuthorizationService authorizationService) {
         this.objectMapper = objectMapper;
         this.redisTracker = redisTracker;
         this.syncRelayService = syncRelayService;
@@ -78,6 +94,7 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
         this.wsOperationTimer = wsOperationTimer;
         this.wsOffloadExecutor = wsOffloadExecutor;
         this.metricsService = metricsService;
+        this.authorizationService = authorizationService;
 
         // Start server-side scheduled check: runs every 5 seconds to detect dead sessions (3 missed intervals = 15s)
         this.heartbeatScheduler.scheduleAtFixedRate(this::scanForHeartbeatTimeouts, 5, 5, TimeUnit.SECONDS);
@@ -131,6 +148,15 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
         log.debug("[AirVault WS] Connected: deviceId='{}' (session={}, totalDeviceSessions={})",
                 deviceId, session.getId(), sessions.size());
 
+        // Track user session if username attribute is attached
+        String username = (String) session.getAttributes().get("username");
+        if (username != null && !username.isBlank()) {
+            String uKey = username.toLowerCase().trim().replace("@", "");
+            sessionUserMap.put(session.getId(), uKey);
+            userSessions.computeIfAbsent(uKey, k -> ConcurrentHashMap.newKeySet()).add(session);
+            log.debug("[AirVault WS] Mapped session {} to username '{}'", session.getId(), uKey);
+        }
+
         // Send CONNECT_ACK confirmation to client
         AirVaultWsMessage ack = AirVaultWsMessage.builder()
                 .type("CONNECT_ACK")
@@ -140,7 +166,7 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
                 .metadata(Map.of(
                         "status", "connected",
                         "serverTime", Instant.now().toString(),
-                        "protocolVersion", "1.1"
+                        "protocolVersion", "1.2"
                 ))
                 .build();
         sendMessageAsync(session, ack);
@@ -167,9 +193,34 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
 
     private void handleSessionClosed(WebSocketSession session, String reason, String reasonTag) {
         String deviceId = sessionDeviceMap.remove(session.getId());
+        String username = sessionUserMap.remove(session.getId());
         sessionHeartbeatMap.remove(session.getId());
         sessionAtRiskMap.remove(session.getId());
         sessionLockMap.remove(session.getId());
+
+        // Remove from all clipboard rooms
+        java.util.Set<String> subscribedRooms = sessionClipboardRooms.remove(session.getId());
+        if (subscribedRooms != null) {
+            for (String room : subscribedRooms) {
+                java.util.Set<WebSocketSession> roomSessions = clipboardRooms.get(room);
+                if (roomSessions != null) {
+                    roomSessions.remove(session);
+                    if (roomSessions.isEmpty()) {
+                        clipboardRooms.remove(room);
+                    }
+                }
+            }
+        }
+
+        if (username != null) {
+            java.util.Set<WebSocketSession> uSessions = userSessions.get(username);
+            if (uSessions != null) {
+                uSessions.remove(session);
+                if (uSessions.isEmpty()) {
+                    userSessions.remove(username);
+                }
+            }
+        }
 
         metricsService.recordConnectionClosed(reasonTag != null ? reasonTag : "closed");
 
@@ -240,18 +291,13 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
         deviceOfflineGraceTimers.put(deviceId, future);
     }
 
-    // Two-stage timeout thresholds: 45s soft monitoring window, 90s hard eviction cutoff (browser background throttling tolerant)
+    // Two-stage timeout thresholds: 45s soft monitoring window, 90s hard eviction cutoff
     private static final long SOFT_TIMEOUT_MS = 45_000L;
     private static final long HARD_TIMEOUT_MS = 90_000L;
 
     // sessionId -> boolean (flagged at risk during soft window to avoid log spam)
     private final Map<String, Boolean> sessionAtRiskMap = new ConcurrentHashMap<>();
 
-    /**
-     * Scheduled check: runs every 5 seconds.
-     * Uses two-stage timeout (soft monitoring at 45s, hard eviction at 90s) to gracefully tolerate
-     * brief browser background throttling and GC pauses without prematurely severing connections.
-     */
     private void scanForHeartbeatTimeouts() {
         if (isShuttingDown) return;
         long now = System.currentTimeMillis();
@@ -265,7 +311,6 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
                         sessionId, deviceId, sinceLastHeartbeat);
                 sessionAtRiskMap.remove(sessionId);
 
-                // Evict socket with GOING_AWAY close status
                 java.util.Set<WebSocketSession> sessions = deviceId != null ? deviceSessions.get(deviceId) : null;
                 if (sessions != null) {
                     for (WebSocketSession s : sessions) {
@@ -287,16 +332,13 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
                             sessionId, deviceId, sinceLastHeartbeat);
                 }
             } else {
-                // Heartbeat healthy / recovered
                 sessionAtRiskMap.remove(sessionId);
             }
         });
     }
 
-
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage textMessage) {
-        // Fast synchronous parse & validate on transport thread
         final AirVaultWsMessage msg;
         try {
             String payload = textMessage.getPayload();
@@ -317,26 +359,21 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
         metricsService.recordMessageReceived();
 
         long now = System.currentTimeMillis();
-        // Any incoming frame from this session proves liveness
         sessionHeartbeatMap.put(session.getId(), now);
 
         // 1. APPLICATION-LEVEL HEARTBEAT HANDLING
         if ("HEARTBEAT".equalsIgnoreCase(msg.getType())) {
             Long lastTime = sessionHeartbeatMap.get(session.getId());
-            // Rate-limiting / spam guard: ignore any heartbeat received less than 1s after previous
             if (lastTime != null && (now - lastTime < 1000)) {
                 return;
             }
-
             sessionHeartbeatMap.put(session.getId(), now);
 
-            // Cancel grace timer if device was pending offline
             java.util.concurrent.ScheduledFuture<?> timer = deviceOfflineGraceTimers.remove(senderDeviceId);
             if (timer != null) {
                 timer.cancel(false);
             }
 
-            // Offload Redis presence write to executor so WS thread remains instantaneous
             wsOffloadExecutor.submit(() -> {
                 try {
                     redisTracker.recordSessionHeartbeat(senderDeviceId, session.getId());
@@ -344,7 +381,7 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
                     log.warn("[AirVault WS] Failed updating heartbeat in Redis for session {}: {}", session.getId(), e.getMessage());
                 }
             });
-            return; // No reply needed for standard heartbeat to conserve bandwidth
+            return;
         }
 
         // 2. PING / PONG HANDLING
@@ -359,7 +396,60 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        // 3. Offload Signal Routing, RabbitMQ relay, Audit writes to executor
+        // 3. ROOM SUBSCRIPTION: SUBSCRIBE {clipboardId}
+        if ("SUBSCRIBE".equalsIgnoreCase(msg.getType())) {
+            handleRoomSubscription(session, msg);
+            return;
+        }
+
+        // 4. ROOM UNSUBSCRIPTION: UNSUBSCRIBE {clipboardId}
+        if ("UNSUBSCRIBE".equalsIgnoreCase(msg.getType())) {
+            handleRoomUnsubscription(session, msg);
+            return;
+        }
+
+        // 5. DYNAMIC USER REGISTRATION / USERNAME UPDATE
+        if ("REGISTER_USER".equalsIgnoreCase(msg.getType()) || "USERNAME_UPDATED".equalsIgnoreCase(msg.getType())) {
+            String newUsername = null;
+            if (msg.getMetadata() != null && msg.getMetadata().containsKey("username")) {
+                newUsername = String.valueOf(msg.getMetadata().get("username"));
+            } else if (msg.getPayload() != null && !msg.getPayload().isBlank()) {
+                String payloadStr = msg.getPayload().trim();
+                if (payloadStr.startsWith("{")) {
+                    try {
+                        com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(payloadStr);
+                        if (node.has("username")) {
+                            newUsername = node.get("username").asText();
+                        } else if (node.has("newUsername")) {
+                            newUsername = node.get("newUsername").asText();
+                        }
+                    } catch (Exception ignored) {}
+                } else {
+                    newUsername = payloadStr;
+                }
+            }
+
+            if (newUsername != null && !newUsername.isBlank()) {
+                String uKey = newUsername.toLowerCase().trim().replace("@", "");
+                String oldUser = sessionUserMap.remove(session.getId());
+                if (oldUser != null && !oldUser.equals(uKey)) {
+                    java.util.Set<WebSocketSession> oldSet = userSessions.get(oldUser);
+                    if (oldSet != null) {
+                        oldSet.remove(session);
+                        if (oldSet.isEmpty()) {
+                            userSessions.remove(oldUser);
+                        }
+                    }
+                }
+                sessionUserMap.put(session.getId(), uKey);
+                userSessions.computeIfAbsent(uKey, k -> ConcurrentHashMap.newKeySet()).add(session);
+                session.getAttributes().put("username", uKey);
+                log.debug("[AirVault WS] Dynamically mapped session {} to username '{}'", session.getId(), uKey);
+            }
+            return;
+        }
+
+        // 6. Device-level Signal Routing, RabbitMQ relay, Audit writes
         wsOffloadExecutor.submit(() -> {
             try {
                 routeSignalMessage(msg, senderDeviceId);
@@ -402,6 +492,146 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
                 log.error("[AirVault WS-OFFLOAD] Error processing message on session {}: {}", session.getId(), e.getMessage(), e);
             }
         });
+    }
+
+    private void handleRoomSubscription(WebSocketSession session, AirVaultWsMessage msg) {
+        String clipboardId = extractClipboardId(msg);
+        if (clipboardId == null || clipboardId.isBlank()) {
+            sendSubscribeError(session, null, "Missing clipboardId for room subscription");
+            return;
+        }
+
+        AirVaultPrincipal principal = (AirVaultPrincipal) session.getAttributes().get("principal");
+        boolean canRead = authorizationService.canRead(principal, clipboardId);
+
+        if (!canRead) {
+            log.warn("[AirVault WS] 🚫 Denied SUBSCRIBE to clipboard='{}' for principal='{}'", clipboardId, principal != null ? principal.getUsername() : "null");
+            sendSubscribeError(session, clipboardId, "Forbidden: unauthorized or expired clipboard access");
+            return;
+        }
+
+        clipboardRooms.computeIfAbsent(clipboardId, k -> ConcurrentHashMap.newKeySet()).add(session);
+        sessionClipboardRooms.computeIfAbsent(session.getId(), k -> ConcurrentHashMap.newKeySet()).add(clipboardId);
+
+        log.info("[AirVault WS] 🟢 Session {} subscribed to clipboard room '{}'", session.getId(), clipboardId);
+
+        AirVaultWsMessage ack = AirVaultWsMessage.builder()
+                .type("SUBSCRIBE_ACK")
+                .senderDeviceId("server")
+                .clipboardId(clipboardId)
+                .timestamp(System.currentTimeMillis())
+                .metadata(Map.of("clipboardId", clipboardId, "status", "subscribed"))
+                .build();
+        sendMessageAsync(session, ack);
+    }
+
+    private void handleRoomUnsubscription(WebSocketSession session, AirVaultWsMessage msg) {
+        String clipboardId = extractClipboardId(msg);
+        if (clipboardId == null || clipboardId.isBlank()) return;
+
+        java.util.Set<WebSocketSession> room = clipboardRooms.get(clipboardId);
+        if (room != null) {
+            room.remove(session);
+            if (room.isEmpty()) clipboardRooms.remove(clipboardId);
+        }
+
+        java.util.Set<String> userRooms = sessionClipboardRooms.get(session.getId());
+        if (userRooms != null) {
+            userRooms.remove(clipboardId);
+        }
+
+        log.info("[AirVault WS] 🔴 Session {} unsubscribed from clipboard room '{}'", session.getId(), clipboardId);
+
+        AirVaultWsMessage ack = AirVaultWsMessage.builder()
+                .type("UNSUBSCRIBE_ACK")
+                .senderDeviceId("server")
+                .clipboardId(clipboardId)
+                .timestamp(System.currentTimeMillis())
+                .metadata(Map.of("clipboardId", clipboardId, "status", "unsubscribed"))
+                .build();
+        sendMessageAsync(session, ack);
+    }
+
+    private String extractClipboardId(AirVaultWsMessage msg) {
+        if (msg.getClipboardId() != null && !msg.getClipboardId().isBlank()) {
+            return msg.getClipboardId().trim();
+        }
+        if (msg.getMetadata() != null && msg.getMetadata().containsKey("clipboardId")) {
+            return String.valueOf(msg.getMetadata().get("clipboardId")).trim();
+        }
+        if (msg.getPayload() != null && !msg.getPayload().isBlank()) {
+            String p = msg.getPayload().trim();
+            if (p.startsWith("{")) {
+                try {
+                    com.fasterxml.jackson.databind.JsonNode n = objectMapper.readTree(p);
+                    if (n.has("clipboardId")) return n.get("clipboardId").asText().trim();
+                } catch (Exception ignored) {}
+            }
+            return p;
+        }
+        return null;
+    }
+
+    private void sendSubscribeError(WebSocketSession session, String clipboardId, String error) {
+        AirVaultWsMessage err = AirVaultWsMessage.builder()
+                .type("SUBSCRIBE_ERROR")
+                .senderDeviceId("server")
+                .clipboardId(clipboardId)
+                .payload(error)
+                .timestamp(System.currentTimeMillis())
+                .metadata(Map.of("status", "forbidden", "error", error))
+                .build();
+        sendMessageAsync(session, err);
+    }
+
+    /**
+     * Room-scoped event distribution: Sends message ONLY to active sessions in clipboard's room.
+     */
+    public void sendToClipboardRoom(String clipboardId, AirVaultWsMessage message, String excludeSessionId) {
+        if (clipboardId == null || clipboardId.isBlank()) return;
+        java.util.Set<WebSocketSession> roomSessions = clipboardRooms.get(clipboardId);
+        if (roomSessions != null && !roomSessions.isEmpty()) {
+            for (WebSocketSession s : roomSessions) {
+                if (s.isOpen() && (excludeSessionId == null || !s.getId().equals(excludeSessionId))) {
+                    sendMessageAsync(s, message);
+                }
+            }
+        }
+    }
+
+    /**
+     * Revokes access to a clipboard room and notifies subscribers immediately.
+     */
+    public void revokeClipboardRoom(String clipboardId, String reason) {
+        if (clipboardId == null) return;
+        java.util.Set<WebSocketSession> roomSessions = clipboardRooms.remove(clipboardId);
+        if (roomSessions != null && !roomSessions.isEmpty()) {
+            AirVaultWsMessage revokedMsg = AirVaultWsMessage.builder()
+                    .type("CLIPBOARD_REVOKED")
+                    .senderDeviceId("server")
+                    .clipboardId(clipboardId)
+                    .payload(reason != null ? reason : "Clipboard access has been revoked or expired")
+                    .timestamp(System.currentTimeMillis())
+                    .build();
+            for (WebSocketSession s : roomSessions) {
+                java.util.Set<String> userRooms = sessionClipboardRooms.get(s.getId());
+                if (userRooms != null) userRooms.remove(clipboardId);
+                if (s.isOpen()) {
+                    sendMessageAsync(s, revokedMsg);
+                }
+            }
+        }
+    }
+
+    public boolean isSessionInClipboardRoom(String clipboardId, String sessionId) {
+        java.util.Set<WebSocketSession> room = clipboardRooms.get(clipboardId);
+        if (room == null || sessionId == null) return false;
+        return room.stream().anyMatch(s -> s.getId().equals(sessionId) && s.isOpen());
+    }
+
+    public int getClipboardRoomSubscriberCount(String clipboardId) {
+        java.util.Set<WebSocketSession> room = clipboardRooms.get(clipboardId);
+        return room != null ? room.size() : 0;
     }
 
     private void routeSignalMessage(AirVaultWsMessage msg, String senderDeviceId) {
@@ -473,8 +703,27 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
     }
 
     /**
+     * Sends a WebSocket message to all active sessions/devices belonging to a specific user.
+     */
+    public boolean sendToUser(String targetUsername, AirVaultWsMessage message) {
+        if (targetUsername == null || targetUsername.isBlank()) {
+            return false;
+        }
+        String uKey = targetUsername.toLowerCase().trim().replace("@", "");
+        java.util.Set<WebSocketSession> targetSessions = userSessions.get(uKey);
+        if (targetSessions != null && !targetSessions.isEmpty()) {
+            for (WebSocketSession s : targetSessions) {
+                if (s.isOpen()) {
+                    sendMessageAsync(s, message);
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Sends a WebSocket message asynchronously to an individual target session with a 2-second timeout.
-     * Uses per-session ReentrantLock (unpinning virtual carrier threads) and evicts stalled sessions to prevent TCP backpressure.
      */
     private void sendMessageAsync(WebSocketSession session, AirVaultWsMessage message) {
         if (session == null || !session.isOpen()) {
@@ -508,7 +757,7 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
                     });
                 }, wsOffloadExecutor);
 
-                sendFuture.get(2, TimeUnit.SECONDS); // 2-second timeout per client
+                sendFuture.get(2, TimeUnit.SECONDS);
             } catch (TimeoutException te) {
                 log.warn("[WS-SLOW-CLIENT] session={} did not accept message within 2s — evicting stalled session", session.getId());
                 evictDeadSession(session, "slow_client");
@@ -519,4 +768,3 @@ public class AirVaultWebSocketHandler extends TextWebSocketHandler {
         });
     }
 }
-

@@ -5,6 +5,7 @@ import { IconComponent } from '../../../app/shared/components/icon/icon';
 import { AirVaultDeviceService } from '../services/airvault-device.service';
 import { AirVaultUIStore } from '../services/airvault-ui.store';
 import { AirVaultStorageService } from '../services/airvault-storage.service';
+import { AirVaultTourService } from '../services/airvault-tour.service';
 
 @Component({
   selector: 'app-airvault-identity-onboarding-modal',
@@ -611,6 +612,7 @@ export class AirVaultIdentityOnboardingModalComponent implements OnInit {
   deviceService = inject(AirVaultDeviceService);
   uiStore = inject(AirVaultUIStore);
   storageService = inject(AirVaultStorageService);
+  private tourService = inject(AirVaultTourService);
 
   view = signal<'choose' | 'login' | 'merge-prompt'>('choose');
   isClosing = signal<boolean>(false);
@@ -679,6 +681,10 @@ export class AirVaultIdentityOnboardingModalComponent implements OnInit {
     this.deviceService.completeGuestOnboarding();
     this.uiStore.showIdentityOnboardingModal.set(false);
     this.uiStore.triggerToast(`✓ Generated guest identity: @${this.deviceService.currentDevice().username}`);
+    // Kick off the onboarding spotlight tour after the modal closes and the
+    // workspace has fully painted (500 ms gives Angular one full change-detection
+    // cycle + CSS transition time).
+    setTimeout(() => this.tourService.startTourForNewGuest(), 500);
   }
 
   submitLogin() {
@@ -722,6 +728,7 @@ export class AirVaultIdentityOnboardingModalComponent implements OnInit {
   }
 
   private applyLoginIdentity(username: string, pin: string) {
+    this.storageService.switchUserDatabase(username);
     this.deviceService.setExistingIdentity(username, pin);
     this.uiStore.showIdentityOnboardingModal.set(false);
   }

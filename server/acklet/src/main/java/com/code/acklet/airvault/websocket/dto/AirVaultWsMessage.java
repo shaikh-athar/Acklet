@@ -37,6 +37,11 @@ public class AirVaultWsMessage {
     private String targetDeviceId;
 
     /**
+     * Optional scoped clipboard identifier for room-based routing
+     */
+    private String clipboardId;
+
+    /**
      * Opaque encrypted payload (zero-knowledge preserved)
      */
     private String payload;

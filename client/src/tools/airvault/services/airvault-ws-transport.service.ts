@@ -6,10 +6,12 @@ import { AirVaultLogger } from './airvault-sync-debug.service';
 export type WsConnectionState = 'DISCONNECTED' | 'CONNECTING' | 'CONNECTED' | 'RECONNECTING';
 
 export interface AirVaultWsMessage {
-  type: 'CONNECT_ACK' | 'PING' | 'PONG' | 'SIGNAL' | 'PRESENCE' | 'ERROR' | string;
+  type: 'CONNECT_ACK' | 'PING' | 'PONG' | 'SIGNAL' | 'PRESENCE' | 'ERROR' | 'SUBSCRIBE' | 'UNSUBSCRIBE' | string;
   senderDeviceId?: string;
   targetDeviceId?: string;
+  clipboardId?: string;
   payload?: any;
+  metadata?: any;
   timestamp?: number;
   messageId?: string;
 }
@@ -156,6 +158,25 @@ export class AirVaultWsTransportService implements OnDestroy {
         AirVaultLogger.debug(`[AirVault WS] Connected: deviceId='${deviceId}'`);
         this.startPingInterval();
         this.connectedSubject.next();
+
+        // Register username with WebSocket server
+        try {
+          let u = localStorage.getItem('acklet_airvault_username') || '';
+          if (!u) {
+            const custom = localStorage.getItem('acklet_airvault_self_custom');
+            if (custom) {
+              const parsed = JSON.parse(custom);
+              if (parsed?.username) u = parsed.username;
+            }
+          }
+          if (u) {
+            const cleanU = u.trim().replace(/^@/, '');
+            this.send({
+              type: 'REGISTER_USER',
+              metadata: { username: cleanU }
+            });
+          }
+        } catch {}
       };
 
       this.ws.onmessage = (event: MessageEvent) => {
@@ -340,13 +361,71 @@ export class AirVaultWsTransportService implements OnDestroy {
     }
   }
 
+  registerUser(username: string): void {
+    if (!username) return;
+    const cleanU = username.trim().replace(/^@/, '');
+    if (this.connectionState() === 'CONNECTED') {
+      this.send({
+        type: 'REGISTER_USER',
+        metadata: { username: cleanU }
+      });
+    }
+  }
+
+  /**
+   * Subscribes WebSocket session to a specific clipboard room for real-time events.
+   */
+  subscribeClipboard(clipboardId: string): void {
+    if (!clipboardId) return;
+    this.send({
+      type: 'SUBSCRIBE',
+      clipboardId: clipboardId.trim()
+    });
+  }
+
+  /**
+   * Unsubscribes WebSocket session from a clipboard room.
+   */
+  unsubscribeClipboard(clipboardId: string): void {
+    if (!clipboardId) return;
+    this.send({
+      type: 'UNSUBSCRIBE',
+      clipboardId: clipboardId.trim()
+    });
+  }
+
   private resolveWsUrl(deviceId: string): string {
-    const isLocal4200 = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port === '4200';
-    const wsHost = isLocal4200 ? 'localhost:8080' : window.location.host;
+    const isDevPort = window.location.port === '4200' || window.location.port === '3000' || window.location.port === '5173';
+    const wsHost = isDevPort ? `${window.location.hostname}:8080` : window.location.host;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     
     let url = `${protocol}//${wsHost}/ws/airvault?deviceId=${encodeURIComponent(deviceId)}`;
-    const token = this.authService.getAccessToken();
+    
+    try {
+      let resolvedUser = '';
+      const storedUser = localStorage.getItem('acklet_airvault_username');
+      if (storedUser && storedUser.trim()) {
+        resolvedUser = storedUser.trim().replace(/^@/, '');
+      } else {
+        const stored = localStorage.getItem('acklet_airvault_self_custom');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.username) {
+            resolvedUser = parsed.username.trim().replace(/^@/, '');
+          }
+        }
+      }
+      if (resolvedUser) {
+        url += `&username=${encodeURIComponent(resolvedUser)}`;
+      }
+    } catch {}
+
+    let token = this.authService.getAccessToken();
+    if (!token) {
+      try {
+        token = localStorage.getItem('acklet_airvault_guest_token') || '';
+      } catch {}
+    }
     if (token) {
       url += `&token=${encodeURIComponent(token)}`;
     }

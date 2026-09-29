@@ -192,6 +192,7 @@ import {
   LucideIndianRupee,
   LucidePackage,
   LucideMoreHorizontal,
+  LucideMoreVertical,
   LucideLoader2,
   LucideGitMerge,
   LucideLogIn,
@@ -216,6 +217,10 @@ import {
   LucideMonitorSmartphone,
   LucideShredder,
   LucideClockFading,
+  LucideNotebookPen,
+  LucideCable,
+  LucideGlobe,
+  LucideBinoculars,
 } from '@lucide/angular';
 
 @Component({
@@ -264,6 +269,10 @@ import {
         justify-content: center;
         flex-shrink: 0;
       }
+      :host.icon-xxs {
+        width: 11px !important;
+        height: 11px !important;
+      }
       :host.icon-xs {
         width: 13px !important;
         height: 13px !important;
@@ -273,8 +282,16 @@ import {
         height: 15px !important;
       }
       :host.icon-md {
-        width: 20px !important;
-        height: 20px !important;
+        width: 18px !important;
+        height: 18px !important;
+      }
+      :host.icon-lg {
+        width: 22px !important;
+        height: 22px !important;
+      }
+      :host.icon-xl {
+        width: 26px !important;
+        height: 26px !important;
       }
       svg {
         display: block;
@@ -503,6 +520,7 @@ export class IconComponent {
     rupee: LucideIndianRupee,
     package: LucidePackage,
     'more-horizontal': LucideMoreHorizontal,
+    'more-vertical': LucideMoreVertical,
     more: LucideMoreHorizontal,
     'loader-2': LucideLoader2,
     loader: LucideLoader2,
@@ -535,7 +553,11 @@ export class IconComponent {
     'refresh-cw-off': LucideRefreshCwOff,
     'monitor-smartphone': LucideMonitorSmartphone,
     'shredder': LucideShredder,
-    'clock-fading': LucideClockFading
+    'clock-fading': LucideClockFading,
+    'notebook-pen' : LucideNotebookPen,
+    'cable' : LucideCable,
+    'globe' : LucideGlobe,
+    'binoculars' : LucideBinoculars
   };
 
   readonly lucideIconComponent = computed(() => {

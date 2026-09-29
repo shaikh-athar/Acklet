@@ -2,7 +2,7 @@
 
 Welcome to the architectural and engineering documentation for **AirVault by Acklet**.
 
-AirVault is a high-performance, real-time cross-device clipboard synchronization and file transfer platform built on a zero-knowledge End-to-End Encryption (E2EE) architecture, dedicated frontend Web Workers, and a resilient Spring Boot backend streaming layer.
+AirVault is a high-performance, real-time cross-device clipboard synchronization and file transfer platform built on encrypted transport architecture, dedicated frontend Web Workers, and a resilient Spring Boot backend streaming layer.
 
 ---
 
@@ -44,10 +44,10 @@ AirVault is a high-performance, real-time cross-device clipboard synchronization
 
 ## 2. Core Architectural Pillars
 
-1. **Zero-Knowledge Client-Side Cryptography**:
+1. **Client-Side Cryptography & Encrypted Transport**:
    - Web Crypto API ECDH (P-256 NIST curve) key agreement per device pair.
    - Symmetric AES-GCM-256 payload encryption with cryptographically random 12-byte initialization vectors (IVs).
-   - Backend servers act exclusively as encrypted blob/signaling relays and cannot read user clipboard data.
+   - Content is encrypted in transit; link-shared clipboards are stored on the server until their expiration TTL.
 
 2. **Dedicated Web Worker Off-Thread Compute**:
    - `airvault.worker.ts`: Off-thread content categorization (Code, URL, Image, File, Plain Text), sensitive credential scanning (AWS, GitHub, OpenAI, JWT, Credit Cards), and offscreen canvas thumbnail rendering (`createImageBitmap` + `OffscreenCanvas`).

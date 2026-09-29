@@ -11,12 +11,12 @@ export const MOCK_TOOLS: Tool[] = [
     categoryId: 'cat-4', // Utilities category
     categoryName: 'Utilities',
     categoryIcon: 'zap',
-    shortDescription: 'Real-time, zero-knowledge cross-device clipboard and content sync.',
-    description: 'AirVault is a real-time, peer-to-peer cross-device clipboard synchronization platform with zero-knowledge End-to-End Encryption (E2EE), smart content classification, and GSAP motion.',
-    tags: ['Clipboard', 'Sync', 'P2P', 'Security', 'E2EE'],
+    shortDescription: 'Real-time cross-device clipboard and content sync with encrypted transport.',
+    description: 'AirVault is a real-time cross-device clipboard synchronization platform with encrypted transport, smart content classification, and link sharing with auto-expiry.',
+    tags: ['Clipboard', 'Sync', 'Security', 'Encrypted'],
     features: [
-      'Zero-knowledge E2EE using Web Crypto ECDH and AES-GCM-256',
-      'Real-time P2P WebRTC DataChannel & multi-tab BroadcastChannel sync',
+      'Encrypted transport using TLS and Web Crypto AES-GCM-256',
+      'Real-time WebSocket room-scoped sync & multi-tab BroadcastChannel',
       'Smart classifier for Code, Rich URLs, Images, Files, and Plain Text',
       'Sensitive credential detector with auto-masking shield'
     ],

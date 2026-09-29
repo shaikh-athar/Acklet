@@ -24,7 +24,18 @@ AirVault follows the strict design discipline established by Acklet's DataLens t
 
 ### 2.1 Screen 1: Main 100vh Focused Clipboard (Clean Consolidated Layout)
 - **Top Navigation Bar (`.av-navbar`)**:
-  - **Left**: Brand breadcrumb (`Acklet / AirVault`).
+  - **Left**: Brand breadcrumb (`Acklet / AirVault /`) + **Multi-Clipboard & Collaborators Dropdown Switcher (`.av-clipboard-dropdown-anchor`)**:
+    - Interactive capsule button (`.av-slug-chip`) displaying active memorable slug (e.g. `#dez01788`), board icon, and dropdown chevron.
+    - Displays `Shared` tag when viewing remote collaborator/guest clipboard.
+    - **Collaborator & Multi-Clipboard Dropdown (`.av-clipboard-dropdown-menu`)**:
+      - Displays the primary personal vault with an `Admin` badge.
+      - Lists all connected/collaborator clipboards with role indicators (`Admin` vs `Collaborator`), read-only tags, and member details.
+      - **Sub-Dropdown Action Menu (`.board-sub-dropdown-menu`)**: Clean 3-dots (`...`) menu button (`.board-menu-trigger-btn`) per row that opens a contextual sub-dropdown popover menu containing:
+        - **Copy Link**: 1-click copies the clipboard link to clipboard.
+        - **Share Board**: Opens the full share modal dialog.
+        - **Rename ID (Admin)**: Inline slug editor (restricted to the Admin/Owner of that board).
+      - 1-click seamless clipboard board switching and quick invite trigger (`Invite Collaborators to Board`).
+    - 1-click edit button (`.edit-btn`) opening inline slug editor (`.av-slug-editor`) with live debounce availability verification (`/check-slug`), input auto-select, Enter to save, and Esc to cancel.
   - **Center**: Centered permanent search bar (`Search text, URLs, code, files...`) with match navigation controls, query clear button, and interactive search dropdown.
   - **Right Action Sequence**:
     - **Clear Button (`.av-topbar-clear-btn`)**: Text `"Clear"` + trash icon with high-contrast red hover state (`--av-danger-soft`, `--av-danger`), triggering the animated custom `AirVaultClearConfirmModalComponent`.
@@ -116,6 +127,24 @@ Reachable via smooth scroll or the bottom dock info button:
 - **Zero-Knowledge Cryptography**: Web Crypto ECDH P-256 + AES-GCM-256 in-browser security specs.
 - **Peer-to-Peer Transport Architecture**: BroadcastChannel & WebRTC DataChannels details.
 - **Keyboard Shortcuts**: `⌘ + Enter`, `⌘ + V`, `Esc`.
+
+### 2.4 Standalone Share Link UI Architecture & Permissions
+- **Navbar & Footer Share Link Actions (`.av-btn-share-link`)**:
+  - Distinct cyan-accent button (`Share Link` with `share-2` icon) clearly distinguished from `Pair Device`.
+  - Opens `AirVaultShareLinkModalComponent`.
+- **Share Link Modal (`AirVaultShareLinkModalComponent`)**:
+  - **Explainer Banner**: Clearly explains the conceptual difference between Link Sharing (Google Docs-style access via raw URL) and Device Pairing (permanent auto-sync across owned devices).
+  - **1-Click Copy Box**: Formatted canonical URL display (`airvault.com/c/{clipboardId}`) with copy button and auto-revert `✓ Copied` feedback.
+  - **Access Permissions Toggle**:
+    - **Read-Only (Default)**: Cyan radio card explaining view & copy privileges.
+    - **Read & Write**: Emerald radio card enabling collaborative contribution with guest identity attribution.
+  - **Metadata & Expiry**: Highlights 7-day auto-refreshing retention policy and single-board cryptographic scoping.
+- **Shared Board Top Banner (`AirVaultSharedBannerComponent`)**:
+  - Displayed at top of operational stage when viewing someone else's clipboard via link.
+  - Shows board ID, owner handle (`@owner`), active permission badge (`Read-Only` or `Read & Write`), 1-click Link Copy, and a direct CTA to `Pair with @owner`.
+  - **Expired / Not Found Fallback**: Dedicated centered card state explaining expired link retention with a 1-click CTA button to return to the visitor's own personal vault.
+- **Read-Only Staging Dock (`.shared-readonly-dock`)**:
+  - Replaces the composer bar when viewing a read-only shared link, informing visitors that content can be copied and downloaded freely, while contribution requires a read-write link.
 
 ---
 

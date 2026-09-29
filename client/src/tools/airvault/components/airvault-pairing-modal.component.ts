@@ -36,7 +36,7 @@ import { environment } from '../../../environments/environment';
         }
 
         <!-- Mode Switcher -->
-        <div class="pair-mode-switcher">
+        <div class="pair-mode-switcher" data-tour="pair-mode-switcher">
           <button class="mode-btn" [class.active]="mode() === 'username-pin'" (click)="setMode('username-pin')">
             <app-icon name="user" class="icon-xs"></app-icon>
             <span>Username & PIN</span>
@@ -249,9 +249,9 @@ import { environment } from '../../../environments/environment';
 
             <!-- ── TAB 1: USERNAME & 4-DIGIT PIN ── -->
             @if (mode() === 'username-pin') {
-              <div class="pin-pairing-view">
+              <div class="pin-pairing-view" data-tour="pair-remote-section">
                 <!-- Device Persistent Identity Summary with Edit Pencil & Live Availability -->
-                <div class="device-identity-summary-banner">
+                <div class="device-identity-summary-banner" data-tour="identity-section">
                   <div class="identity-banner-item">
                     <span class="banner-lbl">MY DEVICE USERNAME</span>
                     @if (isEditingUsername()) {
@@ -361,6 +361,7 @@ import { environment } from '../../../environments/environment';
                 </div>
 
                 <!-- Remote Target Username Input (Centered & Styled) -->
+                <div class="remote-pairing-form" data-tour="pair-remote-form">
                 <div class="remote-username-field-container">
                   <div class="remote-username-glow-wrapper">
                     <span class="remote-user-prefix">&#64;</span>
@@ -443,6 +444,7 @@ import { environment } from '../../../environments/environment';
                     <span>Pair with &#64;{{ remoteUsernameInput.trim() || 'Device' }}</span>
                   }
                 </button>
+                </div><!-- /remote-pairing-form -->
 
                 <!-- Switch / Login with Existing Identity Option -->
                 <div class="existing-account-row">
@@ -1100,11 +1102,18 @@ import { environment } from '../../../environments/environment';
     .user-action-icon-btn.cancel { background: var(--av-surface-elevated); color: var(--av-text-muted); border: 1px solid var(--av-border); }
 
     /* ── Centered & Styled Remote Username Input ── */
+    .remote-pairing-form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+    }
     .remote-username-field-container {
       display: flex;
       justify-content: center;
       width: 100%;
-      margin: 4px 0 10px;
+      margin: 0 0 2px;
     }
     .remote-username-glow-wrapper {
       display: inline-flex;
@@ -1198,9 +1207,11 @@ import { environment } from '../../../environments/environment';
       white-space: nowrap;
     }
 
-    /* 6 Individual Input Boxes */
+    /* Individual Input Boxes */
     .pin-input-group {
       display: flex;
+      justify-content: center;
+      width: 100%;
       gap: 6px;
     }
 

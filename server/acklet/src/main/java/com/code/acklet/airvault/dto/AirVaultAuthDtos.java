@@ -21,7 +21,7 @@ public class AirVaultAuthDtos {
         private String username;
 
         @NotBlank(message = "pin is required")
-        @Pattern(regexp = "^\\d{4}$", message = "PIN must be exactly 4 digits")
+        @Pattern(regexp = "^\\d{4,12}$", message = "PIN must be between 4 and 12 digits")
         private String pin;
 
         @NotBlank(message = "clientDeviceId is required")
@@ -43,7 +43,7 @@ public class AirVaultAuthDtos {
         private String username;
 
         @NotBlank(message = "pin is required")
-        @Pattern(regexp = "^\\d{4}$", message = "PIN must be exactly 4 digits")
+        @Pattern(regexp = "^\\d{6,12}$", message = "PIN must be at least 6 digits (6-12 digits)")
         private String pin;
 
         @NotBlank(message = "clientDeviceId is required")

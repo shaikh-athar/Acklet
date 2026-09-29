@@ -38,8 +38,8 @@ export const TOOL_REGISTRY: Record<string, ToolManifest> = {
     name: 'AirVault',
     slug: 'airvault',
     category: 'Sync & Utilities',
-    description: 'AirVault is a real-time, peer-to-peer cross-device clipboard synchronization platform with zero-knowledge End-to-End Encryption (E2EE), smart content classification, and GSAP motion.',
-    shortDescription: 'Real-time, zero-knowledge cross-device clipboard and content sync.',
+    description: 'AirVault is a real-time cross-device clipboard synchronization platform with encrypted transport, smart content classification, and link sharing with auto-expiry.',
+    shortDescription: 'Real-time cross-device clipboard and content sync with encrypted transport.',
     version: '1.0.0',
     status: 'active',
     route: '/tools/app/airvault',
@@ -49,23 +49,23 @@ export const TOOL_REGISTRY: Record<string, ToolManifest> = {
       accent: '#00D2B4'
     },
     features: [
-      'Zero-knowledge E2EE using Web Crypto ECDH and AES-GCM-256',
-      'Real-time P2P WebRTC DataChannel & multi-tab BroadcastChannel sync',
+      'Encrypted transport using TLS and Web Crypto AES-GCM-256',
+      'Real-time WebSocket room-scoped sync & multi-tab BroadcastChannel',
       'Smart classifier for Code, Rich URLs, Images, Files, and Plain Text',
       'Sensitive credential detector with auto-masking shield',
       'Device Constellation presence dock with QR and 6-digit PIN pairing',
-      '100% in-browser IndexedDB persistence with automated TTL purge'
+      'Local IndexedDB caching with automated TTL purge'
     ],
     capabilities: [
       'offline-first',
-      'e2ee',
+      'encrypted-transport',
       'p2p-sync',
       'clipboard',
       'client-only'
     ],
     seo: {
       title: 'AirVault — Cross-Device Clipboard & Content Sync — Acklet',
-      description: 'Synchronize clipboard text, code, images, and links across your devices securely with zero-knowledge E2EE.',
+      description: 'Synchronize clipboard text, code, images, and links across your devices securely with encrypted transport.',
       keywords: ['clipboard sync', 'cross-device clipboard', 'p2p clipboard', 'e2ee sync', 'uniclipboard alternative', 'airvault']
     }
   },

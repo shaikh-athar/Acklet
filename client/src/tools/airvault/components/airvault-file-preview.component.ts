@@ -312,7 +312,7 @@ export interface ArchiveFileEntry {
               <div class="meta-icon-box" [style.color]="getCategoryColor()"><app-icon [name]="getCategoryIcon()" class="icon-lg"></app-icon></div>
               <span class="meta-file-title">@for (part of getHighlightParts(item().content.filename || 'Attached File', searchHighlightQuery()); track $index) {@if (part.isMatch) {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{ part.text }}}}</span>
               <span class="meta-file-details">{{ formatBytes(item().content.byteSize) }} · {{ getCategoryLabel() }}</span>
-              <p class="meta-desc">Encrypted zero-knowledge file. Ready to download with full binary fidelity.</p>
+              <p class="meta-desc">Encrypted file transfer. Ready to download with full binary fidelity.</p>
             </div>
           }
         </div>

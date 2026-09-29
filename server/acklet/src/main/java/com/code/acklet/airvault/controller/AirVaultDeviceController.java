@@ -27,13 +27,19 @@ public class AirVaultDeviceController {
     private final com.code.acklet.airvault.websocket.AirVaultWebSocketHandler webSocketHandler;
 
     private UUID resolveUserId(User user) {
-        return user != null ? user.getId() : UUID.fromString("00000000-0000-0000-0000-000000000001");
+        // Anonymous AirVault users (no Acklet account) have no user_id row.
+        // Returning null is safe: PostgreSQL FK constraints skip NULL values,
+        // and AirVaultDeviceService already guards `if (userId != null)` before writing.
+        return user != null ? user.getId() : null;
     }
 
     @GetMapping
-    @Operation(summary = "List registered devices", description = "Returns all non-revoked devices for the authenticated user")
-    public ResponseEntity<ApiResponse<List<AirVaultDeviceDto>>> listDevices(@AuthenticationPrincipal User user) {
-        List<AirVaultDeviceDto> devices = deviceService.getDevices(resolveUserId(user));
+    @Operation(summary = "List registered devices", description = "Returns all non-revoked devices for the authenticated user or identity")
+    public ResponseEntity<ApiResponse<List<AirVaultDeviceDto>>> listDevices(
+            @AuthenticationPrincipal User user,
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String clientDeviceId) {
+        List<AirVaultDeviceDto> devices = deviceService.getDevices(resolveUserId(user), username, clientDeviceId);
         return ResponseEntity.ok(ApiResponse.success(devices, "Devices retrieved"));
     }
 

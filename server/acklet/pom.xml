@@ -20,7 +20,7 @@
     <properties>
         <java.version>17</java.version>
         <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
-        <lombok.version>1.18.38</lombok.version>
+        <lombok.version>1.18.46</lombok.version>
         <jjwt.version>0.12.5</jjwt.version>
         <springdoc.version>2.5.0</springdoc.version>
         <langchain4j.version>0.36.2</langchain4j.version>
@@ -201,6 +201,7 @@
                         <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</arg>
                         <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</arg>
                         <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.jvm=ALL-UNNAMED</arg>
+                        <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED</arg>
                     </compilerArgs>
                     <annotationProcessorPaths>
                         <path>

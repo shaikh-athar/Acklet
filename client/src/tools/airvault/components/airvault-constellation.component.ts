@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { IconComponent } from '../../../app/shared/components/icon/icon';
 import { AirVaultDevice, AirVaultDeviceService } from '../services/airvault-device.service';
 import { AirVaultSyncService } from '../services/airvault-sync.service';
+import { AirVaultUIStore } from '../services/airvault-ui.store';
 
 @Component({
   selector: 'app-airvault-constellation',
@@ -40,6 +41,7 @@ import { AirVaultSyncService } from '../services/airvault-sync.service';
             [style.color]="device.syncEnabled !== false ? (device.accentColor || '#10B981') : 'var(--av-text-muted)'"
             (click)="toggleSync.emit(device.id)"
             (contextmenu)="$event.preventDefault(); toggleMenu(device.id)"
+            [attr.data-tour]="$index === 0 ? 'paired-device-icon' : null"
           >
             @if (device.status === 'connecting' || deviceService.isReconnecting(device.id)) {
               <app-icon name="loader-2" class="icon-sm spin-anim text-cyan"></app-icon>
@@ -126,7 +128,7 @@ import { AirVaultSyncService } from '../services/airvault-sync.service';
               <!-- Remove / Forget -->
               <button class="hover-act-btn danger" (click)="confirmRemove(device); $event.stopPropagation()">
                 <app-icon name="trash-2" class="icon-xs"></app-icon>
-                <span>Forget Device</span>
+                <span>Remove Device</span>
               </button>
             </div>
           </div>
@@ -136,7 +138,7 @@ import { AirVaultSyncService } from '../services/airvault-sync.service';
       <div class="rail-sep"></div>
 
       <!-- Add device -->
-      <button class="rail-util-btn" (click)="openPairingModal.emit()" data-tooltip="Pair a new device">
+      <button class="rail-util-btn" (click)="openPairingModal.emit()" data-tooltip="Pair a new device" data-tour="pair-device-btn">
         <app-icon name="plus" class="icon-xs"></app-icon>
       </button>
 
@@ -147,8 +149,8 @@ import { AirVaultSyncService } from '../services/airvault-sync.service';
     </aside>
 
     <!-- Custom Confirmation Modal for Device Removal -->
-    @if (deviceToConfirmRemove(); as targetDev) {
-      <div class="confirm-modal-backdrop" (click)="deviceToConfirmRemove.set(null)">
+    @if (uiStore.deviceToConfirmRemove(); as targetDev) {
+      <div class="confirm-modal-backdrop" (click)="uiStore.deviceToConfirmRemove.set(null)">
         <div class="confirm-modal-card" (click)="$event.stopPropagation()">
           <div class="confirm-modal-header">
             <div class="confirm-icon-circle danger">
@@ -168,7 +170,7 @@ import { AirVaultSyncService } from '../services/airvault-sync.service';
           </div>
 
           <div class="confirm-modal-footer">
-            <button class="av-btn-secondary" (click)="deviceToConfirmRemove.set(null)">
+            <button class="av-btn-secondary" (click)="uiStore.deviceToConfirmRemove.set(null)">
               Cancel
             </button>
             <button class="av-btn-danger" (click)="executeRemoval(targetDev.id)">
@@ -626,6 +628,7 @@ import { AirVaultSyncService } from '../services/airvault-sync.service';
 export class AirVaultConstellationComponent {
   public deviceService = inject(AirVaultDeviceService);
   public syncService = inject(AirVaultSyncService);
+  public uiStore = inject(AirVaultUIStore);
 
   currentDevice = input.required<AirVaultDevice>();
   pairedDevices = input.required<AirVaultDevice[]>();
@@ -644,7 +647,6 @@ export class AirVaultConstellationComponent {
   activeMenuDeviceId = signal<string | null>(null);
   editingDeviceId = signal<string | null>(null);
   editingNameValue = signal<string>('');
-  deviceToConfirmRemove = signal<AirVaultDevice | null>(null);
 
   getDisplayLabel(device?: AirVaultDevice | null): string {
     return this.deviceService.getDisplayLabel(device);
@@ -678,12 +680,12 @@ export class AirVaultConstellationComponent {
   }
 
   confirmRemove(device: AirVaultDevice) {
-    this.deviceToConfirmRemove.set(device);
+    this.uiStore.deviceToConfirmRemove.set(device);
   }
 
   executeRemoval(deviceId: string) {
     this.remove.emit(deviceId);
-    this.deviceToConfirmRemove.set(null);
+    this.uiStore.deviceToConfirmRemove.set(null);
   }
 
   copyHandle(device: AirVaultDevice, event: Event) {

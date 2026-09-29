@@ -96,6 +96,7 @@ export class AirVaultSyncService {
   public onDraftRequest = new EventEmitter<{ senderDevice: AirVaultDevice; requestId: string }>();
   public onDraftResponse = new EventEmitter<{ senderDevice: AirVaultDevice; requestId: string; fullContent: string; lineBlameMap?: LineBlameEntry[] }>();
   public onItemBurned = new EventEmitter<{ itemId: string }>();
+  public onClipboardIdReceived = new EventEmitter<string>();
   public lastPairedDevice = signal<AirVaultDevice | null>(null);
 
   // Viewed item debounce set to prevent repeated network calls for the same item from one client
@@ -456,6 +457,22 @@ export class AirVaultSyncService {
           return;
         }
 
+        // 1b. Real-time security alert: New device signed into account
+        if (msg.type === 'NEW_DEVICE_SIGNED_IN') {
+          try {
+            let payload = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
+            const newDev = payload?.newDevice;
+            const devName = newDev?.name || newDev?.type || 'A new device';
+            this.ngZone.run(() => {
+              this.uiStore.triggerToast(`🔒 ${devName} signed in to your account. Review in Device Drawer.`);
+              this.deviceService.fetchRegisteredSessions();
+            });
+          } catch (err) {
+            AirVaultLogger.debug('[AirVault WS Sync] Error handling NEW_DEVICE_SIGNED_IN message', err);
+          }
+          return;
+        }
+
         // Resolve sender device
         let senderDev = this.deviceService.pairedDevices().find(d => d.id === msg.senderDeviceId);
         if (!senderDev && msg.senderDeviceId && msg.senderDeviceId.startsWith('peer_')) {
@@ -583,9 +600,41 @@ export class AirVaultSyncService {
           } catch (err) {
             AirVaultLogger.debug(`[AirVault WS Sync] Error handling incoming ${msg.type}`, err);
           }
+        } else if (msg.type === 'CLIPBOARD_ID_UPDATED') {
+          try {
+            const payload = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
+            if (payload && payload.newId) {
+              this.ngZone.run(() => {
+                this.onClipboardIdReceived.emit(payload.newId);
+              });
+            }
+          } catch (err) {
+            AirVaultLogger.debug('[AirVault WS Sync] Error handling incoming CLIPBOARD_ID_UPDATED', err);
+          }
         }
       }); // end subscribe
     }); // end runOutsideAngular
+  }
+
+  /**
+   * Broadcasts updated clipboard ID to all connected peers and tabs
+   */
+  broadcastClipboardId(newId: string) {
+    const cur = this.deviceService.currentDevice();
+    const payload = { newId, senderDeviceId: cur.id };
+    if (this.channel) {
+      this.channel.postMessage({
+        type: 'CLIPBOARD_ID_UPDATED',
+        payload,
+        senderDevice: cur,
+        timestamp: Date.now()
+      });
+    }
+    this.sendSignalMessage('CLIPBOARD_ID_UPDATED', JSON.stringify(payload), 'broadcast');
+    const paired = this.deviceService.pairedDevices().filter(d => d.syncEnabled !== false && d.status !== 'revoked');
+    for (const dev of paired) {
+      this.sendSignalMessage('CLIPBOARD_ID_UPDATED', JSON.stringify(payload), dev.id);
+    }
   }
 
   private sendSyncPacket(packet: EncryptedPacket, targetDeviceId: string, syncId?: string) {

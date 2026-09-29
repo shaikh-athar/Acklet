@@ -456,7 +456,7 @@ export class AirVaultClipboardService {
     if (!file) return null;
 
     if (file.size > MAX_SINGLE_FILE_SIZE_BYTES) {
-      throw new Error(`File size (${(file.size / 1024 / 1024).toFixed(1)} MB) exceeds 500 MB single file limit`);
+      throw new Error(`File size (${(file.size / 1024 / 1024).toFixed(1)} MB) exceeds 1 GB single file limit`);
     }
 
     return new Promise((resolve, reject) => {

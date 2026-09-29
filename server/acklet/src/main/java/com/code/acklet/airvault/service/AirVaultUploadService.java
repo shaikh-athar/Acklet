@@ -1,5 +1,6 @@
 package com.code.acklet.airvault.service;
 
+import com.code.acklet.airvault.config.AirVaultLimitsProperties;
 import com.code.acklet.airvault.config.AirVaultRabbitMqConfig;
 import com.code.acklet.airvault.dto.UploadSessionDtos.*;
 import com.code.acklet.airvault.entity.ClipboardFile;
@@ -27,10 +28,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AirVaultUploadService {
 
-    public static final long MAX_CLIPBOARD_CAP_BYTES = 5L * 1024L * 1024L * 1024L; // 5 GB Max Total Storage
-    public static final long MAX_SINGLE_FILE_SIZE_BYTES = 1024L * 1024L * 1024L; // 1 GB Max Single File
-    public static final long RETENTION_PERIOD_DAYS = 7L; // 7 Days Retention Policy
-
+    private final AirVaultLimitsProperties limitsProperties;
     private final UploadSessionRepository uploadSessionRepository;
     private final ClipboardFileRepository clipboardFileRepository;
     private final RabbitTemplate rabbitTemplate;
@@ -61,11 +59,12 @@ public class AirVaultUploadService {
     public InitiateUploadResponse initiateUpload(String clipboardId, InitiateUploadRequest req) {
         initStorage();
 
-        // 0. Single file size validation (500 MB limit)
-        if (req.getDeclaredSize() > MAX_SINGLE_FILE_SIZE_BYTES) {
+        // 0. Single file size validation
+        long maxSingleFile = limitsProperties.getMaxFileBytes();
+        if (req.getDeclaredSize() > maxSingleFile) {
             log.warn("[AirVault Upload] ⛔ REJECTED: File size ({} B) exceeds maximum single file limit ({} B)",
-                    req.getDeclaredSize(), MAX_SINGLE_FILE_SIZE_BYTES);
-            throw new BadRequestException("File size exceeds maximum supported single file limit of 1 GB.");
+                    req.getDeclaredSize(), maxSingleFile);
+            throw new BadRequestException("File size exceeds maximum supported single file limit of " + (maxSingleFile / (1024 * 1024 * 1024)) + " GB.");
         }
 
         // 1. Authoritative DB query for actual stored bytes
@@ -75,8 +74,9 @@ public class AirVaultUploadService {
         Long activeUploadsBytes = uploadSessionRepository.sumActiveUploadsSizeByClipboardId(clipboardId);
         if (activeUploadsBytes == null) activeUploadsBytes = 0L;
 
+        long maxClipboardCap = limitsProperties.getMaxClipboardBytes();
         long effectiveUsage = currentTotalBytes + activeUploadsBytes;
-        long remaining = Math.max(0, MAX_CLIPBOARD_CAP_BYTES - effectiveUsage);
+        long remaining = Math.max(0, maxClipboardCap - effectiveUsage);
 
         log.info("[AirVault Upload] Init session for clipboard={}: currentUsage={} B, file={} ({} B), remaining={} B",
                 clipboardId, effectiveUsage, req.getFileName(), req.getDeclaredSize(), remaining);
@@ -84,7 +84,7 @@ public class AirVaultUploadService {
         if (req.getDeclaredSize() > remaining) {
             log.warn("[AirVault Upload] ⛔ REJECTED: File size ({} B) exceeds remaining capacity ({} B)",
                     req.getDeclaredSize(), remaining);
-            throw new BadRequestException("Storage cap exceeded. Adding this file would exceed the 1 GB clipboard limit.");
+            throw new BadRequestException("Storage cap exceeded. Adding this file would exceed the " + (maxClipboardCap / (1024 * 1024 * 1024)) + " GB clipboard limit.");
         }
 
         // 2. Check if a session already exists for this fileId (idempotent resume/init)
@@ -631,13 +631,14 @@ public class AirVaultUploadService {
 
         List<ClipboardFile> files = clipboardFileRepository.findAllByClipboardIdOrderByCreatedAtDesc(clipboardId);
 
-        double percent = Math.min(100.0, ((double) totalBytes / MAX_CLIPBOARD_CAP_BYTES) * 100.0);
-        long remaining = Math.max(0, MAX_CLIPBOARD_CAP_BYTES - totalBytes);
+        long maxCap = limitsProperties.getMaxClipboardBytes();
+        double percent = Math.min(100.0, ((double) totalBytes / maxCap) * 100.0);
+        long remaining = Math.max(0, maxCap - totalBytes);
 
         return ClipboardUsageResponse.builder()
                 .clipboardId(clipboardId)
                 .totalBytes(totalBytes)
-                .maxCapBytes(MAX_CLIPBOARD_CAP_BYTES)
+                .maxCapBytes(maxCap)
                 .usedPercent(Math.round(percent * 10.0) / 10.0)
                 .remainingBytes(remaining)
                 .totalFilesCount(files.size())

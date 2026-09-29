@@ -40,6 +40,8 @@ export interface AirVaultPreferences {
 │  • Auto-Mask Sensitive Tokens:      [ ON / OFF ]            │
 │  • Ambient Toast Alerts:            [ ON / OFF ]            │
 │                                                             │
+│  • Guided Interactive Tour:         [ ▶ Replay Tour ]       │
+│                                                             │
 │  • Storage Quota:                   2.4 MB / 1.0 GB         │
 │  • Retention Policy:                [ 7 Days (Default) ]    │
 │  • [ Purge All Vault History ]                              │

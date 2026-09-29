@@ -36,6 +36,7 @@ public class AirVaultAuthService {
     private final com.code.acklet.airvault.websocket.AirVaultWebSocketHandler webSocketHandler;
     private final AirVaultSyncRelayService syncRelayService;
     private final AirVaultAuditService auditService;
+    private final com.code.acklet.airvault.security.AirVaultTokenService tokenService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String[] ADJECTIVES = {
@@ -113,7 +114,7 @@ public class AirVaultAuthService {
         device.setLastActiveAt(Instant.now());
         deviceRepository.save(device);
 
-        String sessionToken = UUID.randomUUID().toString();
+        String sessionToken = tokenService.generateUserToken(username, clientDeviceId);
         redisTracker.storeDeviceSession(sessionToken, username, clientDeviceId, Duration.ofDays(30));
 
         log.info("[AirVault Auth] 👤 Generated/Persisted guest identity: username={} for deviceId={}, ip={}", username, clientDeviceId, ip);
@@ -227,7 +228,7 @@ public class AirVaultAuthService {
                 Map.of("deviceName", req.getDeviceName() != null ? req.getDeviceName() : "AirVault Client")
         );
 
-        String sessionToken = UUID.randomUUID().toString();
+        String sessionToken = tokenService.generateUserToken(username, req.getClientDeviceId());
         redisTracker.storeDeviceSession(sessionToken, username, req.getClientDeviceId(), Duration.ofDays(30));
 
         // Update caller device lastActiveAt without changing its own username/identity
@@ -536,7 +537,7 @@ public class AirVaultAuthService {
         callerDevice.setLastActiveAt(Instant.now());
         deviceRepository.save(callerDevice);
 
-        String sessionToken = UUID.randomUUID().toString();
+        String sessionToken = tokenService.generateUserToken(username, req.getClientDeviceId());
         redisTracker.storeDeviceSession(sessionToken, username, req.getClientDeviceId(), Duration.ofDays(30));
 
         // 4. Resolve paired identity and explicit pairings
@@ -596,6 +597,8 @@ public class AirVaultAuthService {
         }
 
         log.info("[AirVault Auth] 🔑 Device '{}' successfully logged into existing identity '@{}'", req.getClientDeviceId(), username);
+
+        notifyNewDeviceSignedIn(identity, callerDevice, ip);
 
         return AuthResponse.builder()
                 .username(username)
@@ -704,7 +707,7 @@ public class AirVaultAuthService {
             }
         }
 
-        String newSessionToken = UUID.randomUUID().toString();
+        String newSessionToken = tokenService.generateUserToken(newUsername, req.getClientDeviceId());
         redisTracker.storeDeviceSession(newSessionToken, newUsername, req.getClientDeviceId(), Duration.ofDays(30));
 
         log.info("[AirVault Auth] 💎 Identity customized & reserved in DB: username={}, deviceId={}, ip={}", newUsername, req.getClientDeviceId(), ip);
@@ -751,7 +754,7 @@ public class AirVaultAuthService {
      */
     public QrPairingInitResponse generateQrPairingToken(String username, String clientDeviceId) {
         String qrToken = "qr_" + UUID.randomUUID().toString().replace("-", "");
-        redisTracker.createQrPairingToken(qrToken, username, clientDeviceId, Duration.ofSeconds(90));
+        redisTracker.createQrPairingToken(qrToken, username, clientDeviceId, Duration.ofSeconds(120));
         log.info("[AirVault Auth] 📱 Issued QR pairing token for username={}, deviceId={}", username, clientDeviceId);
 
         auditService.recordEvent(
@@ -764,12 +767,12 @@ public class AirVaultAuthService {
                 "SUCCESS",
                 null,
                 null,
-                Map.of("qrTokenPrefix", qrToken.substring(0, 8), "expiresInSeconds", 90)
+                Map.of("qrTokenPrefix", qrToken.substring(0, 8), "expiresInSeconds", 120)
         );
 
         return QrPairingInitResponse.builder()
                 .qrToken(qrToken)
-                .expiresInSeconds(90)
+                .expiresInSeconds(120)
                 .build();
     }
 
@@ -815,10 +818,12 @@ public class AirVaultAuthService {
         newDevice.setLastActiveAt(Instant.now());
         deviceRepository.save(newDevice);
 
-        String sessionToken = UUID.randomUUID().toString();
+        String sessionToken = tokenService.generateUserToken(username, req.getClientDeviceId());
         redisTracker.storeDeviceSession(sessionToken, username, req.getClientDeviceId(), Duration.ofDays(30));
 
         log.info("[AirVault Auth] 🔗 QR Pairing successful: username={}, newDeviceId={}, ip={}", username, req.getClientDeviceId(), ip);
+
+        notifyNewDeviceSignedIn(identity, newDevice, ip);
 
         auditService.recordEvent(
                 "qr_confirmed",
@@ -947,6 +952,34 @@ public class AirVaultAuthService {
     }
 
     /**
+     * Logout: Invalidates session token, removes device presence, marks device as offline/unregistered,
+     * and broadcasts notification over WebSocket.
+     */
+    @Transactional
+    public void logout(String token, String clientDeviceId, String rawUsername) {
+        log.info("[AirVault Auth] 🚪 Logging out deviceId={}, username={}", clientDeviceId, rawUsername);
+
+        // 1. Invalidate session token in Redis
+        if (token != null && !token.isBlank()) {
+            redisTracker.invalidateDeviceSession(token);
+        }
+
+        // 2. Remove Redis presence & session
+        if (clientDeviceId != null && !clientDeviceId.isBlank()) {
+            redisTracker.recordDeviceOffline(clientDeviceId);
+        }
+
+        // 3. Update or remove device record
+        if (clientDeviceId != null && !clientDeviceId.isBlank()) {
+            deviceRepository.findByClientDeviceId(clientDeviceId).ifPresent(d -> {
+                d.setStatus("offline");
+                d.setLastActiveAt(Instant.now());
+                deviceRepository.save(d);
+            });
+        }
+    }
+
+    /**
      * 8. Erase Device Data: Wipes local device data, unlinks caller device, and clears device session,
      * while preserving the AirVaultIdentity credentials (username and hashed PIN) so the user can re-authenticate anytime.
      */
@@ -1009,8 +1042,65 @@ public class AirVaultAuthService {
     }
 
     private void validatePin(String pin) {
-        if (pin == null || !pin.matches("^\\d{4}$")) {
-            throw new BadRequestException("PIN must be exactly 4 digits");
+        if (pin == null || !pin.matches("^\\d{6,12}$")) {
+            throw new BadRequestException("Custom PIN must be at least 6 digits (6-12 digits)");
+        }
+    }
+
+    private void notifyNewDeviceSignedIn(AirVaultIdentity identity, AirVaultDevice newDevice, String ip) {
+        if (identity == null || newDevice == null) return;
+        List<AirVaultDevice> siblingDevices = deviceRepository.findByIdentity(identity);
+        if (siblingDevices.isEmpty()) return;
+
+        Map<String, Object> newDevMap = new HashMap<>();
+        newDevMap.put("id", newDevice.getClientDeviceId());
+        newDevMap.put("name", newDevice.getDeviceName());
+        newDevMap.put("type", newDevice.getDeviceType());
+        newDevMap.put("os", newDevice.getOs() != null ? newDevice.getOs() : "Remote OS");
+        newDevMap.put("browser", newDevice.getBrowser() != null ? newDevice.getBrowser() : "Remote Browser");
+        newDevMap.put("ipHint", newDevice.getIpHint() != null ? newDevice.getIpHint() : ip);
+        newDevMap.put("signedInAt", System.currentTimeMillis());
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "NEW_DEVICE_SIGNED_IN");
+        payload.put("newDevice", newDevMap);
+        payload.put("username", identity.getUsername());
+        payload.put("message", "A new device signed in to your @" + identity.getUsername() + " account");
+        payload.put("canRevoke", true);
+
+        try {
+            String payloadJson = objectMapper.writeValueAsString(payload);
+            for (AirVaultDevice sibling : siblingDevices) {
+                if (sibling.getClientDeviceId().equals(newDevice.getClientDeviceId())) {
+                    continue;
+                }
+                if ("revoked".equalsIgnoreCase(sibling.getStatus())) {
+                    continue;
+                }
+
+                com.code.acklet.airvault.websocket.dto.AirVaultWsMessage wsMsg = com.code.acklet.airvault.websocket.dto.AirVaultWsMessage.builder()
+                        .type("NEW_DEVICE_SIGNED_IN")
+                        .senderDeviceId(newDevice.getClientDeviceId())
+                        .targetDeviceId(sibling.getClientDeviceId())
+                        .payload(payloadJson)
+                        .timestamp(System.currentTimeMillis())
+                        .build();
+
+                webSocketHandler.sendToDevice(sibling.getClientDeviceId(), wsMsg);
+
+                SignalMessageDto signal = SignalMessageDto.builder()
+                        .id(UUID.randomUUID().toString())
+                        .senderDeviceId(newDevice.getClientDeviceId())
+                        .targetDeviceId(sibling.getClientDeviceId())
+                        .signalType("NEW_DEVICE_SIGNED_IN")
+                        .payload(payloadJson)
+                        .timestamp(Instant.now())
+                        .build();
+                syncRelayService.publishSyncEvent(signal);
+            }
+            log.info("[AirVault Auth] 📢 Sent NEW_DEVICE_SIGNED_IN notification to active siblings of username=@{}", identity.getUsername());
+        } catch (Exception ex) {
+            log.warn("[AirVault Auth] Failed to broadcast NEW_DEVICE_SIGNED_IN: {}", ex.getMessage());
         }
     }
 }

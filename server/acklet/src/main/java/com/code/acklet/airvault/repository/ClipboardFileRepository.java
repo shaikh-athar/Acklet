@@ -35,4 +35,8 @@ public interface ClipboardFileRepository extends JpaRepository<ClipboardFile, UU
     void deleteByFileId(String fileId);
 
     void deleteAllByClipboardId(String clipboardId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE ClipboardFile f SET f.clipboardId = :newId WHERE f.clipboardId = :oldId")
+    void updateClipboardId(@Param("oldId") String oldId, @Param("newId") String newId);
 }
