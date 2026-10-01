@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AirVault Web Share API Diagnostic — Complete Format Suite</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --surface: #131b2e;
+      --surface-border: #1e293b;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --success: #34d399;
+      --error: #f87171;
+      --warning: #fbbf24;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 24px;
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    h1 { font-size: 1.5rem; margin-bottom: 4px; color: var(--accent); }
+    .subtitle { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.5rem; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+    }
+    h2 { margin: 0 0 12px 0; font-size: 1.05rem; color: #cbd5e1; }
+    pre {
+      background: #020617;
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      color: #a5f3fc;
+      margin: 0;
+    }
+    .category-group {
+      margin-bottom: 16px;
+    }
+    .category-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px;
+    }
+    button {
+      background: #1e293b;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    button:hover { background: #334155; border-color: #475569; }
+    button.primary { background: #0284c7; border-color: #38bdf8; color: white; }
+    button.primary:hover { background: #0369a1; }
+    button.special { background: #6366f1; border-color: #818cf8; color: white; }
+    button.special:hover { background: #4f46e5; }
+    .status-panel {
+      margin-top: 14px;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-weight: 500;
+      font-size: 0.9rem;
+      background: #020617;
+      border: 1px solid var(--surface-border);
+      min-height: 24px;
+    }
+    .ok { color: var(--success); }
+    .err { color: var(--error); }
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    th, td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #1e293b;
+      text-align: left;
+    }
+    th {
+      background: #020617;
+      color: var(--text-muted);
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .badge-pass { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+    .badge-fail { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+    .badge-pending { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <h1>🔍 AirVault Web Share API Diagnostic</h1>
+  <div class="subtitle">Complete Format Verification Matrix covering all AirVault clipboard & file resource categories</div>
+
+  <div class="card">
+    <h2>1. Environment & Prerequisites</h2>
+    <pre id="envLogs">Running environment checks...</pre>
+  </div>
+
+  <div class="card">
+    <h2>2. Supported Resource Category Matrix</h2>
+    
+    <!-- Group 1: Documents & Office -->
+    <div class="category-group">
+      <div class="category-title">📄 Documents & Office</div>
+      <div class="grid">
+        <button onclick="testPdf()">📑 PDF (.pdf)</button>
+        <button onclick="testDocx()">📝 Word (.docx)</button>
+        <button onclick="testDoc()">📄 Word 97 (.doc)</button>
+        <button onclick="testXlsx()">📊 Excel (.xlsx)</button>
+        <button onclick="testXls()">📈 Excel 97 (.xls)</button>
+        <button onclick="testPptx()">📽️ PowerPoint (.pptx)</button>
+        <button onclick="testCsv()">📑 CSV (.csv)</button>
+        <button onclick="testTsv()">📋 TSV (.tsv)</button>
+        <button onclick="testRtf()">📄 RTF (.rtf)</button>
+        <button onclick="testEpub()">📚 EPUB (.epub)</button>
+      </div>
+    </div>
+
+    <!-- Group 2: Images -->
+    <div class="category-group">
+      <div class="category-title">🖼️ Images</div>
+      <div class="grid">
+        <button onclick="testPng()">🖼️ PNG (.png)</button>
+        <button onclick="testJpeg()">🖼️ JPEG (.jpg)</button>
+        <button onclick="testWebp()">🖼️ WebP (.webp)</button>
+        <button onclick="testGif()">🎞️ GIF (.gif)</button>
+        <button onclick="testSvg()">📐 SVG (.svg)</button>
+        <button onclick="testBmp()">🖼️ BMP (.bmp)</button>
+        <button onclick="testIco()">⭐ ICO (.ico)</button>
+        <button onclick="testAvif()">🖼️ AVIF (.avif)</button>
+      </div>
+    </div>
+
+    <!-- Group 3: Media (Audio & Video) -->
+    <div class="category-group">
+      <div class="category-title">🎥 Audio & Video</div>
+      <div class="grid">
+        <button onclick="testMp3()">🎵 MP3 Audio (.mp3)</button>
+        <button onclick="testWav()">🔊 WAV Audio (.wav)</button>
+        <button onclick="testM4a()">🎶 M4A Audio (.m4a)</button>
+        <button onclick="testOggAudio()">📻 OGG Audio (.ogg)</button>
+        <button onclick="testFlac()">🎧 FLAC Audio (.flac)</button>
+        <button onclick="testMp4()">🎬 MP4 Video (.mp4)</button>
+        <button onclick="testWebm()">🎥 WebM Video (.webm)</button>
+        <button onclick="testMov()">🎞️ MOV Video (.mov)</button>
+      </div>
+    </div>
+
+    <!-- Group 4: Code & Structured Text -->
+    <div class="category-group">
+      <div class="category-title">💻 Code, Text & Structured Data</div>
+      <div class="grid">
+        <button onclick="testTxt()">📄 Plain Text (.txt)</button>
+        <button onclick="testMarkdown()">📝 Markdown (.md)</button>
+        <button onclick="testJson()">{} JSON (.json)</button>
+        <button onclick="testXml()">🏷️ XML (.xml)</button>
+        <button onclick="testYaml()">⚙️ YAML (.yaml)</button>
+        <button onclick="testTypescript()">🔷 TypeScript (.ts)</button>
+        <button onclick="testJavascript()">🟡 JavaScript (.js)</button>
+        <button onclick="testPython()">🐍 Python (.py)</button>
+        <button onclick="testHtml()">🌐 HTML (.html)</button>
+        <button onclick="testCss()">🎨 CSS (.css)</button>
+        <button onclick="testSql()">🗄️ SQL (.sql)</button>
+      </div>
+    </div>
+
+    <!-- Group 5: Archives & Fonts -->
+    <div class="category-group">
+      <div class="category-title">📦 Archives & Fonts</div>
+      <div class="grid">
+        <button onclick="testZip()">📦 ZIP Archive (.zip)</button>
+        <button onclick="testTar()">📦 TAR Archive (.tar)</button>
+        <button onclick="testGz()">📦 GZIP (.gz)</button>
+        <button onclick="test7z()">📦 7-Zip (.7z)</button>
+        <button onclick="testRar()">📦 RAR (.rar)</button>
+        <button onclick="testWoff2()">🔤 WOFF2 Font (.woff2)</button>
+        <button onclick="testTtf()">🔤 TTF Font (.ttf)</button>
+      </div>
+    </div>
+
+    <!-- Group 6: Multi-File Mixed Batches -->
+    <div class="category-group">
+      <div class="category-title">🔀 Multi-File Mixed Batches</div>
+      <div class="grid">
+        <button class="special" onclick="testMixedPass()">✅ Safe Batch (PDF + PNG + TXT + MP4)</button>
+        <button class="special" onclick="testMixedOfficeZip()">⚠️ Office + ZIP Batch (PDF + XLSX + ZIP + DOCX)</button>
+        <button class="special" onclick="testFullOmniBatch()">🌐 Omni Batch (1 of Each Category)</button>
+      </div>
+    </div>
+
+    <div id="result" class="status-panel">Click any format above to test native share...</div>
+  </div>
+
+  <div class="card">
+    <h2>3. Live Test Audit Table</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Format</th>
+            <th>Category</th>
+            <th>MIME Type</th>
+            <th>canShare()</th>
+            <th>OS Share Result</th>
+          </tr>
+        </thead>
+        <tbody id="auditTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // ── Diagnostic Environment ──────────────────────────────────────────────
+    const env = {
+      'window.isSecureContext': window.isSecureContext,
+      'navigator.share exists': !!navigator.share,
+      'navigator.canShare exists': !!navigator.canShare,
+      'User agent': navigator.userAgent,
+      'Is in iframe': window.self !== window.top,
+      'Protocol': window.location.protocol,
+      'Host': window.location.host
+    };
+    document.getElementById('envLogs').textContent = JSON.stringify(env, null, 2);
+
+    const resultEl = document.getElementById('result');
+    const tableBody = document.getElementById('auditTableBody');
+
+    // ── Register Table Rows ─────────────────────────────────────────────────
+    const FORMATS = [
+      { id: 'pdf', name: 'PDF', cat: 'Document', mime: 'application/pdf' },
+      { id: 'docx', name: 'Word (.docx)', cat: 'Document', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+      { id: 'doc', name: 'Word (.doc)', cat: 'Document', mime: 'application/msword' },
+      { id: 'xlsx', name: 'Excel (.xlsx)', cat: 'Spreadsheet', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+      { id: 'xls', name: 'Excel (.xls)', cat: 'Spreadsheet', mime: 'application/vnd.ms-excel' },
+      { id: 'pptx', name: 'PowerPoint (.pptx)', cat: 'Presentation', mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' },
+      { id: 'csv', name: 'CSV', cat: 'Spreadsheet', mime: 'text/csv' },
+      { id: 'tsv', name: 'TSV', cat: 'Spreadsheet', mime: 'text/tab-separated-values' },
+      { id: 'rtf', name: 'RTF', cat: 'Document', mime: 'application/rtf' },
+      { id: 'epub', name: 'EPUB', cat: 'Document', mime: 'application/epub+zip' },
+
+      { id: 'png', name: 'PNG Image', cat: 'Image', mime: 'image/png' },
+      { id: 'jpg', name: 'JPEG Image', cat: 'Image', mime: 'image/jpeg' },
+      { id: 'webp', name: 'WebP Image', cat: 'Image', mime: 'image/webp' },
+      { id: 'gif', name: 'GIF Image', cat: 'Image', mime: 'image/gif' },
+      { id: 'svg', name: 'SVG Image', cat: 'Image', mime: 'image/svg+xml' },
+      { id: 'bmp', name: 'BMP Image', cat: 'Image', mime: 'image/bmp' },
+      { id: 'ico', name: 'ICO Icon', cat: 'Image', mime: 'image/x-icon' },
+      { id: 'avif', name: 'AVIF Image', cat: 'Image', mime: 'image/avif' },
+
+      { id: 'mp3', name: 'MP3 Audio', cat: 'Audio', mime: 'audio/mpeg' },
+      { id: 'wav', name: 'WAV Audio', cat: 'Audio', mime: 'audio/wav' },
+      { id: 'm4a', name: 'M4A Audio', cat: 'Audio', mime: 'audio/mp4' },
+      { id: 'ogg', name: 'OGG Audio', cat: 'Audio', mime: 'audio/ogg' },
+      { id: 'flac', name: 'FLAC Audio', cat: 'Audio', mime: 'audio/flac' },
+      { id: 'mp4', name: 'MP4 Video', cat: 'Video', mime: 'video/mp4' },
+      { id: 'webm', name: 'WebM Video', cat: 'Video', mime: 'video/webm' },
+      { id: 'mov', name: 'MOV Video', cat: 'Video', mime: 'video/quicktime' },
+
+      { id: 'txt', name: 'Plain Text', cat: 'Text', mime: 'text/plain' },
+      { id: 'md', name: 'Markdown', cat: 'Markdown', mime: 'text/markdown' },
+      { id: 'json', name: 'JSON', cat: 'JSON', mime: 'application/json' },
+      { id: 'xml', name: 'XML', cat: 'Code', mime: 'application/xml' },
+      { id: 'yaml', name: 'YAML', cat: 'Code', mime: 'application/yaml' },
+      { id: 'ts', name: 'TypeScript', cat: 'Code', mime: 'text/typescript' },
+      { id: 'js', name: 'JavaScript', cat: 'Code', mime: 'text/javascript' },
+      { id: 'py', name: 'Python', cat: 'Code', mime: 'text/x-python' },
+      { id: 'html', name: 'HTML', cat: 'Code', mime: 'text/html' },
+      { id: 'css', name: 'CSS', cat: 'Code', mime: 'text/css' },
+      { id: 'sql', name: 'SQL', cat: 'Code', mime: 'application/sql' },
+
+      { id: 'zip', name: 'ZIP Archive', cat: 'Archive', mime: 'application/zip' },
+      { id: 'tar', name: 'TAR Archive', cat: 'Archive', mime: 'application/x-tar' },
+      { id: 'gz', name: 'GZIP', cat: 'Archive', mime: 'application/gzip' },
+      { id: '7z', name: '7-Zip', cat: 'Archive', mime: 'application/x-7z-compressed' },
+      { id: 'rar', name: 'RAR', cat: 'Archive', mime: 'application/vnd.rar' },
+      { id: 'woff2', name: 'WOFF2 Font', cat: 'Font', mime: 'font/woff2' },
+      { id: 'ttf', name: 'TTF Font', cat: 'Font', mime: 'font/ttf' },
+
+      { id: 'batch-safe', name: 'Batch (Safe)', cat: 'Multi-File', mime: 'Mixed (PDF+PNG+TXT+MP4)' },
+      { id: 'batch-office', name: 'Batch (Office/ZIP)', cat: 'Multi-File', mime: 'Mixed (PDF+XLSX+ZIP+DOCX)' },
+      { id: 'batch-omni', name: 'Batch (Omni)', cat: 'Multi-File', mime: 'Mixed (All Categories)' }
+    ];
+
+    tableBody.innerHTML = FORMATS.map(f => `
+      <tr id="row-${f.id}">
+        <td><strong>${f.name}</strong></td>
+        <td><span class="badge badge-pending">${f.cat}</span></td>
+        <td><code>${f.mime}</code></td>
+        <td class="can-share">-</td>
+        <td class="share-result"><span class="badge badge-pending">Pending</span></td>
+      </tr>
+    `).join('');
+
+    function updateAudit(id, canShare, statusText, isOk) {
+      const row = document.getElementById('row-' + id);
+      if (row) {
+        row.querySelector('.can-share').innerHTML = canShare === true 
+          ? '<span style="color:#34d399;font-weight:700;">✅ true</span>' 
+          : (canShare === false ? '<span style="color:#f87171;font-weight:700;">❌ false</span>' : 'N/A');
+        row.querySelector('.share-result').innerHTML = isOk 
+          ? `<span class="badge badge-pass">${statusText}</span>` 
+          : `<span class="badge badge-fail">${statusText}</span>`;
+      }
+    }
+
+    // ── Universal Test Runner ───────────────────────────────────────────────
+    async function runTest(files, label, rowId) {
+      resultEl.className = 'status-panel';
+      resultEl.textContent = `Testing ${label}...`;
+
+      if (!navigator.share) {
+        resultEl.className = 'status-panel err';
+        resultEl.textContent = `❌ ${label}: navigator.share is not available`;
+        updateAudit(rowId, false, 'API missing', false);
+        return;
+      }
+
+      const canShare = navigator.canShare ? navigator.canShare({ files }) : 'N/A';
+      console.log(`[${label}] canShare:`, canShare, files.map(f => ({ name: f.name, type: f.type, size: f.size })));
+
+      if (canShare === false) {
+        resultEl.className = 'status-panel err';
+        resultEl.textContent = `❌ ${label}: canShare() returned false for MIME type ${files[0]?.type}`;
+        updateAudit(rowId, false, 'canShare = false', false);
+        return;
+      }
+
+      try {
+        await navigator.share({ files, title: label });
+        resultEl.className = 'status-panel ok';
+        resultEl.textContent = `✅ ${label}: Share sheet opened & completed successfully`;
+        updateAudit(rowId, canShare, 'Success (Opened)', true);
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          resultEl.className = 'status-panel ok';
+          resultEl.textContent = `✅ ${label}: Share sheet opened, user dismissed/canceled (PASS)`;
+          updateAudit(rowId, canShare, 'Pass (User Cancelled)', true);
+          return;
+        }
+        resultEl.className = 'status-panel err';
+        resultEl.textContent = `❌ ${label}: ${err.name} - ${err.message}`;
+        updateAudit(rowId, canShare, `${err.name}`, false);
+        console.error(`[${label}] Error:`, err);
+      }
+    }
+
+    // ── Helper Constructors ────────────────────────────────────────────────
+    const b64toBlob = (b64, type) => {
+      const bstr = atob(b64);
+      const bytes = new Uint8Array(bstr.length);
+      for (let i = 0; i < bstr.length; i++) bytes[i] = bstr.charCodeAt(i);
+      return new Blob([bytes], { type });
+    };
+
+    const pkHeader = new Uint8Array([0x50, 0x4B, 0x03, 0x04, 0x00, 0x00, 0x00, 0x00]);
+    const pdfHeader = '%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF';
+    const pngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+    // ── Document Tests ─────────────────────────────────────────────────────
+    // Valid minimal JPEG 1x1 pixel base64
+    const validJpegB64 = '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=';
+    // Valid minimal BMP 1x1 pixel base64
+    const validBmpB64 = 'Qk06AAAAAAAAADYAAAAoAAAAAQAAAAEAAAABACAAAAAAAAAAAAAQAAAAEAAAAAAAAAAAAAD/AAAA';
+    // Valid minimal AVIF 1x1 pixel base64
+    const validAvifB64 = 'AAAAIGZ0eXBhdmlmAAAAAG1pZjFhdmlmTWFpbgAAAAMbZGlyZWN0AAAAD21ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAHBpY3QAAAAAAAAAAAAAAAAAAAAADnBpdG0AAAAAAAEAAAAsaWxvYwAAAAAEAAMBAAAAAQAAAAEAAACkAAAAFAAAAAAAAAYAAACwAAAAAgAAAAVpaW5mAAAAAAABAAAAFmluZmUCAAAAAAEAAGF2MDEAAAAAF2lwcnAAAABFaXBjbwAAACFhdjFDgQAMgKAAEgADAAAAAAAAAAAAAAAAAAAAAA5jb2xyY3VydgAAAAAAABRpc3BlAAAAAAAAAAEAAAABAABpc3BlAAAAAQAAAAEAAAAKaXJldAAAAAAAAAAQaXJlZgAAAAFjZGVwAAEAAAATAAAAAHZhaWwAAAABAAAAAAAIAAAAbWRhdAAAAAAAAACCAAAAAA==';
+    // Valid minimal MP4 video container base64
+    const validMp4B64 = 'AAAAHGZ0eXBpc29tAAAAAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAUBtZGF0AAACrgYF//+//wAAAA1tb292AAAAbG12aGQAAAAAAAAAAAAAAAAAAAPoAAAA+gABAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAACx0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAA+gAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAA';
+
+    // ── Document Tests ─────────────────────────────────────────────────────
+    function testPdf() {
+      runTest([new File([pdfHeader], 'test.pdf', { type: 'application/pdf' })], 'PDF Document', 'pdf');
+    }
+    function testDocx() {
+      runTest([new File([pkHeader], 'test.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })], 'Word (.docx)', 'docx');
+    }
+    function testDoc() {
+      runTest([new File(['\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1'], 'test.doc', { type: 'application/msword' })], 'Word 97 (.doc)', 'doc');
+    }
+    function testXlsx() {
+      runTest([new File([pkHeader], 'test.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })], 'Excel (.xlsx)', 'xlsx');
+    }
+    function testXls() {
+      runTest([new File(['\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1'], 'test.xls', { type: 'application/vnd.ms-excel' })], 'Excel 97 (.xls)', 'xls');
+    }
+    function testPptx() {
+      runTest([new File([pkHeader], 'test.pptx', { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' })], 'PowerPoint (.pptx)', 'pptx');
+    }
+    function testCsv() {
+      runTest([new File(['id,name,value\n1,Alpha,100\n2,Beta,200\n'], 'test.csv', { type: 'text/csv' })], 'CSV File', 'csv');
+    }
+    function testTsv() {
+      runTest([new File(['id\tname\tscore\n1\tAlice\t98\n2\tBob\t95\n'], 'test.tsv', { type: 'text/tab-separated-values' })], 'TSV File', 'tsv');
+    }
+    function testRtf() {
+      runTest([new File(['{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Courier;}}\\f0\\fs24 Hello World}'], 'test.rtf', { type: 'application/rtf' })], 'RTF Document', 'rtf');
+    }
+    function testEpub() {
+      runTest([new File([pkHeader], 'test.epub', { type: 'application/epub+zip' })], 'EPUB eBook', 'epub');
+    }
+
+    // ── Image Tests ────────────────────────────────────────────────────────
+    function testPng() {
+      runTest([new File([b64toBlob(pngB64, 'image/png')], 'test.png', { type: 'image/png' })], 'PNG Image', 'png');
+    }
+    function testJpeg() {
+      runTest([new File([b64toBlob(validJpegB64, 'image/jpeg')], 'test.jpg', { type: 'image/jpeg' })], 'JPEG Image', 'jpg');
+    }
+    function testWebp() {
+      runTest([new File(['RIFF\x1a\x00\x00\x00WEBPVP8 \x0e\x00\x00\x00'], 'test.webp', { type: 'image/webp' })], 'WebP Image', 'webp');
+    }
+    function testGif() {
+      runTest([new File(['GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'], 'test.gif', { type: 'image/gif' })], 'GIF Image', 'gif');
+    }
+    function testSvg() {
+      runTest([new File(['<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="red"/></svg>'], 'test.svg', { type: 'image/svg+xml' })], 'SVG Image', 'svg');
+    }
+    function testBmp() {
+      runTest([new File([b64toBlob(validBmpB64, 'image/bmp')], 'test.bmp', { type: 'image/bmp' })], 'BMP Image', 'bmp');
+    }
+    function testIco() {
+      runTest([new File(['\x00\x00\x01\x00\x01\x00\x01\x01\x00\x00\x01\x00\x18\x00\x30\x00\x00\x00\x16\x00\x00\x00'], 'test.ico', { type: 'image/x-icon' })], 'ICO Icon', 'ico');
+    }
+    function testAvif() {
+      runTest([new File([b64toBlob(validAvifB64, 'image/avif')], 'test.avif', { type: 'image/avif' })], 'AVIF Image', 'avif');
+    }
+
+    // ── Media Tests ────────────────────────────────────────────────────────
+    function testMp3() {
+      runTest([new File(['\xFF\xFB\x90\x64\x00\x00\x00\x00\x00\x00\x00\x00'], 'test.mp3', { type: 'audio/mpeg' })], 'MP3 Audio', 'mp3');
+    }
+    function testWav() {
+      runTest([new File(['RIFF$\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00data\x00\x00\x00\x00'], 'test.wav', { type: 'audio/wav' })], 'WAV Audio', 'wav');
+    }
+    function testM4a() {
+      runTest([new File([b64toBlob(validMp4B64, 'audio/mp4')], 'test.m4a', { type: 'audio/mp4' })], 'M4A Audio', 'm4a');
+    }
+    function testOggAudio() {
+      runTest([new File(['OggS\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00'], 'test.ogg', { type: 'audio/ogg' })], 'OGG Audio', 'ogg');
+    }
+    function testFlac() {
+      runTest([new File(['fLaC\x00\x00\x00"\x10\x00\x10\x00'], 'test.flac', { type: 'audio/flac' })], 'FLAC Audio', 'flac');
+    }
+    function testMp4() {
+      runTest([new File([b64toBlob(validMp4B64, 'video/mp4')], 'test.mp4', { type: 'video/mp4' })], 'MP4 Video', 'mp4');
+    }
+    function testWebm() {
+      runTest([new File(['\x1A\x45\xDF\xA3'], 'test.webm', { type: 'video/webm' })], 'WebM Video', 'webm');
+    }
+    function testMov() {
+      runTest([new File([b64toBlob(validMp4B64, 'video/quicktime')], 'test.mov', { type: 'video/quicktime' })], 'MOV Video', 'mov');
+    }
+
+    // ── Code & Text Tests ──────────────────────────────────────────────────
+    function testTxt() {
+      runTest([new File(['AirVault Plain Text payload\nLine 2'], 'test.txt', { type: 'text/plain' })], 'Plain Text', 'txt');
+    }
+    function testMarkdown() {
+      runTest([new File(['# AirVault Markdown\n\n- Feature 1\n- Feature 2'], 'test.md', { type: 'text/markdown' })], 'Markdown', 'md');
+    }
+    function testJson() {
+      runTest([new File([JSON.stringify({ tool: 'AirVault', version: '1.0', active: true }, null, 2)], 'test.json', { type: 'application/json' })], 'JSON', 'json');
+    }
+    function testXml() {
+      runTest([new File(['<?xml version="1.0"?><vault><item id="1">Data</item></vault>'], 'test.xml', { type: 'application/xml' })], 'XML', 'xml');
+    }
+    function testYaml() {
+      runTest([new File(['airvault:\n  version: 1.0\n  secure: true'], 'test.yaml', { type: 'application/yaml' })], 'YAML', 'yaml');
+    }
+    function testTypescript() {
+      runTest([new File(['export interface AirVaultDevice { id: string; name: string; }'], 'test.ts', { type: 'text/typescript' })], 'TypeScript', 'ts');
+    }
+    function testJavascript() {
+      runTest([new File(['console.log("AirVault JS Test");'], 'test.js', { type: 'text/javascript' })], 'JavaScript', 'js');
+    }
+    function testPython() {
+      runTest([new File(['def sync_airvault():\n    return "synced"'], 'test.py', { type: 'text/x-python' })], 'Python', 'py');
+    }
+    function testHtml() {
+      runTest([new File(['<!DOCTYPE html><html><body><h1>AirVault</h1></body></html>'], 'test.html', { type: 'text/html' })], 'HTML', 'html');
+    }
+    function testCss() {
+      runTest([new File(['body { background: #0f172a; color: #f8fafc; font-family: sans-serif; }\n.card { border-radius: 8px; }'], 'test.css', { type: 'text/css' })], 'CSS Stylesheet', 'css');
+    }
+    function testSql() {
+      runTest([new File(['CREATE TABLE airvault (id TEXT PRIMARY KEY, content TEXT);\nINSERT INTO airvault VALUES (\'1\', \'sample\');'], 'test.sql', { type: 'application/sql' })], 'SQL Script', 'sql');
+    }
+
+    // ── Archive & Font Tests ───────────────────────────────────────────────
+    function testZip() {
+      runTest([new File([pkHeader], 'test.zip', { type: 'application/zip' })], 'ZIP Archive', 'zip');
+    }
+    function testTar() {
+      runTest([new File([new Uint8Array(512)], 'test.tar', { type: 'application/x-tar' })], 'TAR Archive', 'tar');
+    }
+    function testGz() {
+      runTest([new File(['\x1f\x8b\x08\x00\x00\x00\x00\x00'], 'test.gz', { type: 'application/gzip' })], 'GZIP Archive', 'gz');
+    }
+    function test7z() {
+      runTest([new File(['7z\xbc\xaf\'\x1c'], 'test.7z', { type: 'application/x-7z-compressed' })], '7-Zip Archive', '7z');
+    }
+    function testRar() {
+      runTest([new File(['Rar!\x1a\x07\x00'], 'test.rar', { type: 'application/vnd.rar' })], 'RAR Archive', 'rar');
+    }
+    function testWoff2() {
+      runTest([new File(['wOF2\x00\x01\x00\x00'], 'test.woff2', { type: 'font/woff2' })], 'WOFF2 Font', 'woff2');
+    }
+    function testTtf() {
+      runTest([new File(['\x00\x01\x00\x00\x00'], 'test.ttf', { type: 'font/ttf' })], 'TTF Font', 'ttf');
+    }
+
+    // ── Multi-File Batch Tests ─────────────────────────────────────────────
+    function testMixedPass() {
+      const files = [
+        new File([pdfHeader], 'contract.pdf', { type: 'application/pdf' }),
+        new File([b64toBlob(pngB64, 'image/png')], 'diagram.png', { type: 'image/png' }),
+        new File(['AirVault batch note: ' + Date.now()], 'notes.txt', { type: 'text/plain' }),
+        new File([new Uint8Array(1024)], 'clip.mp4', { type: 'video/mp4' })
+      ];
+      runTest(files, 'Safe Multi-File Batch', 'batch-safe');
+    }
+
+    function testMixedOfficeZip() {
+      const files = [
+        new File([pdfHeader], 'invoice.pdf', { type: 'application/pdf' }),
+        new File([pkHeader], 'dataset.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+        new File([pkHeader], 'backup.zip', { type: 'application/zip' }),
+        new File([pkHeader], 'manual.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+      ];
+      runTest(files, 'Office + ZIP Mixed Batch', 'batch-office');
+    }
+
+    function testFullOmniBatch() {
+      const files = [
+        new File([pdfHeader], 'doc.pdf', { type: 'application/pdf' }),
+        new File([b64toBlob(pngB64, 'image/png')], 'image.png', { type: 'image/png' }),
+        new File(['\xFF\xFB\x90\x64\x00\x00\x00\x00'], 'sound.mp3', { type: 'audio/mpeg' }),
+        new File([new Uint8Array(512)], 'video.mp4', { type: 'video/mp4' }),
+        new File(['console.log("code");'], 'script.js', { type: 'text/javascript' }),
+        new File([pkHeader], 'archive.zip', { type: 'application/zip' })
+      ];
+      runTest(files, 'Omni Multi-Category Batch', 'batch-omni');
+    }
+  </script>
+</body>
+</html>

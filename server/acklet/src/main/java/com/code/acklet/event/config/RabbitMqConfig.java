@@ -196,6 +196,7 @@ public class RabbitMqConfig {
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
         rabbitTemplate.setMessageConverter(jsonMessageConverter());
+        rabbitTemplate.setReplyTimeout(3000L); // 3-second hard reply timeout to prevent caller threads from blocking indefinitely
         return rabbitTemplate;
     }
 }

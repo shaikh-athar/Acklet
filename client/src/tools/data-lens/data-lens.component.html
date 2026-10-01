@@ -1,0 +1,529 @@
+<div
+  class="json-lens-workspace"
+  [attr.data-theme]="theme()"
+  [class.fullscreen-active]="isFullscreen()"
+  [style.--jl-code-font-size.px]="fontSize()"
+  [style.--jl-code-line-height.px]="getLineHeight(fontSize())"
+>
+  <!-- Section 37: Drag & Drop Overlay Component -->
+  <app-json-lens-drag-overlay></app-json-lens-drag-overlay>
+
+  <!-- Section 38: Toast Container Component -->
+  <app-json-lens-toast-container></app-json-lens-toast-container>
+
+  <!-- Modular Top Toolbar Header Component -->
+  <app-json-lens-toolbar
+    [theme]="theme()"
+    [isFullscreen]="isFullscreen()"
+    [activeTab]="inspectorTab()"
+    [activeFormat]="activeFormat()"
+    [isDiffMode]="isDiffMode()"
+    (toggleTheme)="toggleTheme()"
+    (historyClick)="toggleHistory()"
+    (commandPaletteClick)="toggleCommandPalette()"
+    (toggleFullscreen)="toggleFullscreen()"
+    (tabSelect)="setInspectorTab($any($event)); isDiffMode.set(false)"
+    (diffToggle)="toggleDiffMode()"
+  ></app-json-lens-toolbar>
+
+  <!-- Navbar Row 2: Secondary Controls Bar (Only in Editor mode, removed in Diff mode) -->
+  @if (!isDiffMode()) {
+    <div class="workspace-toolbar">
+      <!-- Format Selector Group (Custom Acklet Dropdown Menu) -->
+      <div class="toolbar-group">
+        <span class="control-label">Format:</span>
+        <div class="indent-menu-wrapper">
+          <button
+            class="toggle-control-btn indent-menu-btn"
+            [class.active]="showFormatMenu()"
+            (click)="showFormatMenu.set(!showFormatMenu())"
+            data-tooltip="Active Document Format Mode"
+          >
+            <span>{{ getActiveFormatLabel() }}</span>
+            <app-icon name="chevron-down" class="icon-xs ml-0.5"></app-icon>
+          </button>
+
+          @if (showFormatMenu()) {
+            <div class="indent-dropdown-backdrop" (click)="showFormatMenu.set(false)"></div>
+            <div class="indent-dropdown-menu">
+              @for (fmt of allFormats(); track fmt.id) {
+                <button
+                  class="indent-menu-item"
+                  [class.active]="activeFormat() === fmt.id"
+                  (click)="setFormat(fmt.id); showFormatMenu.set(false)"
+                >
+                  <span>{{ fmt.label }}</span>
+                </button>
+              }
+            </div>
+          }
+        </div>
+        <button class="toggle-control-btn icon-only-btn" (click)="triggerAutoDetect()" data-tooltip="Auto-Detect Format from Payload Signature">
+          <app-icon name="sparkles" class="icon-xs text-brand-400"></app-icon>
+        </button>
+      </div>
+
+      <!-- Divider -->
+      <div class="toolbar-divider"></div>
+
+      <!-- Group 1: Primary Document Transformations -->
+      <div class="toolbar-group">
+        <span class="control-label">Indent:</span>
+        <div class="indent-menu-wrapper">
+          <button class="toggle-control-btn indent-menu-btn" [class.active]="showIndentMenu()" (click)="showIndentMenu.set(!showIndentMenu())" data-tooltip="Indentation spacing">
+            <span>{{ getIndentLabel() }}</span>
+            <app-icon name="chevron-down" class="icon-xs ml-0.5"></app-icon>
+          </button>
+
+          @if (showIndentMenu()) {
+            <div class="indent-dropdown-backdrop" (click)="showIndentMenu.set(false)"></div>
+            <div class="indent-dropdown-menu">
+              <button class="indent-menu-item" [class.active]="indent() === 1" (click)="selectIndent(1)">
+                <span>1 space</span>
+              </button>
+              <button class="indent-menu-item" [class.active]="indent() === 2" (click)="selectIndent(2)">
+                <span>2 spaces</span>
+              </button>
+              <button class="indent-menu-item" [class.active]="indent() === 3" (click)="selectIndent(3)">
+                <span>3 spaces</span>
+              </button>
+              <button class="indent-menu-item" [class.active]="indent() === 4" (click)="selectIndent(4)">
+                <span>4 spaces</span>
+              </button>
+              <button class="indent-menu-item" [class.active]="indent() === '\t'" (click)="selectIndent('\t')">
+                <span>Tabs</span>
+              </button>
+            </div>
+          }
+        </div>
+        @if (capabilities().sortKeys) {
+          <button class="toggle-control-btn" [class.active]="sortKeys()" (click)="toggleSortKeys()"
+            data-tooltip="Sort Object Keys Alphabetically">
+            <app-icon name="arrow-up-down" class="icon-xs"></app-icon>
+            <span>Sort Keys</span>
+          </button>
+        }
+        @if (capabilities().minify) {
+          <button class="toggle-control-btn" [class.active]="minify()" (click)="toggleMinify()"
+            data-tooltip="Minify Payload (Remove Whitespace)">
+            <app-icon name="minimize-2" class="icon-xs"></app-icon>
+            <span>Minify</span>
+          </button>
+        }
+      </div>
+
+      <!-- Divider -->
+      <div class="toolbar-divider"></div>
+
+      <!-- Font Size Selector Group -->
+      <div class="toolbar-group">
+        <span class="control-label">Font:</span>
+        <div class="indent-menu-wrapper">
+          <button class="toggle-control-btn indent-menu-btn" [class.active]="showFontSizeMenu()" (click)="showFontSizeMenu.set(!showFontSizeMenu())" data-tooltip="Editor and diff font size">
+            <app-icon name="type" class="icon-xs"></app-icon>
+            <span>{{ getFontSizeLabel() }}</span>
+            <app-icon name="chevron-down" class="icon-xs ml-0.5"></app-icon>
+          </button>
+
+          @if (showFontSizeMenu()) {
+            <div class="indent-dropdown-backdrop" (click)="showFontSizeMenu.set(false)"></div>
+            <div class="indent-dropdown-menu">
+              @for (item of fontSizes; track item.size) {
+                <button class="indent-menu-item" [class.active]="fontSize() === item.size" (click)="selectFontSize(item.size)">
+                  <span>{{ item.label }}</span>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="toolbar-divider"></div>
+
+      <!-- Group 2: Editor Mode & Transformations -->
+      <div class="toolbar-group">
+        <button class="toggle-control-btn icon-only-btn" [class.active]="syncScroll()" (click)="syncScroll.set(!syncScroll())"
+          data-tooltip="Synchronize side-by-side scrolling between Input and Inspector panels">
+          <app-icon name="repeat" class="icon-xs"></app-icon>
+        </button>
+        <button class="toggle-control-btn icon-only-btn" [class.active]="wordWrap()" (click)="toggleWordWrap()"
+          data-tooltip="Toggle text word wrapping">
+          <app-icon name="wrap-text" class="icon-xs"></app-icon>
+        </button>
+        <button class="toggle-control-btn" [class.active]="isEscaped()" (click)="toggleEscapeInput()"
+          [attr.data-tooltip]="isEscaped() ? 'Click to Unescape JSON string' : 'Click to Escape JSON as a string value'"
+          [disabled]="!rawInput()">
+          <app-icon [name]="isEscaped() ? 'arrow-left-from-line' : 'arrow-right-from-line'" class="icon-xs"></app-icon>
+          <span>{{ isEscaped() ? 'Unescape' : 'Escape' }}</span>
+        </button>
+
+        <!-- Contextual Specialized Transformations Dropdown -->
+        @if (secondaryOperations().length > 0) {
+          <div class="transform-menu-wrapper">
+            <button class="toggle-control-btn" [class.active]="showTransformMenu()" (click)="showTransformMenu.set(!showTransformMenu())" [attr.data-tooltip]="'Specialized ' + activeFormat().toUpperCase() + ' Transformations & Conversions'">
+              <app-icon name="wand-2" class="icon-xs text-brand-400"></app-icon>
+              <span>Transform</span>
+              <app-icon name="chevron-down" class="icon-xs"></app-icon>
+            </button>
+
+            @if (showTransformMenu()) {
+              <div class="transform-dropdown-backdrop" (click)="showTransformMenu.set(false)"></div>
+              <div class="transform-dropdown-menu">
+                <div class="transform-menu-header">Specialized {{ activeFormat().toUpperCase() }} Operations</div>
+                @for (op of secondaryOperations(); track op.id) {
+                  <button class="transform-menu-item" (click)="executeTransformation(op.id)" [attr.data-tooltip]="op.tooltip">
+                    <app-icon [name]="op.icon" class="icon-xs text-emerald-400"></app-icon>
+                    <span>{{ op.label }}</span>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+
+      <!-- Right Group: Search (Expandable) -> Filter (Icon) -> Share (Icon) -->
+      <div class="toolbar-right-group ml-auto">
+        <!-- 1. Search Action (Smooth Expandable Search Bar) -->
+        <div class="expandable-search-wrapper" [class.is-expanded]="showSearchInput() || !!filterQuery()">
+          @if (!showSearchInput() && !filterQuery()) {
+            <button
+              class="toggle-control-btn icon-only-btn"
+              (click)="toggleSearchInput()"
+              data-tooltip="Open Live Search (Cmd+F)"
+            >
+              <app-icon name="search" class="icon-sm"></app-icon>
+            </button>
+          } @else {
+            <div class="search-input-group smooth-expand-anim" [class.is-closing]="isSearchClosing()">
+              <app-icon name="search" class="search-icon icon-xs"></app-icon>
+              <input
+                type="text"
+                class="search-input-field"
+                [value]="filterQuery()"
+                (input)="onSearchInput($any($event.target).value)"
+                (keydown.enter)="nextSearchMatch()"
+                (keydown.shift.enter)="prevSearchMatch()"
+                (keydown.escape)="closeSearchInput()"
+                placeholder="Search in JSON payload..."
+              />
+
+              @if (filterQuery()) {
+                <div class="search-nav-controls">
+                  <span class="search-match-count">
+                    {{ totalSearchMatches() > 0 ? activeSearchIndex() + ' / ' + totalSearchMatches() : '0 matches' }}
+                  </span>
+                  <button class="search-nav-btn" (click)="prevSearchMatch()" [disabled]="totalSearchMatches() === 0" data-tooltip="Previous match (Shift+Enter)">
+                    <app-icon name="chevron-up" class="icon-xs"></app-icon>
+                  </button>
+                  <button class="search-nav-btn" (click)="nextSearchMatch()" [disabled]="totalSearchMatches() === 0" data-tooltip="Next match (Enter)">
+                    <app-icon name="chevron-down" class="icon-xs"></app-icon>
+                  </button>
+                  <button class="search-clear-btn" (click)="filterQuery.set('')" data-tooltip="Clear search">✕</button>
+                </div>
+              }
+
+              <div class="search-scope-addon">
+                <button class="search-scope-trigger" (click)="toggleSearchScopeMenu($event)" data-tooltip="Select Search Target">
+                  <span class="scope-text">Search In: <strong class="scope-target">{{ searchScope() | titlecase }}</strong></span>
+                  <app-icon name="chevron-down" class="icon-xs chevron-icon"></app-icon>
+                </button>
+
+                @if (showSearchScopeMenu()) {
+                  <div class="search-scope-dropdown-menu" (click)="$event.stopPropagation()">
+                    <div class="menu-label">SEARCH TARGET</div>
+                    <button class="menu-item-btn" [class.selected]="searchScope() === 'both'" (click)="setSearchScope('both')">
+                      <app-icon name="layers" class="icon-xs"></app-icon>
+                      <span>Both (Input & Inspector)</span>
+                      @if (searchScope() === 'both') { <app-icon name="check" class="icon-xs check-mark"></app-icon> }
+                    </button>
+                    <button class="menu-item-btn" [class.selected]="searchScope() === 'input'" (click)="setSearchScope('input')">
+                      <app-icon name="file-text" class="icon-xs"></app-icon>
+                      <span>Input Panel Only</span>
+                      @if (searchScope() === 'input') { <app-icon name="check" class="icon-xs check-mark"></app-icon> }
+                    </button>
+                    <button class="menu-item-btn" [class.selected]="searchScope() === 'inspector'" (click)="setSearchScope('inspector')">
+                      <app-icon name="eye" class="icon-xs"></app-icon>
+                      <span>Inspector Panel Only</span>
+                      @if (searchScope() === 'inspector') { <app-icon name="check" class="icon-xs check-mark"></app-icon> }
+                    </button>
+                  </div>
+                }
+              </div>
+
+              <button class="search-collapse-btn" (click)="closeSearchInput()" data-tooltip="Close Search">
+                <app-icon name="x" class="icon-xs"></app-icon>
+              </button>
+            </div>
+          }
+        </div>
+
+        <!-- 2. Filter Action (Icon Only -> Opens Condition Popover) -->
+        <div class="filter-popover-anchor">
+          <button
+            class="toggle-control-btn icon-only-btn"
+            [class.active]="showFilterPopover() || !!activeFilterCondition()"
+            (click)="toggleFilterPopover()"
+            data-tooltip="Filter Condition (Contains, Equals, Regex, Numeric >)"
+          >
+            <app-icon name="filter" class="icon-sm"></app-icon>
+          </button>
+
+          <!-- Filter Condition Popover Modal -->
+          @if (showFilterPopover()) {
+            <div class="filter-popover-backdrop" (click)="closeFilterPopover()"></div>
+            <div class="filter-condition-popover" (click)="$event.stopPropagation()">
+              <div class="filter-popover-header">
+                <div class="filter-popover-title">
+                  <app-icon name="filter" class="icon-xs text-brand-400"></app-icon>
+                  <span>Apply Filter Condition</span>
+                </div>
+                <button class="filter-popover-close" (click)="closeFilterPopover()">
+                  <app-icon name="x" class="icon-xs"></app-icon>
+                </button>
+              </div>
+
+              <div class="filter-popover-body">
+                <div class="filter-field-group">
+                  <label class="filter-label">Filter Value / Pattern</label>
+                  <input
+                    type="text"
+                    class="filter-query-input"
+                    placeholder="e.g. Athar, &quot;status&quot;: 200, key=id, or \d+"
+                    [ngModel]="filterCondition().query"
+                    (ngModelChange)="updateFilterQuery($event)"
+                    (keydown.enter)="applyFilterCondition()"
+                  />
+                </div>
+
+                <div class="filter-field-group">
+                  <label class="filter-label">Condition Operator</label>
+                  <select
+                    class="filter-select"
+                    [ngModel]="filterCondition().operator"
+                    (ngModelChange)="updateFilterOperator($event)"
+                  >
+                    <option value="contains">Contains text</option>
+                    <option value="equals">Exact match (Equals)</option>
+                    <option value="startsWith">Starts with</option>
+                    <option value="endsWith">Ends with</option>
+                    <option value="keyEquals">Key name equals</option>
+                    <option value="gt">Numeric Value &gt; (Greater than)</option>
+                    <option value="lt">Numeric Value &lt; (Less than)</option>
+                    <option value="regex">Regular Expression (Regex)</option>
+                  </select>
+                </div>
+
+                <div class="filter-field-row">
+                  <div class="filter-field-group flex-1">
+                    <label class="filter-label">Target Scope</label>
+                    <select
+                      class="filter-select"
+                      [ngModel]="filterCondition().scope"
+                      (ngModelChange)="updateFilterScope($event)"
+                    >
+                      <option value="all">Keys & Values</option>
+                      <option value="keys">Keys Only</option>
+                      <option value="values">Values Only</option>
+                    </select>
+                  </div>
+
+                  <div class="filter-field-group">
+                    <label class="filter-label">Match Case</label>
+                    <button
+                      class="filter-toggle-btn"
+                      [class.active]="filterCondition().matchCase"
+                      (click)="toggleMatchCase()"
+                      data-tooltip="Toggle case sensitivity"
+                    >
+                      <span class="case-badge">Aa</span>
+                      <span>{{ filterCondition().matchCase ? 'On' : 'Off' }}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="filter-popover-footer">
+                <button class="filter-btn-reset" (click)="resetFilterCondition()">Reset</button>
+                <button class="filter-btn-apply" (click)="applyFilterCondition()">Apply Filter</button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- 3. Share Action (Icon Only) -->
+        <button class="toggle-control-btn icon-only-btn" (click)="toggleShareModal()" data-tooltip="Share JSON Architecture">
+          <app-icon name="share-2" class="icon-sm"></app-icon>
+        </button>
+        
+      </div>
+    </div>
+  }
+
+  <!-- Split IDE Workspace Grid with Draggable Splitter -->
+  <main class="editor-grid" [style.--left-panel-width.%]="isDiffMode() ? 100 : leftPanelWidth()" [class.is-resizing]="isResizing()">
+    @if (!isDiffMode()) {
+      <!-- Modular Input Editor Component with Drag & Drop Event -->
+      <app-json-lens-editor
+        #editorComp
+        [rawInput]="rawInput()"
+        [activeFormat]="activeFormat()"
+        [isProcessing]="isProcessing()"
+        [wordWrap]="wordWrap()"
+        [result]="result()"
+        [searchQuery]="filterQuery()"
+        [searchScope]="searchScope()"
+        [isWorkspaceDragging]="isWorkspaceDragging()"
+        [canUndo]="canUndo()"
+        [canRedo]="canRedo()"
+        (inputChange)="onInputChange($event)"
+        (clearClick)="clear()"
+        (sampleClick)="loadSample($event)"
+        (fileDropped)="handleFileObject($event)"
+        (dragEnded)="isWorkspaceDragging.set(false)"
+        (scrollEvent)="onEditorScroll($event)"
+        (undoClick)="undo()"
+        (redoClick)="redo()"
+      ></app-json-lens-editor>
+
+      <!-- Interactive Resizer Splitter Handle -->
+      <div class="resizer-handle" (mousedown)="startResizing($event)" data-tooltip="Drag left or right to resize panels">
+        <div class="resizer-grip"></div>
+      </div>
+
+      <!-- Modular Inspector Component passing Search Query -->
+      <app-json-lens-inspector
+        #inspectorComp
+        [inspectorTab]="inspectorTab()"
+        [documentFormat]="activeFormat()"
+        [displayOutput]="displayOutput()"
+        [searchQuery]="filterQuery()"
+        [searchScope]="searchScope()"
+        [result]="result()"
+        [stats]="result()?.stats"
+        [copied]="copied()"
+        (tabChange)="setInspectorTab($event)"
+        (formatConvert)="convertPayload($event)"
+        (outputChange)="onInspectorOutputChange($event)"
+        (copyClick)="copyToClipboard()"
+        (downloadClick)="download()"
+        (clearSearchClick)="filterQuery.set('')"
+        (scrollEvent)="onInspectorScroll($event)"
+        (fileContentDropped)="onInspectorFileDropped($event)"
+        (toastTriggered)="triggerToast($event)"
+      ></app-json-lens-inspector>
+    } @else {
+      <app-json-lens-diff
+        [leftText]="diffLeft()"
+        [rightText]="diffRight()"
+        (leftTextChange)="diffLeft.set($event)"
+        (rightTextChange)="diffRight.set($event)"
+        (toastTriggered)="triggerToast($event)"
+      ></app-json-lens-diff>
+    }
+  </main>
+
+  <!-- Footer Strip with Left Cmd+K / History, Center Theme & Fullscreen Controls, Right Feedback -->
+  <app-json-lens-seo-footer
+    [activeFormat]="activeFormat()"
+    [theme]="theme()"
+    [isFullscreen]="isFullscreen()"
+    (toggleTheme)="toggleTheme()"
+    (toggleFullscreen)="toggleFullscreen()"
+    (feedbackClick)="openFeedbackModal()"
+    (commandPaletteClick)="toggleCommandPalette()"
+    (historyClick)="toggleHistory()"
+  ></app-json-lens-seo-footer>
+
+  <!-- Section 35: Command Palette Component -->
+  <app-json-lens-command-palette
+    [isOpen]="showCommandPalette()"
+    (closePalette)="toggleCommandPalette()"
+    (formatClick)="processJson()"
+    (minifyClick)="toggleMinify()"
+    (validateClick)="processJson()"
+    (fixClick)="openRepairModal()"
+    (expandAllClick)="inspectorComp?.expandAllTreeNodes()"
+    (collapseAllClick)="inspectorComp?.collapseAllTreeNodes()"
+    (copyClick)="copyToClipboard()"
+    (downloadClick)="download()"
+    (openFileClick)="editorComp?.triggerFileImport()"
+    (switchEditorClick)="isDiffMode.set(false); setInspectorTab('formatted')"
+    (switchDiffClick)="toggleDiffMode()"
+    (toggleTreeClick)="isDiffMode.set(false); setInspectorTab('tree')"
+    (toggleTableClick)="isDiffMode.set(false); setInspectorTab('table')"
+    (showStatsClick)="isDiffMode.set(false); setInspectorTab('stats')"
+    (showGraphClick)="isDiffMode.set(false); setInspectorTab('graph')"
+    (generateCodeClick)="generateCodeFromPalette($event)"
+    (convertFormatClick)="convertFormatFromPalette($event)"
+    (transformClick)="executeTransformation($event)"
+    (autoDetectClick)="triggerAutoDetect()"
+    (sortKeysClick)="toggleSortKeys()"
+    (escapeClick)="toggleEscapeInput()"
+    (stringifyClick)="stringifyInput()"
+    (toggleThemeClick)="toggleTheme()"
+    (openSettingsClick)="toggleSettingsDrawer()"
+    (toggleHistoryClick)="toggleHistory()"
+    (toggleFullscreenClick)="toggleFullscreen()"
+    (openShareClick)="toggleShareModal()"
+    (openSearchClick)="showSearchInput.set(true)"
+    (openFilterClick)="toggleFilterPopover()"
+    (clearClick)="clear()"
+  ></app-json-lens-command-palette>
+
+  <!-- Section 43: Settings Drawer Component -->
+  <app-json-lens-settings-drawer [isOpen]="showSettingsDrawer()" [settings]="settings()"
+    (closeDrawer)="toggleSettingsDrawer()" (settingsChange)="updateSettings($event)"></app-json-lens-settings-drawer>
+
+  <!-- Section 41: Share Feature Modal Component -->
+  <app-json-lens-share-modal [isOpen]="showShareModal()" (closeModal)="toggleShareModal()"
+    (triggerToast)="triggerToast($event)"></app-json-lens-share-modal>
+
+  <!-- Section 32: Privacy Explanation Modal Component -->
+  <app-json-lens-privacy-modal></app-json-lens-privacy-modal>
+
+  <!-- Section 33 & 34: Local History Drawer Component -->
+  <app-json-lens-history-drawer [isOpen]="showHistoryDrawer()" [historyGroups]="historyGroups()"
+    (closeDrawer)="toggleHistory()" (restoreItem)="restoreHistoryItem($event)" (deleteItem)="deleteHistoryItem($event)"
+    (togglePinItem)="togglePinHistoryItem($event)" (clearAllClick)="clearAllHistory()"></app-json-lens-history-drawer>
+
+  <!-- Smart Fix Confirmation Modal -->
+  @if (showRepairModal()) {
+  <div class="modal-overlay" (click)="closeRepairModal()">
+    <div class="repair-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Smart Repair Preview</h3>
+        <button class="icon-nav-btn" (click)="closeRepairModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="issues-summary">
+          <strong>{{ result()?.repairIssues?.length || 0 }} repairable issues found:</strong>
+          <ul>
+            @for (issue of result()?.repairIssues; track issue.type) {
+            <li><strong>{{ issue.type }}:</strong> {{ issue.description }}</li>
+            }
+          </ul>
+        </div>
+        <div class="repair-diff-preview">
+          <span class="preview-label">Repaired Output Preview:</span>
+          <pre class="diff-preview-code"><code>{{ result()?.repairedJson }}</code></pre>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="action-btn btn-secondary" (click)="closeRepairModal()">Cancel</button>
+        <button class="action-btn btn-primary" (click)="applyFixes()">Apply Fixes</button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Section 44: Feedback Modal Component -->
+  <app-feedback-modal
+    [isOpen]="isFeedbackModalOpen()"
+    [toolId]="'json-lens'"
+    [toolName]="'JSONLens'"
+    (closeModal)="isFeedbackModalOpen.set(false)"
+  ></app-feedback-modal>
+</div>

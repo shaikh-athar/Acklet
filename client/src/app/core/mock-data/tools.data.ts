@@ -3,6 +3,85 @@
 import { Tool } from '../models/tool.model';
 
 export const MOCK_TOOLS: Tool[] = [
+  // ── Sync & Utilities ────────────────────────────────────────
+  {
+    id: 'tool-airvault',
+    name: 'AirVault',
+    slug: 'airvault',
+    categoryId: 'cat-4', // Utilities category
+    categoryName: 'Utilities',
+    categoryIcon: 'zap',
+    shortDescription: 'Real-time cross-device clipboard and content sync with encrypted transport.',
+    description: 'AirVault is a real-time cross-device clipboard synchronization platform with encrypted transport, smart content classification, and link sharing with auto-expiry.',
+    tags: ['Clipboard', 'Sync', 'Security', 'Encrypted'],
+    features: [
+      'Encrypted transport using TLS and Web Crypto AES-GCM-256',
+      'Real-time WebSocket room-scoped sync & multi-tab BroadcastChannel',
+      'Smart classifier for Code, Rich URLs, Images, Files, and Plain Text',
+      'Sensitive credential detector with auto-masking shield'
+    ],
+    usageSteps: [
+      { step: 1, title: 'Pair Devices', description: 'Scan the QR code or enter the 6-digit PIN to securely pair your devices.' },
+      { step: 2, title: 'Copy or Paste', description: 'Copy text on one device or paste it into the staging area.' },
+      { step: 3, title: 'Auto-Sync', description: 'AirVault instantly securely encrypts and beams it to your paired devices.' },
+    ],
+    screenshots: [],
+    faqs: [
+      { question: 'Is my clipboard data sent to a server?', answer: 'No. AirVault uses WebRTC for direct Peer-to-Peer transfer when possible, and all data is encrypted end-to-end.' },
+    ],
+    relatedToolIds: ['tool-2'],
+    rating: 5.0,
+    reviewCount: 342,
+    usageCount: 15000,
+    isNew: true,
+    isFeatured: true,
+    isTrending: true,
+    isPopular: true,
+    icon: 'zap',
+    color: '#00D2B4',
+    gradient: 'linear-gradient(135deg, #00D2B4, #009688)',
+    addedDate: '2026-08-25',
+  },
+  {
+    id: 'tool-datalens',
+    name: 'DataLens',
+    slug: 'datalens',
+    categoryId: 'cat-9', // Formatters
+    categoryName: 'Formatters',
+    categoryIcon: 'align-left',
+    shortDescription: 'Multi-format workspace for formatting, validating, diffing & querying JSON, YAML, XML, TOML, CSV & cURL.',
+    description: 'DataLens is a high-performance multi-format data workbench for formatting, validating, diffing, querying, and transforming data across JSON, YAML, XML, TOML, CSV, and cURL with 100% in-browser privacy.',
+    tags: ['JSON', 'YAML', 'XML', 'TOML', 'CSV', 'Formatter', 'Diff', 'Validator'],
+    features: [
+      'Multi-format support for JSON, YAML, XML, TOML, CSV & cURL',
+      'Side-by-side structured Git-style Compare engine',
+      'Interactive Tree, Table, Graph & JSONPath query inspector',
+      'Polyglot code generator (TypeScript, Python, Go, Rust, Swift)',
+      'Smart syntax repair and auto-detection',
+      '100% offline & client-side privacy guarantee'
+    ],
+    usageSteps: [
+      { step: 1, title: 'Input Payload', description: 'Paste or upload your structured data file.' },
+      { step: 2, title: 'Analyze & Transform', description: 'Validate, format, query with JSONPath, or compare versions.' },
+      { step: 3, title: 'Export & Generate Code', description: 'Generate polyglot code snippets or export in different formats.' },
+    ],
+    screenshots: [],
+    faqs: [
+      { question: 'Is my data safe?', answer: 'Yes! DataLens processes all data 100% in your browser using pure client-side parsers.' },
+    ],
+    relatedToolIds: ['tool-airvault', 'tool-1'],
+    rating: 4.9,
+    reviewCount: 890,
+    usageCount: 42000,
+    isNew: true,
+    isFeatured: true,
+    isTrending: true,
+    isPopular: true,
+    icon: 'search',
+    color: '#2FA084',
+    gradient: 'linear-gradient(135deg, #2FA084, #1B7A63)',
+    addedDate: '2026-08-25',
+  },
   // ── Developer Tools ────────────────────────────────────────
   {
     id: 'tool-1',

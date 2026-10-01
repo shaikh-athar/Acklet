@@ -108,23 +108,40 @@ export class ToolsService {
       map(res => {
         const pageData = res.data;
         const mappedContent = (pageData?.content || []).map(this.mapBackendTool);
-        this.mergeTools(mappedContent);
+        if (mappedContent.length > 0) {
+          this.mergeTools(mappedContent);
+          this._loading.set(false);
+          return {
+            content: mappedContent,
+            totalElements: pageData?.totalElements || mappedContent.length,
+            totalPages: pageData?.totalPages || Math.ceil(mappedContent.length / size) || 1,
+            size: pageData?.size || size,
+            number: pageData?.number || page
+          };
+        }
+
+        // Graceful fallback to client-side data when backend returns empty content
+        const filtered = this.filterToolsLocally(categorySlug, query);
+        const startIndex = page * size;
+        const pagedContent = filtered.slice(startIndex, startIndex + size);
         this._loading.set(false);
         return {
-          content: mappedContent,
-          totalElements: pageData?.totalElements || mappedContent.length,
-          totalPages: pageData?.totalPages || 1,
-          size: pageData?.size || size,
-          number: pageData?.number || page
+          content: pagedContent,
+          totalElements: filtered.length,
+          totalPages: Math.ceil(filtered.length / size) || 1,
+          size: size,
+          number: page
         };
       }),
       catchError(() => {
         this._loading.set(false);
         const filtered = this.filterToolsLocally(categorySlug, query);
+        const startIndex = page * size;
+        const pagedContent = filtered.slice(startIndex, startIndex + size);
         return of({
-          content: filtered,
+          content: pagedContent,
           totalElements: filtered.length,
-          totalPages: 1,
+          totalPages: Math.ceil(filtered.length / size) || 1,
           size: size,
           number: page
         });
@@ -140,11 +157,22 @@ export class ToolsService {
   }
 
   getToolById(id: string): Tool | undefined {
-    return this._tools().find(t => t.id === id);
+    return this._tools().find(t => t.id === id || t.slug === id);
   }
 
   getToolsByCategory(categoryId: string): Tool[] {
-    return this._tools().filter(t => t.categoryId === categoryId);
+    const cat = this.getCategoryById(categoryId) || this.getCategoryBySlug(categoryId);
+    const targetId = cat ? cat.id : categoryId;
+    const targetSlug = cat ? cat.slug : categoryId;
+    const targetName = cat ? cat.name.toLowerCase() : categoryId.toLowerCase();
+
+    return this._tools().filter(t =>
+      t.categoryId === targetId ||
+      t.categoryId === targetSlug ||
+      t.categoryId === categoryId ||
+      (t.categoryName && t.categoryName.toLowerCase() === targetName) ||
+      (t.categoryName && cat && t.categoryName.toLowerCase() === cat.name.toLowerCase())
+    );
   }
 
   getCategoryById(id: string): Category | undefined {
@@ -177,13 +205,29 @@ export class ToolsService {
 
   private filterToolsLocally(categoryId?: string, query?: string): Tool[] {
     let result = this._tools();
-    if (categoryId) result = result.filter(t => t.categoryId === categoryId || t.slug === categoryId);
+    if (categoryId) {
+      const cat = this.getCategoryById(categoryId) || this.getCategoryBySlug(categoryId);
+      const targetId = cat ? cat.id : categoryId;
+      const targetSlug = cat ? cat.slug : categoryId;
+      const targetName = cat ? cat.name.toLowerCase() : categoryId.toLowerCase();
+
+      result = result.filter(t =>
+        t.categoryId === targetId ||
+        t.categoryId === targetSlug ||
+        t.categoryId === categoryId ||
+        t.slug === categoryId ||
+        (t.categoryName && t.categoryName.toLowerCase() === targetName) ||
+        (t.categoryName && cat && t.categoryName.toLowerCase() === cat.name.toLowerCase())
+      );
+    }
     if (query) {
-      const q = query.toLowerCase();
+      const q = query.toLowerCase().trim();
       result = result.filter(t =>
         t.name.toLowerCase().includes(q) ||
         (t.shortDescription && t.shortDescription.toLowerCase().includes(q)) ||
-        (t.tags && t.tags.some(tag => tag.toLowerCase().includes(q)))
+        (t.description && t.description.toLowerCase().includes(q)) ||
+        (t.tags && t.tags.some(tag => tag.toLowerCase().includes(q))) ||
+        (t.categoryName && t.categoryName.toLowerCase().includes(q))
       );
     }
     return result;

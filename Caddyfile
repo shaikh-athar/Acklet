@@ -1,0 +1,11 @@
+:3000 {
+    # Forward all backend API requests to Spring Boot
+    handle /api/* {
+        reverse_proxy localhost:8080
+    }
+
+    # Forward all frontend requests to Angular dev server
+    handle {
+        reverse_proxy localhost:4200
+    }
+}
