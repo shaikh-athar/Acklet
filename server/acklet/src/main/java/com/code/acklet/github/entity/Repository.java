@@ -69,4 +69,15 @@ public class Repository {
     @Column(name = "status_ai_analyzed", nullable = false)
     @Builder.Default
     private boolean statusAiAnalyzed = false;
+
+    @Column(name = "webhook_registered")
+    @Builder.Default
+    private boolean webhookRegistered = false;
+
+    @Column(name = "latest_commit_sha")
+    private String latestCommitSha;
+
+    @Column(name = "sync_status")
+    @Builder.Default
+    private String syncStatus = "SYNCED";
 }
