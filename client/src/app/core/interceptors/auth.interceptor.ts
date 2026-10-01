@@ -40,7 +40,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(authReq).pipe(
     catchError((err: HttpErrorResponse) => {
       if (err.status === 0) {
-        toastSvc.warning('Network Unreachable', 'Please check your internet connection or backend server.');
+        toastSvc.warning('Network Unreachable', 'Please check your internet connection.');
       } else if (err.status === 401 && !isPublic) {
         return authSvc.refreshToken().pipe(
           switchMap(res => {
@@ -66,7 +66,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       } else if (err.status === 403) {
         toastSvc.error('Access Denied', 'You do not have permission to perform this action.');
       } else if (err.status === 429) {
-        const retryAfter = err.headers.get('Retry-After') || '60';
+        const retryAfter = err.headers.get('Retry-After') || '300';
         toastSvc.warning('Rate Limit Exceeded', `Too many requests. Please wait ${retryAfter} seconds before trying again.`);
       } else if (err.status >= 500) {
         toastSvc.error('Server Error', 'Our server encountered an issue. Please try again shortly.');

@@ -1,0 +1,885 @@
+<app-tool-shell>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       TIER 1: TOOL SCREEN (Operational Workspace - 100vh × 100vw)
+       Zero ads, scroll-locked, pure tool surface
+       ═══════════════════════════════════════════════════════════ -->
+  <div tool-screen class="av-workspace-surface" [class.av-global-dragover]="isDragging()">
+
+    <!-- ── Top Navbar ────────────────────────────────────────── -->
+    <header class="av-navbar">
+      <!-- Left: Brand breadcrumb with Editable Clipboard ID -->
+      <div class="av-navbar-left">
+        <div class="av-breadcrumb">
+          <span class="root">Acklet</span>
+          <span class="sep">/</span>
+          <span class="brand-icon"><app-icon name="zap" class="icon-sm"></app-icon></span>
+          <span class="name">AirVault</span>
+          <span class="sep">/</span>
+
+          <!-- Multi-Clipboard & Collaborators Dropdown Switcher Anchor -->
+          <div class="av-clipboard-dropdown-anchor" (click)="$event.stopPropagation()">
+            @if (!isEditingClipboardId()) {
+              <button 
+                type="button"
+                class="av-slug-chip" 
+                [class.is-shared]="sharedClipboardService.isViewingSharedLink()" 
+                [class.is-open]="showClipboardDropdown()"
+                (click)="toggleClipboardDropdown($event)"
+                [title]="'Current: #' + activeClipboardSlug() + ' • Click to switch boards or view collaborators'">
+                <span class="slug-icon">
+                  <app-icon [name]="sharedClipboardService.isViewingSharedLink() ? 'users' : 'clipboard'" class="icon-xxs"></app-icon>
+                </span>
+                <span class="slug-text">{{ activeClipboardSlug() }}</span>
+                
+                @if (sharedClipboardService.isViewingSharedLink()) {
+                  <span class="shared-tag">Shared</span>
+                }
+
+                <app-icon name="chevron-down" class="icon-xxs slug-chevron" [class.rotated]="showClipboardDropdown()"></app-icon>
+              </button>
+
+              <!-- Collaborator & Clipboard Dropdown Menu -->
+              @if (showClipboardDropdown()) {
+                <div class="av-clipboard-dropdown-menu" (click)="$event.stopPropagation()">
+                  <div class="dropdown-header">
+                    <span class="header-label">Switch Clipboard Board</span>
+                    <span class="header-badge" [class.badge-limit]="sharedClipboardService.myCreatedClipboards().length >= (limitsService.limits().maxClipboardsPerUser || 5)">
+                      {{ sharedClipboardService.myCreatedClipboards().length }} / {{ limitsService.limits().maxClipboardsPerUser || 5 }} Created
+                    </span>
+                  </div>
+
+                  <div class="boards-list">
+                    @for (board of availableClipboards(); track board.id) {
+                      <div 
+                        class="board-option-row" 
+                        [class.active-board]="board.isCurrent"
+                        (click)="selectClipboard(board)">
+                        
+                        <!-- Icon box -->
+                        <div class="board-icon-box" [class.admin-box]="board.isAdmin">
+                          <app-icon [name]="board.isAdmin ? 'shield' : 'users'" class="icon-xs"></app-icon>
+                        </div>
+
+                        <!-- Board Info -->
+                        <div class="board-info-col">
+                          <div class="board-name-row">
+                            <span class="board-name">{{ board.title }}</span>
+                            @if (board.isAdmin) {
+                              <span class="admin-pill">Admin</span>
+                            } @else {
+                              <span class="collab-pill">Collaborator</span>
+                            }
+                          </div>
+                          <div class="board-meta-row">
+                            <span class="board-slug">#{{ board.id }}</span>
+                            <span class="meta-dot">·</span>
+                            <span class="board-owner">&#64;{{ board.ownerUsername }}</span>
+                            @if (board.accessMode === 'read-only') {
+                              <span class="meta-dot">·</span>
+                              <span class="ro-tag">Read-Only</span>
+                            }
+                          </div>
+                        </div>
+
+                        <!-- Aside Flyout Sub-Dropdown Menu (Opens smoothly on row hover) -->
+                        <div 
+                          class="board-sub-dropdown-menu" 
+                          [class.is-open]="activeBoardMenuId() === board.id"
+                          (click)="$event.stopPropagation()">
+                          <!-- Option 1: Copy Link -->
+                          <button 
+                            type="button" 
+                            class="sub-menu-item" 
+                            (click)="copySpecificClipboardLink(board.id, $event); closeBoardSubMenu(); closeClipboardDropdown()">
+                            <app-icon name="copy" class="icon-xxs text-muted"></app-icon>
+                            <span>Copy Link</span>
+                          </button>
+
+                          <!-- Option 2: Share Clipboard -->
+                          <button 
+                            type="button" 
+                            class="sub-menu-item" 
+                            (click)="openShareForClipboard(board.id, $event); closeBoardSubMenu(); closeClipboardDropdown()">
+                            <app-icon name="share-2" class="icon-xxs text-muted"></app-icon>
+                            <span>Share Board</span>
+                          </button>
+
+                          <!-- Option 3: Edit / Rename (Admin/Owner only) -->
+                          @if (board.isAdmin) {
+                            <div class="sub-menu-divider"></div>
+                            <button 
+                              type="button" 
+                              class="sub-menu-item edit-item" 
+                              (click)="startEditingSpecificSlug(board.id, board.isAdmin, $event); closeBoardSubMenu(); closeClipboardDropdown()">
+                              <app-icon name="edit-2" class="icon-xxs text-indigo"></app-icon>
+                              <span>Rename ID (Admin)</span>
+                            </button>
+                          }
+
+                          <!-- Option 4: Delete Board (for custom created standalone boards) -->
+                          @if (board.isAdmin && board.id !== sharedClipboardService.currentClipboardId()) {
+                            <div class="sub-menu-divider"></div>
+                            <button 
+                              type="button" 
+                              class="sub-menu-item delete-item" 
+                              (click)="deleteCreatedBoard(board.id, $event); closeBoardSubMenu(); closeClipboardDropdown()">
+                              <app-icon name="trash-2" class="icon-xxs text-rose"></app-icon>
+                              <span>Delete Board</span>
+                            </button>
+                          }
+                        </div>
+
+                        <!-- Active Check indicator -->
+                        @if (board.isCurrent) {
+                          <div class="active-check">
+                            <app-icon name="check" class="icon-xs text-emerald"></app-icon>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+
+                  <!-- Footer: Create New Board & Invite Actions -->
+                  <div class="dropdown-footer">
+                    <button
+                      type="button"
+                      class="dropdown-footer-btn create-board-btn"
+                      (click)="openCreateClipboardModal()">
+                      <app-icon name="plus-circle" class="icon-xs text-cyan"></app-icon>
+                      <span>Create Standalone Clipboard</span>
+                      <span class="footer-limit-pill">
+                        {{ sharedClipboardService.myCreatedClipboards().length }}/{{ limitsService.limits().maxClipboardsPerUser || 5 }}
+                      </span>
+                    </button>
+                    <button type="button" class="dropdown-footer-btn" (click)="closeClipboardDropdown(); openInviteModal()">
+                      <app-icon name="user-plus" class="icon-xs text-indigo"></app-icon>
+                      <span>Invite Collaborators to Board</span>
+                    </button>
+                  </div>
+                </div>
+              }
+            } @else {
+            <!-- Inline Slug Editor -->
+            <div class="av-slug-editor" (click)="$event.stopPropagation()">
+              <span class="slug-prefix">c/</span>
+              <input
+                #slugEditInput
+                type="text"
+                class="slug-edit-input"
+                [ngModel]="editingSlugValue()"
+                (ngModelChange)="onSlugInputChanged($event)"
+                (keydown)="onSlugInputKeydown($event)"
+                placeholder="my-vault"
+                maxlength="32"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              
+              <!-- Availability status indicator -->
+              <div class="slug-status-indicator">
+                @if (isCheckingSlug()) {
+                  <app-icon name="loader" class="icon-xxs spin-icon text-accent"></app-icon>
+                } @else if (slugCheckResult()?.available) {
+                  <app-icon name="check-circle" class="icon-xxs text-emerald" title="Available!"></app-icon>
+                } @else if (slugCheckResult() && !slugCheckResult()?.available) {
+                  <app-icon name="alert-circle" class="icon-xxs text-rose" [title]="slugCheckResult()?.message || 'Unavailable'"></app-icon>
+                }
+              </div>
+
+              <!-- Save button -->
+              <button 
+                type="button"
+                class="slug-save-btn" 
+                [disabled]="isSavingSlug() || (slugCheckResult() && !slugCheckResult()?.available)" 
+                (click)="saveSlugRename()"
+                title="Save ID (Enter)">
+                @if (isSavingSlug()) {
+                  <app-icon name="loader" class="icon-xxs spin-icon"></app-icon>
+                } @else {
+                  <app-icon name="check" class="icon-xxs"></app-icon>
+                }
+              </button>
+
+              <!-- Cancel button -->
+              <button 
+                type="button"
+                class="slug-cancel-btn" 
+                (click)="cancelEditingSlug()" 
+                title="Cancel (Esc)">
+                <app-icon name="x" class="icon-xxs"></app-icon>
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+      <!-- Center: Permanent Centered Search Bar -->
+      <div class="av-navbar-center">
+        <div class="navbar-search-group" [class.focused]="isNavbarSearchFocused()" (click)="$event.stopPropagation()">
+          <span class="search-icon-prefix">
+            <app-icon name="search" class="icon-xs search-icon"></app-icon>
+          </span>
+          <input
+            #navbarSearchInput
+            type="text"
+            class="navbar-search-input"
+            placeholder="Search text, URLs, code, files..."
+            [ngModel]="navbarSearchQuery()"
+            (ngModelChange)="onNavbarSearchInput($event)"
+            (keydown)="onNavbarSearchKeydown($event)"
+            (focus)="isNavbarSearchFocused.set(true)"
+            (blur)="isNavbarSearchFocused.set(false)"
+          />
+
+          @if (isSearchingServer()) {
+            <span class="navbar-search-spinner">
+              <app-icon name="loader" class="icon-xxs spin-icon text-accent"></app-icon>
+            </span>
+          }
+
+          @if (navbarSearchQuery().trim()) {
+            <div class="navbar-search-nav-controls">
+              <span class="navbar-search-match-pill" [class.has-matches]="navbarTotalMatches() > 0">
+                {{ navbarTotalMatches() > 0 ? (navbarActiveMatchDisplay() + ' of ' + navbarTotalMatches()) : '0 matches' }}
+              </span>
+
+              <button
+                class="navbar-search-nav-btn"
+                [disabled]="navbarTotalMatches() === 0"
+                (click)="prevNavbarMatch($event)"
+                title="Previous match (Shift+Enter)">
+                <app-icon name="chevron-up" class="icon-xxs"></app-icon>
+              </button>
+
+              <button
+                class="navbar-search-nav-btn"
+                [disabled]="navbarTotalMatches() === 0"
+                (click)="nextNavbarMatch($event)"
+                title="Next match (Enter)">
+                <app-icon name="chevron-down" class="icon-xxs"></app-icon>
+              </button>
+
+              <button class="navbar-search-clear-btn" (click)="onNavbarSearchInput('')" title="Clear query">
+                <app-icon name="x" class="icon-xxs"></app-icon>
+              </button>
+            </div>
+          }
+
+          <!-- Interactive Search Results Dropdown Panel -->
+          @if (navbarSearchQuery().trim()) {
+            <div class="navbar-search-dropdown-menu" (click)="$event.stopPropagation()">
+              <div class="dropdown-header">
+                <span>Search Results ({{ totalResultCount() }})</span>
+                <span class="dropdown-keyboard-hint">
+                  <kbd>↑</kbd><kbd>↓</kbd> to navigate · <kbd>↵</kbd> to select
+                </span>
+              </div>
+
+              @if (topDropdownResults().length === 0) {
+                <div class="dropdown-empty-state">
+                  <app-icon name="search" class="icon-sm text-muted"></app-icon>
+                  <span>No results found for "<strong>{{ navbarSearchQuery() }}</strong>"</span>
+                </div>
+              } @else {
+                <div class="dropdown-results-list">
+                  @for (res of topDropdownResults(); track res.id; let idx = $index) {
+                    <div
+                      class="dropdown-result-row"
+                      [class.selected-row]="idx === selectedDropdownIndex()"
+                      (click)="onSelectSearchResult(res)"
+                      (mouseenter)="selectedDropdownIndex.set(idx)">
+                      
+                      <!-- Type Icon Box -->
+                      <div [ngClass]="'dropdown-icon-box ' + getSearchTypeClass(res)">
+                        <app-icon [name]="getSearchItemIcon(res)" class="icon-xs"></app-icon>
+                      </div>
+
+                      <!-- Snippet and Metadata -->
+                      <div class="dropdown-content-box">
+                        <div class="dropdown-title-line">
+                          <span class="dropdown-title-text" [title]="res.title">
+                            @for (seg of getHighlightSegments(res.title, navbarSearchQuery()); track $index) {
+                              @if (seg.isMatch) {
+                                <mark class="av-search-match" [class.current-match]="idx === selectedDropdownIndex()">{{ seg.text }}</mark>
+                              } @else {
+                                <span>{{ seg.text }}</span>
+                              }
+                            }
+                          </span>
+
+                          @if (res.byteSize) {
+                            <span class="dropdown-file-size">{{ formatBytes(res.byteSize) }}</span>
+                          }
+
+                          <span class="dropdown-type-pill" [class.active-pill]="res.isLocalActive">
+                            {{ res.isLocalActive ? 'Active' : res.type }}
+                          </span>
+                        </div>
+
+                        @if (res.snippet && res.snippet !== res.title) {
+                          <div class="dropdown-snippet-text">
+                            @for (seg of getHighlightSegments(res.snippet.slice(0, 160), navbarSearchQuery()); track $index) {
+                              @if (seg.isMatch) {
+                                <mark class="av-search-match" [class.current-match]="idx === selectedDropdownIndex()">{{ seg.text }}</mark>
+                              } @else {
+                                <span>{{ seg.text }}</span>
+                              }
+                            }
+                          </div>
+                        }
+
+                        <div class="dropdown-meta-line">
+                          <span class="dropdown-actor">
+                            <span class="device-dot" [style.background]="res.authorColor"></span>
+                            <span>@{{ res.authorUsername }}</span>
+                          </span>
+                          <span class="meta-sep">·</span>
+                          <span class="dropdown-time">{{ formatRelativeTime(res.timestamp) }}</span>
+                        </div>
+                      </div>
+
+                      <!-- Action Indicator -->
+                      <div class="dropdown-action-hint">
+                        <app-icon [name]="res.type === 'IMAGE' || res.type === 'FILE' || res.type === 'BATCH' ? 'eye' : 'arrow-right'" class="icon-xxs"></app-icon>
+                      </div>
+                    </div>
+                  }
+                </div>
+
+                <!-- Footer Affordance -->
+                <div class="dropdown-footer">
+                  <button class="dropdown-footer-btn" (click)="openHistory(); onNavbarSearchInput('')">
+                    <app-icon name="clock" class="icon-xxs"></app-icon>
+                    <span>Show all {{ totalResultCount() }} results in Vault History</span>
+                    <kbd class="footer-kbd">⌘H</kbd>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Right: Notifications, Refresh, Filter, Vault settings -->
+      <div class="av-navbar-right">
+        <!-- Collaborator Invitations Inbox Bell -->
+        <button
+          class="av-btn-icon inbox-bell-btn"
+          [class.has-notifications]="invitationService.unreadInviteCount() > 0"
+          (click)="invitationService.toggleInbox()"
+          data-tooltip="Collaborator Invitations Inbox">
+          <app-icon name="bell" class="icon-xs"></app-icon>
+          @if (invitationService.unreadInviteCount() > 0) {
+            <span class="unread-badge-dot">{{ invitationService.unreadInviteCount() }}</span>
+          }
+        </button>
+
+        <!-- 1. Refresh clipboard items -->
+        <button
+          class="av-btn-icon"
+          (click)="onRefreshClipboard()"
+          data-tooltip="Refresh clipboard"
+          [class.spinning]="storageService.isRefreshing()">
+          <app-icon name="refresh" class="icon-xs" [class.spin-anim]="storageService.isRefreshing()"></app-icon>
+        </button>
+
+        <!-- 3. Rich Icon Multi-Select Filter Button & Popover -->
+        <div class="filter-popover-anchor">
+          <button
+            class="av-btn-icon filter-trigger-btn"
+            [class.active]="uiStore.activeFiltersCount() > 0"
+            (click)="toggleFilterPopover($event)"
+            data-tooltip="Filter clipboard items">
+            <app-icon name="filter" class="icon-xs"></app-icon>
+            @if (uiStore.activeFiltersCount() > 0) {
+              <span class="filter-badge-count">{{ uiStore.activeFiltersCount() }}</span>
+            }
+          </button>
+
+          <!-- Filter Dropdown Popover Menu -->
+          @if (showFilterPopover()) {
+            <div class="av-filter-popover" [class.is-closing]="isFilterClosing()" (click)="$event.stopPropagation()">
+              <div class="filter-popover-header">
+                <div class="filter-header-left">
+                  <app-icon name="filter" class="icon-xs text-accent"></app-icon>
+                  <span class="filter-header-title">Filter Clipboard</span>
+                </div>
+                @if (uiStore.activeFiltersCount() > 0) {
+                  <button class="filter-reset-link" (click)="resetFilters()">
+                    Reset ({{ uiStore.activeFiltersCount() }})
+                  </button>
+                }
+              </div>
+
+              <div class="filter-popover-body">
+                <!-- Section 1: Format / Category -->
+                <div class="filter-section">
+                  <div class="filter-section-header-row">
+                    <span class="filter-section-title">Format / Category</span>
+                    @if (uiStore.activeCategoryFilters().length > 0) {
+                      <span class="section-badge">{{ uiStore.activeCategoryFilters().length }} selected</span>
+                    }
+                  </div>
+                  <div class="filter-chips-grid">
+                    @for (cat of filterCategories; track cat.id) {
+                      <button
+                        class="filter-chip"
+                        [class.active]="uiStore.activeCategoryFilters().includes(cat.id)"
+                        (click)="toggleCategoryFilter(cat.id)">
+                        <app-icon [name]="cat.icon" class="icon-xxs"></app-icon>
+                        <span>{{ cat.label }}</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <!-- Section 2: Time Period -->
+                <div class="filter-section">
+                  <div class="filter-section-header-row">
+                    <span class="filter-section-title">Time Period</span>
+                    @if (uiStore.activeTimeFilters().length > 0) {
+                      <span class="section-badge">{{ uiStore.activeTimeFilters().length }} selected</span>
+                    }
+                  </div>
+                  <div class="filter-chips-row">
+                    @for (tr of filterTimeRanges; track tr.id) {
+                      <button
+                        class="filter-chip"
+                        [class.active]="uiStore.activeTimeFilters().includes(tr.id)"
+                        (click)="toggleTimeFilter(tr.id)">
+                        <span>{{ tr.label }}</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <!-- Section 3: User / Device -->
+                <div class="filter-section">
+                  <div class="filter-section-header-row">
+                    <span class="filter-section-title">Sender / Device</span>
+                    @if (uiStore.activeSenderFilters().length > 0) {
+                      <span class="section-badge">{{ uiStore.activeSenderFilters().length }} selected</span>
+                    }
+                  </div>
+                  <div class="filter-chips-row">
+                    <button
+                      class="filter-chip"
+                      [class.active]="uiStore.activeSenderFilters().includes('self')"
+                      (click)="toggleSenderFilter('self')">
+                      <app-icon name="laptop" class="icon-xxs"></app-icon>
+                      <span>This Device</span>
+                    </button>
+                    @for (dev of deviceStore.pairedDevices(); track dev.id) {
+                      <button
+                        class="filter-chip"
+                        [class.active]="uiStore.activeSenderFilters().includes(dev.id)"
+                        (click)="toggleSenderFilter(dev.id)">
+                        <span class="device-dot" [style.background]="dev.accentColor || '#10B981'"></span>
+                        <span>{{ deviceStore.getDisplayLabel(dev) }}</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <!-- Section 4: Payload Size -->
+                <div class="filter-section">
+                  <div class="filter-section-header-row">
+                    <span class="filter-section-title">Payload Size</span>
+                    @if (uiStore.activeSizeFilters().length > 0) {
+                      <span class="section-badge">{{ uiStore.activeSizeFilters().length }} selected</span>
+                    }
+                  </div>
+                  <div class="filter-chips-row">
+                    @for (sz of filterSizeRanges; track sz.id) {
+                      <button
+                        class="filter-chip"
+                        [class.active]="uiStore.activeSizeFilters().includes(sz.id)"
+                        (click)="toggleSizeFilter(sz.id)">
+                        <span>{{ sz.label }}</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <!-- Section 5: Labels / Tags -->
+                @if (availableTags().length > 0) {
+                  <div class="filter-section">
+                    <div class="filter-section-header-row">
+                      <span class="filter-section-title">Labels / Tags</span>
+                      @if (uiStore.activeTagFilters().length > 0) {
+                        <span class="section-badge">{{ uiStore.activeTagFilters().length }} selected</span>
+                      }
+                    </div>
+                    <div class="filter-chips-row">
+                      @for (t of availableTags(); track t.tag) {
+                        <button
+                          class="filter-chip"
+                          [class.active]="uiStore.activeTagFilters().includes(t.tag)"
+                          [style.--chip-accent]="t.color"
+                          (click)="toggleTagFilter(t.tag)">
+                          <span class="filter-tag-dot" [style.background]="t.color"></span>
+                          <span>#{{ t.tag }}</span>
+                          <span class="filter-tag-count">({{ t.count }})</span>
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+
+                <!-- Section 6: Attributes (Pinned & Sensitive) -->
+                <div class="filter-section">
+                  <span class="filter-section-title">Attributes</span>
+                  <div class="filter-chips-row">
+                    <button
+                      class="filter-chip"
+                      [class.active]="uiStore.activePinnedOnly()"
+                      (click)="togglePinnedFilter()">
+                      <app-icon name="pin" class="icon-xxs text-amber"></app-icon>
+                      <span>Pinned Only</span>
+                    </button>
+                    <button
+                      class="filter-chip"
+                      [class.active]="uiStore.activeSensitiveOnly()"
+                      (click)="toggleSensitiveFilter()">
+                      <app-icon name="shield-alert" class="icon-xxs text-emerald"></app-icon>
+                      <span>Sensitive / Secrets</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="filter-popover-footer">
+                <span class="filter-results-summary">
+                  Filters Active: {{ uiStore.activeFiltersCount() }}
+                </span>
+                <button class="av-btn-primary filter-done-btn" (click)="closeFilterPopover()">
+                  Done
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Vault settings -->
+        <button class="av-btn-icon" (click)="uiStore.showSettingsDrawer.set(true)" [attr.data-tooltip]="'Vault settings'">
+          <app-icon name="settings" class="icon-xs"></app-icon>
+        </button>
+      </div>
+    </header>
+
+
+    <!-- ── Main Body: Rail + Stage ───────────────────────────── -->
+    <!-- Global drag overlay – covers the entire workspace surface -->
+    @if (isDragging()) {
+    <div class="av-global-drag-overlay" aria-hidden="true">
+      <!-- Orbit scene: all positioned relative to scene center -->
+      <div class="av-drag-scene">
+        <!-- Expanding sonar rings -->
+        <div class="av-drag-ring av-ring-1"></div>
+        <div class="av-drag-ring av-ring-2"></div>
+        <div class="av-drag-ring av-ring-3"></div>
+
+        <!-- 6 file-type chips orbiting the hub -->
+        <div class="av-orbit-arm oa-1"><div class="av-orbit-chip">📄</div></div>
+        <div class="av-orbit-arm oa-2"><div class="av-orbit-chip">🖼️</div></div>
+        <div class="av-orbit-arm oa-3"><div class="av-orbit-chip">📁</div></div>
+        <div class="av-orbit-arm oa-4"><div class="av-orbit-chip">🎬</div></div>
+        <div class="av-orbit-arm oa-5"><div class="av-orbit-chip">📦</div></div>
+        <div class="av-orbit-arm oa-6"><div class="av-orbit-chip">🔗</div></div>
+
+        <!-- Glowing center hub -->
+        <div class="av-drag-hub">
+          <app-icon name="upload-cloud" class="icon-md"></app-icon>
+        </div>
+      </div>
+
+      <!-- Label below scene -->
+      <div class="av-drag-text">
+        <span class="av-drag-label-title">Drop anything</span>
+        <span class="av-drag-label-sub">Files · Images · Folders · Code · Text</span>
+      </div>
+    </div>
+    }
+    <div class="av-main-body">
+      <!-- Left device rail (50px) -->
+      <div class="av-rail" data-tour="av-rail">
+        <app-airvault-constellation [currentDevice]="deviceStore.currentDevice()"
+          [pairedDevices]="deviceStore.pairedDevices()" [selectedTargetId]="deviceStore.selectedTargetId()"
+          (selectTarget)="deviceStore.setSelectedTarget($event)"
+          (toggleSync)="onToggleSyncDevice($event)"
+          (openPairingModal)="openPairing()"
+          (openDeviceManager)="uiStore.showDeviceDrawer.set(true)"
+          (syncNow)="onManualDeviceSync($event)"
+          (disconnect)="onDeviceDisconnect($event)"
+          (reconnect)="onDeviceReconnect($event)"
+          (rename)="onDeviceRename($event)"
+          (remove)="onDeviceRemove($event)">
+        </app-airvault-constellation>
+      </div>
+
+      <!-- Stage column (fills all remaining width) -->
+      <div class="av-stage-col">
+        <app-airvault-staging [pairedDevices]="deviceStore.pairedDevices()"
+          [selectedTargetId]="deviceStore.selectedTargetId()"
+          [showNavbarSearch]="showNavbarSearch()"
+          [navbarSearchQuery]="navbarSearchQuery()"
+          [isSearchingServer]="isSearchingServer()"
+          [navbarTotalMatches]="navbarTotalMatches()"
+          [navbarActiveMatchDisplay]="navbarActiveMatchDisplay()"
+          [topDropdownResults]="topDropdownResults()"
+          [totalResultCount]="totalResultCount()"
+          (openNavbarSearchEvt)="openNavbarSearch()"
+          (closeNavbarSearchEvt)="closeNavbarSearch()"
+          (navbarSearchInputEvt)="onNavbarSearchInput($event)"
+          (navbarSearchKeydownEvt)="onNavbarSearchKeydown($event)"
+          (prevNavbarMatchEvt)="prevNavbarMatch($event)"
+          (nextNavbarMatchEvt)="nextNavbarMatch($event)"
+          (selectSearchResultEvt)="onSelectSearchResult($event)"
+          (openHistoryEvt)="openHistory()"
+          (targetChange)="deviceStore.setSelectedTarget($event)"
+          (beamPayload)="onBeamPayload($event)"
+          (liveTextChange)="onLiveTextChange($event)"
+          (deleteItem)="onDeleteItem($event)"
+          (resendItem)="onResendItem($event)"
+          (clearActiveClipboard)="onClearActiveClipboard()"
+          (refreshClipboard)="onRefreshClipboard()">
+        </app-airvault-staging>
+      </div>
+    </div>
+
+    <!-- ── Tool Workspace Footer Bar ─────────────────────────── -->
+    <app-airvault-footer
+      [currentTheme]="corePrefService.theme()"
+      [autoCaptureEnabled]="clipboardStore.autoCaptureEnabled()"
+      [totalBytes]="storageService.totalBytes()"
+      [activeBytes]="storageService.activeBytes()"
+      [historyBytes]="storageService.historyBytes()"
+      (historyClick)="openHistory()"
+      (toggleAutoCapture)="clipboardStore.toggleAutoCapture()"
+      (pairDeviceClick)="openPairing()"
+      (inviteClick)="openInviteModal()"
+      (shareLinkClick)="openShareLinkModal()"
+      (toggleTheme)="corePrefService.toggleTheme()"
+      (settingsClick)="uiStore.showSettingsDrawer.set(true)"
+      (feedbackClick)="uiStore.showFeedbackModal.set(true)">
+    </app-airvault-footer>
+
+    <!-- ── Initial Bootstrap & Setup Loader (Non-blocking async initialization indicator) ── -->
+    @if (isInitializing()) {
+      <div class="av-initial-loader-overlay">
+        <div class="av-initial-loader-capsule">
+          <div class="av-initial-spinner"></div>
+          <div class="av-initial-loader-text">
+            <span class="av-loader-title">Initializing AirVault…</span>
+            <span class="av-loader-sub">Restoring local metadata & preparing secure session</span>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       TIER 2: INFORMATIONAL SCREEN (Architecture, Privacy, Guarantees)
+       ═══════════════════════════════════════════════════════════ -->
+  <div info-screen class="av-info-layout">
+    <main class="av-chapters-container">
+      <!-- Chapter 1: Security & Privacy Architecture -->
+      <app-airvault-security-chapter></app-airvault-security-chapter>
+
+      <!-- Chapter 2: Real-Time Diagnostics & Telemetry -->
+      <app-airvault-telemetry-chapter
+        [pairedDevices]="deviceStore.pairedDevices()"
+        [totalBytes]="storageService.totalBytes()"
+        (openDeviceManager)="uiStore.showDeviceDrawer.set(true)">
+      </app-airvault-telemetry-chapter>
+    </main>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       TIER 3: REFERENCE SCREEN (Protocols, Shortcuts, Guidelines)
+       ═══════════════════════════════════════════════════════════ -->
+  <div reference-screen class="av-info-layout">
+    <main class="av-chapters-container">
+      <!-- Chapter 3: Operational Protocols & Guidelines -->
+      <app-airvault-protocols-chapter></app-airvault-protocols-chapter>
+    </main>
+  </div>
+
+  <!-- ── AirVault Signature Return Action (Tool-Owned UI & Style) ── -->
+  <button return-action class="av-hud-return-btn" aria-label="Return to operational workspace">
+    <div class="av-hud-icon-box">
+      <app-icon name="zap" class="icon-xs"></app-icon>
+    </div>
+    <span class="av-hud-text">Back to AirVault</span>
+    <kbd class="av-hud-kbd">Esc</kbd>
+  </button>
+
+</app-tool-shell>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       MODALS & DRAWERS
+       ═══════════════════════════════════════════════════════════ -->
+  @if (uiStore.showHistoryModal()) {
+  <app-airvault-history-modal
+    [activeItems]="storageService.items()"
+    [restorableItems]="storageService.restorableHistoryItems()"
+    [auditLogs]="storageService.auditLogs()"
+    [totalBytes]="storageService.totalBytes()"
+    [activeBytes]="storageService.activeBytes()"
+    [historyBytes]="storageService.historyBytes()"
+    (close)="uiStore.showHistoryModal.set(false)"
+    (restoreItem)="onRestoreHistoryItem($event)"
+    (purgeItem)="onPurgeHistoryItem($event)"
+    (clearEntireHistory)="onClearEntireHistory()"
+    (triggerToast)="uiStore.triggerToast($event)">
+  </app-airvault-history-modal>
+  }
+
+  @if (uiStore.showIdentityOnboardingModal()) {
+  <app-airvault-identity-onboarding-modal
+    [initialView]="uiStore.identityOnboardingInitialView()"
+    (close)="uiStore.showIdentityOnboardingModal.set(false)">
+  </app-airvault-identity-onboarding-modal>
+  }
+
+  @if (uiStore.showPairingModal()) {
+  <app-airvault-pairing-modal [pin]="deviceStore.ephemeralPin()" (close)="uiStore.showPairingModal.set(false)"
+    (deviceAdded)="onDeviceAdded($event)">
+  </app-airvault-pairing-modal>
+  }
+
+  @if (uiStore.showDeviceDrawer()) {
+  <app-airvault-device-drawer [currentDevice]="deviceStore.currentDevice()"
+    [pairedDevices]="deviceStore.pairedDevices()"
+    [registeredSessions]="deviceService.registeredSessions()"
+    (close)="uiStore.showDeviceDrawer.set(false)"
+    (revokeDevice)="onRevokeDevice($event)"
+    (disconnectDevice)="onDeviceDisconnect($event)"
+    (reconnectDevice)="onDeviceReconnect($event)"
+    (remoteLogout)="onRemoteLogout($event)"
+    (renameDevice)="onRenameDevice($event)"
+    (toggleSync)="deviceStore.toggleSyncTarget($event)"
+    (signOutDevice)="onSignOutCurrentDevice($event)"
+    (openPairingModal)="uiStore.showDeviceDrawer.set(false); openPairing()">
+  </app-airvault-device-drawer>
+  }
+
+  <!-- Multi-Device Synchronization Modal -->
+  @if (uiStore.showSyncModal()) {
+  <app-airvault-sync-modal
+    [device]="uiStore.syncModalDevice()"
+    [progress]="uiStore.syncModalProgress()"
+    (close)="uiStore.showSyncModal.set(false)"
+    (retry)="uiStore.syncModalDevice() && syncService.initiateDeviceSync(uiStore.syncModalDevice()!)">
+  </app-airvault-sync-modal>
+  }
+
+
+  @if (uiStore.showSettingsDrawer()) {
+  <app-airvault-settings-drawer
+    [initialTab]="uiStore.settingsDrawerInitialTab()"
+    [currentTtlMs]="storageService.retentionTtlMs()"
+    [totalItems]="storageService.items().length"
+    [totalBytes]="storageService.totalBytes()"
+    (close)="uiStore.showSettingsDrawer.set(false)"
+    (ttlChange)="onTtlChange($event)"
+    (purgeAllHistory)="onClearAllItems(); uiStore.showSettingsDrawer.set(false)"
+    (openEraseModal)="uiStore.showSettingsDrawer.set(false); uiStore.showEraseModal.set(true)">
+  </app-airvault-settings-drawer>
+  }
+
+  @if (uiStore.showEraseModal()) {
+  <app-airvault-erase-modal (close)="uiStore.showEraseModal.set(false)">
+  </app-airvault-erase-modal>
+  }
+
+  @if (uiStore.showDeleteConfirmModal()) {
+  <app-airvault-delete-confirm-modal
+    [item]="uiStore.deleteConfirmModalItem()"
+    [items]="uiStore.deleteConfirmModalItems()"
+    (deleteGlobal)="onExecuteGlobalDelete($event)"
+    (deleteLocal)="onExecuteLocalDelete($event)"
+    (cancel)="uiStore.closeDeleteConfirm()">
+  </app-airvault-delete-confirm-modal>
+  }
+
+  @if (uiStore.showClearActiveModal()) {
+  <app-airvault-clear-confirm-modal
+    [itemCount]="storageService.items().length"
+    [totalBytes]="storageService.activeBytes()"
+    (confirm)="onConfirmClearActiveClipboard()"
+    (cancel)="uiStore.showClearActiveModal.set(false)">
+  </app-airvault-clear-confirm-modal>
+  }
+
+  @if (uiStore.showDuplicateModal()) {
+  <app-airvault-duplicate-modal
+    [matchedUsername]="uiStore.duplicateModalData()?.matchedUsername || ''"
+    [resourceSnippet]="uiStore.duplicateModalData()?.resourceSnippet || ''"
+    [category]="uiStore.duplicateModalData()?.category || ''"
+    (close)="uiStore.closeDuplicateModal()"
+    (override)="onOverrideDuplicate()">
+  </app-airvault-duplicate-modal>
+  }
+
+  @if (uiStore.showSyncConsentModal()) {
+  <app-airvault-sync-consent-modal
+    [device]="uiStore.syncConsentDevice()"
+    (sync)="onSyncConsentAccept($event)"
+    (skip)="onSyncConsentSkip($event)">
+  </app-airvault-sync-consent-modal>
+  }
+
+  @if (uiStore.showTipsModal()) {
+  <app-airvault-tips-modal (close)="uiStore.showTipsModal.set(false)">
+  </app-airvault-tips-modal>
+  }
+
+  @if (uiStore.showFeedbackModal()) {
+  <app-feedback-modal [isOpen]="true" [toolId]="'airvault'" [toolName]="'AirVault'"
+    (closeModal)="uiStore.showFeedbackModal.set(false)">
+  </app-feedback-modal>
+  }
+
+  <!-- Big Screen Preview Modal (Images, Videos, URLs, Text, Code) -->
+  @if (uiStore.previewModalItem(); as previewItem) {
+  <app-airvault-preview-modal [item]="previewItem" (close)="uiStore.closePreview()">
+  </app-airvault-preview-modal>
+  }
+
+  <!-- Toast & Disconnected Source Notifications -->
+  <app-airvault-toast
+    [message]="uiStore.toastMessage()"
+    [disconnectedAlert]="uiStore.disconnectedSourceNotification()"
+    (dismiss)="uiStore.toastMessage.set(null)"
+    (dismissAlert)="uiStore.dismissDisconnectedSourceAlert()"
+    (reconnect)="onDeviceReconnect($event); uiStore.dismissDisconnectedSourceAlert()">
+  </app-airvault-toast>
+
+  <!-- ── Guided Onboarding Tour Spotlight Overlay ──────────── -->
+  <app-airvault-tour></app-airvault-tour>
+
+  <!-- ── Share Clipboard Link Modal ──────────────────────────── -->
+  @if (uiStore.showShareLinkModal()) {
+    <app-airvault-share-link-modal (close)="uiStore.showShareLinkModal.set(false)"></app-airvault-share-link-modal>
+  }
+
+  <!-- ── Invite Collaborator Modal ─────────────────────────────── -->
+  @if (invitationService.isInviteModalOpen()) {
+    <app-airvault-invite-modal (close)="invitationService.closeInviteModal()"></app-airvault-invite-modal>
+  }
+
+  <!-- ── Collaborator Notifications Inbox ──────────────────────── -->
+  @if (invitationService.isInboxOpen()) {
+    <app-airvault-notification-inbox (close)="invitationService.toggleInbox(false)"></app-airvault-notification-inbox>
+  }
+
+  <!-- ── Create Standalone Clipboard Modal ────────────────────── -->
+  @if (isCreateModalOpen()) {
+    <app-airvault-create-clipboard-modal
+      (close)="closeCreateClipboardModal()"
+      (created)="onClipboardCreated($event)">
+    </app-airvault-create-clipboard-modal>
+  }

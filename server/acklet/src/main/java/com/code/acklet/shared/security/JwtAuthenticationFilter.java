@@ -10,6 +10,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -29,6 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
     private final UserRepository userRepository;
+    private final Environment environment;
 
     @Override
     protected void doFilterInternal(
@@ -47,8 +50,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         jwt = authHeader.substring(7);
 
-        // Support demo/dev session token for instant workspace access as default Acklet User
+        // Support demo/dev session token for instant workspace access as default Acklet User (local/dev/test profiles only)
         if ("demo_dev_access_token".equals(jwt)) {
+            if (!environment.acceptsProfiles(Profiles.of("local", "dev", "test"))) {
+                log.warn("[Security] Rejected demo_dev_access_token on non-local profile");
+                filterChain.doFilter(request, response);
+                return;
+            }
             User demoUser = userRepository.findByEmail("user@acklet.com")
                     .orElseGet(() -> {
                         try {

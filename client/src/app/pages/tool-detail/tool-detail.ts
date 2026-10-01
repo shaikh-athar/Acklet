@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, Type } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ToolsService } from '../../core/services/tools.service';
@@ -8,6 +8,7 @@ import { SeoService } from '../../core/services/seo.service';
 import { IconComponent } from '../../shared/components/icon/icon';
 import { Tool } from '../../core/models/tool.model';
 import { ToolKnowledgeHub } from '../../core/models/tool-knowledge.model';
+import { TOOL_COMPONENTS } from '../../core/tool-registry';
 
 @Component({
   selector: 'app-tool-detail',
@@ -79,6 +80,38 @@ import { ToolKnowledgeHub } from '../../core/models/tool-knowledge.model';
             </div>
           </div>
         </div>
+
+        <!-- Sandbox Layer -->
+        @if (sandboxLaunched()) {
+          <div class="container-main py-8 border-b border-[var(--border-soft)]">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-xl font-bold flex items-center gap-2">
+                <app-icon name="wrench" class="text-brand-400 size-5" />
+                Interactive Sandbox
+              </h2>
+              <button class="btn btn-ghost btn-sm" (click)="closeSandbox()">
+                <app-icon name="x" class="size-4 mr-1" /> Close Sandbox
+              </button>
+            </div>
+            
+            <div class="p-6 bg-neutral-950 rounded-2xl border border-[var(--border-soft)]">
+              @if (loadError()) {
+                <div class="flex flex-col items-center justify-center p-8 text-center text-rose-400 gap-3">
+                  <app-icon name="shield-alert" class="size-12 text-rose-500" />
+                  <h3 class="font-bold text-lg">Sandbox Loading Error</h3>
+                  <p class="text-sm max-w-md text-neutral-400">{{ loadError() }}</p>
+                </div>
+              } @else if (dynamicComponent()) {
+                <ng-container *ngComponentOutlet="dynamicComponent()" />
+              } @else {
+                <div class="flex flex-col items-center justify-center p-8 text-neutral-500 gap-2">
+                  <app-icon name="clock" class="size-8 animate-spin" />
+                  <p class="text-sm">Launching secure sandbox environment...</p>
+                </div>
+              }
+            </div>
+          </div>
+        }
 
         <!-- CONTENT LAYOUT -->
         <div class="container-main td-body">
@@ -544,10 +577,17 @@ export class ToolDetailComponent implements OnInit {
   readonly relatedTools = signal<Tool[]>([]);
   readonly isFavorited = signal(false);
 
+  readonly sandboxLaunched = signal(false);
+  readonly dynamicComponent = signal<Type<any> | null>(null);
+  readonly loadError = signal<string | null>(null);
+
   ngOnInit(): void {
     this.route.params.subscribe(params => {
       const slug = params['id'];
       if (!slug) return;
+      
+      // Reset sandbox state when route parameter changes
+      this.closeSandbox();
       
       this.toolsSvc.getToolBySlug(slug).subscribe(t => {
         this.tool.set(t);
@@ -572,7 +612,19 @@ export class ToolDetailComponent implements OnInit {
   }
 
   toggleFavorite(): void { this.isFavorited.update(v => !v); }
-  useTool(): void { alert('Tool sandbox interface launching locally.'); }
+
+  useTool(): void {
+    const slug = this.tool()?.slug;
+    if (!slug) return;
+    window.open(`/tools/app/${slug}`, '_blank');
+  }
+
+  closeSandbox(): void {
+    this.sandboxLaunched.set(false);
+    this.dynamicComponent.set(null);
+    this.loadError.set(null);
+  }
+
   copyLink(): void { navigator.clipboard.writeText(window.location.href); }
 
   getCategorySlug(): string {

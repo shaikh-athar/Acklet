@@ -1,0 +1,67 @@
+name: acklet
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: acklet-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-acklet}
+      POSTGRES_USER: ${DB_USERNAME:-acklet}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-acklet_secret_password}
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-acklet} -d ${DB_NAME:-acklet}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - acklet_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: acklet-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - acklet_network
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: acklet-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"     # AMQP protocol
+      - "15672:15672"                     # RabbitMQ Web Management Dashboard
+    volumes:
+      - rabbitmqdata:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - acklet_network
+
+networks:
+  acklet_network:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redisdata:
+  rabbitmqdata:
