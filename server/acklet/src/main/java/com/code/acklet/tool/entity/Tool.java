@@ -101,6 +101,30 @@ public class Tool extends Auditable {
     @Column(name = "repository_id")
     private UUID repositoryId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "execution_mode")
+    @Builder.Default
+    private ExecutionMode executionMode = ExecutionMode.BROWSER;
+
+    @Column(name = "subdomain")
+    private String subdomain;
+
+    @Column(name = "runtime")
+    private String runtime;
+
+    @Column(name = "build_command")
+    private String buildCommand;
+
+    @Column(name = "start_command")
+    private String startCommand;
+
+    @Column(name = "port")
+    private Integer port;
+
+    public enum ExecutionMode {
+        BROWSER, BACKEND, HYBRID
+    }
+
     public enum ToolStatus {
         DRAFT, PENDING, ACTIVE, ARCHIVED, REJECTED
     }

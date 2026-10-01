@@ -39,4 +39,13 @@ public class ToolResponse {
     private String status;
     private String verificationStatus;
     private long upvoteCount;
+
+    // Runtime execution configurations
+    private String executionMode;
+    private String subdomain;
+    private String runtime;
+    private String buildCommand;
+    private String startCommand;
+    private Integer port;
+    private UUID repositoryId;
 }

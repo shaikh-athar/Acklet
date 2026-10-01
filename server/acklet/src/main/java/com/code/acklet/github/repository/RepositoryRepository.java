@@ -12,4 +12,5 @@ public interface RepositoryRepository extends JpaRepository<Repository, UUID> {
     Optional<Repository> findByIdAndUserId(UUID id, UUID userId);
     Optional<Repository> findByUserIdAndFullName(UUID userId, String fullName);
     Page<Repository> findAllByUserId(UUID userId, Pageable pageable);
+    java.util.List<Repository> findAllByFullName(String fullName);
 }
