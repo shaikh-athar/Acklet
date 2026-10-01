@@ -1,6 +1,5 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IconComponent } from '../../../shared/components/icon/icon';
 
 interface AIJob {
   id: string;
@@ -14,7 +13,7 @@ interface AIJob {
 @Component({
   selector: 'app-ai-jobs',
   standalone: true,
-  imports: [CommonModule, IconComponent],
+  imports: [CommonModule],
   template: `
     <div class="aj-wrapper">
       <div class="aj-header">

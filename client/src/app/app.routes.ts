@@ -3,20 +3,38 @@ import { Routes } from '@angular/router';
 import { authGuard, publisherGuard, adminGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
+  // --- Standalone Tool Applications (Pure Tool UI, No Platform Shell/Navbar/Footer) ---
+  { path: 'tools/app/airvault/invite/:invitationId', loadComponent: () => import('../tools/airvault/airvault.component').then(m => m.AirVaultComponent), title: 'AirVault — Collaborator Invitation — Acklet' },
+  { path: 'tools/app/airvault/:clipboardId', loadComponent: () => import('../tools/airvault/airvault.component').then(m => m.AirVaultComponent), title: 'AirVault — Shared Clipboard — Acklet' },
+  { path: 'tools/app/airvault', loadComponent: () => import('../tools/airvault/airvault.component').then(m => m.AirVaultComponent), title: 'AirVault — Cross-Device Clipboard & Sync — Acklet' },
+  { path: 'tools/app/air-vault', loadComponent: () => import('../tools/airvault/airvault.component').then(m => m.AirVaultComponent), title: 'AirVault — Cross-Device Clipboard & Sync — Acklet' },
+  { path: 'invite/:invitationId', loadComponent: () => import('../tools/airvault/airvault.component').then(m => m.AirVaultComponent), title: 'AirVault — Collaborator Invitation — Acklet' },
+  { path: 'tools/airvault/invite/:invitationId', redirectTo: 'tools/app/airvault/invite/:invitationId' },
+  { path: 'tools/airvault/:clipboardId', redirectTo: 'tools/app/airvault/:clipboardId' },
+  { path: 'tools/airvault', redirectTo: 'tools/app/airvault', pathMatch: 'full' },
+  { path: 'c/:clipboardId', redirectTo: 'tools/app/airvault/:clipboardId' },
+  { path: 'airvault/:clipboardId', redirectTo: 'tools/app/airvault/:clipboardId' },
+  { path: 'tools/app/datalens', loadComponent: () => import('../tools/data-lens/data-lens.component').then(m => m.JsonLensComponent), title: 'DataLens — Multi-Format Data Workspace & Validator — Acklet' },
+  { path: 'tools/app/data-lens', loadComponent: () => import('../tools/data-lens/data-lens.component').then(m => m.JsonLensComponent), title: 'DataLens — Multi-Format Data Workspace & Validator — Acklet' },
+  // Backward-compatible route aliases for legacy links
+  { path: 'tools/app/json-formatter', loadComponent: () => import('../tools/data-lens/data-lens.component').then(m => m.JsonLensComponent), title: 'DataLens — Multi-Format Data Workspace & Validator — Acklet' },
+  { path: 'tools/app/json-lens', loadComponent: () => import('../tools/data-lens/data-lens.component').then(m => m.JsonLensComponent), title: 'DataLens — Multi-Format Data Workspace & Validator — Acklet' },
+  { path: 'tools/app/:id', loadComponent: () => import('./pages/tools/standalone-tool-sandbox').then(m => m.StandaloneToolSandboxComponent) },
+  { path: 'tools/sandbox/:id', loadComponent: () => import('./pages/tools/standalone-tool-sandbox').then(m => m.StandaloneToolSandboxComponent) },
+
   // --- Public Pages under main header/navbar layout ---
   {
     path: '',
     loadComponent: () => import('./layout/main-layout/main-layout').then(m => m.MainLayoutComponent),
     children: [
       { path: '', loadComponent: () => import('./pages/home/home').then(m => m.HomeComponent), title: 'Acklet — Solve digital problems, instantly' },
-      
-      // Tools Nested Route Tree
+
+      // Tools Nested Route Tree (Marketing & Info pages)
       { path: 'tools', redirectTo: 'tools/explore', pathMatch: 'full' },
       {
         path: 'tools',
         children: [
           { path: 'explore', loadComponent: () => import('./pages/tools/tools').then(m => m.ToolsComponent), title: 'Explore Solutions — Acklet' },
-          { path: 'json-lens', loadComponent: () => import('../tools/json-lens/json-lens.component').then(m => m.JsonLensComponent), title: 'JsonLens — JSON Formatter & Validator — Acklet' },
           { path: 'categories', loadComponent: () => import('./pages/categories/categories').then(m => m.CategoriesComponent), title: 'Categories — Acklet' },
           { path: 'trending', loadComponent: () => import('./pages/tools/trending/trending').then(m => m.ToolsTrendingComponent), title: 'Trending Solutions — Acklet' },
           { path: 'new', loadComponent: () => import('./pages/tools/new-releases/new-releases').then(m => m.ToolsNewReleasesComponent), title: 'New Releases — Acklet' },
@@ -24,26 +42,23 @@ export const routes: Routes = [
           { path: ':id', loadComponent: () => import('./pages/tool-detail/tool-detail').then(m => m.ToolDetailComponent) },
         ]
       },
-      
+
       { path: 'categories', redirectTo: 'tools/categories', pathMatch: 'full' },
       { path: 'about', loadComponent: () => import('./pages/about/about').then(m => m.AboutComponent), title: 'About — Acklet' },
       { path: 'contact', loadComponent: () => import('./pages/contact/contact').then(m => m.ContactComponent), title: 'Contact — Acklet' },
-      
+
       // Community
       { path: 'community/discussions', loadComponent: () => import('./pages/community/discussions/discussions').then(m => m.CommunityDiscussionsComponent), title: 'Discussions — Acklet' },
       { path: 'community/discussions/:id', loadComponent: () => import('./pages/community/discussion-details/discussion-details').then(m => m.CommunityDiscussionDetailsComponent) },
       { path: 'community/showcase', loadComponent: () => import('./pages/community/showcase/showcase').then(m => m.CommunityShowcaseComponent), title: 'Showcase — Acklet' },
       { path: 'community/features', loadComponent: () => import('./pages/community/features/features').then(m => m.CommunityFeaturesComponent), title: 'Feature Requests — Acklet' },
       { path: 'community/help', loadComponent: () => import('./pages/community/help/help').then(m => m.CommunityHelpComponent), title: 'Help & Support — Acklet' },
-      
+
       // Blog
       { path: 'blog', loadComponent: () => import('./pages/blog/articles/articles').then(m => m.BlogArticlesComponent), title: 'Blog — Acklet' },
       { path: 'blog/:slug', loadComponent: () => import('./pages/blog/article-details/article-details').then(m => m.BlogArticleDetailsComponent) },
     ],
   },
-
-  // --- Standalone Tool Applications (Pure Tool UI, No Platform Shell/Navbar) ---
-  { path: 'tools/json-formatter', loadComponent: () => import('../tools/json-lens/json-lens.component').then(m => m.JsonLensComponent), title: 'JSON Formatter & Validator — Acklet' },
 
   // --- Standalone Auth Pages (No Navbar / No Main Footer) ---
   { path: 'login', redirectTo: 'auth/login', pathMatch: 'full' },

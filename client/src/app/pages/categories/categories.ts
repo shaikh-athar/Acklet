@@ -80,17 +80,36 @@ import { IconComponent } from '../../shared/components/icon/icon';
             </div>
             <div class="cats-grid">
               @for (cat of filteredCategories(); track cat.id) {
+                @let catTools = toolsSvc.getToolsByCategory(cat.id);
                 <div class="cat-item">
-                  <a [routerLink]="['/tools']" [queryParams]="{ category: cat.slug }"
+                  <a [routerLink]="['/tools/explore']" [queryParams]="{ category: cat.slug }"
                      class="cat-full-card" [style.--cc]="cat.color">
                     <div class="cat-full-icon-box">
                       <app-icon [name]="cat.icon" class="size-7 cat-full-icon" />
                     </div>
                     <h2 class="cat-full-name">{{ cat.name }}</h2>
                     <p class="cat-full-desc">{{ cat.description }}</p>
+
+                    <!-- Preview of tools in this category -->
+                    @if (catTools.length > 0) {
+                      <div class="cat-tools-preview">
+                        <div class="cat-tools-pills">
+                          @for (t of catTools.slice(0, 3); track t.id) {
+                            <span class="cat-tool-pill">
+                              <app-icon [name]="t.icon || 'code'" class="size-3" />
+                              {{ t.name }}
+                            </span>
+                          }
+                          @if (catTools.length > 3) {
+                            <span class="cat-tool-more">+{{ catTools.length - 3 }} more</span>
+                          }
+                        </div>
+                      </div>
+                    }
+
                     <div class="cat-full-footer">
                       <span class="cat-full-count">
-                        {{ cat.toolCount }} solutions
+                        {{ catTools.length || cat.toolCount }} solutions
                       </span>
                       <span class="cat-full-explore">
                         Explore
@@ -117,7 +136,7 @@ import { IconComponent } from '../../shared/components/icon/icon';
           <h2 class="cats-cta-title">Not sure where to start?</h2>
           <p class="cats-cta-sub">Use the search above to find solutions by name or intent — or browse everything we offer.</p>
           <div class="cats-cta-btns">
-            <a routerLink="/tools" class="btn btn-primary">Browse all solutions</a>
+            <a routerLink="/tools/explore" class="btn btn-primary">Browse all solutions</a>
             <a routerLink="/" class="btn btn-secondary">Back to home</a>
           </div>
         </div>
@@ -193,6 +212,25 @@ import { IconComponent } from '../../shared/components/icon/icon';
     .cat-full-icon { color: var(--cc, #818cf8); transition: all 0.3s; }
     .cat-full-name { font-size: 1.125rem; font-weight: 700; color: var(--color-neutral-100); }
     .cat-full-desc { font-size: 0.825rem; color: var(--color-neutral-400); line-height: 1.6; flex: 1; }
+
+    /* Category Tools Preview */
+    .cat-tools-preview { margin-top: 0.25rem; }
+    .cat-tools-pills { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .cat-tool-pill {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.2rem 0.55rem; border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.72rem; color: var(--color-neutral-300);
+      font-weight: 500;
+    }
+    .cat-tool-more {
+      display: inline-flex; align-items: center;
+      padding: 0.2rem 0.45rem; border-radius: var(--radius-md);
+      font-size: 0.68rem; color: var(--color-neutral-500);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
     .cat-full-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 1rem; border-top: 1px solid var(--border-soft); margin-top: auto; }
     .cat-full-count { display: flex; align-items: center; font-size: 0.75rem; font-weight: 600; color: var(--color-neutral-500); }
     .cat-full-explore { display: flex; align-items: center; font-size: 0.75rem; font-weight: 700; color: var(--color-neutral-400); transition: all 0.25s; text-transform: uppercase; letter-spacing: 0.06em; }

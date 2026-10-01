@@ -10,6 +10,10 @@ export class SeoService {
   private meta = inject(Meta);
   private document = inject(DOCUMENT);
 
+  setTitle(pageTitle: string): void {
+    this.title.setTitle(pageTitle);
+  }
+
   setToolKnowledgeSeo(hub: ToolKnowledgeHub, toolName: string, categoryName: string): void {
     const pageTitle = `${toolName} - Features, Privacy, Technical Details & Resources | Acklet`;
     const description = hub.overview;

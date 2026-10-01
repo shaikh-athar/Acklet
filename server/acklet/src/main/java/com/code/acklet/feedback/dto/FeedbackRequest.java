@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,15 +23,21 @@ public class FeedbackRequest {
     @NotBlank(message = "Feedback message text is required")
     private String message;
 
-    private String category; // 'bug', 'feature_request', 'usability', 'general', 'performance'
+    private String category; // 'BUG', 'FEATURE_REQUEST', 'IMPROVEMENT', 'USABILITY', 'GENERAL', 'PERFORMANCE'
 
-    private String toolId; // e.g. 'json-lens', 'jwt-decoder', 'platform'
+    private String toolId; // e.g. 'json-lens', 'airvault', 'platform'
+
+    private String toolName; // e.g. 'JSONLens', 'AirVault', 'Acklet Platform'
 
     private String email; // Optional contact email for response
+
+    private String source; // 'IN_APP', 'EMAIL', 'EXTERNAL', 'API', 'MANUAL'
 
     private String pageUrl; // Optional current route URL
 
     private String userAgent; // Optional browser environment string
 
     private String deviceType; // Optional 'desktop', 'tablet', 'mobile'
+
+    private UUID userId; // Optional explicit user ID
 }

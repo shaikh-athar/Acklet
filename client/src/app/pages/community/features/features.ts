@@ -2,13 +2,12 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../../../shared/components/icon/icon';
-import { SpotlightDirective } from '../../../shared/directives/spotlight.directive';
 import { MOCK_FEATURES, FeatureRequest } from '../../../core/mock-data/community.data';
 
 @Component({
   selector: 'app-community-features',
   standalone: true,
-  imports: [CommonModule, IconComponent, SpotlightDirective],
+  imports: [CommonModule, IconComponent],
   template: `
     <div class="features-root page-enter">
       <!-- Hero -->
