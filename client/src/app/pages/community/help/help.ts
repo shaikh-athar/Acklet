@@ -1,8 +1,6 @@
 // client/src/app/pages/community/help/help.ts
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IconComponent } from '../../../shared/components/icon/icon';
-import { SpotlightDirective } from '../../../shared/directives/spotlight.directive';
 
 interface HelpTopic {
   question: string;
@@ -12,7 +10,7 @@ interface HelpTopic {
 @Component({
   selector: 'app-community-help',
   standalone: true,
-  imports: [CommonModule, IconComponent, SpotlightDirective],
+  imports: [CommonModule],
   template: `
     <div class="help-root page-enter">
       <!-- Hero -->

@@ -1,17 +1,14 @@
 // client/src/app/pages/tools/trending/trending.ts
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { ToolsService } from '../../../core/services/tools.service';
 import { ToolCardComponent } from '../../../shared/components/tool-card/tool-card';
-import { SectionHeaderComponent } from '../../../shared/components/section-header/section-header';
 import { IconComponent } from '../../../shared/components/icon/icon';
-import { SpotlightDirective } from '../../../shared/directives/spotlight.directive';
 
 @Component({
   selector: 'app-tools-trending',
   standalone: true,
-  imports: [CommonModule, RouterLink, ToolCardComponent, SectionHeaderComponent, IconComponent, SpotlightDirective],
+  imports: [CommonModule, ToolCardComponent, IconComponent],
   template: `
     <div class="trending-page page-enter">
       <!-- Page Header -->

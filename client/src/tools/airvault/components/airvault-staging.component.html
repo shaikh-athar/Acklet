@@ -1,0 +1,692 @@
+<!-- ── Chat Stream Area (scrollable, items as chat bubbles) ──── -->
+<div class="chat-stream-area" #streamArea>
+  <!-- Cross-Device Continue On Handoff Banner -->
+  <app-airvault-handoff-banner [draft]="remoteDraft()" [isVisible]="showHandoffBanner()"
+    (continueDraft)="onContinueDraft($event)" (dismiss)="onDismissDraftHandoff()">
+  </app-airvault-handoff-banner>
+
+  @if (largeFileWarning()) {
+  <div class="large-file-warning-banner">
+    <div class="banner-content">
+      <app-icon name="alert-triangle" class="icon-xs text-amber"></app-icon>
+      <span>{{ largeFileWarning() }}</span>
+    </div>
+    <button class="banner-dismiss-btn" (click)="dismissLargeFileWarning()" data-tooltip="Dismiss notice">
+      <app-icon name="x" class="icon-xs"></app-icon>
+    </button>
+  </div>
+  }
+
+  <!-- Empty watermark (shows when no items exist) -->
+  @if (vaultItems().length === 0 && !isDragging()) {
+  <div class="composer-watermark" aria-hidden="true">
+    <div class="watermark-icon-box">
+      <app-icon name="upload-cloud" class="icon-md"></app-icon>
+    </div>
+    <div class="watermark-title">Drop files, folders, or start typing</div>
+    <div class="watermark-sub">
+      End-to-End Encrypted · Share anything across your devices
+    </div>
+    <div class="watermark-pills">
+      <button class="sample-pill" (click)="loadSample('code')" data-tooltip="Load code sample">
+        <app-icon name="code" class="icon-xs"></app-icon>
+        <span>Code Snippet</span>
+      </button>
+      <button class="sample-pill" (click)="loadSample('json')" data-tooltip="Load JSON sample">
+        <app-icon name="file-json" class="icon-xs"></app-icon>
+        <span>JSON Payload</span>
+      </button>
+      <button class="sample-pill" (click)="loadSample('url')" data-tooltip="Load URL sample">
+        <app-icon name="link" class="icon-xs"></app-icon>
+        <span>URL Link</span>
+      </button>
+      <button class="sample-pill" (click)="loadSample('phone')" data-tooltip="Load phone number sample">
+        <app-icon name="phone" class="icon-xs"></app-icon>
+        <span>Phone Number</span>
+      </button>
+    </div>
+  </div>
+  }
+
+  <!-- Masonry / Responsive Card Grid (auto-fit columns, cards sized to content) -->
+  <div class="vault-card-grid" #cardGrid>
+    @for (item of displayedVaultItems(); track item.id) {
+    <div class="vault-card-cell">
+      <app-airvault-card
+        [item]="item"
+        (openPreview)="uiStore.openPreview($event)"
+        (cancelUpload)="cancelUpload($event)"
+        (retryUpload)="retryUpload($event)"
+        (togglePin)="storageService.togglePin($event)"
+        (toggleReveal)="storageService.toggleReveal($event)"
+        (deleteItem)="deleteItem.emit($event)"
+        (resendItem)="resendItem.emit($event)"
+        (triggerToast)="uiStore.triggerToast($event)">
+      </app-airvault-card>
+    </div>
+    }
+  </div>
+
+  @if (hasMoreRailItems()) {
+  <div class="stream-loading-indicator">
+    <app-icon name="refresh-ccw" class="icon-xs spin-anim text-accent"></app-icon>
+    <span>Syncing older entries ({{ displayedVaultItems().length }}/{{ vaultItems().length }})...</span>
+  </div>
+  }
+</div>
+
+<!-- ── Redesigned Smart Composer Input Bar (Bottom-Anchored) ── -->
+<div class="chat-composer-bar" [class.is-expanded]="isExpanded()" data-tour="composer-bar">
+
+  @if (sharedClipboardService.isViewingSharedLink()) {
+    <app-airvault-shared-banner></app-airvault-shared-banner>
+  } @else {
+
+  @if (isLargePayload() && !forceFullFidelity()) {
+  <app-large-input-notice [title]="'Large payload detected (' + formattedPayloadSize() + ')'"
+    [message]="'Deep regex & AST scanning paused to prevent input lag. Payload is ready to beam immediately.'"
+    [actionLabel]="'Enable Deep Analysis'" (enableFullProcessing)="enableFullProcessing()">
+  </app-large-input-notice>
+  }
+
+  <!-- Ghost text suggestion dock (Placed cleanly above composer row) -->
+  @if (isGhostSuggestionVisible()) {
+  <div class="ghost-floating-dock" role="region" aria-label="Clipboard suggestion">
+    <div class="ghost-dock-pill">
+      <div class="ghost-dock-lead">
+        <app-icon name="clipboard" class="icon-xs text-cyan"></app-icon>
+        <span class="ghost-dock-tag">Clipboard Ready:</span>
+      </div>
+      <span class="ghost-dock-preview" [title]="fullPendingClipText || ghostSuggestion()">"{{ ghostSuggestion() }}"</span>
+      <button type="button" class="ghost-dock-action-btn" (click)="acceptGhostSuggestion()"
+        title="Insert into composer (Tab)">
+        <span>Insert</span>
+        <kbd>Tab</kbd>
+      </button>
+      <button type="button" class="ghost-dock-close-btn" (click)="dismissGhostSuggestion()"
+        title="Dismiss suggestion (Esc)">
+        <app-icon name="x" class="icon-xs"></app-icon>
+      </button>
+    </div>
+  </div>
+  }
+
+  <!-- Composer Row with Smart Input Capsule -->
+  <div class="chat-composer-outer-row">
+
+    <!-- External Left Erase Active Clipboard Button (Positioned outside input box on the left, disabled if clipboard is empty) -->
+    <button type="button" class="composer-outer-erase-btn"
+      [class.clicked]="clickedButtonId() === 'outer-erase-clipboard'"
+      [disabled]="storageService.items().length === 0"
+      (click)="clearActiveClipboard.emit(); triggerClickPulse('outer-erase-clipboard')"
+      [attr.data-tooltip]="storageService.items().length === 0 ? 'Active clipboard is empty' : 'Erase active clipboard (' + storageService.items().length + ' items)'"
+      aria-label="Erase active clipboard">
+      <app-icon name="shredder" class="icon-sm"></app-icon>
+    </button>
+
+    <!-- Smart Composer Container (Card with 4 fixed anchor zones) -->
+    <div class="chat-composer-capsule"
+      [class.expanded]="isExpanded()"
+      [class.has-expand-btn]="isExpanded() || showExpandIcon()"
+      [class.has-labels]="!!(currentTag() || perItemRetentionTtl() !== null)"
+      (mousemove)="onMouseMove($event)"
+      (click)="onCapsuleClick($event)">
+
+      <!-- ZONE 1a: Top-Left Expand/Collapse icon (0.5s animation) -->
+      @if (isExpanded()) {
+      <button type="button" class="composer-collapse-btn"
+        [class.clicked]="clickedButtonId() === 'collapse'"
+        (click)="toggleManualExpand(); triggerClickPulse('collapse')"
+        data-tooltip="Collapse composer"
+        aria-label="Collapse composer">
+        <app-icon name="minimize-2" class="icon-xs"></app-icon>
+      </button>
+      } @else if (showExpandIcon()) {
+      <button type="button" class="composer-top-expand-btn"
+        [class.clicked]="clickedButtonId() === 'expand'"
+        (click)="toggleManualExpand(); triggerClickPulse('expand')"
+        data-tooltip="Expand composer"
+        aria-label="Expand composer">
+        <app-icon name="maximize-2" class="icon-xs"></app-icon>
+      </button>
+      }
+
+
+
+      <!-- Staged File Attachment Tiles Row (Rendered above textarea, grows composer smoothly) -->
+      @if (stagedAttachments().length > 0) {
+      <div class="composer-staged-attachments-row" (click)="$event.stopPropagation()">
+        @for (att of stagedAttachments(); track att.id) {
+        <div class="staged-attachment-tile" 
+             [class.status-ready]="att.status === 'READY'"
+             [class.status-uploading]="att.status === 'UPLOADING' || att.status === 'PROCESSING' || att.status === 'PREPARING'"
+             [class.status-failed]="att.status === 'FAILED'"
+             (click)="previewStagedAttachment(att, $event)" 
+             [title]="att.status === 'READY' ? 'Ready · Preview ' + att.name : (att.status === 'FAILED' ? 'Failed · Click to retry' : att.name + ' (' + att.progressPercent + '%)')">
+          <!-- Thumbnail / Preview with Circular Progress Ring Overlay -->
+          <div class="attachment-preview-box">
+            @if (att.isImage && att.previewUrl) {
+            <img [src]="att.previewUrl" [alt]="att.name" class="attachment-img-thumb" />
+            } @else {
+            <div class="attachment-file-icon-box">
+              <app-icon [name]="att.iconName" class="icon-md text-accent"></app-icon>
+            </div>
+            }
+
+            <!-- Circular Progress Indicator (for PREPARING / UPLOADING / PROCESSING) -->
+            @if (att.status === 'PREPARING' || att.status === 'UPLOADING' || att.status === 'PROCESSING') {
+            <div class="attachment-progress-overlay">
+              <svg class="circular-progress-svg" viewBox="0 0 36 36">
+                <path class="circle-bg"
+                  d="M18 2.0845
+                    a 15.9155 15.9155 0 0 1 0 31.831
+                    a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+                <path class="circle-fill"
+                  [attr.stroke-dasharray]="att.progressPercent + ', 100'"
+                  d="M18 2.0845
+                    a 15.9155 15.9155 0 0 1 0 31.831
+                    a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+              </svg>
+              <span class="progress-overlay-text">{{ att.progressPercent }}%</span>
+            </div>
+            }
+
+            <!-- Failure Badge -->
+            @if (att.status === 'FAILED') {
+            <div class="attachment-failed-badge" title="Upload failed">
+              <app-icon name="alert-triangle" class="icon-3xs"></app-icon>
+            </div>
+            }
+          </div>
+
+          <!-- File Info & Live Real-time Status -->
+          <div class="attachment-meta">
+            <span class="attachment-name" [title]="att.name">{{ att.name }}</span>
+            <div class="attachment-status-row">
+              @if (att.status === 'PREPARING') {
+                <span class="attachment-state-text text-muted">Preparing…</span>
+              } @else if (att.status === 'UPLOADING') {
+                <span class="attachment-state-text text-accent">{{ formatBytes(att.uploadedBytes || 0) }} / {{ att.sizeFormatted }} ({{ att.progressPercent }}%)</span>
+              } @else if (att.status === 'PROCESSING') {
+                <span class="attachment-state-text text-amber">Processing…</span>
+              } @else if (att.status === 'READY') {
+                <span class="attachment-size">{{ att.sizeFormatted }} · Ready</span>
+              } @else if (att.status === 'FAILED') {
+                <span class="attachment-state-text text-danger" [title]="att.errorMessage || 'Failed'">Upload failed</span>
+              } @else {
+                <span class="attachment-size">{{ att.sizeFormatted }}</span>
+              }
+            </div>
+          </div>
+
+          <!-- Retry Button (for FAILED) -->
+          @if (att.status === 'FAILED') {
+          <button type="button" class="attachment-retry-btn" (click)="retryStagedUpload(att.id, $event)" title="Retry upload" aria-label="Retry upload">
+            <app-icon name="rotate-cw" class="icon-xxs"></app-icon>
+          </button>
+          }
+
+          <!-- Remove Button ('×') -->
+          <button type="button" class="attachment-remove-btn" (click)="removeStagedAttachment(att.id, $event)" title="Remove attachment" aria-label="Remove attachment">
+            <app-icon name="x" class="icon-xxs"></app-icon>
+          </button>
+        </div>
+        }
+      </div>
+      }
+
+      <!-- Main Workspace Row: Center Auto-expanding Text Input Area -->
+      <div class="composer-main-row" [class.is-expanded-row]="isExpanded()">
+
+        <!-- CENTER: Auto-expanding Text Input with Layered Backdrops & Scroll Edge Blur -->
+        <div class="capsule-input-area" [class.is-expanded-area]="isExpanded()"
+          [class.has-scroll-top]="isEditorScrolledTop()"
+          [class.has-scroll-bottom]="isEditorScrolledBottom()">
+          <!-- Layer 1: Attribution backdrop -->
+          <div class="composer-highlights-backdrop" [style.transform]="'translateY(' + (-editorScrollTop()) + 'px)'">
+            @for (span of inlineAttributionSpans(); track $index) {<span class="av-inline-attribution-span"
+              [class.has-attribution]="span.hasAttribution" [class.active-peer]="hoveredAuthorKey() === span.authorKey"
+              [style.--av-author-bg]="span.bgHighlight" [style.--av-author-border]="span.borderHighlight"
+              (mouseenter)="onSpanMouseEnter(span, $event)" (mouseleave)="onSpanMouseLeave()">@for (part of
+              getHighlightParts(span.text, searchHighlightQuery(), span.startOffset); track $index) {@if (part.isMatch)
+              {<mark class="av-search-match" [class.current-match]="part.isCurrent">{{ part.text }}</mark>} @else {{{
+              part.text }}}}</span>}</div>
+
+          <!-- Layer 2: Live entity-detection highlight backdrop -->
+          @if (composerMatches().length > 0) {
+          <div class="composer-detection-backdrop" [style.transform]="'translateY(' + (-editorScrollTop()) + 'px)'">
+            @for (seg of composerBackdropSegments(); track $index) {
+            @if (seg.isMatch && seg.match) {
+            <span class="av-detection-span" [attr.data-detect-type]="seg.match.shortcut.detectedType"
+              (mouseenter)="onComposerMatchHover(seg.match, $event)" (mouseleave)="onComposerMatchLeave($event)">{{
+              seg.text }}</span>
+            } @else {
+            <span class="av-detection-gap">{{ seg.text }}</span>
+            }
+            }
+          </div>
+          }
+
+          <!-- Action Popover anchored to the hovered detection span -->
+          @if (activePopoverMatch()) {
+          <div class="composer-action-popover-anchor" [style.top.px]="composerPopoverPos().top"
+            [style.left.px]="composerPopoverPos().left" (mouseenter)="onComposerPopoverEnter()"
+            (mouseleave)="onComposerPopoverLeave()">
+            <app-airvault-action-popover [shortcut]="activePopoverMatch()!.shortcut"
+              [rawContent]="activePopoverMatch()!.matchedText" (actionExecuted)="activePopoverMatch.set(null)">
+            </app-airvault-action-popover>
+          </div>
+          }
+
+          <!-- Floating Text Selection Formatting Toolbar (Bold, Italic, Text Type, Link) -->
+          @if (showSelectionToolbar()) {
+          <div class="composer-selection-toolbar" [style.top.px]="selectionToolbarPos().top"
+            [style.left.px]="selectionToolbarPos().left" (click)="$event.stopPropagation()">
+            
+            <!-- Link input mode (Image 4) -->
+            @if (showLinkInput()) {
+            <div class="selection-link-input-row">
+              <input type="text" class="selection-link-field" placeholder="Type or paste a link"
+                [ngModel]="linkUrlDraft()" (ngModelChange)="linkUrlDraft.set($event)"
+                (keydown.enter)="applyLink()" (keydown.escape)="showLinkInput.set(false)" autofocus />
+              <button type="button" class="selection-link-confirm-btn" (click)="applyLink()"
+                [disabled]="!linkUrlDraft().trim()" data-tooltip="Apply link (↵)">
+                <app-icon name="check" class="icon-xs"></app-icon>
+              </button>
+            </div>
+            } @else {
+            <!-- Standard Formatting Toolbar with Type/Heading Dropdown, Bold, Italic, Link -->
+            <div class="selection-format-buttons">
+              <!-- Text Type & Heading Dropdown Trigger -->
+              <div class="selection-heading-anchor">
+                <button type="button" class="selection-format-btn selection-type-btn"
+                  [class.active]="showHeadingMenu() || activeHeadingLevel() !== 0"
+                  (mousedown)="$event.preventDefault()" (click)="toggleHeadingMenu()" data-tooltip="Text style & headings">
+                  <span>{{ activeHeadingLabel() }}</span>
+                  <app-icon name="chevron-down" class="icon-xxs"></app-icon>
+                </button>
+
+                <!-- Text Style / Heading / Lists Dropdown Menu -->
+                @if (showHeadingMenu()) {
+                <div class="selection-heading-dropdown" (click)="$event.stopPropagation()">
+                  <button type="button" class="heading-dropdown-item font-p"
+                    [class.selected]="activeHeadingLevel() === 0"
+                    (mousedown)="$event.preventDefault()" (click)="applyHeading(0)">
+                    <span class="heading-item-title">Text</span>
+                    <span class="heading-item-shortcut">Normal</span>
+                  </button>
+                  <button type="button" class="heading-dropdown-item font-h1"
+                    [class.selected]="activeHeadingLevel() === 1"
+                    (mousedown)="$event.preventDefault()" (click)="applyHeading(1)">
+                    <span class="heading-item-title">Heading 1</span>
+                    <span class="heading-item-shortcut">H1</span>
+                  </button>
+                  <button type="button" class="heading-dropdown-item font-h2"
+                    [class.selected]="activeHeadingLevel() === 2"
+                    (mousedown)="$event.preventDefault()" (click)="applyHeading(2)">
+                    <span class="heading-item-title">Heading 2</span>
+                    <span class="heading-item-shortcut">H2</span>
+                  </button>
+                  <button type="button" class="heading-dropdown-item font-h3"
+                    [class.selected]="activeHeadingLevel() === 3"
+                    (mousedown)="$event.preventDefault()" (click)="applyHeading(3)">
+                    <span class="heading-item-title">Heading 3</span>
+                    <span class="heading-item-shortcut">H3</span>
+                  </button>
+                  <div class="heading-dropdown-divider"></div>
+                  <button type="button" class="heading-dropdown-item"
+                    [class.selected]="activeHeadingLevel() === 'bullet'"
+                    (mousedown)="$event.preventDefault()" (click)="applyHeading('bullet')">
+                    <span class="heading-item-title">• Bulleted list</span>
+                    <span class="heading-item-shortcut">List</span>
+                  </button>
+                  <button type="button" class="heading-dropdown-item"
+                    [class.selected]="activeHeadingLevel() === 'ordered'"
+                    (mousedown)="$event.preventDefault()" (click)="applyHeading('ordered')">
+                    <span class="heading-item-title">1. Numbered list</span>
+                    <span class="heading-item-shortcut">123</span>
+                  </button>
+                  <button type="button" class="heading-dropdown-item"
+                    [class.selected]="activeHeadingLevel() === 'quote'"
+                    (mousedown)="$event.preventDefault()" (click)="applyHeading('quote')">
+                    <span class="heading-item-title">❝ Blockquote</span>
+                    <span class="heading-item-shortcut">Quote</span>
+                  </button>
+                </div>
+                }
+              </div>
+
+              <div class="selection-toolbar-sep"></div>
+
+              <button type="button" class="selection-format-btn" [class.active]="isBoldActive()"
+                (mousedown)="$event.preventDefault()" (click)="applyFormat('bold')" data-tooltip="Bold (⌘B)">
+                <app-icon name="bold" class="icon-xs"></app-icon>
+              </button>
+              <button type="button" class="selection-format-btn" [class.active]="isItalicActive()"
+                (mousedown)="$event.preventDefault()" (click)="applyFormat('italic')" data-tooltip="Italic (⌘I)">
+                <app-icon name="italic" class="icon-xs"></app-icon>
+              </button>
+              <button type="button" class="selection-format-btn" [class.active]="isUnderlineActive()"
+                (mousedown)="$event.preventDefault()" (click)="applyFormat('underline')" data-tooltip="Underline (⌘U)">
+                <app-icon name="underline" class="icon-xs"></app-icon>
+              </button>
+              <button type="button" class="selection-format-btn" [class.active]="isCodeActive()"
+                (mousedown)="$event.preventDefault()" (click)="applyFormat('code')" data-tooltip="Inline code (⌘E)">
+                <app-icon name="code" class="icon-xs"></app-icon>
+              </button>
+              <button type="button" class="selection-format-btn" [class.active]="isLinkActive()"
+                (mousedown)="$event.preventDefault()" (click)="toggleLinkInput()" data-tooltip="Add link">
+                <app-icon name="link" class="icon-xs"></app-icon>
+              </button>
+            </div>
+            }
+          </div>
+          }
+
+          <!-- Inline ghost overlay intentionally removed — clipboard suggestion handled by floating dock above -->
+
+          <!-- Tiptap Rich-Text Editor Host (replaces plain textarea) -->
+          <div #editorRef class="chat-composer-textarea"
+            (focus)="onInputFocus()" (blur)="onInputBlur()" (focusin)="onInputFocus()"
+            (keydown)="onKeyDown($event)" (keyup)="onCursorMove()"
+            (mouseup)="onCursorMove()" (select)="onComposerSelect($event)"
+            (scroll)="onEditorScroll($event)" (paste)="onPaste($event)"
+            role="textbox" aria-multiline="true" aria-label="Composer input field">
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ZONE 3: Bottom-Left Standalone (+) Attach & Clear Input Icons (Fixed position) -->
+      <div class="composer-popover-anchor composer-plus-icon" (click)="$event.stopPropagation()">
+        <!-- Permanent Hidden File Inputs (Always alive in DOM so native pickers work reliably across all browsers) -->
+        <input #docInput type="file" (change)="onFileInput($event); uploadMenuOpen.set(false)" hidden multiple />
+        <input #imgInput type="file" accept="image/*" (change)="onFileInput($event); uploadMenuOpen.set(false)" hidden multiple />
+        <input #videoInput type="file" accept="video/*" (change)="onFileInput($event); uploadMenuOpen.set(false)" hidden multiple />
+        <input #zipInput type="file" accept=".zip,application/zip" (change)="onFileInput($event); uploadMenuOpen.set(false)" hidden />
+        <input #folderInput type="file" webkitdirectory directory multiple (change)="onFolderInputSelected($event); uploadMenuOpen.set(false)" hidden />
+
+        <button type="button" class="composer-tool-btn composer-plus-attach-btn"
+          [class.active]="uploadMenuOpen()"
+          [class.clicked]="clickedButtonId() === 'plus'"
+          (mouseenter)="onPlusHover()"
+          (mouseleave)="onPlusLeave()"
+          (click)="toggleUploadMenu($event); triggerClickPulse('plus')"
+          data-tooltip="Add file, image, video, zip or folder"
+          aria-label="Add file, image, video, or folder">
+          <app-icon name="plus" class="icon-sm"></app-icon>
+        </button>
+
+        <!-- Clear Input Field Button (Clears typed text & staged attachments without affecting saved vault items) -->
+        <button type="button" class="composer-tool-btn composer-clear-input-btn"
+          [class.clicked]="clickedButtonId() === 'clear-input'"
+          (click)="clearCurrentInput($event); triggerClickPulse('clear-input')"
+          [disabled]="richEditor.isEmpty() && stagedAttachments().length === 0 && !stagedText().trim()"
+          data-tooltip="Clear input"
+          aria-label="Clear current input field">
+          <app-icon name="eraser" class="icon-sm"></app-icon>
+        </button>
+
+        @if (uploadMenuOpen()) {
+        <div class="chat-attach-popover" [class.is-closing]="isUploadMenuClosing()" (click)="$event.stopPropagation()">
+          <!-- Upload Generic Files -->
+          <button type="button" class="attach-popover-item" (click)="docInput.click(); closeUploadMenu(true)">
+            <app-icon name="file" class="icon-sm text-blue"></app-icon>
+            <span>Upload Document / File</span>
+          </button>
+
+          <!-- Upload Photos & Images -->
+          <button type="button" class="attach-popover-item" (click)="imgInput.click(); closeUploadMenu(true)">
+            <app-icon name="image" class="icon-sm text-amber"></app-icon>
+            <span>Upload Image / Photo</span>
+          </button>
+
+          <!-- Upload Videos & Media -->
+          <button type="button" class="attach-popover-item" (click)="videoInput.click(); closeUploadMenu(true)">
+            <app-icon name="video" class="icon-sm text-purple"></app-icon>
+            <span>Upload Video / Media</span>
+          </button>
+
+          <!-- Upload Zip Archives -->
+          <button type="button" class="attach-popover-item" (click)="zipInput.click(); closeUploadMenu(true)">
+            <app-icon name="folder-archive" class="icon-sm text-cyan"></app-icon>
+            <span>Upload ZIP Archive</span>
+          </button>
+
+          <!-- Upload Folder (.zip) -->
+          <button type="button" class="attach-popover-item" (click)="onFolderButtonClick(folderInput); closeUploadMenu(true)">
+            <app-icon name="folder" class="icon-sm text-indigo"></app-icon>
+            <span>Upload Folder (.zip)</span>
+          </button>
+        </div>
+        }
+      </div>
+
+      <!-- ZONE 4: Bottom-Right Toolbar Row (active badges + clipboard, hourglass, <>, tag, send) (Fixed position) -->
+      <div class="composer-icon-group composer-right-controls" (click)="$event.stopPropagation()">
+
+        <!-- Active Retention / Burn-After-Read Badge (Bottom-docked to prevent text overlap) -->
+        @if (perItemRetentionTtl() !== null) {
+        <span class="composer-active-retention-chip"
+              [class.is-burn]="perItemRetentionTtl() === -1"
+              (click)="toggleRetentionPopover($event)"
+              data-tooltip="Click to change retention policy">
+          <app-icon [name]="perItemRetentionTtl() === -1 ? 'clock-fading' : 'hourglass'" class="icon-xs"></app-icon>
+          <span>{{ getRetentionLabel(perItemRetentionTtl()) }}</span>
+        </span>
+        }
+
+        <!-- Active Tag Chip (Bottom-docked) -->
+        @if (currentTag()) {
+        <span class="composer-active-tag-chip"
+              [style.--tag-color]="getEffectiveComposerTagColor()"
+              (click)="toggleTagInput($event)" data-tooltip="Click to edit tag">
+          <app-icon name="tag" class="icon-xs"></app-icon>
+          <span>#{{ currentTag() }}</span>
+          <button class="tag-chip-remove-btn" (click)="removeTag($event)" title="Remove tag">
+            <app-icon name="x" class="icon-xs"></app-icon>
+          </button>
+        </span>
+        }
+
+        <!-- 1. Paste from Clipboard Button -->
+        <button type="button" class="composer-tool-btn"
+          [class.clicked]="clickedButtonId() === 'clipboard'"
+          (click)="pasteFromClipboardDirectly($event); triggerClickPulse('clipboard')"
+          data-tooltip="Paste from clipboard" aria-label="Paste from clipboard">
+          <app-icon name="clipboard" class="icon-sm"></app-icon>
+        </button>
+
+        <!-- 2. Set Retention Popover Trigger -->
+        <div class="composer-popover-anchor">
+          <button type="button" class="composer-tool-btn"
+            [class.active]="perItemRetentionTtl() !== null"
+            [class.clicked]="clickedButtonId() === 'retention'"
+            (click)="toggleRetentionPopover($event); triggerClickPulse('retention')"
+            [attr.data-tooltip]="perItemRetentionTtl() !== null ? ('Retention: ' + getRetentionLabel(perItemRetentionTtl())) : 'Set retention for this item'"
+            aria-label="Set retention for this item">
+            <app-icon name="hourglass" class="icon-sm"
+              [class.text-accent]="perItemRetentionTtl() !== null"></app-icon>
+            @if (perItemRetentionTtl() !== null) {
+            <span class="retention-active-dot"></span>
+            }
+          </button>
+
+          <!-- Retention Popover Dropdown -->
+          @if (retentionPopoverOpen()) {
+          <div class="composer-retention-popover" [class.is-closing]="isRetentionClosing()" (click)="$event.stopPropagation()">
+            <div class="popover-header">
+              <span class="popover-header-title">Item Retention Policy</span>
+              <span class="popover-header-sub">Overrides global default for this item only</span>
+            </div>
+            <div class="popover-options-list">
+              <button type="button" class="popover-option-item" [class.selected]="perItemRetentionTtl() === null"
+                (click)="setPerItemRetention(null, $event)">
+                <span class="opt-label">{{ defaultRetentionLabel() }}</span>
+                <span class="opt-desc">Standard auto-purge retention</span>
+                @if (perItemRetentionTtl() === null) {
+                <app-icon name="check" class="icon-xs text-accent"></app-icon>
+                }
+              </button>
+              <button type="button" class="popover-option-item"
+                [class.selected]="perItemRetentionTtl() === 24 * 60 * 60 * 1000"
+                (click)="setPerItemRetention(24 * 60 * 60 * 1000, $event)">
+                <span class="opt-label">24 Hours</span>
+                <span class="opt-desc">Single-day developer memory</span>
+                @if (perItemRetentionTtl() === 24 * 60 * 60 * 1000) {
+                <app-icon name="check" class="icon-xs text-accent"></app-icon>
+                }
+              </button>
+              <button type="button" class="popover-option-item"
+                [class.selected]="perItemRetentionTtl() === 60 * 60 * 1000"
+                (click)="setPerItemRetention(60 * 60 * 1000, $event)">
+                <span class="opt-label">1 Hour</span>
+                <span class="opt-desc">Clean up after short task</span>
+                @if (perItemRetentionTtl() === 60 * 60 * 1000) {
+                <app-icon name="check" class="icon-xs text-accent"></app-icon>
+                }
+              </button>
+              <button type="button" class="popover-option-item"
+                [class.selected]="perItemRetentionTtl() === 15 * 60 * 1000"
+                (click)="setPerItemRetention(15 * 60 * 1000, $event)">
+                <span class="opt-label">15 Minutes</span>
+                <span class="opt-desc">Maximum transient privacy</span>
+                @if (perItemRetentionTtl() === 15 * 60 * 1000) {
+                <app-icon name="check" class="icon-xs text-accent"></app-icon>
+                }
+              </button>
+              <button type="button" class="popover-option-item" [class.selected]="perItemRetentionTtl() === 0"
+                (click)="setPerItemRetention(0, $event)">
+                <span class="opt-label">Never Expire</span>
+                <span class="opt-desc">Permanent persistent item</span>
+                @if (perItemRetentionTtl() === 0) {
+                <app-icon name="check" class="icon-xs text-accent"></app-icon>
+                }
+              </button>
+              <!-- Burn-after-read: only applies to resources/files -->
+              <button type="button" class="popover-option-item burn-option"
+                [class.selected]="perItemRetentionTtl() === -1" (click)="setPerItemRetention(-1, $event)">
+                <span class="opt-label">🔥 Burn After Read</span>
+                <span class="opt-desc">Destroys immediately upon first view (Files/Resources only)</span>
+                @if (perItemRetentionTtl() === -1) {
+                <app-icon name="check" class="icon-xs text-danger"></app-icon>
+                }
+              </button>
+            </div>
+          </div>
+          }
+        </div>
+
+        <!-- 3. Mark as Code/JSON Button -->
+        <button type="button" class="composer-tool-btn"
+          [class.active]="isCodeJsonHintActive()"
+          [class.clicked]="clickedButtonId() === 'code'"
+          (click)="toggleCodeJsonHint($event); triggerClickPulse('code')"
+          [attr.data-tooltip]="isCodeJsonHintActive() ? 'Code/JSON hint active (syntax highlighted)' : 'Mark as code/JSON'"
+          aria-label="Mark as code or JSON format hint">
+          <app-icon name="code" class="icon-sm" [class.text-accent]="isCodeJsonHintActive()"></app-icon>
+        </button>
+
+        <!-- 4. Add Tag Button + Inline Input Popover with Preset Tag Examples -->
+        <div class="composer-popover-anchor">
+          <button type="button" class="composer-tool-btn"
+            [class.active]="!!currentTag()"
+            [class.clicked]="clickedButtonId() === 'tag'"
+            (click)="toggleTagInput($event); triggerClickPulse('tag')"
+            [attr.data-tooltip]="currentTag() ? ('Tag: #' + currentTag()) : 'Add tag'" aria-label="Add tag to item">
+            <app-icon name="tag" class="icon-sm" [class.text-accent]="!!currentTag()"></app-icon>
+          </button>
+
+          <!-- Tag Input Popover with Examples & Color Preference -->
+          @if (tagInputOpen()) {
+          <div class="composer-tag-popover" [class.is-closing]="isTagClosing()" (click)="$event.stopPropagation()">
+            <div class="tag-input-row" [style.border-color]="'color-mix(in srgb, ' + getDraftEffectiveColor() + ' 40%, transparent)'">
+              <span class="tag-hash-prefix" [style.color]="getDraftEffectiveColor()">#</span>
+              <input #tagInputRef type="text" class="tag-inline-input" placeholder="tag (e.g. work, temp)"
+                [(ngModel)]="tagDraft" (keydown.enter)="saveTagFromDraft()" (keydown.escape)="closeTagInput()"
+                maxlength="24" />
+              <button class="tag-save-btn" (click)="saveTagFromDraft()" data-tooltip="Save tag (↵)">
+                <app-icon name="check" class="icon-xs" [style.color]="getDraftEffectiveColor()"></app-icon>
+              </button>
+              @if (currentTag()) {
+              <button class="tag-clear-btn" (click)="removeTag($event)" data-tooltip="Remove tag">
+                <app-icon name="trash-2" class="icon-xs"></app-icon>
+              </button>
+              }
+            </div>
+
+            <!-- Color Palette & Custom Picker Row -->
+            <div class="tag-color-swatches-section">
+              <div class="tag-color-header">
+                <span class="tag-presets-label">Color:</span>
+                <label class="custom-color-picker-label" [attr.data-tooltip]="'Custom color'">
+                  <span class="custom-color-dot" [style.background]="getDraftEffectiveColor()"></span>
+                  <input type="color" class="custom-color-native-input" [ngModel]="getDraftEffectiveColor()" (ngModelChange)="setDraftTagColor($event)" />
+                </label>
+              </div>
+              <div class="tag-swatches-grid">
+                @for (c of tagColorPalette; track c.hex) {
+                  <button type="button"
+                          class="tag-color-swatch-btn"
+                          [class.selected]="tagDraftColor() === c.hex || (!tagDraftColor() && getDraftEffectiveColor() === c.hex)"
+                          [style.background]="c.hex"
+                          [attr.data-tooltip]="c.name"
+                          (click)="setDraftTagColor(c.hex)"
+                          [attr.aria-label]="c.name">
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- Popular Preset Tag Suggestions -->
+            <div class="tag-presets-row">
+              <span class="tag-presets-label">Examples:</span>
+              <div class="tag-presets-chips">
+                @for (t of popularTags; track t) {
+                <button type="button" class="tag-preset-chip"
+                        [style.--preset-color]="colorService.getTagColor(t)"
+                        (click)="selectPresetTag(t)">
+                  #{{ t }}
+                </button>
+                }
+              </div>
+            </div>
+          </div>
+          }
+        </div>
+
+        <!-- 5. Send / Beam Action Button (At the End of Right Controls) -->
+        <button
+          type="button"
+          class="composer-send-circle-btn"
+          [class.clicked]="clickedButtonId() === 'send'"
+          (click)="triggerBeam($event); triggerClickPulse('send')"
+          [disabled]="!canSend()"
+          [attr.data-tooltip]="canSend() ? ('Beam to vault · ' + shortcutService.formatShortcut('composer-send')) : (stagedAttachments().length > 0 ? 'Waiting for resources to upload…' : null)"
+          data-tooltip-pos="left"
+          aria-label="Beam item to AirVault"
+          data-tour="send-btn">
+          <app-icon name="rocket" class="icon-sm"></app-icon>
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Pointer / Cursor-Anchored Inline Paste Loader -->
+  @if (isProcessingPaste()) {
+  <div class="pointer-paste-loader" [style.left.px]="pasteLoaderPos().x" [style.top.px]="pasteLoaderPos().y">
+    <app-icon name="loader-circle" class="icon-sm spin-anim text-accent"></app-icon>
+    <div class="paste-loader-info">
+      <span class="paste-loader-title">Processing {{ pasteLoaderSize() }}…</span>
+      <span class="paste-loader-sub">Chunked AES encryption · {{ pasteProgress() }}%</span>
+    </div>
+  </div>
+  }
+
+  }
+</div>
