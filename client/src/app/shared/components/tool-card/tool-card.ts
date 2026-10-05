@@ -1,15 +1,16 @@
 // client/src/app/shared/components/tool-card/tool-card.ts
-import { Component, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, input, computed } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Tool } from '../../../core/models/tool.model';
 import { IconComponent } from '../icon/icon';
+import { buildToolSubdomainUrl } from '../../../core/utils/subdomain.util';
 
 @Component({
   selector: 'app-tool-card',
   standalone: true,
-  imports: [RouterLink, IconComponent],
+  imports: [CommonModule, IconComponent],
   template: `
-    <a [routerLink]="['/tools', tool().slug]" class="tool-card-root">
+    <a [href]="toolUrl()" class="tool-card-root">
       <!-- Top badges -->
       <div class="card-badges">
         @if (tool().isNew) { <span class="badge badge-accent">New</span> }
@@ -24,9 +25,9 @@ import { IconComponent } from '../icon/icon';
 
       <!-- Content -->
       <div class="card-content">
-        <div class="card-category">{{ tool().categoryName }}</div>
+        <div class="card-category">{{ tool().categoryName || tool().category || 'Utility' }}</div>
         <h3 class="card-title">{{ tool().name }}</h3>
-        <p class="card-desc">{{ tool().shortDescription }}</p>
+        <p class="card-desc">{{ tool().shortDescription || tool().description }}</p>
       </div>
 
       <!-- Hover arrow -->
@@ -48,7 +49,7 @@ import { IconComponent } from '../icon/icon';
     .tool-card-root:hover {
       background: var(--color-surface-800);
       border-color: rgba(0, 0, 0, 0.12);
-      transform: translateY(-4px) scale(1.1) translateX(1px);
+      transform: translateY(-4px) scale(1.02);
       box-shadow: var(--shadow-card-hover);
       z-index: 1;
     }
@@ -99,10 +100,6 @@ import { IconComponent } from '../icon/icon';
 })
 export class ToolCardComponent {
   readonly tool = input.required<Tool>();
-
-  formatCount(n: number): string {
-    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-    if (n >= 1_000) return (n / 1_000).toFixed(0) + 'K';
-    return n.toString();
-  }
+  readonly toolUrl = computed(() => buildToolSubdomainUrl(this.tool().slug));
 }
+

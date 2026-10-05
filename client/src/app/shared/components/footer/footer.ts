@@ -37,12 +37,10 @@ import { gsap } from 'gsap';
           <a routerLink="/">Home</a>
           <a routerLink="/tools/explore">Explore Tools</a>
           <a routerLink="/tools/categories">Categories</a>
-          <a routerLink="/tools/trending">Trending</a>
-          <a routerLink="/tools/new">New Releases</a>
-          <a routerLink="/community/discussions">Community</a>
-          <a routerLink="/blog">Blog</a>
           <a routerLink="/about">About</a>
           <a routerLink="/contact">Contact</a>
+          <a routerLink="/privacy">Privacy Policy</a>
+          <a routerLink="/terms">Terms</a>
           <a routerLink="/auth/login">Sign In</a>
         </div>
 

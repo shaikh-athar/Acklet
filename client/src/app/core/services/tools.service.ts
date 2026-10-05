@@ -7,8 +7,7 @@ import { catchError, map, tap } from 'rxjs/operators';
 import { Tool } from '../models/tool.model';
 import { Category } from '../models/category.model';
 import { MOCK_TOOLS } from '../mock-data/tools.data';
-import { MOCK_CATEGORIES } from '../mock-data/categories.data';
-import { TOOL_REGISTRY } from '../tool-registry';
+import { environment } from '../../../environments/environment';
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -27,27 +26,10 @@ export interface PageResponse<T> {
 @Injectable({ providedIn: 'root' })
 export class ToolsService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://localhost:8080/api/v1';
+  private readonly baseUrl = environment.apiBaseUrl;
 
-  private readonly _tools = signal<Tool[]>(
-    MOCK_TOOLS.map(t => {
-      const reg = TOOL_REGISTRY[t.slug];
-      if (reg) {
-        return {
-          ...t,
-          name: reg.name,
-          description: reg.description,
-          shortDescription: reg.shortDescription,
-          version: reg.version,
-          features: reg.features || t.features,
-          icon: reg.icon || t.icon,
-          color: reg.theme?.accent || t.color
-        };
-      }
-      return t;
-    })
-  );
-  private readonly _categories = signal<Category[]>(MOCK_CATEGORIES);
+  private readonly _tools = signal<Tool[]>([]);
+  private readonly _categories = signal<Category[]>([]);
   private readonly _loading = signal<boolean>(false);
   private readonly _error = signal<string | null>(null);
 
@@ -73,7 +55,7 @@ export class ToolsService {
       tap(cats => {
         if (cats.length > 0) this._categories.set(cats);
       }),
-      catchError(() => of(MOCK_CATEGORIES))
+      catchError(() => of([]))
     ).subscribe();
   }
 
