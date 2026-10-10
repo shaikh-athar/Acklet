@@ -1,0 +1,20 @@
+/* apps/tools-hub/src/styles.css */
+@import "tailwindcss";
+@import "../../../packages/tool-shell/src/styles/tokens.css";
+@import "../../../packages/tool-shell/src/styles/base.css";
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+  background-color: var(--page-bg);
+  color: var(--text);
+  font-family: var(--font-body, "Nunito", sans-serif);
+  transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
+              color var(--ts-dur-base, 200ms) var(--ts-ease);
+}
+
+* {
+  box-sizing: border-box;
+}

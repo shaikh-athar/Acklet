@@ -5,9 +5,9 @@
     "packageManager": "npm",
     "analytics": false
   },
-  "newProjectRoot": "projects",
+  "newProjectRoot": "apps",
   "projects": {
-    "platform-client": {
+    "acklet-portal": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -29,11 +29,17 @@
           },
           "configurations": {
             "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ],
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "1MB",
+                  "maximumError": "2MB"
                 },
                 {
                   "type": "anyComponentStyle",
@@ -55,16 +61,110 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "platform-client:build:production"
+              "buildTarget": "acklet-portal:build:production"
             },
             "development": {
-              "buildTarget": "platform-client:build:development"
+              "buildTarget": "acklet-portal:build:development"
             }
           },
-          "defaultConfiguration": "development"
-        },
-        "test": {
-          "builder": "@angular/build:unit-test"
+          "defaultConfiguration": "development",
+          "options": {
+            "port": 4200
+          }
+        }
+      }
+    },
+    "tool-online-clipboard": {
+      "projectType": "application",
+      "schematics": {},
+      "root": "apps/tool-online-clipboard",
+      "sourceRoot": "apps/tool-online-clipboard/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "apps/tool-online-clipboard/src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
+            ],
+            "styles": ["apps/tool-online-clipboard/src/styles.css"]
+          },
+          "configurations": {
+            "production": {
+              "fileReplacements": [
+                {
+                  "replace": "apps/tool-online-clipboard/src/environments/environment.ts",
+                  "with": "apps/tool-online-clipboard/src/environments/environment.prod.ts"
+                }
+              ],
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "1MB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        }
+      }
+    },
+    "tools-hub": {
+      "projectType": "application",
+      "schematics": {},
+      "root": "apps/tools-hub",
+      "sourceRoot": "apps/tools-hub/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "apps/tools-hub/src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
+            ],
+            "styles": ["apps/tools-hub/src/styles.css"]
+          },
+          "configurations": {
+            "production": {
+              "fileReplacements": [
+                {
+                  "replace": "apps/tools-hub/src/environments/environment.ts",
+                  "with": "apps/tools-hub/src/environments/environment.prod.ts"
+                }
+              ],
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "1MB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
         }
       }
     }

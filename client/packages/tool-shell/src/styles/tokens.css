@@ -1,0 +1,214 @@
+/* packages/tool-shell/src/styles/tokens.css */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300..900;1,300..900&display=swap');
+@import "@fontsource-variable/geist-mono";
+
+:root,
+html[data-theme="dark"],
+.ts-root,
+.ts-root[data-theme="dark"] {
+  /* Motion Scaling */
+  --ts-motion-scale: 1;
+
+  /* ══ TYPOGRAPHY (Single Font: Nunito) ══════════════════════════════ */
+  --font-heading: 'Nunito', system-ui, -apple-system, sans-serif;
+  --font-body: 'Nunito', system-ui, -apple-system, sans-serif;
+  --ts-font-sans: 'Nunito', system-ui, -apple-system, sans-serif;
+  --ts-font-heading: 'Nunito', system-ui, -apple-system, sans-serif;
+  --ts-font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Type Scale */
+  --ts-text-xs: 0.75rem;    /* 12px */
+  --ts-text-sm: 0.8125rem;  /* 13px */
+  --ts-text-base: 0.875rem; /* 14px */
+  --ts-text-md: 1rem;       /* 16px */
+  --ts-text-lg: 1.25rem;    /* 20px */
+  --ts-text-xl: 1.75rem;    /* 28px */
+  --ts-text-2xl: 2.25rem;   /* 36px */
+
+  --ts-tracking-tight: -0.01em;
+  --ts-tracking-tighter: -0.025em;
+
+  /* ══ SPACING & LAYOUT TOKENS ════════════════════════════════════ */
+  --shell-padding: 12px;
+  --shell-gap: 12px;
+  --header-height: 64px;
+  --sidebar-width: 272px;
+  --sidebar-collapsed-width: 72px;
+
+  --ts-space-1: 0.25rem; /* 4px */
+  --ts-space-2: 0.5rem;  /* 8px */
+  --ts-space-3: 0.75rem; /* 12px */
+  --ts-space-4: 1rem;    /* 16px */
+  --ts-space-5: 1.25rem; /* 20px */
+  --ts-space-6: 1.5rem;  /* 24px */
+  --ts-space-8: 2rem;    /* 32px */
+
+  /* ══ RADIUS ═════════════════════════════════════════════════════ */
+  --shell-radius: 20px;
+  --ts-radius-sm: 8px;
+  --ts-radius-md: 12px;
+  --ts-radius-lg: 16px;
+  --ts-radius-2xl: 20px;
+  --ts-radius-full: 9999px;
+
+  /* ══ TOUCH / HIT TARGETS ════════════════════════════════════════ */
+  --ts-touch-target: 40px;
+
+  /* ══ Z-INDEX SCALE ══════════════════════════════════════════════ */
+  --ts-z-base: 0;
+  --ts-z-chrome: 10;
+  --ts-z-surface: 20;
+  --ts-z-overlay: 40;
+
+  /* ══ GOTH THEME (Dark Mode - Default) ══════════════════════════ */
+  --page-bg: #0B0B0B;
+  --bg: #0B0B0B;
+  --shell-card: #141414;
+  --shell-card-border: #27272A;
+  --shell-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --surface: #141414;
+  --surface-hover: #27272A;
+  --surface-active: #27272A;
+  --border: #27272A;
+  --border-accent: #FCFCFC;
+  --text: #FCFCFC;
+  --text-muted: #A1A1AA;
+  --text-subtle: #8E8E93;
+  --accent: #FFFFFF;
+  --accent-soft: #1C1C1F;
+  --on-accent: #000000;
+  --spotlight: rgba(252, 252, 252, 0.08);
+
+  /* Legacy & Bridge variables mapped to GOTH */
+  --ts-bg: var(--bg);
+  --ts-surface: var(--shell-card);
+  --ts-raised: #1C1C1F;
+  --ts-raised-hover: #27272A;
+  --ts-border: var(--border);
+  --ts-border-subtle: #202023;
+  --ts-border-hover: #3F3F46;
+  --ts-text: var(--text);
+  --ts-text-muted: var(--text-muted);
+  --ts-text-subtle: var(--text-subtle);
+  --ts-focus-ring: var(--text);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--on-accent);
+  --ts-l0-bg: var(--page-bg);
+  --ts-l1-chrome: var(--shell-card);
+  --ts-l2-surface: var(--shell-card);
+
+  /* Tool-* bridge variables */
+  --tool-bg: var(--page-bg);
+  --tool-bg-surface: var(--shell-card);
+  --tool-bg-subtle: #1C1C1F;
+  --tool-bg-hover: #27272A;
+  --tool-border: var(--border);
+  --tool-border-subtle: #202023;
+  --tool-border-focus: #FCFCFC;
+  --tool-text-primary: #FCFCFC;
+  --tool-text-secondary: #A1A1AA;
+  --tool-text-muted: #71717A;
+  --tool-brand-accent: #FFFFFF;
+
+  /* Backdrop glow colors */
+  --ts-glow-1: rgba(255, 255, 255, 0.04);
+  --ts-glow-2: rgba(255, 255, 255, 0.02);
+  --ts-glow-3: rgba(255, 255, 255, 0.015);
+
+  /* ── Shadows ──────────────────────────────────────────────────── */
+  --ts-shadow-sm: var(--shell-card-shadow);
+  --ts-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --ts-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.7);
+  --ts-shadow-surface: var(--shell-card-shadow);
+  --ts-shadow-drawer: -12px 0 40px rgba(0, 0, 0, 0.85);
+
+  /* ── Scrollbar ────────────────────────────────────────────────── */
+  --ts-scrollbar-track: transparent;
+  --ts-scrollbar-thumb: #27272A;
+  --ts-scrollbar-thumb-hover: #3F3F46;
+}
+
+/* ══ GOTH THEME (Light Mode) ══════════════════════════════════════
+   Page background: #f4f4f4, Shell cards: #FFFFFF, hairline border: rgba(0,0,0,0.06)
+*/
+[data-theme="light"],
+html[data-theme="light"],
+:root[data-theme="light"],
+.ts-root[data-theme="light"] {
+  --page-bg: #f4f4f4;
+  --bg: #f4f4f4;
+  --shell-card: #FFFFFF;
+  --shell-card-border: rgba(0, 0, 0, 0.06);
+  --shell-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --surface: #FFFFFF;
+  --surface-hover: #F4F4F5;
+  --surface-active: #E4E4E7;
+  --border: rgba(0, 0, 0, 0.06);
+  --border-accent: #09090B;
+  --text: #09090B;
+  --text-muted: #52525B;
+  --text-subtle: #71717A;
+  --accent: #09090B;
+  --accent-soft: #F4F4F5;
+  --on-accent: #FFFFFF;
+  --spotlight: rgba(0, 0, 0, 0.04);
+
+  /* Legacy & Bridge variables mapped to Light */
+  --ts-bg: var(--bg);
+  --ts-surface: var(--shell-card);
+  --ts-raised: #F4F4F5;
+  --ts-raised-hover: #E4E4E7;
+  --ts-border: var(--border);
+  --ts-border-subtle: #F4F4F5;
+  --ts-border-hover: #D4D4D8;
+  --ts-text: var(--text);
+  --ts-text-muted: var(--text-muted);
+  --ts-text-subtle: var(--text-subtle);
+  --ts-focus-ring: #09090B;
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--on-accent);
+  --ts-l0-bg: var(--page-bg);
+  --ts-l1-chrome: var(--shell-card);
+  --ts-l2-surface: var(--shell-card);
+
+  /* Tool-* bridge variables */
+  --tool-bg: var(--page-bg);
+  --tool-bg-surface: var(--shell-card);
+  --tool-bg-subtle: #F4F4F5;
+  --tool-bg-hover: #E4E4E7;
+  --tool-border: var(--border);
+  --tool-border-subtle: #F4F4F5;
+  --tool-border-focus: #09090B;
+  --tool-text-primary: #09090B;
+  --tool-text-secondary: #71717A;
+  --tool-text-muted: #A1A1AA;
+  --tool-brand-accent: #09090B;
+
+  /* Backdrop glow colors */
+  --ts-glow-1: rgba(0, 0, 0, 0.02);
+  --ts-glow-2: rgba(0, 0, 0, 0.015);
+  --ts-glow-3: rgba(0, 0, 0, 0.01);
+
+  /* Shadows */
+  --ts-shadow-sm: var(--shell-card-shadow);
+  --ts-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.05);
+  --ts-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08);
+  --ts-shadow-surface: var(--shell-card-shadow);
+  --ts-shadow-drawer: -12px 0 40px rgba(0, 0, 0, 0.1);
+
+  /* Scrollbar */
+  --ts-scrollbar-track: transparent;
+  --ts-scrollbar-thumb: #E4E4E7;
+  --ts-scrollbar-thumb-hover: #D4D4D8;
+}
+
+/* ══ CATEGORY THEME HOOK: [data-theme="goth"] (Default for all) ═════ */
+[data-theme="goth"] {
+  --border-accent: #FCFCFC;
+  --spotlight: rgba(252, 252, 252, 0.08);
+}
+[data-theme="light"][data-theme="goth"],
+[data-theme="light"] [data-theme="goth"] {
+  --border-accent: #000000;
+  --spotlight: rgba(0, 0, 0, 0.04);
+}
