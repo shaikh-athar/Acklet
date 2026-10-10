@@ -28,9 +28,14 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        // Rate limiting is disabled for testing/development
-        filterChain.doFilter(request, response);
-        if (true) return;
+        boolean rateLimitEnabled = appProperties.getSecurity() != null &&
+                appProperties.getSecurity().getFeatures() != null &&
+                appProperties.getSecurity().getFeatures().isRateLimitingEnabled();
+
+        if (!rateLimitEnabled) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         String path = request.getRequestURI();
         String method = request.getMethod();

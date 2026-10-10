@@ -83,10 +83,29 @@ public class SecurityConfig {
         return http.build();
     }
 
+    @org.springframework.beans.factory.annotation.Value("${cors.allowed-origins:http://localhost:4200,http://localhost:3000,https://*.acklet.com,https://acklet.com}")
+    private String allowedOriginsConfig;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        
+        List<String> origins = List.of(allowedOriginsConfig.split(","));
+        for (String origin : origins) {
+            String trimmed = origin.trim();
+            if (trimmed.contains("*")) {
+                configuration.addAllowedOriginPattern(trimmed);
+            } else {
+                configuration.addAllowedOrigin(trimmed);
+            }
+        }
+
+        // Allow localhost and local subdomains in development
+        configuration.addAllowedOriginPattern("http://*.localhost:*");
+        configuration.addAllowedOriginPattern("http://localhost:*");
+        configuration.addAllowedOriginPattern("https://*.acklet.*");
+        configuration.addAllowedOriginPattern("https://acklet.*");
+
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"));
         // Allow all headers including custom telemetry (X-Operation-Id), device IDs, and caching headers
         configuration.setAllowedHeaders(List.of("*"));
