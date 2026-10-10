@@ -1,6 +1,5 @@
 /* packages/tool-shell/src/styles/tokens.css */
 @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300..900;1,300..900&display=swap');
-@import "@fontsource-variable/geist-mono";
 
 :root,
 html[data-theme="dark"],
