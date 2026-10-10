@@ -1,5 +1,3 @@
-/* To learn more about Typescript configuration file: https://www.typescriptlang.org/docs/handbook/tsconfig-json.html. */
-/* To learn more about Angular compiler options: https://angular.dev/reference/configs/angular-compiler-options. */
 {
   "compileOnSave": false,
   "compilerOptions": {
@@ -12,7 +10,16 @@
     "experimentalDecorators": true,
     "importHelpers": true,
     "target": "ES2022",
-    "module": "preserve"
+    "module": "preserve",
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@acklet/tool-registry": ["packages/tool-registry/src/index.ts"],
+      "@acklet/tool-shell": ["packages/tool-shell/src/index.ts"],
+      "@acklet/tool-shell/helm/*": ["packages/tool-shell/src/helm/*"],
+      "@acklet/shared": ["packages/shared/src/index.ts"],
+      "@spartan-ng/helm/*": ["src/app/shared/helm/*"]
+    }
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
