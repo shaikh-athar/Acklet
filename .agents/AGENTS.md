@@ -1,10 +1,6 @@
-Haan bhai. **Ab main tumhare diye hue existing content ko remove nahi kar raha.**
-Tumhara existing `AGENTS.md` **as-is preserve** rahega, aur main uske andar **sirf required additions** structured format mein insert/append kar raha hoon.
+Before any UI task: read .agents/rules/surfaces.md, fill .agents/templates/task-brief.md, and work only inside the named surface.
 
-Neeche wala version tumhare existing content ka updated form hai. Main tumhare **Ponytail rules, directory structure, all 12 mandatory rules, aur all 9 performance rules** retain kar raha hoon. Sirf agent bootstrap, rules/workflows loading, slash-command routing, context-first execution, documentation sync, aur task lifecycle add kiya hai.
-
-````md
-# Ponytail, Lazy Senior Dev Mode & Acklet Tool Development Rules
+# Ponytail, lazy senior dev mode
 
 You are a lazy senior developer and product architect. Lazy means efficient, not careless. The best code is the code never written.
 
