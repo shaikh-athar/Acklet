@@ -5,7 +5,16 @@ import { ClipboardApiService, ClipboardConfigDto, ClipboardItem, ClipboardShare,
 import { ClipboardSyncService } from './services/clipboard-sync.service';
 import { ClipboardCrypto } from './services/clipboard-crypto';
 import { ClipboardHistoryService, LocalClipboardRecord } from './services/clipboard-history.service';
-import { ToolIconComponent } from '@acklet/tool-shell';
+import { 
+  TsIconComponent, 
+  HlmButton, 
+  HlmBadge, 
+  HlmInput, 
+  HlmAlertImports, 
+  HlmEmptyImports, 
+  HlmTabsImports, 
+  HlmTooltipImports 
+} from '@acklet/tool-shell';
 import { Subscription } from 'rxjs';
 
 type ToolMode = 'send' | 'receive';
@@ -28,7 +37,18 @@ interface UploadingFileState {
 @Component({
   selector: 'app-clipboard-tool',
   standalone: true,
-  imports: [CommonModule, FormsModule, ToolIconComponent],
+  imports: [
+    CommonModule, 
+    FormsModule, 
+    TsIconComponent,
+    HlmButton,
+    HlmBadge,
+    HlmInput,
+    HlmAlertImports,
+    HlmEmptyImports,
+    HlmTabsImports,
+    HlmTooltipImports
+  ],
   templateUrl: './clipboard.component.html',
   styleUrls: ['./clipboard.component.css']
 })
@@ -81,6 +101,7 @@ export class ClipboardComponent implements OnInit, OnDestroy {
   readonly isLoadingShare = signal<boolean>(false);
   readonly activeShare = signal<ClipboardShare | null>(null);
   readonly receiveError = signal<string | null>(null);
+  readonly hasErrorShake = signal<boolean>(false);
 
   // Retention & History
   readonly showHistoryDrawer = signal<boolean>(false);
@@ -145,10 +166,14 @@ export class ClipboardComponent implements OnInit, OnDestroy {
       if (!incomingCode && window.location.hash) {
         const hashContent = window.location.hash.replace('#', '');
         const parts = hashContent.split('&');
-        incomingCode = parts[0]?.trim() || '';
-        const keyParam = parts.find(p => p.startsWith('key='));
-        if (keyParam) {
-          incomingKey = keyParam.replace('key=', '');
+        const candidate = parts[0]?.trim() || '';
+        // Only accept if candidate is a genuine share code (not a capsule hash or key parameter)
+        if (candidate && !candidate.startsWith('acklet-cap=') && !candidate.startsWith('cap=') && !candidate.includes('=')) {
+          incomingCode = candidate;
+          const keyParam = parts.find(p => p.startsWith('key='));
+          if (keyParam) {
+            incomingKey = keyParam.replace('key=', '');
+          }
         }
       }
 
@@ -338,6 +363,21 @@ export class ClipboardComponent implements OnInit, OnDestroy {
         this.isSubmittingText.set(false);
       }
     });
+  }
+
+  openImagePicker(): void {
+    this.imageFileInput?.nativeElement?.click();
+  }
+
+  openDocPicker(): void {
+    this.docFileInput?.nativeElement?.click();
+  }
+
+  submitSampleText(): void {
+    if (!this.newTextSnippet().trim()) {
+      this.newTextSnippet.set('Quick note shared from Online Clipboard');
+    }
+    this.submitTextSnippet();
   }
 
   onImageSelected(event: Event): void {
@@ -579,6 +619,9 @@ export class ClipboardComponent implements OnInit, OnDestroy {
         } else {
           this.activeShare.set(null);
           this.receiveError.set(err.error?.message || 'Invalid or expired code. Please verify the 5-digit code or word code.');
+          // One-time soft shake on failed lookup (300ms)
+          this.hasErrorShake.set(true);
+          setTimeout(() => this.hasErrorShake.set(false), 300);
         }
       }
     });

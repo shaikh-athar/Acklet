@@ -1,5 +1,5 @@
 // packages/tool-shell/src/components/sidebar/ts-sidebar.component.ts
-import { Component, input, inject, signal } from '@angular/core';
+import { Component, input, inject, signal, computed, HostListener, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolRegistryItem } from '@acklet/tool-registry';
 import { getToolsHubUrl, getPortalUrl } from '@acklet/shared';
@@ -117,9 +117,10 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       <div 
         class="ts-mobile-sheet-backdrop" 
         (click)="sidebarService.closeMobileDrawer()" 
+        (keydown)="onBackdropKeydown($event)"
         role="dialog" 
         aria-modal="true" 
-        aria-label="Mobile Navigation"
+        aria-label="Navigation Menu"
       >
         <aside 
           class="ts-mobile-sheet-panel" 
@@ -132,13 +133,31 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
             </a>
             <button 
               type="button" 
-              class="ts-icon-btn"
+              class="ts-sheet-close-btn"
               (click)="sidebarService.closeMobileDrawer()"
               aria-label="Close menu"
             >
-              <ts-icon name="x" [size]="16" />
+              <ts-icon name="x" [size]="18" />
             </button>
           </div>
+
+          <!-- Section Links for this tool (on mobile) -->
+          @if (sectionLinks().length > 0) {
+            <div class="ts-sheet-sections">
+              <div class="ts-sheet-section-title">This Tool</div>
+              <div class="ts-sheet-section-pills">
+                @for (sec of sectionLinks(); track sec.id) {
+                  <a 
+                    [href]="'#' + sec.id" 
+                    class="ts-sheet-section-pill"
+                    (click)="sidebarService.closeMobileDrawer()"
+                  >
+                    {{ sec.label }}
+                  </a>
+                }
+              </div>
+            </div>
+          }
 
           <div class="ts-sidebar-search-row">
             <ts-search [value]="searchQuery()" (valueChange)="searchQuery.set($event)" />
@@ -174,9 +193,9 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       overflow: hidden;
       flex-shrink: 0;
       box-sizing: border-box;
-      transition: width 200ms ease-out,
-                  background-color var(--ts-dur-base, 200ms) var(--ts-ease),
-                  border-color var(--ts-dur-base, 200ms) var(--ts-ease);
+      transition: width var(--ts-dur-hover, 220ms) var(--ts-ease-out),
+                  background-color var(--ts-dur-hover, 220ms) var(--ts-ease),
+                  border-color var(--ts-dur-hover, 220ms) var(--ts-ease);
       user-select: none;
       z-index: var(--ts-z-chrome, 10);
     }
@@ -395,8 +414,14 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       outline-offset: 1px;
     }
 
+    .ts-sidebar-card.is-collapsed .ts-sidebar-pinned-footer {
+      height: auto;
+      padding: 8px 0;
+    }
+
     .ts-rail-footer-column {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 6px;
@@ -407,9 +432,9 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
+      width: 40px;
+      height: 40px;
+      border-radius: var(--ts-radius-control, 12px);
       background: transparent;
       border: none;
       outline: none;
@@ -491,6 +516,92 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       color: var(--text);
     }
 
+    .ts-sheet-close-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
+      border-radius: 10px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-muted, #71717A);
+      cursor: pointer;
+      transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
+                  color var(--ts-dur-fast, 150ms) var(--ts-ease);
+    }
+
+    .ts-sheet-close-btn:hover {
+      background: var(--surface-hover, #F4F4F5);
+      color: var(--text, #18181B);
+    }
+
+    :host-context([data-theme="dark"]) .ts-sheet-close-btn:hover {
+      background: var(--surface-hover, #1E1E22);
+      color: #FCFCFC;
+    }
+
+    .ts-sheet-sections {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+      background: var(--surface-hover, #F4F4F5);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    :host-context([data-theme="dark"]) .ts-sheet-sections {
+      background: #18181B;
+      border-bottom-color: var(--border, rgba(255, 255, 255, 0.08));
+    }
+
+    .ts-sheet-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted, #71717A);
+    }
+
+    :host-context([data-theme="dark"]) .ts-sheet-section-title {
+      color: #A1A1AA;
+    }
+
+    .ts-sheet-section-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .ts-sheet-section-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 4px 14px;
+      border-radius: var(--ts-radius-full, 9999px);
+      background: var(--surface, #FFFFFF);
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+      color: var(--text, #18181B);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background-color 150ms ease, color 150ms ease;
+    }
+
+    :host-context([data-theme="dark"]) .ts-sheet-section-pill {
+      background: #202024;
+      border-color: rgba(255, 255, 255, 0.1);
+      color: #FCFCFC;
+    }
+
+    .ts-sheet-section-pill:hover {
+      background: var(--accent-soft, #10302D);
+      color: var(--accent-strong, #2DD4BF);
+    }
+
     @keyframes tsFadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -519,6 +630,7 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
 })
 export class TsSidebarComponent {
   readonly tools = input.required<ToolRegistryItem[]>();
+  readonly tool = input<ToolRegistryItem | null>(null);
   readonly currentSlug = input<string>('');
 
   readonly sidebarService = inject(ToolSidebarService);
@@ -527,4 +639,39 @@ export class TsSidebarComponent {
 
   readonly showInlineSearch = signal<boolean>(false);
   readonly searchQuery = signal<string>('');
+
+  readonly sectionLinks = computed<{ id: string; label: string }[]>(() => {
+    const t = this.tool();
+    if (!t) return [];
+    if (t.navLinks && t.navLinks.length > 0) {
+      return t.navLinks;
+    }
+    const links = [{ id: 'tool', label: 'Tool' }];
+    if (t.about || t.description || t.shortDescription || (t.features && t.features.length > 0)) {
+      links.push({ id: 'about', label: 'About' });
+    }
+    if ((t.howTo && t.howTo.length > 0) || (t.howItWorks && t.howItWorks.length > 0)) {
+      links.push({ id: 'how-to-use', label: 'How to use' });
+    }
+    if (t.faqs && t.faqs.length > 0) {
+      links.push({ id: 'faq', label: 'FAQ' });
+    }
+    if ((t.related && t.related.length > 0) || (t.suggestedTools && t.suggestedTools.length > 0)) {
+      links.push({ id: 'related', label: 'Related' });
+    }
+    return links;
+  });
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.sidebarService.isMobileDrawerOpen()) {
+      this.sidebarService.closeMobileDrawer();
+    }
+  }
+
+  onBackdropKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      this.sidebarService.closeMobileDrawer();
+    }
+  }
 }

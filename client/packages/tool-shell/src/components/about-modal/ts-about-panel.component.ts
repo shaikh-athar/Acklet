@@ -87,7 +87,7 @@ import { TsScrollAreaComponent } from '../primitive/ts-scroll-area.component';
                 <!-- Footer (Reference Style) -->
                 <footer class="ts-panel-footer">
                   <div class="ts-footer-copyright">
-                    © {{ currentYear }} Acklet. All rights reserved.
+                    © {{ currentYear }} Acklet. Animated icons by <a href="https://lordicon.com/" target="_blank" rel="noopener noreferrer" class="hover:underline opacity-80">Lordicon</a>.
                   </div>
                   <div class="ts-footer-links">
                     <a [href]="portalUrl" class="ts-footer-link" target="_blank" rel="noopener noreferrer">Acklet</a>

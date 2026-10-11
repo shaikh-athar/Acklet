@@ -14,7 +14,7 @@ export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
     shortDescription: 'Share text, links, images and files between any two devices with a 5-digit code.',
     about: 'Online Clipboard is a private, lightweight workspace to move text snippets, links, images, and files between any two devices in seconds. There is no account to create, no app to install, and zero tracking or advertising.\n\nEntering a quick 5-digit code pairs your devices across networks. Content stays in memory and temporary storage strictly until delivered or expired, keeping your data confidential.',
     description: 'Online Clipboard is a free tool for moving content from one device to another without email, cables or messaging apps. Paste some text or a link, or add images and files, and you get a 5-digit code. Enter that code on another phone, tablet or computer and everything you shared appears right away.\n\nIt works in any modern browser and needs no account. Shared items are kept on our servers only so the receiving device can fetch them, and they are automatically deleted after 7 days. You can also delete items yourself at any time.\n\nUse it to send a link from your laptop to your phone, move photos to a computer without a cable, or hand a document to a colleague on a different network. Each file can be up to 200 MB.',
-    icon: 'copy',
+    icon: 'clipboard',
     version: '1.0.0',
     status: 'live',
     badge: 'updated',
@@ -24,8 +24,14 @@ export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
     executionMode: 'browser',
     addedAt: '2026-01-15',
     updatedAt: '2026-10-07',
+    accent: 'teal',
     accentHue: 195,
     supports: ['shield-check', 'zap', 'lock'],
+    facts: [
+      { label: 'Max file size', value: '200 MB' },
+      { label: 'Auto delete', value: '7 days' },
+      { label: 'Encryption', value: 'AES-GCM' }
+    ],
     highlights: [
       { label: 'Max File Size', value: '200 MB', tooltip: 'Resumable chunked upload support up to 200MB per file' },
       { label: 'Auto Delete', value: '7 Days', tooltip: 'Configurable from 1 hour to 7 days retention' },

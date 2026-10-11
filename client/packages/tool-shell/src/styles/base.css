@@ -145,3 +145,365 @@
   opacity: 0;
   transition: opacity var(--ts-dur-base) var(--ts-ease);
 }
+
+/* ══ TEXT SELECTION (accent-soft tint) ═══════════════════════════ */
+.ts-root ::selection,
+.clipboard-container ::selection {
+  background-color: var(--accent-soft);
+  color: var(--text);
+}
+
+/* ══ SPARTAN BUTTON VARIANTS & SIZES ═════════════════════════════
+   - primary (default): --accent fill, --accent-ink text, weight 600, height 40 (48 large), radius 12.
+   - secondary: gray fill, normal text.
+   - outline: hairline border, transparent fill.
+   - ghost: transparent fill.
+   - Hover (pointer devices only, @media (hover: hover)):
+       primary: box-shadow 0 0 0 0 transparent -> 0 6px 24px -4px var(--accent-glow), brightness 1.04, 220ms.
+       secondary/ghost: rounded gray background; icon turns --accent-strong.
+   - Press: scale 0.98 (150ms). Disabled: 50% opacity, no glow.
+   - NO border or outline on mouse hover or click.
+   - Keyboard :focus-visible ring uses --accent-strong, 2px, offset 2px.
+*/
+
+.spartan-button {
+  font-family: var(--ts-font-sans, "Nunito", sans-serif);
+  border-radius: var(--ts-radius-md, 12px);
+  border: none;
+  cursor: pointer;
+  box-sizing: border-box;
+  text-decoration: none;
+  position: relative;
+  transition: transform 150ms ease,
+              background-color 220ms ease,
+              color 220ms ease,
+              border-color 220ms ease,
+              box-shadow 220ms ease,
+              filter 220ms ease,
+              opacity 150ms ease;
+}
+
+.spartan-button:active:not(:disabled):not([data-disabled]) {
+  transform: scale(0.98);
+}
+
+.spartan-button:disabled,
+.spartan-button[data-disabled="true"],
+.spartan-button[disabled] {
+  opacity: 0.5;
+  box-shadow: none !important;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Spartan Button Sizes */
+.spartan-button-size-default {
+  height: 40px;
+  min-height: 40px;
+  padding: 0 16px;
+  gap: 8px;
+  font-size: var(--ts-type-label-size, 13px);
+  line-height: var(--ts-type-label-lh, 18px);
+}
+
+.spartan-button-size-lg {
+  height: 48px;
+  min-height: 48px;
+  padding: 0 20px;
+  gap: 10px;
+  font-size: var(--ts-type-body-size, 14px);
+  line-height: var(--ts-type-body-lh, 22px);
+  border-radius: var(--ts-radius-md, 12px);
+}
+
+.spartan-button-size-sm {
+  height: 36px;
+  min-height: 36px;
+  padding: 0 12px;
+  gap: 6px;
+  font-size: 13px;
+  border-radius: var(--ts-radius-sm, 8px);
+}
+
+.spartan-button-size-xs {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 8px;
+  gap: 4px;
+  font-size: 12px;
+  border-radius: var(--ts-radius-sm, 8px);
+}
+
+.spartan-button-size-icon {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: var(--ts-radius-md, 12px);
+}
+
+.spartan-button-size-icon-sm {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: var(--ts-radius-sm, 8px);
+}
+
+.spartan-button-size-icon-lg {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border-radius: var(--ts-radius-md, 12px);
+}
+
+/* Spartan Button Variants */
+
+/* 1. Primary (default) */
+.spartan-button-variant-default {
+  background-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  box-shadow: 0 0 0 0 transparent;
+}
+
+@media (hover: hover) {
+  .spartan-button-variant-default:hover:not(:disabled):not([data-disabled]) {
+    box-shadow: 0 6px 24px -4px var(--accent-glow);
+    filter: brightness(1.04);
+  }
+}
+
+/* 2. Secondary */
+.spartan-button-variant-secondary {
+  background-color: var(--surface-hover);
+  color: var(--text);
+  font-weight: 500;
+  border: 1px solid var(--border);
+}
+
+@media (hover: hover) {
+  .spartan-button-variant-secondary:hover:not(:disabled):not([data-disabled]) {
+    background-color: var(--surface-active, var(--surface-hover));
+    color: var(--text);
+  }
+  .spartan-button-variant-secondary:hover:not(:disabled):not([data-disabled]) svg,
+  .spartan-button-variant-secondary:hover:not(:disabled):not([data-disabled]) [class*="icon"],
+  .spartan-button-variant-secondary:hover:not(:disabled):not([data-disabled]) lib-tool-icon,
+  .spartan-button-variant-secondary:hover:not(:disabled):not([data-disabled]) ts-icon {
+    color: var(--accent-strong);
+  }
+}
+
+/* 3. Outline */
+.spartan-button-variant-outline {
+  background-color: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-weight: 500;
+}
+
+@media (hover: hover) {
+  .spartan-button-variant-outline:hover:not(:disabled):not([data-disabled]) {
+    background-color: var(--surface-hover);
+  }
+  .spartan-button-variant-outline:hover:not(:disabled):not([data-disabled]) svg,
+  .spartan-button-variant-outline:hover:not(:disabled):not([data-disabled]) [class*="icon"],
+  .spartan-button-variant-outline:hover:not(:disabled):not([data-disabled]) lib-tool-icon,
+  .spartan-button-variant-outline:hover:not(:disabled):not([data-disabled]) ts-icon {
+    color: var(--accent-strong);
+  }
+}
+
+/* 4. Ghost */
+.spartan-button-variant-ghost {
+  background-color: transparent;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+@media (hover: hover) {
+  .spartan-button-variant-ghost:hover:not(:disabled):not([data-disabled]) {
+    background-color: var(--surface-hover);
+    color: var(--text);
+  }
+  .spartan-button-variant-ghost:hover:not(:disabled):not([data-disabled]) svg,
+  .spartan-button-variant-ghost:hover:not(:disabled):not([data-disabled]) [class*="icon"],
+  .spartan-button-variant-ghost:hover:not(:disabled):not([data-disabled]) lib-tool-icon,
+  .spartan-button-variant-ghost:hover:not(:disabled):not([data-disabled]) ts-icon {
+    color: var(--accent-strong);
+  }
+}
+
+/* 5. Destructive */
+.spartan-button-variant-destructive {
+  background-color: var(--danger-soft, rgba(239, 68, 68, 0.12));
+  color: var(--danger, #EF4444);
+  border: 1px solid var(--danger-border, rgba(239, 68, 68, 0.25));
+  font-weight: 600;
+}
+
+@media (hover: hover) {
+  .spartan-button-variant-destructive:hover:not(:disabled):not([data-disabled]) {
+    background-color: var(--danger, #EF4444);
+    color: var(--danger-ink, #FFFFFF);
+  }
+}
+
+/* 6. Link */
+.spartan-button-variant-link {
+  background-color: transparent;
+  color: var(--accent-strong);
+  text-decoration: underline;
+  padding: 0;
+  height: auto;
+  min-height: 0;
+}
+
+/* Keyboard focus-visible on all Spartan buttons */
+.spartan-button:focus-visible,
+.ts-root button:focus-visible,
+.ts-root a:focus-visible,
+.ts-root input:focus-visible,
+.ts-root textarea:focus-visible,
+.ts-root select:focus-visible {
+  outline: 2px solid var(--accent-strong) !important;
+  outline-offset: 2px !important;
+}
+
+.spartan-button:focus:not(:focus-visible),
+.ts-root button:focus:not(:focus-visible),
+.ts-root a:focus:not(:focus-visible) {
+  outline: none !important;
+}
+
+/* ══ ICON AND SURFACE HIGHLIGHTS ═════════════════════════════════
+   - Icon tile (tool icon, empty-state icon): --accent-soft background, --accent-strong icon.
+     On hover of its parent row/card: tile gets a soft glow:
+     (box-shadow: 0 0 0 6px var(--accent-soft), 0 8px 24px -8px var(--accent-glow))
+*/
+.ts-tile-box,
+.ts-header-icon-tile,
+.drop-icon-tile,
+[hlmEmptyIcon] {
+  background-color: var(--accent-soft) !important;
+  color: var(--accent-strong) !important;
+  border: 1px solid var(--accent-border) !important;
+  transition: box-shadow 220ms ease, transform 220ms ease, filter 220ms ease;
+}
+
+.ts-tile-box svg,
+.ts-header-icon-tile svg,
+.drop-icon-tile svg,
+[hlmEmptyIcon] svg,
+.ts-tile-box lib-tool-icon,
+.ts-header-icon-tile lib-tool-icon,
+.drop-icon-tile lib-tool-icon,
+[hlmEmptyIcon] lib-tool-icon,
+.ts-tile-box ts-icon,
+.ts-header-icon-tile ts-icon {
+  color: var(--accent-strong) !important;
+}
+
+/* Parent row/card hover triggers soft glow on icon tile */
+.ts-tool-item:hover .ts-tile-box,
+.ts-related-item-link:hover .ts-tile-box,
+.ts-header-card:hover .ts-header-icon-tile,
+.file-drop-zone:hover .drop-icon-tile {
+  box-shadow: 0 0 0 6px var(--accent-soft), 0 8px 24px -8px var(--accent-glow) !important;
+}
+
+/* ══ CHIPS & BADGES ══════════════════════════════════════════════
+   Chips and badges: --accent-soft background, --accent-strong text, hairline --accent-border.
+*/
+.spartan-badge-variant-default,
+.ts-header-badge,
+.valid-code-badge,
+.tab-count-badge.active,
+.underline-tab.active .tab-count-badge {
+  background-color: var(--accent-soft) !important;
+  color: var(--accent-strong) !important;
+  border: 1px solid var(--accent-border) !important;
+}
+
+/* ══ FORM CONTROLS & CHECKED STATES ══════════════════════════════
+   Active tab indicator, progress bar, switch/checkbox/radio checked state,
+   input focus ring, links (--accent-strong), scrollbar thumb on hover (tinted).
+*/
+.ts-root a {
+  color: var(--accent-strong);
+}
+
+.ts-root input[type="checkbox"]:checked,
+.ts-root input[type="radio"]:checked {
+  accent-color: var(--accent);
+}
+
+.ts-root progress::-webkit-progress-value {
+  background-color: var(--accent);
+}
+
+.ts-root progress::-moz-progress-bar {
+  background-color: var(--accent);
+}
+
+/* Scrollbar thumb tinted hover */
+.ts-root ::-webkit-scrollbar-thumb:hover {
+  background-color: var(--accent-soft);
+}
+
+/* ══ MOBILE, TOUCH & DEVICE RESPONSIVENESS ══════════════════════════ */
+/* iOS 16px input font size to prevent automatic zoom on focus */
+@media (max-width: 767px) {
+  .ts-root input,
+  .ts-root textarea,
+  .ts-root select {
+    font-size: 16px !important;
+  }
+
+  .ts-root {
+    font-size: 14px;
+  }
+}
+
+/* Touch Targets: minimum 44px on touch screens, 8px spacing */
+@media (pointer: coarse), (max-width: 1023px) {
+  .ts-root button,
+  .ts-root .ts-btn,
+  .ts-root a.ts-action-link,
+  .ts-root .ts-mobile-menu-btn,
+  .ts-root .ts-theme-btn,
+  .ts-root .ts-search-btn {
+    min-height: 44px;
+  }
+}
+
+/* Hover-only effects: Ensure spotlights and hover glows run ONLY when supported */
+@media (hover: none) {
+  .ts-tool-item:hover .ts-tile-box,
+  .ts-related-item-link:hover .ts-tile-box,
+  .ts-header-card:hover .ts-header-icon-tile,
+  .file-drop-zone:hover .drop-icon-tile {
+    box-shadow: none !important;
+  }
+}
+
+/* Text & Overflow Protection: Content must reflow, not just resize */
+.ts-root {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.ts-root pre,
+.ts-root code,
+.ts-root table,
+.ts-code-scroll-box {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+

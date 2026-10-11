@@ -12,7 +12,7 @@ import { getPortalUrl } from '@acklet/shared';
         <div class="footer-left">
           <span class="tool-copy">&copy; {{ currentYear }} {{ toolName() }}.</span>
           <span class="tool-powered">
-            by <a [href]="portalUrl" target="_blank" rel="noopener noreferrer" class="acklet-brand-link">Acklet</a>
+            by <a [href]="portalUrl" target="_blank" rel="noopener noreferrer" class="acklet-brand-link">Acklet</a> • Icons by <a href="https://lordicon.com/" target="_blank" rel="noopener noreferrer" class="acklet-brand-link">Lordicon</a>
           </span>
         </div>
         <div class="footer-right">

@@ -28,8 +28,8 @@ import { TsIconComponent } from '../icon/ts-icon.component';
               (keydown)="onKeydown($event, i)"
             >
               <span class="ts-faq-question">{{ item.question }}</span>
-              <span class="ts-faq-icon-wrap" [class.rotated]="isOpen(item.id)" aria-hidden="true">
-                <ts-icon name="plus" [size]="16" />
+              <span class="ts-faq-icon-wrap" aria-hidden="true">
+                <ts-icon [name]="isOpen(item.id) ? 'minus' : 'plus'" [size]="15" />
               </span>
             </button>
 
@@ -67,26 +67,40 @@ import { TsIconComponent } from '../icon/ts-icon.component';
       width: 100%;
       display: flex;
       flex-direction: column;
-      gap: var(--ts-space-3, 12px);
+      gap: 12px;
     }
 
     .ts-faq-heading {
-      font-size: var(--ts-text-lg, 20px);
-      font-weight: 500;
-      color: var(--ts-text);
-      letter-spacing: var(--ts-tracking-tight);
-      margin-bottom: var(--ts-space-2, 8px);
+      font-family: var(--font-heading, "Nunito", sans-serif);
+      font-size: var(--ts-type-section-title-size, 18px);
+      line-height: var(--ts-type-section-title-lh, 26px);
+      font-weight: var(--ts-type-section-title-weight, 650);
+      letter-spacing: var(--ts-type-title-tracking, -0.01em);
+      color: var(--text, #18181B);
+      margin-bottom: 4px;
+    }
+
+    :host-context([data-theme="dark"]) .ts-faq-heading {
+      color: var(--text, #FCFCFC);
     }
 
     .ts-faq-list {
       display: flex;
       flex-direction: column;
-      border-top: 1px solid var(--ts-border);
+      gap: 10px;
     }
 
     .ts-faq-item {
-      border-bottom: 1px solid var(--ts-border);
-      transition: background-color var(--ts-dur-base) var(--ts-ease);
+      background: var(--surface-hover, #F4F4F5);
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.06));
+      border-radius: var(--ts-radius-control, 12px);
+      padding: 0 16px;
+      transition: background-color 150ms ease, border-color 150ms ease;
+    }
+
+    :host-context([data-theme="dark"]) .ts-faq-item {
+      background: #18181B;
+      border-color: var(--border, #27272A);
     }
 
     .ts-faq-trigger {
@@ -94,28 +108,35 @@ import { TsIconComponent } from '../icon/ts-icon.component';
       align-items: center;
       justify-content: space-between;
       width: 100%;
-      min-height: 56px;
-      padding: var(--ts-space-3, 12px) 0;
+      min-height: 52px;
+      padding: 12px 0;
       background: transparent;
       border: none;
-      color: var(--ts-text);
-      font-size: var(--ts-text-md, 16px);
-      font-weight: 500;
+      color: var(--text, #18181B);
+      font-family: var(--font-body, "Nunito", sans-serif);
+      font-size: var(--ts-type-body-size, 14.5px);
+      font-weight: 600;
       text-align: left;
       cursor: pointer;
       outline: none;
-      gap: var(--ts-space-4, 16px);
-      transition: color var(--ts-dur-base) var(--ts-ease);
+      gap: 16px;
+      transition: color 150ms ease;
     }
 
-    .ts-faq-trigger:hover {
-      color: var(--ts-accent);
+    :host-context([data-theme="dark"]) .ts-faq-trigger {
+      color: var(--text, #FCFCFC);
+    }
+
+    .ts-faq-trigger:focus-visible {
+      outline: 2px solid var(--accent, #0F766E) !important;
+      outline-offset: 2px;
+      border-radius: 8px;
     }
 
     .ts-faq-question {
       flex: 1;
       line-height: 1.4;
-      letter-spacing: var(--ts-tracking-tight);
+      letter-spacing: -0.01em;
     }
 
     .ts-faq-icon-wrap {
@@ -124,26 +145,39 @@ import { TsIconComponent } from '../icon/ts-icon.component';
       justify-content: center;
       width: 28px;
       height: 28px;
-      border-radius: var(--ts-radius-full);
-      background: var(--ts-raised);
-      color: var(--ts-text-muted);
+      border-radius: var(--ts-radius-full, 9999px);
+      background: var(--surface, #FFFFFF);
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+      color: var(--text-muted, #71717A);
       flex-shrink: 0;
-      transition: transform var(--ts-dur-base) var(--ts-ease),
-                  background-color var(--ts-dur-base) var(--ts-ease),
-                  color var(--ts-dur-base) var(--ts-ease);
+      transition: background-color var(--ts-dur-hover, 220ms) var(--ts-ease-out),
+                  color var(--ts-dur-hover, 220ms) var(--ts-ease-out),
+                  transform var(--ts-dur-hover, 220ms) var(--ts-ease-out);
     }
 
-    .ts-faq-icon-wrap.rotated {
-      transform: rotate(45deg);
-      background: var(--ts-accent);
-      color: var(--ts-accent-contrast);
+    :host-context([data-theme="dark"]) .ts-faq-icon-wrap {
+      background: #27272A;
+      border-color: rgba(255, 255, 255, 0.08);
+      color: var(--text, #FCFCFC);
     }
 
-    /* Zero-CLS CSS Grid Row Transition */
+    .ts-faq-item.is-open .ts-faq-icon-wrap {
+      background: var(--accent, #0F766E);
+      color: var(--accent-ink, #FFFFFF);
+      border-color: transparent;
+      transform: rotate(90deg);
+    }
+
+    :host-context([data-theme="dark"]) .ts-faq-item.is-open .ts-faq-icon-wrap {
+      background: var(--accent, #2DD4BF);
+      color: var(--accent-ink, #042F2B);
+    }
+
+    /* Zero-CLS CSS Grid Row Transition (220ms) */
     .ts-faq-panel-grid {
       display: grid;
       grid-template-rows: 0fr;
-      transition: grid-template-rows var(--ts-dur-base) var(--ts-ease);
+      transition: grid-template-rows var(--ts-dur-hover, 220ms) var(--ts-ease-out);
       overflow: hidden;
     }
 

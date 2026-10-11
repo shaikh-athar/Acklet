@@ -48,8 +48,10 @@ export interface ToolRegistryItem {
   featured?: boolean;
   order?: number;
   layout?: ToolLayoutMode;
+  accent?: string; // named accent palette, e.g. 'teal', default 'neutral'
   accentHue?: number; // 0-360
   supports?: string[]; // icon names e.g. ['shield', 'zap', 'lock']
+  facts?: Array<{ label: string; value: string }>;
   highlights?: ToolHighlight[];
   related?: string[]; // slug references
   requires?: Array<'clipboard' | 'camera' | 'microphone' | 'notifications' | 'backend'>;

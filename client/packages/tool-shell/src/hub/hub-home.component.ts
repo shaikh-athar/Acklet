@@ -21,6 +21,7 @@ import { TsPillTabsComponent, PillTabItem } from '../components/primitive/ts-pil
 import { TsEmptyStateComponent } from '../components/primitive/ts-empty-state.component';
 import { TsToolTileComponent } from '../components/primitive/ts-tool-tile.component';
 import { TsSpotlightDirective } from '../components/primitive/ts-spotlight.directive';
+import { TsThemeToggleComponent } from '../components/theme/ts-theme-toggle.component';
 import { ToolCapsuleService } from '../services/tool-capsule.service';
 import { ToolThemeService } from '../services/tool-theme.service';
 import { HlmItemImports } from '../helm/item';
@@ -43,6 +44,7 @@ const RECENT_KEY = 'acklet.tools.recent';
     TsEmptyStateComponent,
     TsToolTileComponent,
     TsSpotlightDirective,
+    TsThemeToggleComponent,
     HlmItemImports,
     HlmBadgeImports,
     HlmKbdImports,
@@ -61,12 +63,17 @@ const RECENT_KEY = 'acklet.tools.recent';
       <!-- ══════════════════════════════════════════════════════ -->
       <header class="hub-header-sticky">
         <div class="hub-header-inner">
-          <!-- 1. Page Title & 2. Subtitle -->
-          <div class="hub-titles">
-            <h1 class="hub-heading">Tools</h1>
-            <p class="hub-subheading">
-              Simple, private tools for everyday work. No ads. No sign-up.
-            </p>
+          <!-- 1. Page Title & 2. Subtitle + Quick Theme Toggle -->
+          <div class="hub-header-top-row">
+            <div class="hub-titles">
+              <h1 class="hub-heading">Tools</h1>
+              <p class="hub-subheading">
+                Simple, private tools for everyday work. No ads. No sign-up.
+              </p>
+            </div>
+            <div class="hub-header-actions">
+              <ts-theme-toggle />
+            </div>
           </div>
 
           <!-- 3. Search Bar with Kbd Hint -->
@@ -307,6 +314,22 @@ const RECENT_KEY = 'acklet.tools.recent';
       flex-direction: column;
       gap: 16px;
       width: 100%;
+    }
+
+    .hub-header-top-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      width: 100%;
+    }
+
+    .hub-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      padding-top: 4px;
     }
 
     .hub-titles {

@@ -8,7 +8,7 @@ import { ToolLayoutComponent, HubHomeComponent } from '@acklet/tool-shell';
   standalone: true,
   imports: [CommonModule, ToolLayoutComponent, HubHomeComponent],
   template: `
-    <ts-shell [config]="{ showSidebar: false, showPrimaryAction: false, showDescriptionCard: false }">
+    <ts-shell [config]="{ showTopbar: false, showSidebar: false, showPrimaryAction: false, showDescriptionCard: false }">
       <hub-home />
     </ts-shell>
   `
