@@ -11,7 +11,7 @@ import { SpotlightDirective } from '../../../shared/directives/spotlight.directi
 @Component({
   selector: 'app-tools-new-releases',
   standalone: true,
-  imports: [CommonModule, RouterLink, ToolCardComponent, SectionHeaderComponent, IconComponent, SpotlightDirective],
+  imports: [CommonModule, ToolCardComponent, IconComponent],
   template: `
     <div class="new-releases-page page-enter">
       <!-- Page Header -->

@@ -585,10 +585,10 @@ export class ToolDetailComponent implements OnInit {
     this.route.params.subscribe(params => {
       const slug = params['id'];
       if (!slug) return;
-      
+
       // Reset sandbox state when route parameter changes
       this.closeSandbox();
-      
+
       this.toolsSvc.getToolBySlug(slug).subscribe(t => {
         this.tool.set(t);
         if (t) {

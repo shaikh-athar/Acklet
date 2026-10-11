@@ -10,11 +10,11 @@ export const SIDEBAR_RAIL_WIDTH = 72;
   providedIn: 'root'
 })
 export class ToolSidebarService {
-  private readonly WIDTH_KEY = 'acklet_ts_sidebar_width';
-  private readonly COLLAPSED_KEY = 'acklet_sidebar_collapsed';
+  private readonly WIDTH_KEY = 'acklet.tools.sidebar_width';
+  private readonly COLLAPSED_KEY = 'acklet.tools.sidebar';
 
   readonly width = signal<number>(SIDEBAR_DEFAULT_WIDTH);
-  readonly isCollapsed = signal<boolean>(false);
+  readonly isCollapsed = signal<boolean>(true);
   readonly isMobileDrawerOpen = signal<boolean>(false);
   readonly isDragging = signal<boolean>(false);
 
@@ -31,8 +31,13 @@ export class ToolSidebarService {
         const savedCollapsed = localStorage.getItem(this.COLLAPSED_KEY);
         if (savedCollapsed !== null) {
           this.isCollapsed.set(savedCollapsed === 'true');
+        } else {
+          // Default collapsed
+          this.isCollapsed.set(true);
         }
-      } catch (_) {}
+      } catch (_) {
+        this.isCollapsed.set(true);
+      }
     }
   }
 

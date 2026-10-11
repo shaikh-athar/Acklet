@@ -12,7 +12,7 @@ interface HelpTopic {
 @Component({
   selector: 'app-community-help',
   standalone: true,
-  imports: [CommonModule, IconComponent, SpotlightDirective],
+  imports: [CommonModule],
   template: `
     <div class="help-root page-enter">
       <!-- Hero -->

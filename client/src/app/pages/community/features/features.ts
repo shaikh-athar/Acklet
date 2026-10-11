@@ -8,7 +8,7 @@ import { MOCK_FEATURES, FeatureRequest } from '../../../core/mock-data/community
 @Component({
   selector: 'app-community-features',
   standalone: true,
-  imports: [CommonModule, IconComponent, SpotlightDirective],
+  imports: [CommonModule, IconComponent],
   template: `
     <div class="features-root page-enter">
       <!-- Hero -->

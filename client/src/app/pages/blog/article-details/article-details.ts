@@ -9,7 +9,7 @@ import { MOCK_BLOG_ARTICLES, BlogArticle } from '../../../core/mock-data/blog.da
 @Component({
   selector: 'app-blog-article-details',
   standalone: true,
-  imports: [RouterLink, CommonModule, IconComponent, SpotlightDirective],
+  imports: [RouterLink, CommonModule, IconComponent],
   template: `
     <div class="article-root page-enter">
       <div class="container-main pb-16 pt-24">

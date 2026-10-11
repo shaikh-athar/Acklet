@@ -1,34 +1,19 @@
 // packages/tool-shell/src/components/sidebar/ts-tool-list.component.ts
-import { Component, input, computed, signal } from '@angular/core';
+import { Component, input, computed, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolRegistryItem } from '@acklet/tool-registry';
 import { getToolUrl, getToolsHubUrl } from '@acklet/shared';
 import { TsIconComponent } from '../icon/ts-icon.component';
 import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
+import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
 
 @Component({
   selector: 'ts-tool-list',
   standalone: true,
-  imports: [CommonModule, TsIconComponent, TsToolTileComponent],
+  imports: [CommonModule, TsIconComponent, TsToolTileComponent, TsTooltipDirective],
   template: `
     <div class="ts-tool-list-container" [class.is-rail]="isRail()">
       
-      <!-- Quick Page Links (Home / All Tools) -->
-      @if (!searchQuery().trim()) {
-        <div class="ts-top-page-links">
-          <a [href]="hubUrl" class="ts-tool-item" [class.active]="currentSlug() === ''" title="Home">
-            <ts-tool-tile icon="home" name="Home" [size]="24" />
-            @if (!isRail()) {
-              <span class="ts-tool-name">Home</span>
-              @if (currentSlug() === '') {
-                <span class="ts-active-dot" aria-hidden="true"></span>
-              }
-            }
-          </a>
-        </div>
-        <div class="ts-list-divider" role="separator"></div>
-      }
-
       @if (searchQuery().trim()) {
         <!-- Search Results Flat View -->
         <div class="ts-search-results-section">
@@ -41,7 +26,9 @@ import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
                 [href]="getToolUrl(tool.slug)" 
                 class="ts-tool-item" 
                 [class.active]="tool.slug === currentSlug()"
-                [attr.title]="tool.name + (tool.shortDescription ? ' — ' + tool.shortDescription : '')"
+                [tsTooltip]="isRail() ? tool.name : ''"
+                tooltipPosition="right"
+                [attr.aria-label]="tool.name"
               >
                 <ts-tool-tile [icon]="tool.icon" [name]="tool.name" [size]="24" />
                 @if (!isRail()) {
@@ -55,8 +42,8 @@ import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
           </div>
         </div>
       } @else {
-        <!-- Collapsible Category Groups View -->
-        @for (group of groupedCategories(); track group.category) {
+        <!-- Collapsible Category Groups View (Utilities, Developer, Security...) -->
+        @for (group of groupedCategories(); track group.category; let gIdx = $index) {
           <div class="ts-tool-group">
             @if (!isRail()) {
               <button 
@@ -84,7 +71,9 @@ import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
                     [href]="getToolUrl(tool.slug)" 
                     class="ts-tool-item" 
                     [class.active]="tool.slug === currentSlug()"
-                    [attr.title]="tool.name + (tool.shortDescription ? ' — ' + tool.shortDescription : '')"
+                    [tsTooltip]="isRail() ? tool.name : ''"
+                    tooltipPosition="right"
+                    [attr.aria-label]="tool.name"
                   >
                     <ts-tool-tile [icon]="tool.icon" [name]="tool.name" [size]="24" />
                     @if (!isRail()) {
@@ -97,6 +86,10 @@ import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
                 }
               </div>
             }
+
+            @if (isRail() && gIdx < groupedCategories().length - 1) {
+              <div class="ts-rail-separator" role="separator"></div>
+            }
           </div>
         }
       }
@@ -106,26 +99,25 @@ import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
     .ts-tool-list-container {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
       padding: 0;
-    }
-
-    .ts-top-page-links {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-
-    .ts-list-divider {
-      height: 1px;
-      background: var(--border);
-      margin: 4px 6px;
     }
 
     .ts-tool-group {
       display: flex;
       flex-direction: column;
       gap: 3px;
+    }
+
+    .ts-rail-separator {
+      height: 1px;
+      background: var(--border, rgba(0, 0, 0, 0.08));
+      margin: 6px auto;
+      width: 28px;
+    }
+
+    :host-context([data-theme="dark"]) .ts-rail-separator {
+      background: var(--border, rgba(255, 255, 255, 0.08));
     }
 
     .ts-group-header-btn {
@@ -138,7 +130,7 @@ import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
       background: transparent;
       border: 1px solid transparent;
       outline: none;
-      color: var(--text-muted);
+      color: var(--text-muted, #71717A);
       cursor: pointer;
       border-radius: 10px;
       user-select: none;
@@ -147,12 +139,17 @@ import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
     }
 
     .ts-group-header-btn:hover {
-      background: var(--surface-hover);
-      color: var(--text);
+      background: var(--surface-hover, #F4F4F5);
+      color: var(--text, #18181B);
+    }
+
+    :host-context([data-theme="dark"]) .ts-group-header-btn:hover {
+      background: var(--surface-hover, #1E1E22);
+      color: var(--text, #FCFCFC);
     }
 
     .ts-group-header-btn:focus-visible {
-      outline: 2px solid var(--ts-focus-ring);
+      outline: 2px solid var(--ts-focus-ring, #18181B) !important;
       outline-offset: 1px;
     }
 
@@ -166,21 +163,31 @@ import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
       font-family: var(--font-body, "Nunito", sans-serif);
       font-size: 13px;
       font-weight: 600;
-      color: var(--text);
+      color: var(--text, #18181B);
+    }
+
+    :host-context([data-theme="dark"]) .ts-group-title {
+      color: var(--text, #FCFCFC);
     }
 
     .ts-group-count {
       font-size: 11px;
       font-weight: 600;
-      color: var(--text-muted);
-      background: var(--surface-hover);
-      border: 1px solid var(--border);
+      color: var(--text-muted, #71717A);
+      background: var(--surface-hover, #F4F4F5);
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
       padding: 1px 7px;
       border-radius: 9999px;
     }
 
+    :host-context([data-theme="dark"]) .ts-group-count {
+      background: #1E1E22;
+      border-color: rgba(255, 255, 255, 0.08);
+      color: #A1A1AA;
+    }
+
     .ts-chevron-icon {
-      color: var(--text-muted);
+      color: var(--text-muted, #71717A);
       transition: transform var(--ts-dur-fast, 150ms) var(--ts-ease);
     }
 
@@ -190,7 +197,6 @@ import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
       gap: 2px;
     }
 
-    /* 38px tall nav items with 10px radius */
     .ts-tool-item {
       display: flex;
       align-items: center;
@@ -199,19 +205,24 @@ import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
       padding: 0 10px;
       border-radius: 10px;
       text-decoration: none;
-      color: var(--text-muted);
+      color: var(--text-muted, #71717A);
       background: transparent;
       border: 1px solid transparent;
       outline: none;
       position: relative;
-      transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
-                  color var(--ts-dur-fast, 150ms) var(--ts-ease),
-                  border-color var(--ts-dur-fast, 150ms) var(--ts-ease);
+      transition: background-color 220ms ease-out,
+                  color 220ms ease-out,
+                  transform 150ms ease-out;
     }
 
     .ts-tool-item:hover {
-      background: var(--surface-hover);
-      color: var(--text);
+      background: var(--surface-hover, #F4F4F5);
+      color: var(--text, #18181B);
+    }
+
+    :host-context([data-theme="dark"]) .ts-tool-item:hover {
+      background: var(--surface-hover, #1E1E22);
+      color: var(--text, #FCFCFC);
     }
 
     .ts-tool-item:active {
@@ -219,11 +230,15 @@ import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
     }
 
     .ts-tool-item.active {
-      background: var(--surface-active);
-      color: var(--text);
+      background: var(--surface-hover, #F4F4F5);
+      color: var(--text, #18181B);
       font-weight: 700;
       border-color: transparent;
-      box-shadow: none;
+    }
+
+    :host-context([data-theme="dark"]) .ts-tool-item.active {
+      background: var(--surface-hover, #1E1E22);
+      color: var(--text, #FCFCFC);
     }
 
     .ts-tool-item:focus:not(:focus-visible) {
@@ -231,7 +246,7 @@ import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
     }
 
     .ts-tool-item:focus-visible {
-      outline: 2px solid var(--ts-focus-ring) !important;
+      outline: 2px solid var(--ts-focus-ring, #18181B) !important;
       outline-offset: 2px;
     }
 
@@ -248,9 +263,12 @@ import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: var(--text);
+      background: var(--text, #18181B);
       flex-shrink: 0;
-      box-shadow: 0 0 0 2px var(--surface);
+    }
+
+    :host-context([data-theme="dark"]) .ts-active-dot {
+      background: #FCFCFC;
     }
 
     .ts-tool-list-container.is-rail .ts-tool-item {
@@ -270,14 +288,14 @@ import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
     .ts-search-results-header {
       font-size: 11.5px;
       font-weight: 600;
-      color: var(--text-muted);
+      color: var(--text-muted, #71717A);
       padding: 4px 10px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
   `]
 })
-export class TsToolListComponent {
+export class TsToolListComponent implements OnInit {
   readonly tools = input<ToolRegistryItem[]>([]);
   readonly currentSlug = input<string>('');
   readonly isRail = input<boolean>(false);
@@ -286,8 +304,21 @@ export class TsToolListComponent {
   readonly getToolUrl = getToolUrl;
   readonly hubUrl = getToolsHubUrl();
 
-  // Collapsible categories state (default all open)
+  // Collapsed categories state (current category open by default)
   readonly collapsedCategories = signal<Set<string>>(new Set());
+
+  ngOnInit(): void {
+    // Keep current tool's category open by default, collapse others if desired or keep standard
+    const currentTool = this.tools().find(t => t.slug === this.currentSlug());
+    const currentCat = currentTool?.category || 'Utilities';
+
+    // Start with all open by default as standard, or ensure current category is definitely open
+    this.collapsedCategories.update(set => {
+      const next = new Set(set);
+      next.delete(currentCat);
+      return next;
+    });
+  }
 
   toggleCategory(category: string): void {
     this.collapsedCategories.update(set => {

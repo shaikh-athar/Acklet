@@ -17,7 +17,7 @@ interface LogItem {
 @Component({
   selector: 'app-workspace-history',
   standalone: true,
-  imports: [RouterLink, CommonModule, IconComponent, SpotlightDirective],
+  imports: [CommonModule, IconComponent],
   template: `
     <div class="history-root page-enter">
       <header class="header-row mb-8">

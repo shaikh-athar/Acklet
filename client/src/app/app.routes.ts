@@ -1,6 +1,7 @@
 // src/app/app.routes.ts
 import { Routes } from '@angular/router';
 import { authGuard, publisherGuard, adminGuard } from './core/auth/auth.guard';
+import { ToolsRedirectComponent } from './pages/tools-redirect/tools-redirect';
 
 export const routes: Routes = [
   // --- Public Pages under main header/navbar layout ---
@@ -10,22 +11,16 @@ export const routes: Routes = [
     children: [
       { path: '', loadComponent: () => import('./pages/home/home').then(m => m.HomeComponent), title: 'Acklet — Solve digital problems, instantly' },
       
-      // Tools Nested Route Tree
-      { path: 'tools', redirectTo: 'tools/explore', pathMatch: 'full' },
+      // Tools → redirect every /tools/** path to the Tools Hub subdomain
       {
         path: 'tools',
         children: [
-          { path: 'explore', loadComponent: () => import('./pages/tools/tools').then(m => m.ToolsComponent), title: 'Explore Solutions — Acklet' },
-          { path: 'json-lens', loadComponent: () => import('../tools/json-lens/json-lens.component').then(m => m.JsonLensComponent), title: 'JsonLens — JSON Formatter & Validator — Acklet' },
-          { path: 'categories', loadComponent: () => import('./pages/categories/categories').then(m => m.CategoriesComponent), title: 'Categories — Acklet' },
-          { path: 'trending', loadComponent: () => import('./pages/tools/trending/trending').then(m => m.ToolsTrendingComponent), title: 'Trending Solutions — Acklet' },
-          { path: 'new', loadComponent: () => import('./pages/tools/new-releases/new-releases').then(m => m.ToolsNewReleasesComponent), title: 'New Releases — Acklet' },
-          { path: 'search', loadComponent: () => import('./pages/tools/search-results/search-results').then(m => m.ToolsSearchResultsComponent), title: 'Search Results — Acklet' },
-          { path: ':id', loadComponent: () => import('./pages/tool-detail/tool-detail').then(m => m.ToolDetailComponent) },
+          { path: '**', component: ToolsRedirectComponent },
         ]
       },
-      
-      { path: 'categories', redirectTo: 'tools/categories', pathMatch: 'full' },
+
+      // /categories also goes to Tools Hub
+      { path: 'categories', component: ToolsRedirectComponent },
       { path: 'about', loadComponent: () => import('./pages/about/about').then(m => m.AboutComponent), title: 'About — Acklet' },
       { path: 'contact', loadComponent: () => import('./pages/contact/contact').then(m => m.ContactComponent), title: 'Contact — Acklet' },
       
@@ -43,7 +38,8 @@ export const routes: Routes = [
   },
 
   // --- Standalone Tool Applications (Pure Tool UI, No Platform Shell/Navbar) ---
-  { path: 'tools/json-formatter', loadComponent: () => import('../tools/json-lens/json-lens.component').then(m => m.JsonLensComponent), title: 'JSON Formatter & Validator — Acklet' },
+  // tools/json-formatter is now part of the Tools Hub — redirect there
+  { path: 'tools/json-formatter', component: ToolsRedirectComponent },
 
   // --- Standalone Auth Pages (No Navbar / No Main Footer) ---
   { path: 'login', redirectTo: 'auth/login', pathMatch: 'full' },

@@ -14,7 +14,7 @@ interface AIJob {
 @Component({
   selector: 'app-ai-jobs',
   standalone: true,
-  imports: [CommonModule, IconComponent],
+  imports: [CommonModule],
   template: `
     <div class="aj-wrapper">
       <div class="aj-header">

@@ -28,8 +28,6 @@ interface SidebarLink {
     RouterLinkActive,
     CommonModule,
     IconComponent,
-    MagneticDirective,
-    ToastComponent,
     FormsModule,
   ],
   template: `

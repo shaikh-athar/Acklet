@@ -113,7 +113,7 @@ export interface PillTabItem {
                   width 260ms cubic-bezier(0.22, 1, 0.36, 1),
                   opacity 150ms ease;
     }
-    [data-theme="dark"] .ts-pill-active-indicator {
+    :host-context([data-theme="dark"]) .ts-pill-active-indicator {
       background: #27272A;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     }
@@ -148,7 +148,7 @@ export interface PillTabItem {
       color: var(--text, #09090B);
       background: var(--surface-hover, rgba(0, 0, 0, 0.04));
     }
-    [data-theme="dark"] .ts-pill-tab-btn:hover:not(.active) {
+    :host-context([data-theme="dark"]) .ts-pill-tab-btn:hover:not(.active) {
       color: var(--text, #FCFCFC);
       background: rgba(255, 255, 255, 0.05);
     }
@@ -156,7 +156,7 @@ export interface PillTabItem {
       color: var(--text, #09090B);
       font-weight: 600;
     }
-    [data-theme="dark"] .ts-pill-tab-btn.active {
+    :host-context([data-theme="dark"]) .ts-pill-tab-btn.active {
       color: #FCFCFC;
     }
     .ts-pill-tab-btn:focus-visible {

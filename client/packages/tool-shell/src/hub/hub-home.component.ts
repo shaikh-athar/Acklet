@@ -1,215 +1,254 @@
 // packages/tool-shell/src/hub/hub-home.component.ts
-import { Component, signal, computed, OnInit, OnDestroy } from '@angular/core';
+import { 
+  Component, 
+  signal, 
+  computed, 
+  OnInit, 
+  OnDestroy, 
+  HostListener, 
+  ElementRef, 
+  viewChild, 
+  inject, 
+  effect,
+  NgZone
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { getAllTools, ToolRegistryItem } from '@acklet/tool-registry';
 import { getToolUrl } from '@acklet/shared';
-import { ToolStorageService } from '../services/tool-storage.service';
 import { TsIconComponent } from '../components/icon/ts-icon.component';
 import { TsPillTabsComponent, PillTabItem } from '../components/primitive/ts-pill-tabs.component';
-import { TsSpotlightCardComponent } from '../components/primitive/ts-spotlight-card.component';
-import { HlmInputGroupImports } from '@acklet/tool-shell/helm/input-group';
 import { TsEmptyStateComponent } from '../components/primitive/ts-empty-state.component';
 import { TsToolTileComponent } from '../components/primitive/ts-tool-tile.component';
+import { TsSpotlightDirective } from '../components/primitive/ts-spotlight.directive';
+import { ToolCapsuleService } from '../services/tool-capsule.service';
+import { ToolThemeService } from '../services/tool-theme.service';
+import { HlmItemImports } from '../helm/item';
+import { HlmBadgeImports } from '../helm/badge';
+import { HlmKbdImports } from '../helm/kbd';
+import { HlmSkeletonImports } from '../helm/skeleton';
+import { HlmInputGroupImports } from '../helm/input-group';
+
+const FAVORITES_KEY = 'acklet.tools.favorites';
+const RECENT_KEY = 'acklet.tools.recent';
 
 @Component({
   selector: 'hub-home',
   standalone: true,
   imports: [
-    CommonModule, 
-    FormsModule, 
-    TsIconComponent, 
+    CommonModule,
+    FormsModule,
+    TsIconComponent,
     TsPillTabsComponent,
-    TsEmptyStateComponent, 
-    TsSpotlightCardComponent,
+    TsEmptyStateComponent,
     TsToolTileComponent,
+    TsSpotlightDirective,
+    HlmItemImports,
+    HlmBadgeImports,
+    HlmKbdImports,
+    HlmSkeletonImports,
     HlmInputGroupImports
   ],
   template: `
-    <div class="hub-home-container" [class.is-page-dimmed]="isExpanding()">
-      <!-- Visually hidden live region for screen reader feedback -->
+    <div class="hub-page-root" [class.is-navigating]="isNavigating()">
+      <!-- Screen reader announcement -->
       <div class="sr-only" aria-live="polite" aria-atomic="true">
         {{ ariaLiveAnnouncement() }}
       </div>
 
-      <div class="hub-home-content">
-        
-        <!-- Sticky Page Header with Search & Pill Tabs -->
-        <header class="hub-page-header">
-          <div class="hub-title-group">
-            <h1 class="hub-main-title">Tools</h1>
-            <p class="hub-main-subtitle">
-              Free browser-based tools. No sign-up needed.
+      <!-- ══════════════════════════════════════════════════════ -->
+      <!-- A) FIXED TOP AREA (Sticky within Main Card)            -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <header class="hub-header-sticky">
+        <div class="hub-header-inner">
+          <!-- 1. Page Title & 2. Subtitle -->
+          <div class="hub-titles">
+            <h1 class="hub-heading">Tools</h1>
+            <p class="hub-subheading">
+              Simple, private tools for everyday work. No ads. No sign-up.
             </p>
           </div>
-          
-          <!-- Search Bar matching reference pill style -->
-          <div class="hub-search-wrapper">
+
+          <!-- 3. Search Bar with Kbd Hint -->
+          <div class="hub-search-box">
             <div hlmInputGroup class="hub-input-group">
+              <!-- Search Icon Start Addon -->
+              <div hlmInputGroupAddon align="inline-start" class="hub-search-start-addon">
+                <ts-icon name="search" [size]="16" class="hub-search-icon" />
+              </div>
+
+              <!-- Input -->
               <input
+                #searchInput
                 hlmInputGroupInput
                 type="text"
-                placeholder="Search tools and utilities..."
+                placeholder="Search tools"
                 [ngModel]="searchQuery()"
-                (ngModelChange)="onSearchChange($event)"
-                aria-label="Search tools catalog"
-                class="hub-search-input-field"
+                (ngModelChange)="onSearchInput($event)"
+                aria-label="Search tools"
+                class="hub-search-input"
               />
-              
-              <!-- Start icon addon -->
-              <div hlmInputGroupAddon align="inline-start" class="hub-search-start-addon">
-                <ts-icon name="search" [size]="16" class="hub-search-icon-ts" />
-              </div>
-              
-              <!-- End addon: Clear button (if text present) -->
-              @if (searchQuery()) {
-                <div hlmInputGroupAddon align="inline-end" class="hub-search-end-addon">
-                  <button 
-                    type="button" 
-                    class="hub-search-clear-btn" 
-                    (click)="clearSearch()" 
+
+              <!-- End Addons: Clear Button or "/" Keyboard Hint -->
+              <div hlmInputGroupAddon align="inline-end" class="hub-search-end-addon">
+                @if (searchQuery()) {
+                  <button
+                    type="button"
+                    class="hub-clear-btn"
+                    (click)="clearSearch()"
                     aria-label="Clear search"
                   >
                     <ts-icon name="x" [size]="14" />
                   </button>
-                </div>
-              }
+                } @else {
+                  <kbd hlmKbd class="hub-kbd-hint hide-mobile">/</kbd>
+                }
+              </div>
             </div>
           </div>
 
-          <!-- Sliding Pill Filter Tabs (All, Utilities, Developer, Security...) -->
-          @if (!searchQuery().trim()) {
-            <div class="hub-pills-filter-row">
+          <!-- 4. One Tab Row Only (Segmented Pill Tabs) + Small Result Count with Fade Swap -->
+          <div class="hub-tabs-row">
+            <div class="hub-tabs-track">
               <ts-pill-tabs
-                [tabs]="categoryPills()"
-                [activeTabId]="activeCategoryTab()"
-                ariaLabel="Filter tools by category"
-                (tabChange)="selectCategory($event)"
+                [tabs]="tabsList()"
+                [activeTabId]="activeTab()"
+                ariaLabel="Filter tools"
+                (tabChange)="selectTab($event)"
               />
             </div>
-          }
-        </header>
-
-        <!-- Tools Transition Container (Prevents layout collapse) -->
-        <div 
-          class="hub-tools-viewport" 
-          [class.is-leaving]="transitionState() === 'leaving'"
-          [class.is-entering]="transitionState() === 'entering'"
-        >
-          <!-- 1. Active Search or Category Filter View -->
-          @if (searchQuery().trim() || renderedCategory() !== 'ALL') {
-            <section class="hub-filtered-section">
-              <div class="hub-section-header">
-                <h2 class="hub-section-title">
-                  {{ searchQuery().trim() ? 'Search Results' : renderedCategory() }}
-                </h2>
-                <button type="button" class="hub-reset-btn" (click)="clearAllFilters()">
-                  Reset Filter
-                </button>
-              </div>
-
-              @if (filteredTools().length === 0) {
-                <div class="hub-empty-anim-wrapper">
-                  <ts-empty-state
-                    image="/assets/gif/404-lost-in-space.gif"
-                    title="No tools found"
-                    description="No utilities match your search query. Try adjusting keywords or category."
-                    actionLabel="Clear Filters"
-                    (action)="clearAllFilters()"
-                  />
-                </div>
-              } @else {
-                <!-- 3-column grid of tool spotlight cards with staggered entrance -->
-                <div class="hub-items-grid" [attr.data-search-token]="searchAnimKey()">
-                  @for (tool of filteredTools(); track tool.slug; let i = $index) {
-                    <div 
-                      class="ts-card-anim-wrapper search-result-item" 
-                      [style.--i]="calculateStaggerIndex(i)"
-                    >
-                      <ts-spotlight-card 
-                        [tool]="tool"
-                        [revealIndex]="i"
-                        (rowClick)="onToolRowClick($event)" 
-                      />
-                    </div>
-                  }
-                </div>
-              }
-            </section>
-          } @else {
-            <!-- 2. Categorized Tool Sections (Utilities, Developer, Security...) -->
-            <div class="hub-sections-stack">
-              @for (catGroup of categoryGroups(); track catGroup.category; let catIdx = $index) {
-                <section class="hub-category-tool-section">
-                  <div class="hub-section-header">
-                    <button 
-                      type="button" 
-                      class="hub-section-title-btn" 
-                      (click)="selectCategory(catGroup.category)"
-                    >
-                      <span class="hub-section-title">{{ catGroup.category }}</span>
-                      <ts-icon name="chevron-right" [size]="15" class="hub-section-chevron" />
-                    </button>
-                  </div>
-
-                  <!-- 3-Column Grid of tool spotlight cards with staggered entrance -->
-                  <div class="hub-items-grid">
-                    @for (tool of catGroup.tools; track tool.slug; let i = $index) {
-                      <div 
-                        class="ts-card-anim-wrapper" 
-                        [style.--i]="calculateStaggerIndex(catIdx * 3 + i)"
-                      >
-                        <ts-spotlight-card 
-                          [tool]="tool"
-                          [revealIndex]="i"
-                          (rowClick)="onToolRowClick($event)" 
-                        />
-                      </div>
-                    }
-                  </div>
-                </section>
-              }
+            <div class="hub-result-count" aria-hidden="true">
+              <span class="hub-count-num">
+                {{ displayedTools().length }}
+              </span>
+              <span>{{ displayedTools().length === 1 ? 'tool' : 'tools' }}</span>
             </div>
-          }
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Container Transform Expanding/Collapsing Card Overlay -->
-    @if (expandingTool(); as expTool) {
-      <div 
-        class="ts-container-transform-overlay"
-        [class.is-expanded]="expandState() === 'expanded'"
-        [class.is-collapsing]="expandState() === 'collapsing'"
-        [style.top.px]="expandState() === 'expanded' ? targetMainRect().top : (expandingRect()?.top || 0)"
-        [style.left.px]="expandState() === 'expanded' ? targetMainRect().left : (expandingRect()?.left || 0)"
-        [style.width.px]="expandState() === 'expanded' ? targetMainRect().width : (expandingRect()?.width || 0)"
-        [style.height.px]="expandState() === 'expanded' ? targetMainRect().height : (expandingRect()?.height || 0)"
-        aria-hidden="true"
-      >
-        <div class="ts-overlay-card-content">
-          <div class="ts-overlay-media">
-            <ts-tool-tile [icon]="expTool.icon" [name]="expTool.name" [category]="expTool.category" [size]="44" />
           </div>
-          <div class="ts-overlay-info">
-            <div class="ts-overlay-title-line">
-              <span class="ts-overlay-name">{{ expTool.name }}</span>
-            </div>
-            @if (expTool.shortDescription) {
-              <p class="ts-overlay-desc">{{ expTool.shortDescription }}</p>
+        </div>
+      </header>
+
+      <!-- ══════════════════════════════════════════════════════ -->
+      <!-- B) SCROLLABLE AREA: Flat Container-Queried Grid (Max 2) -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <section class="hub-content-scrollable" #gridContainer>
+        @if (isLoading()) {
+          <!-- Skeleton Loading State (Only on first initial load) -->
+          <div class="hub-tools-grid" aria-busy="true">
+            @for (sk of [1, 2, 3, 4, 5, 6]; track sk) {
+              <div class="hub-skeleton-item">
+                <div hlmSkeleton class="hub-skeleton-media"></div>
+                <div class="hub-skeleton-content">
+                  <div hlmSkeleton class="hub-skeleton-title"></div>
+                  <div hlmSkeleton class="hub-skeleton-desc"></div>
+                </div>
+              </div>
             }
           </div>
-        </div>
-      </div>
-    }
+        } @else if (displayedTools().length === 0) {
+          <!-- Empty States -->
+          <div class="hub-empty-state-wrapper">
+            @if (activeTab() === 'favorites') {
+              <ts-empty-state
+                icon="star"
+                title="No favorites yet"
+                description="Tap the star on any tool to save it here for quick access."
+              />
+            } @else if (activeTab() === 'recent') {
+              <ts-empty-state
+                icon="history"
+                title="No recent tools"
+                description="Tools you open will show here."
+              />
+            } @else {
+              <ts-empty-state
+                icon="search"
+                title="No tools found"
+                [description]="searchQuery().trim() ? 'No tools match &quot;' + searchQuery() + '&quot;. Try another search keyword.' : 'No tools available in this category.'"
+                actionLabel="Clear search"
+                (action)="clearAllFilters()"
+              />
+            }
+          </div>
+        } @else {
+          <!-- Flat 1-or-2 Column Grid of Spartan Item Rows with FLIP & Spotlight -->
+          <div 
+            class="hub-tools-grid"
+            role="list"
+            [attr.data-tab-token]="activeTab()"
+          >
+            @for (tool of displayedTools(); track tool.slug; let idx = $index) {
+              <a
+                hlm-item
+                variant="outline"
+                tsSpotlight
+                [href]="getToolHref(tool.slug)"
+                class="hub-tool-row-link group"
+                role="listitem"
+                [attr.data-slug]="tool.slug"
+                [attr.data-index]="idx"
+                [class.is-entering]="enteringSlugs().has(tool.slug)"
+                [class.is-leaving]="leavingSlugs().has(tool.slug)"
+                [style.--stagger-delay.ms]="idx < 8 ? idx * 30 : 240"
+                (click)="onToolClick($event, tool)"
+                (keydown)="onRowKeyDown($event, idx)"
+              >
+                <!-- Cursor Spotlight Surface (Pointer devices only) -->
+                <div class="hub-spotlight-layer" aria-hidden="true"></div>
+
+                <!-- Icon Tile (turns solid black on hover with white icon) -->
+                <hlm-item-media>
+                  <ts-tool-tile
+                    [icon]="tool.icon"
+                    [name]="tool.name"
+                    [category]="tool.category"
+                    [size]="42"
+                    class="hub-row-icon-tile"
+                  />
+                </hlm-item-media>
+
+                <!-- Tool Name + Description + Badge -->
+                <hlm-item-content>
+                  <div class="hub-row-title-line">
+                    <span hlmItemTitle class="hub-tool-name" [innerHTML]="highlightMatch(tool.name)"></span>
+                  </div>
+                  <p hlmItemDescription class="hub-tool-desc" [innerHTML]="highlightMatch(tool.shortDescription)"></p>
+                </hlm-item-content>
+
+                <!-- Right Side Actions: Favorite Star Button + Open Arrow Icon -->
+                <hlm-item-actions>
+                  <button
+                    type="button"
+                    class="hub-star-btn"
+                    [class.is-favorite]="isFavorite(tool.slug)"
+                    (click)="toggleFavorite($event, tool.slug)"
+                    [attr.aria-label]="isFavorite(tool.slug) ? 'Remove ' + tool.name + ' from favorites' : 'Add ' + tool.name + ' to favorites'"
+                    title="Toggle favorite"
+                  >
+                    <ts-icon 
+                      name="star" 
+                      [size]="16"
+                      class="hub-star-icon" 
+                    />
+                  </button>
+
+                  <div class="hub-open-arrow" aria-hidden="true">
+                    <ts-icon name="arrow-up-right" [size]="16" />
+                  </div>
+                </hlm-item-actions>
+              </a>
+            }
+          </div>
+        }
+      </section>
+    </div>
   `,
   styles: [`
     :host {
       display: block;
       width: 100%;
       min-width: 0;
-      color: var(--text);
+      color: var(--text, #18181B);
+      font-family: var(--font-body, "Nunito", sans-serif);
     }
 
     .sr-only {
@@ -224,116 +263,138 @@ import { TsToolTileComponent } from '../components/primitive/ts-tool-tile.compon
       border: 0;
     }
 
-    .hub-home-container {
+    .hub-page-root {
       width: 100%;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      background: transparent;
-      color: var(--text);
-    }
-    .hub-home-content {
-      max-width: 100%;
-      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 4px;
       display: flex;
       flex-direction: column;
-      gap: 28px;
-      min-width: 0;
+      gap: 24px;
+      box-sizing: border-box;
+      transition: opacity 200ms ease-out;
     }
-    .hub-page-header {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 16px;
+
+    .hub-page-root.is-navigating {
+      opacity: 0.65;
+      pointer-events: none;
+    }
+
+    /* ══════════════════════════════════════════════════════════ */
+    /* A) FIXED TOP AREA (Sticky inside the scrolling main card) */
+    /* ══════════════════════════════════════════════════════════ */
+    .hub-header-sticky {
       position: sticky;
-      top: 0;
-      z-index: 30;
-      background: var(--shell-card);
-      padding: 0 0 14px;
-      margin: 0;
-      border-bottom: 1px solid var(--border);
+      top: -24px; /* Matches ts-main-scroll-container top padding */
+      z-index: 25;
+      background: var(--shell-card, #FFFFFF);
+      padding: 12px 0 16px;
+      margin-top: -8px;
+      border-bottom: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
+                  border-color var(--ts-dur-base, 200ms) var(--ts-ease);
+    }
+
+    :host-context([data-theme="dark"]) .hub-header-sticky {
+      background: var(--shell-card, #141414);
+      border-bottom-color: var(--border, rgba(255, 255, 255, 0.08));
+    }
+
+    .hub-header-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
       width: 100%;
     }
-    .hub-title-group {
+
+    .hub-titles {
       display: flex;
       flex-direction: column;
       gap: 4px;
-      width: 100%;
     }
-    .hub-main-title {
+
+    .hub-heading {
       font-family: var(--font-heading, "Nunito", sans-serif);
-      font-size: clamp(24px, 1.8rem + 1vw, 32px);
-      font-weight: 700;
-      color: var(--text);
-      letter-spacing: var(--ts-tracking-tight);
+      font-size: clamp(24px, 2rem, 30px);
+      font-weight: 800;
+      color: var(--text, #09090B);
+      letter-spacing: -0.025em;
       margin: 0;
-      line-height: 1.2;
+      line-height: 1.15;
     }
-    .hub-main-subtitle {
-      font-family: var(--font-body, "Nunito", sans-serif);
-      font-size: clamp(13.5px, 12px + 0.5vw, 15px);
-      color: var(--text-muted);
-      line-height: 1.5;
+
+    :host-context([data-theme="dark"]) .hub-heading {
+      color: var(--text, #FCFCFC);
+    }
+
+    .hub-subheading {
+      font-size: clamp(13px, 14px, 15px);
+      color: var(--text-muted, #71717A);
       margin: 0;
+      line-height: 1.45;
     }
-    .hub-search-wrapper {
+
+    /* Search Input Pill */
+    .hub-search-box {
       width: 100%;
       position: relative;
     }
+
     .hub-input-group {
       width: 100%;
-      background: var(--accent-soft);
-      border: 1px solid var(--border);
+      height: 44px;
+      background: var(--surface-hover, #F4F4F5);
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
       border-radius: var(--ts-radius-full, 9999px);
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-      position: relative;
+      box-shadow: none;
       display: flex;
       align-items: center;
-      outline: none !important;
-      transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease);
+      position: relative;
+      transition: background-color 150ms ease, border-color 150ms ease;
     }
-    [data-theme="dark"] .hub-input-group {
-      background: #141416;
-      border-color: #27272A;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+
+    :host-context([data-theme="dark"]) .hub-input-group {
+      background: var(--surface-hover, #1E1E22);
+      border-color: var(--border, rgba(255, 255, 255, 0.08));
     }
+
     .hub-input-group:focus-within {
       outline: none !important;
-      box-shadow: none !important;
+      border-color: var(--border-accent, #18181B);
     }
-    [data-theme="dark"] .hub-input-group:focus-within {
-      outline: none !important;
-      box-shadow: none !important;
+
+    :host-context([data-theme="dark"]) .hub-input-group:focus-within {
+      border-color: var(--border-accent, #71717A);
     }
-    .hub-search-input-field {
+
+    .hub-search-input {
       width: 100%;
-      height: 44px;
-      padding-left: 44px;
-      padding-right: 44px;
-      font-size: 15px;
-      font-family: var(--ts-font-sans, "DM Sans", sans-serif);
+      height: 100%;
+      padding-left: 42px;
+      padding-right: 48px;
+      font-size: 14.5px;
+      font-family: inherit;
       color: var(--text, #18181B);
       background: transparent;
       border: none !important;
       outline: none !important;
       box-shadow: none !important;
     }
-    .hub-search-input-field:focus,
-    .hub-search-input-field:focus-visible {
-      border: none !important;
-      outline: none !important;
-      box-shadow: none !important;
-    }
-    [data-theme="dark"] .hub-search-input-field {
+
+    :host-context([data-theme="dark"]) .hub-search-input {
       color: var(--text, #FCFCFC);
     }
-    .hub-search-input-field::placeholder {
+
+    .hub-search-input::placeholder {
       color: var(--text-muted, #71717A);
       opacity: 0.9;
     }
+
     .hub-search-start-addon {
       position: absolute;
-      left: 16px;
+      left: 14px;
       top: 50%;
       transform: translateY(-50%);
       pointer-events: none;
@@ -342,101 +403,434 @@ import { TsToolTileComponent } from '../components/primitive/ts-tool-tile.compon
       justify-content: center;
       color: var(--text-muted, #71717A);
     }
-    .hub-search-icon-ts {
-      color: var(--text-muted, #71717A);
-    }
+
     .hub-search-end-addon {
       position: absolute;
       right: 12px;
       top: 50%;
       transform: translateY(-50%);
-      pointer-events: auto !important;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .hub-search-clear-btn {
+
+    .hub-clear-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: var(--ts-radius-full, 9999px);
+      background: transparent;
+      border: none;
+      color: var(--text-muted, #71717A);
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+
+    .hub-clear-btn:hover {
+      color: var(--text, #18181B);
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    :host-context([data-theme="dark"]) .hub-clear-btn:hover {
+      color: #FFFFFF;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .hub-kbd-hint {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--ts-font-mono, monospace);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted, #71717A);
+      background: var(--surface, #E4E4E7);
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+      border-radius: 4px;
+      padding: 1px 6px;
+      line-height: 1.3;
+    }
+
+    :host-context([data-theme="dark"]) .hub-kbd-hint {
+      background: #27272A;
+      border-color: rgba(255, 255, 255, 0.1);
+      color: var(--text-muted, #A1A1AA);
+    }
+
+    /* Tabs Row */
+    .hub-tabs-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      width: 100%;
+    }
+
+    .hub-tabs-track {
+      flex: 1;
+      min-width: 0;
+      overflow-x: auto;
+    }
+
+    .hub-result-count {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted, #71717A);
+      white-space: nowrap;
+      padding-right: 4px;
+    }
+
+    .hub-count-num {
+      display: inline-block;
+      animation: countSwapFade 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes countSwapFade {
+      0% {
+        opacity: 0;
+        transform: translateY(-3px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ══════════════════════════════════════════════════════════ */
+    /* B) SCROLLABLE CONTAINER-QUERIED GRID (Min 1, Max 2 tools) */
+    /* ══════════════════════════════════════════════════════════ */
+    .hub-content-scrollable {
+      width: 100%;
+      min-height: 360px;
+      container-type: inline-size;
+      container-name: hub-grid-wrapper;
+    }
+
+    .hub-tools-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      width: 100%;
+      position: relative;
+    }
+
+    /* Strict Container Query: 1 column below 720px, 2 columns from 720px */
+    @container hub-grid-wrapper (min-width: 720px) {
+      .hub-tools-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    /* Spartan Item Row Link Overrides & Grayscale Calm Styling */
+    .hub-tool-row-link {
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: var(--surface, #FFFFFF);
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.07));
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+      color: var(--text, #18181B);
+      cursor: pointer;
+      position: relative;
+      user-select: none;
+      outline: none;
+      overflow: hidden;
+      transition: background-color 220ms ease-out,
+                  transform 150ms ease-out,
+                  box-shadow 220ms ease-out;
+      will-change: transform, opacity;
+    }
+
+    :host-context([data-theme="dark"]) .hub-tool-row-link {
+      background: var(--surface, #141414);
+      border-color: var(--border, rgba(255, 255, 255, 0.06));
+      color: var(--text, #FCFCFC);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    /* FLIP Entering & Leaving states */
+    .hub-tool-row-link.is-entering {
+      animation: rowFadeSlideIn 220ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+      animation-delay: var(--stagger-delay, 0ms);
+    }
+
+    .hub-tool-row-link.is-leaving {
+      animation: rowFadeScaleOut 160ms cubic-bezier(0.4, 0, 1, 1) forwards;
+      pointer-events: none;
+    }
+
+    /* Spotlight layer following cursor inside row */
+    .hub-spotlight-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      background: radial-gradient(
+        260px circle at var(--mx, -999px) var(--my, -999px),
+        rgba(0, 0, 0, 0.04),
+        transparent 70%
+      );
+      transition: opacity 180ms ease;
+      z-index: 1;
+    }
+
+    :host-context([data-theme="dark"]) .hub-spotlight-layer {
+      background: radial-gradient(
+        260px circle at var(--mx, -999px) var(--my, -999px),
+        rgba(255, 255, 255, 0.06),
+        transparent 70%
+      );
+    }
+
+    /* Calm Grayscale Hover: Pointer devices only */
+    @media (hover: hover) {
+      .hub-tool-row-link:hover {
+        background: var(--surface-hover, #F4F4F5);
+        border-color: var(--border, rgba(0, 0, 0, 0.07));
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+        transform: translateY(-1px);
+      }
+
+      :host-context([data-theme="dark"]) .hub-tool-row-link:hover {
+        background: var(--surface-hover, #1E1E22);
+        border-color: var(--border, rgba(255, 255, 255, 0.06));
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+        transform: translateY(-1px);
+      }
+
+      .hub-tool-row-link:hover .hub-spotlight-layer {
+        opacity: 1;
+      }
+
+      /* Icon tile turns solid black with white icon on row hover (220ms) */
+      .hub-tool-row-link:hover .hub-row-icon-tile :first-child {
+        background: #000000 !important;
+        border-color: #000000 !important;
+        color: #FFFFFF !important;
+        transition: all 220ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+      }
+
+      :host-context([data-theme="dark"]) .hub-tool-row-link:hover .hub-row-icon-tile :first-child {
+        background: #FFFFFF !important;
+        border-color: #FFFFFF !important;
+        color: #000000 !important;
+      }
+
+      /* Arrow icon slides 4px right and fades in */
+      .hub-tool-row-link:hover .hub-open-arrow {
+        color: var(--text, #18181B);
+        opacity: 1;
+        transform: translateX(4px);
+      }
+
+      :host-context([data-theme="dark"]) .hub-tool-row-link:hover .hub-open-arrow {
+        color: #FFFFFF;
+        opacity: 1;
+        transform: translateX(4px);
+      }
+    }
+
+    /* Press Effect (Both Touch & Pointer devices) */
+    .hub-tool-row-link:active {
+      transform: scale(0.98);
+      transition: transform 150ms ease-out;
+    }
+
+    /* Keyboard focus-visible ring only (No outline on mouse click) */
+    .hub-tool-row-link:focus:not(:focus-visible) {
+      outline: none;
+    }
+
+    .hub-tool-row-link:focus-visible {
+      outline: 2px solid var(--ts-focus-ring, #18181B) !important;
+      outline-offset: 2px;
+      z-index: 2;
+    }
+
+    :host-context([data-theme="dark"]) .hub-tool-row-link:focus-visible {
+      outline-color: var(--ts-focus-ring, #E4E4E7) !important;
+    }
+
+    .hub-row-title-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-width: 0;
+      position: relative;
+      z-index: 2;
+    }
+
+    .hub-tool-name {
+      font-family: var(--font-heading, "Nunito", sans-serif);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text, #18181B);
+      letter-spacing: -0.015em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.25;
+    }
+
+    :host-context([data-theme="dark"]) .hub-tool-name {
+      color: var(--text, #FCFCFC);
+    }
+
+    .hub-tool-desc {
+      font-size: 13px;
+      color: var(--text-muted, #71717A);
+      line-height: 1.4;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin: 2px 0 0;
+      position: relative;
+      z-index: 2;
+    }
+
+    :host-context([data-theme="dark"]) .hub-tool-desc {
+      color: var(--text-muted, #A1A1AA);
+    }
+
+    .hub-tool-badge {
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 9999px;
+      background: var(--surface-hover, #F4F4F5);
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.06));
+      color: var(--text-muted, #71717A);
+      line-height: 1.2;
+    }
+
+    [data-theme="dark"] .hub-tool-badge {
+      background: #27272A;
+      border-color: rgba(255, 255, 255, 0.08);
+      color: #A1A1AA;
+    }
+
+    /* Actions: Star & Arrow */
+    .hub-star-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       width: 32px;
       height: 32px;
-      min-width: 32px;
-      min-height: 32px;
-      border-radius: var(--ts-radius-full);
+      border-radius: var(--ts-radius-full, 9999px);
       background: transparent;
       border: none;
-      color: var(--text-muted, #71717A);
+      color: var(--text-muted, #A1A1AA);
       cursor: pointer;
-      transition: all var(--ts-dur-fast, 150ms) var(--ts-ease);
-    }
-    .hub-search-clear-btn:hover {
-      color: var(--text, #18181B);
-      background: var(--surface-hover, #F4F4F5);
-    }
-    .hub-pills-filter-row {
-      margin-top: 2px;
-      width: 100%;
-      overflow: hidden;
-    }
-
-    /* Transition & Motion Rules */
-    .hub-tools-viewport {
-      min-height: 420px;
+      outline: none;
       position: relative;
+      z-index: 3;
+      transition: color 150ms ease, transform 150ms ease, background-color 150ms ease;
     }
 
-    /* 1. LEAVING State (120ms, ease-in) */
-    .hub-tools-viewport.is-leaving {
-      pointer-events: none;
-    }
-    .hub-tools-viewport.is-leaving .ts-card-anim-wrapper,
-    .hub-tools-viewport.is-leaving .hub-category-tool-section,
-    .hub-tools-viewport.is-leaving .hub-filtered-section {
-      animation: hubCardsLeave 120ms ease-in forwards;
+    .hub-star-btn:hover {
+      color: var(--text, #18181B);
+      background: rgba(0, 0, 0, 0.04);
     }
 
-    /* 2. ENTERING State (320ms, cubic-bezier(0.22, 1, 0.36, 1) with stagger) */
-    .hub-tools-viewport.is-entering .ts-card-anim-wrapper {
-      animation: hubCardsEnter 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
-      animation-delay: calc(var(--i, 0) * 50ms);
-    }
-    .hub-tools-viewport.is-entering .hub-section-header {
-      animation: hubHeadingEnter 280ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
-    }
-    .hub-empty-anim-wrapper {
-      animation: hubCardsEnter 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    :host-context([data-theme="dark"]) .hub-star-btn:hover {
+      color: #FFFFFF;
+      background: rgba(255, 255, 255, 0.06);
     }
 
-    /* Live Search Results Animation */
-    .search-result-item {
-      animation: hubCardsEnter 280ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
-      animation-delay: calc(var(--i, 0) * 35ms);
+    .hub-star-btn:active {
+      transform: scale(0.9);
     }
 
-    @keyframes hubCardsLeave {
-      0% {
-        opacity: 1;
-        transform: translateY(0);
-      }
-      100% {
-        opacity: 0;
-        transform: translateY(-6px);
-      }
+    .hub-star-btn.is-favorite {
+      color: #F59E0B !important; /* Gold favorite star */
+      animation: starPop 280ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
-    @keyframes hubCardsEnter {
-      0% {
-        opacity: 0;
-        transform: translateY(14px);
-      }
-      100% {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    .hub-open-arrow {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      color: var(--text-muted, #A1A1AA);
+      opacity: 0.6;
+      position: relative;
+      z-index: 2;
+      transition: color 220ms ease, transform 220ms ease, opacity 220ms ease;
     }
 
-    @keyframes hubHeadingEnter {
+    /* Soft Search Match Highlight */
+    :host ::ng-deep .search-highlight {
+      background: rgba(234, 179, 8, 0.25);
+      color: inherit;
+      border-radius: 2px;
+      padding: 0 1px;
+      font-weight: inherit;
+    }
+
+    :host-context([data-theme="dark"]) :host ::ng-deep .search-highlight {
+      background: rgba(234, 179, 8, 0.35);
+    }
+
+    /* Skeleton Loading Rows */
+    .hub-skeleton-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: var(--surface, #FFFFFF);
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.06));
+    }
+
+    :host-context([data-theme="dark"]) .hub-skeleton-item {
+      background: var(--surface, #141414);
+      border-color: var(--border, rgba(255, 255, 255, 0.06));
+    }
+
+    .hub-skeleton-media {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+    }
+
+    .hub-skeleton-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .hub-skeleton-title {
+      width: 35%;
+      height: 16px;
+      border-radius: 4px;
+    }
+
+    .hub-skeleton-desc {
+      width: 75%;
+      height: 12px;
+      border-radius: 4px;
+    }
+
+    .hub-empty-state-wrapper {
+      padding: 48px 0;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    /* Keyframe Animations */
+    @keyframes rowFadeSlideIn {
       0% {
         opacity: 0;
         transform: translateY(8px);
@@ -447,316 +841,124 @@ import { TsToolTileComponent } from '../components/primitive/ts-tool-tile.compon
       }
     }
 
-    /* Card animation wrapper keeps entrance transform separate from card hover lift */
-    .ts-card-anim-wrapper {
-      width: 100%;
-      display: flex;
-      min-width: 0;
-      animation-fill-mode: backwards;
-    }
-
-    .hub-sections-stack {
-      display: flex;
-      flex-direction: column;
-      gap: 36px;
-      width: 100%;
-      min-width: 0;
-    }
-    .hub-category-tool-section,
-    .hub-filtered-section {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      width: 100%;
-      min-width: 0;
-    }
-    .hub-section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 4px;
-      width: 100%;
-    }
-    .hub-section-title-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: transparent;
-      border: none;
-      padding: 4px 0;
-      min-height: 36px;
-      cursor: pointer;
-      color: var(--text, #18181B);
-      border-radius: 6px;
-      transition: color var(--ts-dur-fast, 150ms) var(--ts-ease);
-    }
-    .hub-section-title-btn:hover {
-      color: var(--text-muted, #71717A);
-    }
-    .hub-section-title {
-      font-family: var(--ts-font-heading, "DM Sans", sans-serif);
-      font-size: 18px;
-      font-weight: 600;
-      color: inherit;
-      margin: 0;
-    }
-    .hub-section-chevron {
-      color: var(--text-muted, #71717A);
-    }
-    .hub-reset-btn {
-      font-family: var(--ts-font-sans);
-      background: transparent;
-      border: none;
-      font-size: 13px;
-      color: var(--text-muted, #71717A);
-      cursor: pointer;
-      padding: 6px 12px;
-      min-height: 36px;
-      border-radius: var(--ts-radius-sm, 8px);
-      transition: all var(--ts-dur-fast, 150ms) var(--ts-ease);
-    }
-    .hub-reset-btn:hover {
-      color: var(--text, #18181B);
-      background: var(--surface-hover, #F4F4F5);
-    }
-
-    /* Responsive Grid: 3 cols >= 1280px, 2 cols >= 640px, 1 col below; 24px gap */
-    .hub-items-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 20px;
-      width: 100%;
-      min-width: 0;
-    }
-    @media (min-width: 640px) {
-      .hub-items-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 24px;
+    @keyframes rowFadeScaleOut {
+      0% {
+        opacity: 1;
+        transform: scale(1);
       }
-    }
-    @media (min-width: 1280px) {
-      .hub-items-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 24px;
-      }
-    }
-
-    /* Dim and subtle scale of page under expanding card */
-    .hub-home-container.is-page-dimmed {
-      opacity: 0.6;
-      transform: scale(0.98);
-      transition: opacity 450ms cubic-bezier(0.32, 0.72, 0, 1),
-                  transform 450ms cubic-bezier(0.32, 0.72, 0, 1);
-      pointer-events: none;
-    }
-
-    /* Container Transform Fixed Overlay (Expands into Main Content Card rectangle) */
-    .ts-container-transform-overlay {
-      position: fixed;
-      z-index: 9999;
-      border-radius: 16px;
-      background: var(--shell-card);
-      border: 1px solid var(--border);
-      box-shadow: var(--shell-card-shadow);
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      padding: 14px 18px;
-      pointer-events: auto;
-      transition: top 400ms cubic-bezier(0.32, 0.72, 0, 1),
-                  left 400ms cubic-bezier(0.32, 0.72, 0, 1),
-                  width 400ms cubic-bezier(0.32, 0.72, 0, 1),
-                  height 400ms cubic-bezier(0.32, 0.72, 0, 1),
-                  border-radius 400ms cubic-bezier(0.32, 0.72, 0, 1),
-                  border-color 400ms cubic-bezier(0.32, 0.72, 0, 1);
-      will-change: top, left, width, height, border-radius;
-    }
-
-    .ts-container-transform-overlay.is-expanded {
-      border-radius: var(--shell-radius, 20px) !important;
-      border-color: var(--shell-card-border) !important;
-    }
-
-    .ts-container-transform-overlay.is-collapsing {
-      transition: top 360ms cubic-bezier(0.32, 0.72, 0, 1),
-                  left 360ms cubic-bezier(0.32, 0.72, 0, 1),
-                  width 360ms cubic-bezier(0.32, 0.72, 0, 1),
-                  height 360ms cubic-bezier(0.32, 0.72, 0, 1),
-                  border-radius 360ms cubic-bezier(0.32, 0.72, 0, 1),
-                  border-color 360ms cubic-bezier(0.32, 0.72, 0, 1);
-    }
-
-    .ts-overlay-card-content {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      width: 100%;
-      opacity: 1;
-      transition: opacity 150ms cubic-bezier(0.32, 0.72, 0, 1);
-    }
-
-    .ts-container-transform-overlay.is-expanded .ts-overlay-card-content {
-      opacity: 0;
-    }
-
-    .ts-container-transform-overlay.is-collapsing .ts-overlay-card-content {
-      opacity: 1;
-    }
-
-    .ts-overlay-media {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .ts-overlay-info {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      min-width: 0;
-      overflow: hidden;
-    }
-
-    .ts-overlay-title-line {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .ts-overlay-name {
-      font-family: var(--ts-font-heading, "DM Sans", sans-serif);
-      font-size: 15.5px;
-      font-weight: 600;
-      color: var(--text, #18181B);
-      letter-spacing: var(--ts-tracking-tight);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      line-height: 1.3;
-    }
-
-    .ts-overlay-desc {
-      font-family: var(--ts-font-sans);
-      font-size: 13.5px;
-      color: var(--text-muted, #71717A);
-      line-height: 1.45;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin: 0;
-    }
-
-    @media (max-width: 639px) {
-      .hub-items-grid {
-        grid-template-columns: 1fr;
-        gap: 10px;
-      }
-      .hub-home-container {
-        padding: 16px 20px 36px;
-      }
-    }
-
-    /* Reduced Motion preference support */
-    @media (prefers-reduced-motion: reduce) {
-      .hub-tools-viewport.is-leaving .ts-card-anim-wrapper,
-      .hub-tools-viewport.is-entering .ts-card-anim-wrapper,
-      .hub-tools-viewport.is-entering .hub-section-header,
-      .hub-empty-anim-wrapper {
-        animation: none !important;
-        opacity: 1 !important;
-        transform: none !important;
-        transition: opacity 100ms linear !important;
-      }
-      .hub-home-container.is-page-dimmed {
-        transform: none !important;
-        transition: opacity 100ms linear !important;
-      }
-      .ts-container-transform-overlay {
-        transition: opacity 100ms linear !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100vw !important;
-        height: 100vh !important;
-        border-radius: 0 !important;
+      100% {
         opacity: 0;
+        transform: scale(0.96);
       }
-      .ts-container-transform-overlay.is-expanded {
-        opacity: 1 !important;
+    }
+
+    @keyframes starPop {
+      0% {
+        transform: scale(0.8);
       }
-      .ts-overlay-card-content {
-        transition: opacity 80ms linear !important;
+      50% {
+        transform: scale(1.3);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hub-tool-row-link,
+      .hub-star-btn.is-favorite,
+      .hub-page-root,
+      .hub-open-arrow,
+      .hub-count-num {
+        animation: none !important;
+        transition: opacity 100ms linear !important;
+        transform: none !important;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .hide-mobile {
+        display: none !important;
+      }
+      .hub-header-sticky {
+        top: -16px;
       }
     }
   `]
 })
 export class HubHomeComponent implements OnInit, OnDestroy {
-  private readonly storage: ToolStorageService;
+  private readonly zone = inject(NgZone);
+  private readonly el = inject(ElementRef<HTMLElement>);
 
+  readonly searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
+  readonly gridContainer = viewChild<ElementRef<HTMLElement>>('gridContainer');
+
+  // Query & Tab state
   readonly searchQuery = signal<string>('');
-  
-  // Tab and animation sequence signals
-  readonly activeCategoryTab = signal<string>('ALL');
-  readonly renderedCategory = signal<string>('ALL');
-  readonly transitionState = signal<'idle' | 'leaving' | 'entering'>('idle');
-  readonly searchAnimKey = signal<number>(0);
+  readonly debouncedQuery = signal<string>('');
+  readonly activeTab = signal<string>('all');
+  readonly searchVersion = signal<number>(0);
+  readonly isLoading = signal<boolean>(false);
+  readonly isNavigating = signal<boolean>(false);
   readonly ariaLiveAnnouncement = signal<string>('');
-  readonly recentSlugs = signal<string[]>(['clipboard']);
 
-  // Container transform signals
-  readonly expandingTool = signal<ToolRegistryItem | null>(null);
-  readonly expandingRect = signal<DOMRect | null>(null);
-  readonly expandState = signal<'start' | 'expanded' | 'collapsing' | 'idle'>('idle');
-  readonly isExpanding = computed(() => this.expandingTool() !== null);
+  // FLIP animation sets
+  readonly enteringSlugs = signal<Set<string>>(new Set());
+  readonly leavingSlugs = signal<Set<string>>(new Set());
 
-  readonly targetMainRect = computed(() => {
-    if (typeof window !== 'undefined') {
-      const mainEl = document.getElementById('main-content');
-      if (mainEl) {
-        return mainEl.getBoundingClientRect();
-      }
-    }
-    return { top: 0, left: 0, width: typeof window !== 'undefined' ? window.innerWidth : 1000, height: typeof window !== 'undefined' ? window.innerHeight : 800 } as DOMRect;
-  });
+  // Storage states
+  readonly favoriteSlugs = signal<string[]>([]);
+  readonly recentSlugs = signal<string[]>([]);
 
-  private transitionTimer?: any;
+  private debounceTimer?: any;
   private navigationTimer?: any;
-  private reverseTimer?: any;
+  private failsafeTimer?: any;
+  private previousPositions = new Map<string, DOMRect>();
 
-  constructor(storage?: ToolStorageService) {
-    this.storage = storage ?? new ToolStorageService();
-  }
-
-  readonly liveTools = computed(() => getAllTools().filter(t => t.status === 'live' || t.status === 'beta'));
-
-  readonly categoryGroups = computed(() => {
-    const map = new Map<string, ToolRegistryItem[]>();
-    for (const tool of this.liveTools()) {
-      const cat = tool.category || 'Utilities';
-      if (!map.has(cat)) map.set(cat, []);
-      map.get(cat)!.push(tool);
-    }
-    return Array.from(map.entries()).map(([category, tools]) => ({ category, tools }));
+  // Raw Tools from registry
+  readonly allLiveTools = computed<ToolRegistryItem[]>(() => {
+    return getAllTools().filter(t => t.status === 'live' || t.status === 'beta');
   });
 
-  readonly categoryPills = computed<PillTabItem[]>(() => {
-    const list: PillTabItem[] = [{ id: 'ALL', label: 'All' }];
-    for (const group of this.categoryGroups()) {
-      list.push({ id: group.category, label: group.category });
-    }
-    return list;
+  // Tab definitions: All | Utilities | Developer | Security | Favorites | Recent
+  readonly tabsList = computed<PillTabItem[]>(() => {
+    return [
+      { id: 'all', label: 'All' },
+      { id: 'utilities', label: 'Utilities' },
+      { id: 'developer', label: 'Developer' },
+      { id: 'security', label: 'Security' },
+      { id: 'favorites', label: 'Favorites', count: this.favoriteSlugs().length },
+      { id: 'recent', label: 'Recent', count: this.recentSlugs().length },
+    ];
   });
 
-  readonly filteredTools = computed(() => {
-    const q = this.searchQuery().toLowerCase().trim();
-    const cat = this.renderedCategory();
+  // Filtered Tools computation
+  readonly displayedTools = computed<ToolRegistryItem[]>(() => {
+    const q = this.debouncedQuery().toLowerCase().trim();
+    const tab = this.activeTab().toLowerCase();
+    const all = this.allLiveTools();
 
-    return this.liveTools().filter(tool => {
-      const matchesCategory = cat === 'ALL' || tool.category.toLowerCase() === cat.toLowerCase();
-      if (!matchesCategory) return false;
+    let list: ToolRegistryItem[] = [];
 
-      if (!q) return true;
+    if (tab === 'all') {
+      list = all;
+    } else if (tab === 'favorites') {
+      const favSet = new Set(this.favoriteSlugs());
+      list = all.filter(t => favSet.has(t.slug));
+    } else if (tab === 'recent') {
+      const recentList = this.recentSlugs();
+      const toolMap = new Map(all.map(t => [t.slug, t]));
+      list = recentList.map(slug => toolMap.get(slug)).filter((t): t is ToolRegistryItem => !!t);
+    } else {
+      // Category match (utilities, developer, security)
+      list = all.filter(t => t.category.toLowerCase() === tab);
+    }
+
+    if (!q) {
+      return list;
+    }
+
+    return list.filter(tool => {
       return (
         tool.name.toLowerCase().includes(q) ||
         tool.shortDescription.toLowerCase().includes(q) ||
@@ -767,218 +969,374 @@ export class HubHomeComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    this.loadFavoritesFromStorage();
+    this.loadRecentsFromStorage();
+
     if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const q = params.get('q');
-      const cat = params.get('category');
-      if (q) this.searchQuery.set(q);
-      if (cat) {
-        this.activeCategoryTab.set(cat);
-        this.renderedCategory.set(cat);
-      }
+      this.syncStateFromUrl();
 
-      const savedRecents = this.storage.getItem<string[]>('recent_tools', []);
-      if (savedRecents && savedRecents.length > 0) {
-        this.recentSlugs.set(savedRecents);
-      }
+      // Listen to popstate (Back/Forward browser buttons)
+      window.addEventListener('popstate', this.onPopState);
 
-      // Check if arriving back from a tool via back button or link
-      this.checkReverseTransition();
-
-      // Listen to pageshow for browser back navigation from bfcache
+      // Handle pageshow event (bfcache restoration)
       window.addEventListener('pageshow', this.onPageShow);
-      window.addEventListener('pagehide', this.onPageHide);
-    }
-  }
-
-  private onPageHide = (): void => {
-    // When navigating away, reset any frozen expand state
-    this.expandingTool.set(null);
-    this.expandingRect.set(null);
-    this.expandState.set('idle');
-  };
-
-  private onPageShow = (event: PageTransitionEvent): void => {
-    // Always reset expand overlay when restoring page from bfcache
-    this.expandingTool.set(null);
-    this.expandingRect.set(null);
-    this.expandState.set('idle');
-
-    // Run reverse animation if returning from a tool
-    this.checkReverseTransition();
-  };
-
-  private checkReverseTransition(): void {
-    try {
-      if (typeof window === 'undefined' || !window.sessionStorage) return;
-      const stored = sessionStorage.getItem('acklet_tool_back');
-      if (!stored) return;
-
-      const parsed = JSON.parse(stored);
-      const isRecent = Date.now() - parsed.timestamp < 10000;
-      sessionStorage.removeItem('acklet_tool_back');
-
-      if (!isRecent || !parsed.slug) return;
-
-      const targetTool = this.liveTools().find(t => t.slug === parsed.slug);
-      if (!targetTool) return;
-
-      // Find the card element on the page
-      setTimeout(() => {
-        const cardEl = document.querySelector(`[data-tool-slug="${targetTool.slug}"]`) as HTMLElement;
-        const rect = cardEl ? cardEl.getBoundingClientRect() : null;
-
-        if (rect && rect.width > 0 && rect.height > 0) {
-          this.expandingTool.set(targetTool);
-          this.expandingRect.set(rect);
-          // Start full screen
-          this.expandState.set('expanded');
-
-          // Animate back into card rectangle
-          requestAnimationFrame(() => {
-            setTimeout(() => {
-              this.expandState.set('collapsing');
-              this.reverseTimer = setTimeout(() => {
-                this.expandingTool.set(null);
-                this.expandingRect.set(null);
-                this.expandState.set('idle');
-              }, 400);
-            }, 30);
-          });
-        }
-      }, 50);
-    } catch (e) {
-      // Ignore
     }
   }
 
   ngOnDestroy(): void {
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('pageshow', this.onPageShow);
-      window.removeEventListener('pagehide', this.onPageHide);
-    }
-    if (this.transitionTimer) clearTimeout(this.transitionTimer);
+    if (this.debounceTimer) clearTimeout(this.debounceTimer);
     if (this.navigationTimer) clearTimeout(this.navigationTimer);
-    if (this.reverseTimer) clearTimeout(this.reverseTimer);
+    if (this.failsafeTimer) clearTimeout(this.failsafeTimer);
+
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('popstate', this.onPopState);
+      window.removeEventListener('pageshow', this.onPageShow);
+    }
   }
 
-  onSearchChange(val: string): void {
+  private onPopState = (): void => {
+    this.zone.run(() => {
+      this.syncStateFromUrl();
+      this.executeFlipTransition();
+    });
+  };
+
+  private onPageShow = (event: PageTransitionEvent): void => {
+    // When restored from bfcache, clear any frozen navigation/animation state
+    this.zone.run(() => {
+      this.isNavigating.set(false);
+      this.enteringSlugs.set(new Set());
+      this.leavingSlugs.set(new Set());
+      this.resetFailsafe();
+    });
+  };
+
+  private syncStateFromUrl(): void {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('q') || '';
+    const tab = params.get('tab') || 'all';
+
+    this.searchQuery.set(q);
+    this.debouncedQuery.set(q);
+    this.activeTab.set(tab.toLowerCase());
+  }
+
+  // Keyboard Navigation: '/' to focus search, 'Escape' to clear
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeyboard(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement;
+    const isEditing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+    if (event.key === '/' && !isEditing) {
+      event.preventDefault();
+      this.searchInput()?.nativeElement.focus();
+    } else if (event.key === 'Escape' && isEditing && this.searchQuery()) {
+      event.preventDefault();
+      this.clearSearch();
+    }
+  }
+
+  onRowKeyDown(event: KeyboardEvent, index: number): void {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      const nextRow = document.querySelector(`[data-index="${index + 1}"]`) as HTMLElement;
+      nextRow?.focus();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      const prevRow = document.querySelector(`[data-index="${index - 1}"]`) as HTMLElement;
+      prevRow?.focus();
+    }
+  }
+
+  onSearchInput(val: string): void {
     this.searchQuery.set(val);
-    this.searchAnimKey.update(k => k + 1);
-    this.updateUrlParams();
+
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+    }
+
+    this.debounceTimer = setTimeout(() => {
+      this.captureFLIPPositions();
+      this.debouncedQuery.set(val);
+      this.searchVersion.update(v => v + 1);
+      this.updateUrlParams();
+      this.announceResults();
+      this.executeFlipTransition();
+    }, 150);
   }
 
   clearSearch(): void {
+    this.captureFLIPPositions();
     this.searchQuery.set('');
-    this.searchAnimKey.update(k => k + 1);
+    this.debouncedQuery.set('');
+    this.searchVersion.update(v => v + 1);
     this.updateUrlParams();
+    this.announceResults();
+    this.searchInput()?.nativeElement.focus();
+    this.executeFlipTransition();
   }
 
-  selectCategory(category: string): void {
-    if (category === this.activeCategoryTab()) return;
-
-    // 1. Immediately update tab highlight
-    this.activeCategoryTab.set(category);
+  selectTab(tabId: string): void {
+    if (this.activeTab() === tabId) return;
+    this.captureFLIPPositions();
+    this.activeTab.set(tabId);
     this.updateUrlParams();
-
-    // 2. Cancel in-flight transition timer if rapid clicks occur
-    if (this.transitionTimer) {
-      clearTimeout(this.transitionTimer);
-    }
-
-    // 3. Trigger LEAVING animation (120ms)
-    this.transitionState.set('leaving');
-
-    this.transitionTimer = setTimeout(() => {
-      // 4. Swap data and start ENTERING animation (320ms)
-      this.renderedCategory.set(category);
-      this.transitionState.set('entering');
-
-      // Update accessibility live announcement
-      const count = category === 'ALL' ? this.liveTools().length : this.filteredTools().length;
-      this.ariaLiveAnnouncement.set(`${count} tools shown in ${category === 'ALL' ? 'all categories' : category}`);
-
-      this.transitionTimer = setTimeout(() => {
-        this.transitionState.set('idle');
-      }, 350);
-    }, 120);
+    this.announceResults();
+    this.executeFlipTransition();
   }
 
   clearAllFilters(): void {
+    this.captureFLIPPositions();
     this.searchQuery.set('');
-    this.selectCategory('ALL');
+    this.debouncedQuery.set('');
+    this.activeTab.set('all');
+    this.updateUrlParams();
+    this.announceResults();
+    this.executeFlipTransition();
   }
 
-  calculateStaggerIndex(index: number): number {
-    // 50ms per item capped so total stagger never exceeds 350ms (7 items max)
-    return Math.min(index, 7);
+  private readonly capsuleService = inject(ToolCapsuleService);
+  private readonly themeService = inject(ToolThemeService);
+
+  getToolHref(slug: string): string {
+    return getToolUrl(slug);
   }
 
-  recordRecent(slug: string): void {
-    const existing = this.recentSlugs().filter(s => s !== slug);
-    const updated = [slug, ...existing].slice(0, 8);
-    this.recentSlugs.set(updated);
-    this.storage.setItem('recent_tools', updated);
-  }
-
-  onToolRowClick(event: { tool: ToolRegistryItem; rect: DOMRect; mouseEvent: MouseEvent }): void {
-    // Prevent double triggers if animation is in flight
-    if (this.isExpanding()) {
-      event.mouseEvent.preventDefault();
+  onToolClick(event: MouseEvent, tool: ToolRegistryItem): void {
+    // 1. If middle click, Ctrl/Cmd/Shift click, or opens in new tab: let normal link work
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) {
+      this.recordRecent(tool.slug);
       return;
     }
 
-    event.mouseEvent.preventDefault();
-    this.recordRecent(event.tool.slug);
+    event.preventDefault();
+    // 6. Save tool in Recent before navigating
+    this.recordRecent(tool.slug);
 
-    const prefersReduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const expandDuration = prefersReduced ? 80 : 420;
+    this.isNavigating.set(true);
 
-    // 1. Store transition state in sessionStorage for the destination tool page
+    const rowEl = (event.currentTarget as HTMLElement) || (event.target as HTMLElement).closest('.hub-tool-row-link') as HTMLElement;
+    const isDark = this.themeService.effectiveTheme() === 'dark';
+
+    if (rowEl) {
+      this.capsuleService.playHubExpand(rowEl, isDark, (hashParam: string) => {
+        const baseUrl = getToolUrl(tool.slug);
+        const finalUrl = hashParam ? `${baseUrl}#${hashParam}` : baseUrl;
+        window.location.assign(finalUrl);
+      });
+    } else {
+      window.location.assign(getToolUrl(tool.slug));
+    }
+  }
+
+  isFavorite(slug: string): boolean {
+    return this.favoriteSlugs().includes(slug);
+  }
+
+  toggleFavorite(event: MouseEvent, slug: string): void {
+    event.stopPropagation();
+    event.preventDefault();
+
+    const current = this.favoriteSlugs();
+    const updated = current.includes(slug)
+      ? current.filter(s => s !== slug)
+      : [...current, slug];
+
+    this.favoriteSlugs.set(updated);
+    this.saveFavoritesToStorage(updated);
+  }
+
+  private recordRecent(slug: string): void {
+    const current = this.recentSlugs().filter(s => s !== slug);
+    const updated = [slug, ...current].slice(0, 8); // Max 8 recent tools
+    this.recentSlugs.set(updated);
+    this.saveRecentsToStorage(updated);
+  }
+
+  private loadFavoritesFromStorage(): void {
     try {
-      if (typeof window !== 'undefined' && window.sessionStorage) {
-        sessionStorage.setItem('acklet_tool_transition', JSON.stringify({
-          slug: event.tool.slug,
-          name: event.tool.name,
-          category: event.tool.category,
-          timestamp: Date.now()
-        }));
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = window.localStorage.getItem(FAVORITES_KEY);
+        if (raw) {
+          this.favoriteSlugs.set(JSON.parse(raw));
+        }
       }
     } catch (e) {
-      // Ignore private browsing storage restriction
+      // Storage unavailable / quota exceeded
     }
+  }
 
-    // 2. Set initial card rect coordinates
-    this.expandingTool.set(event.tool);
-    this.expandingRect.set(event.rect);
-    this.expandState.set('start');
+  private saveFavoritesToStorage(favorites: string[]): void {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+      }
+    } catch (e) {
+      // Storage unavailable
+    }
+  }
 
-    // 3. Trigger expand transition on next animation tick
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        this.expandState.set('expanded');
-      }, 16);
-    });
+  private loadRecentsFromStorage(): void {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = window.localStorage.getItem(RECENT_KEY);
+        if (raw) {
+          this.recentSlugs.set(JSON.parse(raw));
+        }
+      }
+    } catch (e) {
+      // Storage unavailable
+    }
+  }
 
-    // 4. Navigate to destination tool subdomain
-    this.navigationTimer = setTimeout(() => {
-      const url = getToolUrl(event.tool.slug);
-      window.location.assign(url);
-    }, expandDuration);
+  private saveRecentsToStorage(recents: string[]): void {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(RECENT_KEY, JSON.stringify(recents));
+      }
+    } catch (e) {
+      // Storage unavailable
+    }
+  }
+
+  highlightMatch(text: string): string {
+    const q = this.debouncedQuery().trim();
+    if (!q || !text) return this.escapeHtml(text);
+
+    const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedQ})`, 'gi');
+    return this.escapeHtml(text).replace(regex, '<mark class="search-highlight">$1</mark>');
+  }
+
+  private escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  private announceResults(): void {
+    const count = this.displayedTools().length;
+    const tabName = this.activeTab();
+    const query = this.debouncedQuery().trim();
+
+    if (query) {
+      this.ariaLiveAnnouncement.set(`${count} tools found for "${query}" in ${tabName}`);
+    } else {
+      this.ariaLiveAnnouncement.set(`${count} tools in ${tabName}`);
+    }
   }
 
   private updateUrlParams(): void {
     if (typeof window === 'undefined') return;
+
     const url = new URL(window.location.href);
-    const q = this.searchQuery().trim();
-    const cat = this.activeCategoryTab();
+    const q = this.debouncedQuery().trim();
+    const tab = this.activeTab();
 
     if (q) url.searchParams.set('q', q);
     else url.searchParams.delete('q');
 
-    if (cat && cat !== 'ALL') url.searchParams.set('category', cat);
-    else url.searchParams.delete('category');
+    if (tab && tab !== 'all') url.searchParams.set('tab', tab);
+    else url.searchParams.delete('tab');
 
-    window.history.replaceState({}, '', url.toString());
+    window.history.pushState({}, '', url.toString());
+  }
+
+  // ── FLIP (First, Last, Invert, Play) Animation Pipeline ───────
+  private captureFLIPPositions(): void {
+    if (typeof window === 'undefined') return;
+    const root = this.el.nativeElement;
+    const rows = Array.from(root.querySelectorAll('.hub-tool-row-link[data-slug]')) as HTMLElement[];
+    this.previousPositions.clear();
+
+    rows.forEach((row: HTMLElement) => {
+      const slug = row.getAttribute('data-slug');
+      if (slug) {
+        this.previousPositions.set(slug, row.getBoundingClientRect());
+      }
+    });
+  }
+
+  private executeFlipTransition(): void {
+    if (typeof window === 'undefined') return;
+
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReduced) {
+      this.resetFailsafe();
+      return;
+    }
+
+    this.startFailsafe();
+
+    requestAnimationFrame(() => {
+      const root = this.el.nativeElement;
+      const rows = Array.from(root.querySelectorAll('.hub-tool-row-link[data-slug]')) as HTMLElement[];
+      const currentSlugs = new Set<string>();
+      const entering = new Set<string>();
+
+      rows.forEach((row: HTMLElement) => {
+        const slug = row.getAttribute('data-slug');
+        if (!slug) return;
+        currentSlugs.add(slug);
+
+        const first = this.previousPositions.get(slug);
+        const last = row.getBoundingClientRect();
+
+        if (first) {
+          // Existing element moved: Invert & Play
+          const deltaX = first.left - last.left;
+          const deltaY = first.top - last.top;
+
+          if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
+            row.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+            row.style.transition = 'none';
+
+            requestAnimationFrame(() => {
+              row.style.transition = 'transform 260ms cubic-bezier(0.16, 1, 0.3, 1)';
+              row.style.transform = 'translate(0, 0)';
+
+              const onEnd = () => {
+                row.style.removeProperty('transform');
+                row.style.removeProperty('transition');
+                row.removeEventListener('transitionend', onEnd);
+              };
+              row.addEventListener('transitionend', onEnd, { once: true });
+            });
+          }
+        } else {
+          // Newly entering element
+          entering.add(slug);
+        }
+      });
+
+      this.enteringSlugs.set(entering);
+
+      // Clean entering animation tags after animation duration
+      setTimeout(() => {
+        this.enteringSlugs.set(new Set());
+        this.resetFailsafe();
+      }, 350);
+    });
+  }
+
+  // Failsafe timer: forces all animation states to resolved within 1s
+  private startFailsafe(): void {
+    if (this.failsafeTimer) clearTimeout(this.failsafeTimer);
+    this.failsafeTimer = setTimeout(() => {
+      this.resetFailsafe();
+    }, 1000);
+  }
+
+  private resetFailsafe(): void {
+    this.enteringSlugs.set(new Set());
+    this.leavingSlugs.set(new Set());
+    if (this.failsafeTimer) {
+      clearTimeout(this.failsafeTimer);
+      this.failsafeTimer = null;
+    }
   }
 }

@@ -8,7 +8,7 @@ import { MOCK_SHOWCASE, ShowcaseProject } from '../../../core/mock-data/communit
 @Component({
   selector: 'app-community-showcase',
   standalone: true,
-  imports: [CommonModule, IconComponent, SpotlightDirective],
+  imports: [CommonModule, IconComponent],
   template: `
     <div class="showcase-root page-enter">
       <!-- Hero -->
