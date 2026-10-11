@@ -5,8 +5,18 @@
 html[data-theme="dark"],
 .ts-root,
 .ts-root[data-theme="dark"] {
-  /* Motion Scaling */
+  /* Motion Scaling & Tokens */
   --ts-motion-scale: 1;
+  --ts-dur-press: 150ms;
+  --ts-dur-hover: 220ms;
+  --ts-dur-panel: 280ms;
+  --ts-dur-enter: 420ms;
+  --ts-dur-fast: 150ms;
+  --ts-dur-base: 220ms;
+  --ts-dur-slow: 420ms;
+  --ts-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ts-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ts-ease: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* ══ TYPOGRAPHY (Single Font: Nunito) ══════════════════════════════ */
   --font-heading: 'Nunito', system-ui, -apple-system, sans-serif;
@@ -15,40 +25,103 @@ html[data-theme="dark"],
   --ts-font-heading: 'Nunito', system-ui, -apple-system, sans-serif;
   --ts-font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  /* Type Scale */
-  --ts-text-xs: 0.75rem;    /* 12px */
-  --ts-text-sm: 0.8125rem;  /* 13px */
-  --ts-text-base: 0.875rem; /* 14px */
-  --ts-text-md: 1rem;       /* 16px */
-  --ts-text-lg: 1.25rem;    /* 20px */
-  --ts-text-xl: 1.75rem;    /* 28px */
-  --ts-text-2xl: 2.25rem;   /* 36px */
+  /* ══ TYPE SCALE ═════════════════════════════════════════════════════
+     Page title: 28/34 weight 700; section title: 18/26 weight 650;
+     body: 14/22; label: 13/18 weight 600; caption: 12/16.
+     Letter-spacing: -0.01em on titles.
+  */
+  --ts-type-page-title-size: 28px;
+  --ts-type-page-title-lh: 34px;
+  --ts-type-page-title-weight: 700;
+  --ts-type-page-title-tracking: -0.01em;
 
+  --ts-type-section-title-size: 18px;
+  --ts-type-section-title-lh: 26px;
+  --ts-type-section-title-weight: 650;
+  --ts-type-section-title-tracking: -0.01em;
+
+  --ts-type-body-size: 14px;
+  --ts-type-body-lh: 22px;
+  --ts-type-body-weight: 400;
+
+  --ts-type-label-size: 13px;
+  --ts-type-label-lh: 18px;
+  --ts-type-label-weight: 600;
+
+  --ts-type-caption-size: 12px;
+  --ts-type-caption-lh: 16px;
+  --ts-type-caption-weight: 400;
+
+  --ts-type-title-tracking: -0.01em;
+  --ts-tracking-titles: -0.01em;
+
+  /* Legacy type scale aliases */
+  --ts-text-xs: 12px;
+  --ts-text-sm: 13px;
+  --ts-text-base: 14px;
+  --ts-text-md: 16px;
+  --ts-text-lg: 18px;
+  --ts-text-xl: 28px;
+  --ts-text-2xl: 36px;
   --ts-tracking-tight: -0.01em;
   --ts-tracking-tighter: -0.025em;
 
-  /* ══ SPACING & LAYOUT TOKENS ════════════════════════════════════ */
+  /* ══ SPACING SCALE (4, 8, 12, 16, 24, 32) ══════════════════════════ */
+  --ts-space-4: 4px;
+  --ts-space-8: 8px;
+  --ts-space-12: 12px;
+  --ts-space-16: 16px;
+  --ts-space-24: 24px;
+  --ts-space-32: 32px;
+
+  --ts-spacing-4: 4px;
+  --ts-spacing-8: 8px;
+  --ts-spacing-12: 12px;
+  --ts-spacing-16: 16px;
+  --ts-spacing-24: 24px;
+  --ts-spacing-32: 32px;
+
+  --ts-space-1: 4px;
+  --ts-space-2: 8px;
+  --ts-space-3: 12px;
+  --ts-space-5: 24px;
+  --ts-space-6: 32px;
+  --ts-space-8: 32px;
+
+  /* ══ CONTROL SIZES & RADII ══════════════════════════════════════════
+     Control heights: 40 (default), 48 (large).
+     Control radius: 12px, card radius: 20px, tile radius: 14px.
+  */
+  --ts-control-height: 40px;
+  --ts-control-height-default: 40px;
+  --ts-control-height-lg: 48px;
+
+  --ts-radius-control: 12px;
+  --ts-radius-card: 20px;
+  --ts-radius-tile: 14px;
+
   --shell-padding: 12px;
   --shell-gap: 12px;
   --header-height: 64px;
   --sidebar-width: 272px;
   --sidebar-collapsed-width: 72px;
-
-  --ts-space-1: 0.25rem; /* 4px */
-  --ts-space-2: 0.5rem;  /* 8px */
-  --ts-space-3: 0.75rem; /* 12px */
-  --ts-space-4: 1rem;    /* 16px */
-  --ts-space-5: 1.25rem; /* 20px */
-  --ts-space-6: 1.5rem;  /* 24px */
-  --ts-space-8: 2rem;    /* 32px */
-
-  /* ══ RADIUS ═════════════════════════════════════════════════════ */
   --shell-radius: 20px;
   --ts-radius-sm: 8px;
   --ts-radius-md: 12px;
   --ts-radius-lg: 16px;
   --ts-radius-2xl: 20px;
   --ts-radius-full: 9999px;
+
+  /* ══ ICON SIZES ═════════════════════════════════════════════════════
+     Icon sizes: 16 (inside buttons/chips), 20 (nav and list), 24 (tiles).
+     Icon-to-text gap: 8px.
+  */
+  --ts-icon-btn: 16px;
+  --ts-icon-chip: 16px;
+  --ts-icon-nav: 20px;
+  --ts-icon-list: 20px;
+  --ts-icon-tile: 24px;
+  --ts-icon-gap: 8px;
 
   /* ══ TOUCH / HIT TARGETS ════════════════════════════════════════ */
   --ts-touch-target: 40px;
@@ -73,10 +146,26 @@ html[data-theme="dark"],
   --text: #FCFCFC;
   --text-muted: #A1A1AA;
   --text-subtle: #8E8E93;
-  --accent: #FFFFFF;
-  --accent-soft: #1C1C1F;
-  --on-accent: #000000;
+  --icon-muted: #A1A1AA;
+  --ts-icon-stroke: 45;
+  /* ══ ACCENT DERIVATION DEFAULTS (Dark Mode - Default) ══════════════
+     Derived automatically from --accent and --surface:
+     --accent-soft: color-mix(in srgb, var(--accent) 16%, var(--surface))
+     --accent-border: color-mix(in srgb, var(--accent) 30%, transparent)
+     --accent-glow: color-mix(in srgb, var(--accent) 45%, transparent)
+  */
+  --accent: #FCFCFC;
+  --accent-ink: #000000;
+  --accent-strong: #FCFCFC;
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  --accent-border: color-mix(in srgb, var(--accent) 30%, transparent);
+  --accent-glow: color-mix(in srgb, var(--accent) 45%, transparent);
+  --on-accent: var(--accent-ink);
   --spotlight: rgba(252, 252, 252, 0.08);
+  --danger: #F87171;
+  --danger-ink: #FFFFFF;
+  --danger-soft: rgba(239, 68, 68, 0.12);
+  --danger-border: rgba(239, 68, 68, 0.25);
 
   /* Legacy & Bridge variables mapped to GOTH */
   --ts-bg: var(--bg);
@@ -114,6 +203,13 @@ html[data-theme="dark"],
   --ts-glow-2: rgba(255, 255, 255, 0.02);
   --ts-glow-3: rgba(255, 255, 255, 0.015);
 
+  /* ── Background Grid & Ambient Glow (Checkered Grid + Soft Glow) ── */
+  --fx-grid: rgba(255, 255, 255, 0.045);
+  --fx-grid-size: 40px;
+  --fx-highlight: rgba(255, 255, 255, 0.04);
+  --fx-glow-1: color-mix(in srgb, var(--accent) 22%, transparent);
+  --fx-glow-2: var(--accent-2-glow-dark, rgba(148, 163, 184, 0.10));
+
   /* ── Shadows ──────────────────────────────────────────────────── */
   --ts-shadow-sm: var(--shell-card-shadow);
   --ts-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
@@ -147,10 +243,26 @@ html[data-theme="light"],
   --text: #09090B;
   --text-muted: #52525B;
   --text-subtle: #71717A;
-  --accent: #09090B;
-  --accent-soft: #F4F4F5;
-  --on-accent: #FFFFFF;
+  --icon-muted: #52525B;
+  --ts-icon-stroke: 45;
+  /* ══ ACCENT DERIVATION DEFAULTS (Light Mode) ══════════════════════
+     Derived automatically from --accent and --surface:
+     --accent-soft: color-mix(in srgb, var(--accent) 12%, var(--surface))
+     --accent-border: color-mix(in srgb, var(--accent) 30%, transparent)
+     --accent-glow: color-mix(in srgb, var(--accent) 35%, transparent)
+  */
+  --accent: #111111;
+  --accent-ink: #FFFFFF;
+  --accent-strong: #111111;
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  --accent-border: color-mix(in srgb, var(--accent) 30%, transparent);
+  --accent-glow: color-mix(in srgb, var(--accent) 35%, transparent);
+  --on-accent: var(--accent-ink);
   --spotlight: rgba(0, 0, 0, 0.04);
+  --danger: #DC2626;
+  --danger-ink: #FFFFFF;
+  --danger-soft: #FEF2F2;
+  --danger-border: #FCA5A5;
 
   /* Legacy & Bridge variables mapped to Light */
   --ts-bg: var(--bg);
@@ -188,6 +300,13 @@ html[data-theme="light"],
   --ts-glow-2: rgba(0, 0, 0, 0.015);
   --ts-glow-3: rgba(0, 0, 0, 0.01);
 
+  /* ── Background Grid & Ambient Glow (Checkered Grid + Soft Glow) ── */
+  --fx-grid: rgba(15, 23, 42, 0.055);
+  --fx-grid-size: 40px;
+  --fx-highlight: rgba(255, 255, 255, 0.9);
+  --fx-glow-1: color-mix(in srgb, var(--accent) 30%, transparent);
+  --fx-glow-2: var(--accent-2-glow, rgba(148, 163, 184, 0.22));
+
   /* Shadows */
   --ts-shadow-sm: var(--shell-card-shadow);
   --ts-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.05);
@@ -210,4 +329,82 @@ html[data-theme="light"],
 [data-theme="light"] [data-theme="goth"] {
   --border-accent: #000000;
   --spotlight: rgba(0, 0, 0, 0.04);
+}
+
+/* ══ ACCENT SYSTEM ════════════════════════════════════════════════════
+   Shell root reads data-accent="<name>" from the tool registry field "accent".
+   Each named accent defines, for light AND dark:
+     --accent        bright fill for primary buttons, active indicators, tiles
+     --accent-ink    text/icon on the accent fill (dark ink, must pass 4.5:1)
+     --accent-strong darker shade for text, links and icons on white/gray surfaces (must pass 4.5:1 on card color)
+   All other accent tokens (--accent-soft, --accent-border, --accent-glow) are derived automatically:
+     --accent-soft:   color-mix(in srgb, var(--accent) 12%, var(--surface)) (light) / 16% (dark)
+     --accent-border: color-mix(in srgb, var(--accent) 30%, transparent)
+     --accent-glow:   color-mix(in srgb, var(--accent) 35%, transparent) (light) / 45% (dark)
+*/
+
+/* Default "neutral" (black primary / GOTH grayscale) */
+[data-accent="neutral"],
+.ts-root[data-accent="neutral"] {
+  --accent: #FCFCFC;
+  --accent-ink: #000000;
+  --accent-strong: #FCFCFC;
+  --accent-2-glow: rgba(148, 163, 184, 0.22);
+  --accent-2-glow-dark: rgba(148, 163, 184, 0.10);
+  --on-accent: var(--accent-ink);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--accent-ink);
+  --tool-brand-accent: var(--accent);
+}
+
+[data-theme="light"][data-accent="neutral"],
+.ts-root[data-theme="light"][data-accent="neutral"],
+[data-theme="light"] [data-accent="neutral"],
+.ts-root[data-theme="light"] [data-accent="neutral"] {
+  --accent: #111111;
+  --accent-ink: #FFFFFF;
+  --accent-strong: #111111;
+  --accent-2-glow: rgba(148, 163, 184, 0.22);
+  --accent-2-glow-dark: rgba(148, 163, 184, 0.10);
+  --on-accent: var(--accent-ink);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--accent-ink);
+  --tool-brand-accent: var(--accent);
+}
+
+/* Teal Palette:
+   light: accent #2DD4BF, ink #04211E, strong #0F766E
+   dark:  accent #2DD4BF, ink #04211E, strong #5EEAD4
+   (Text on accent passes 4.5:1 contrast; strong passes 4.5:1 on surfaces.)
+*/
+[data-accent="teal"],
+.ts-root[data-accent="teal"],
+[data-theme="dark"][data-accent="teal"],
+.ts-root[data-theme="dark"][data-accent="teal"],
+[data-theme="dark"] [data-accent="teal"],
+.ts-root[data-theme="dark"] [data-accent="teal"] {
+  --accent: #2DD4BF;
+  --accent-ink: #04211E;
+  --accent-strong: #5EEAD4;
+  --accent-2-glow: rgba(253, 164, 175, 0.38);
+  --accent-2-glow-dark: rgba(251, 113, 133, 0.16);
+  --on-accent: var(--accent-ink);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--accent-ink);
+  --tool-brand-accent: var(--accent);
+}
+
+[data-theme="light"][data-accent="teal"],
+.ts-root[data-theme="light"][data-accent="teal"],
+[data-theme="light"] [data-accent="teal"],
+.ts-root[data-theme="light"] [data-accent="teal"] {
+  --accent: #2DD4BF;
+  --accent-ink: #04211E;
+  --accent-strong: #0F766E;
+  --accent-2-glow: rgba(253, 164, 175, 0.38);
+  --accent-2-glow-dark: rgba(251, 113, 133, 0.16);
+  --on-accent: var(--accent-ink);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--accent-ink);
+  --tool-brand-accent: var(--accent);
 }

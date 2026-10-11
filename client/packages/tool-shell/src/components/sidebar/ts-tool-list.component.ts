@@ -54,10 +54,12 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
               >
                 <div class="ts-group-header-left">
                   <ts-icon 
-                    [name]="isCategoryOpen(group.category) ? 'chevron-down' : 'chevron-right'" 
+                    name="chevron-right" 
                     [size]="14" 
                     class="ts-chevron-icon"
+                    [class.is-expanded]="isCategoryOpen(group.category)"
                   />
+                  <ts-icon [name]="categoryIcon(group.category)" [size]="14" class="ts-cat-icon text-muted" />
                   <span class="ts-group-title">{{ group.category }}</span>
                 </div>
                 <span class="ts-group-count">{{ group.tools.length }}</span>
@@ -112,8 +114,9 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
     .ts-rail-separator {
       height: 1px;
       background: var(--border, rgba(0, 0, 0, 0.08));
-      margin: 6px auto;
+      margin: 8px auto;
       width: 28px;
+      flex-shrink: 0;
     }
 
     :host-context([data-theme="dark"]) .ts-rail-separator {
@@ -188,7 +191,11 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
 
     .ts-chevron-icon {
       color: var(--text-muted, #71717A);
-      transition: transform var(--ts-dur-fast, 150ms) var(--ts-ease);
+      transition: transform 200ms var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+    }
+
+    .ts-chevron-icon.is-expanded {
+      transform: rotate(90deg);
     }
 
     .ts-tools-group-items {
@@ -196,6 +203,32 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       flex-direction: column;
       gap: 2px;
     }
+
+    /* Staggered entrance for items on first open / render (20ms step) */
+    @keyframes tsSidebarItemIn {
+      from {
+        opacity: 0;
+        transform: translateX(-4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .ts-tools-group-items .ts-tool-item {
+      animation: tsSidebarItemIn var(--ts-dur-panel, 280ms) var(--ts-ease-out) forwards;
+    }
+
+    .ts-tools-group-items .ts-tool-item:nth-child(1) { animation-delay: 0ms; }
+    .ts-tools-group-items .ts-tool-item:nth-child(2) { animation-delay: 20ms; }
+    .ts-tools-group-items .ts-tool-item:nth-child(3) { animation-delay: 40ms; }
+    .ts-tools-group-items .ts-tool-item:nth-child(4) { animation-delay: 60ms; }
+    .ts-tools-group-items .ts-tool-item:nth-child(5) { animation-delay: 80ms; }
+    .ts-tools-group-items .ts-tool-item:nth-child(6) { animation-delay: 100ms; }
+    .ts-tools-group-items .ts-tool-item:nth-child(7) { animation-delay: 120ms; }
+    .ts-tools-group-items .ts-tool-item:nth-child(8) { animation-delay: 140ms; }
+    .ts-tools-group-items .ts-tool-item:nth-child(n+9) { animation-delay: 160ms; }
 
     .ts-tool-item {
       display: flex;
@@ -210,9 +243,9 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       border: 1px solid transparent;
       outline: none;
       position: relative;
-      transition: background-color 220ms ease-out,
-                  color 220ms ease-out,
-                  transform 150ms ease-out;
+      transition: background-color var(--ts-dur-hover, 220ms) var(--ts-ease-out),
+                  color var(--ts-dur-hover, 220ms) var(--ts-ease-out),
+                  transform var(--ts-dur-press, 150ms) var(--ts-ease);
     }
 
     .ts-tool-item:hover {
@@ -230,15 +263,10 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
     }
 
     .ts-tool-item.active {
-      background: var(--surface-hover, #F4F4F5);
-      color: var(--text, #18181B);
+      background: var(--accent-soft);
+      color: var(--text);
       font-weight: 700;
       border-color: transparent;
-    }
-
-    :host-context([data-theme="dark"]) .ts-tool-item.active {
-      background: var(--surface-hover, #1E1E22);
-      color: var(--text, #FCFCFC);
     }
 
     .ts-tool-item:focus:not(:focus-visible) {
@@ -246,7 +274,7 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
     }
 
     .ts-tool-item:focus-visible {
-      outline: 2px solid var(--ts-focus-ring, #18181B) !important;
+      outline: 2px solid var(--accent-strong) !important;
       outline-offset: 2px;
     }
 
@@ -263,12 +291,8 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: var(--text, #18181B);
+      background: var(--accent);
       flex-shrink: 0;
-    }
-
-    :host-context([data-theme="dark"]) .ts-active-dot {
-      background: #FCFCFC;
     }
 
     .ts-tool-list-container.is-rail .ts-tool-item {
@@ -303,6 +327,18 @@ export class TsToolListComponent implements OnInit {
 
   readonly getToolUrl = getToolUrl;
   readonly hubUrl = getToolsHubUrl();
+
+  categoryIcon(category: string): string {
+    const norm = (category || '').toLowerCase();
+    if (norm === 'utilities') return 'boxes';
+    if (norm === 'developer') return 'terminal';
+    if (norm === 'formatters') return 'file-code';
+    if (norm === 'security') return 'shield';
+    if (norm === 'media') return 'image';
+    if (norm === 'calculators') return 'sliders';
+    if (norm === 'ai') return 'sparkles';
+    return 'layers';
+  }
 
   // Collapsed categories state (current category open by default)
   readonly collapsedCategories = signal<Set<string>>(new Set());
@@ -348,7 +384,7 @@ export class TsToolListComponent implements OnInit {
 
   readonly groupedCategories = computed(() => {
     const tools = this.filteredTools();
-    const order = ['Utilities', 'Developer', 'Security', 'Media', 'Calculators', 'AI'];
+    const order = ['Utilities', 'Developer', 'Formatters', 'Security', 'Media', 'Calculators', 'AI'];
     
     const map = new Map<string, ToolRegistryItem[]>();
     for (const tool of tools) {

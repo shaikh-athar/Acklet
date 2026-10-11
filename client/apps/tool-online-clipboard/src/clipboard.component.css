@@ -90,58 +90,99 @@
 }
 
 .mode-segmented-control {
+  position: relative;
   display: inline-flex;
+  align-items: center;
+  height: 44px;
   background: var(--surface-hover);
   padding: 4px;
-  border-radius: 12px;
+  border-radius: var(--ts-radius-md, 12px);
   border: 1px solid var(--border);
+  box-sizing: border-box;
   gap: 4px;
 }
 
+/* Sliding white thumb under active segment */
+.segmented-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
+  background: var(--shell-card, #FFFFFF);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: transform var(--ts-dur-hover, 220ms) var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+  pointer-events: none;
+  z-index: 1;
+}
+
+[data-theme="dark"] .segmented-thumb {
+  background: #202024;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.segmented-thumb.is-receive {
+  transform: translateX(100%);
+}
+
 .segmented-btn {
+  position: relative;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  height: 36px;
   gap: 8px;
-  padding: 8px 18px;
+  padding: 0 16px;
   font-family: var(--font-body, "Nunito", sans-serif);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--ts-type-label-size, 13px);
+  font-weight: var(--ts-type-label-weight, 600);
+  line-height: var(--ts-type-label-lh, 18px);
   border-radius: 8px;
   color: var(--text-muted);
   background: transparent;
-  border: 1px solid transparent;
+  border: none;
   outline: none;
   cursor: pointer;
   user-select: none;
-  transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
-              color var(--ts-dur-fast, 150ms) var(--ts-ease),
-              transform 80ms ease;
+  transition: color var(--ts-dur-fast, 150ms) var(--ts-ease),
+              transform 150ms ease;
+}
+
+.segmented-btn .segmented-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  transition: color var(--ts-dur-fast, 150ms) var(--ts-ease);
 }
 
 .segmented-btn:hover:not(.active) {
   color: var(--text);
-  background: var(--surface);
 }
 
 .segmented-btn:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .segmented-btn.active {
-  background: var(--surface);
   color: var(--text);
   font-weight: 700;
-  border-color: transparent;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  background: transparent;
+  box-shadow: none;
+}
+
+.segmented-btn.active .segmented-icon {
+  color: var(--accent);
 }
 
 .segmented-btn:focus:not(:focus-visible) {
-  outline: none;
+  outline: none !important;
 }
 
 .segmented-btn:focus-visible {
   outline: 2px solid var(--ts-focus-ring) !important;
-  outline-offset: 1px;
+  outline-offset: 2px !important;
 }
 
 .top-actions-cluster {
@@ -149,62 +190,105 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  margin-left: auto;
 }
 
 .top-action-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  height: 38px;
+  gap: 8px;
+  height: 40px;
   padding: 0 14px;
   font-family: var(--font-body, "Nunito", sans-serif);
-  font-size: 13px;
+  font-size: var(--ts-type-label-size, 13px);
   font-weight: 600;
-  border-radius: 10px;
-  background: var(--surface);
+  border-radius: var(--ts-radius-md, 12px);
+  background: var(--surface-hover);
   border: 1px solid var(--border);
   color: var(--text-muted);
   cursor: pointer;
-  outline: none;
+  outline: none !important;
   user-select: none;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  box-shadow: none;
   transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
               color var(--ts-dur-fast, 150ms) var(--ts-ease),
               border-color var(--ts-dur-fast, 150ms) var(--ts-ease),
-              transform 80ms ease;
+              transform 150ms ease;
 }
 
-.top-action-btn:hover, .top-action-btn.active {
-  color: var(--text);
-  background: var(--surface-hover);
-  border-color: var(--border);
+@media (hover: hover) {
+  .top-action-btn:hover {
+    color: var(--text);
+    background: var(--surface-active, var(--surface-hover));
+  }
+  .top-action-btn:hover ts-icon,
+  .top-action-btn:hover lib-tool-icon,
+  .top-action-btn:hover svg {
+    color: var(--accent-strong);
+  }
 }
 
 .top-action-btn:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .top-action-btn:focus:not(:focus-visible) {
-  outline: none;
+  outline: none !important;
 }
 
 .top-action-btn:focus-visible {
-  outline: 2px solid var(--ts-focus-ring) !important;
-  outline-offset: 2px;
+  outline: 2px solid var(--accent-strong) !important;
+  outline-offset: 2px !important;
+}
+
+.top-action-btn.ghost-history-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+}
+
+@media (hover: hover) {
+  .top-action-btn.ghost-history-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+  .top-action-btn.ghost-history-btn:hover ts-icon,
+  .top-action-btn.ghost-history-btn:hover lib-tool-icon,
+  .top-action-btn.ghost-history-btn:hover svg {
+    color: var(--accent-strong);
+  }
+}
+
+.top-action-btn.ghost-history-btn.active {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.top-action-btn.ghost-history-btn.active ts-icon,
+.top-action-btn.ghost-history-btn.active lib-tool-icon {
+  color: var(--accent-strong);
+}
+
+.top-action-btn.ghost-history-btn .size-4,
+.top-action-btn .size-4 {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .top-action-btn.btn-report:hover {
-  color: #EF4444;
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--danger, #EF4444);
+  background: var(--danger-soft, rgba(239, 68, 68, 0.1));
 }
 
 /* ══ 4. LEVEL 2: UNDERLINE TAB GROUP ══ */
 .clipboard-underline-tabs-bar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 24px;
+  height: 44px;
   border-bottom: 1px solid var(--border);
   width: 100%;
   padding: 0;
@@ -218,34 +302,69 @@
   display: none;
 }
 
+/* Sliding Accent Underline Indicator */
+.underline-tab-indicator {
+  position: absolute;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: transform var(--ts-dur-hover, 220ms) var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+              width var(--ts-dur-hover, 220ms) var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+  pointer-events: none;
+  z-index: 1;
+}
+
+.underline-tab-indicator.pos-text {
+  left: 0;
+  width: 132px;
+  transform: translateX(0);
+}
+
+.underline-tab-indicator.pos-images {
+  left: 0;
+  width: 96px;
+  transform: translateX(156px);
+}
+
+.underline-tab-indicator.pos-files {
+  left: 0;
+  width: 80px;
+  transform: translateX(276px);
+}
+
 .underline-tab {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 8px 12px;
+  height: 44px;
+  padding: 0 4px;
   font-family: var(--font-body, "Nunito", sans-serif);
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-muted);
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
-  border-radius: 8px 8px 0 0;
+  border-radius: 0;
   cursor: pointer;
-  outline: none;
+  outline: none !important;
   margin-bottom: -1px;
   position: relative;
   user-select: none;
   white-space: nowrap;
-  transition: color var(--ts-dur-fast, 150ms) var(--ts-ease),
-              background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
-              border-bottom-color var(--ts-dur-fast, 150ms) var(--ts-ease),
-              transform 80ms ease;
+  transition: color var(--ts-dur-hover, 220ms) var(--ts-ease),
+              transform 150ms ease;
+}
+
+.underline-tab .size-4 {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .underline-tab:hover {
   color: var(--text);
-  background: var(--surface-hover);
 }
 
 .underline-tab:active {
@@ -255,33 +374,43 @@
 .underline-tab.active {
   color: var(--text);
   font-weight: 700;
-  border-bottom-color: var(--text);
 }
 
 .underline-tab:focus:not(:focus-visible) {
-  outline: none;
+  outline: none !important;
 }
 
 .underline-tab:focus-visible {
-  outline: 2px solid var(--ts-focus-ring);
-  outline-offset: 2px;
+  outline: 2px solid var(--ts-focus-ring) !important;
+  outline-offset: 2px !important;
 }
 
 .tab-count-badge {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   padding: 1px 7px;
   border-radius: 9999px;
   background: var(--surface-hover);
   border: 1px solid var(--border);
   color: var(--text-muted);
-  transition: all var(--ts-dur-fast, 150ms) var(--ts-ease);
+  transition: all var(--ts-dur-hover, 220ms) ease;
+}
+
+/* Count badge bumps on number change / tab select */
+@keyframes tsBadgeBump {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.tab-count-badge.badge-bump {
+  animation: tsBadgeBump 300ms var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 .underline-tab.active .tab-count-badge {
   background: var(--accent-soft);
-  color: var(--text);
-  border-color: var(--border);
+  color: var(--accent);
+  border-color: var(--accent-border);
 }
 
 /* ══ 5. TAB BODY & INPUT BOX CONTAINER ══ */
@@ -294,30 +423,44 @@
   margin: 0;
 }
 
+/* Tab Panel Cross-Fade & 8px Slide (220ms) */
+@keyframes tsTabPanelFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .tab-panel {
   display: flex;
   flex-direction: column;
   gap: 16px;
   width: 100%;
+  animation: tsTabPanelFadeIn var(--ts-dur-hover, 220ms) var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
-/* Text Input Box Container (Clear bordered rounded box with visible focus) */
+/* Text Input Box Container (Send Side: input/textarea 14px/22px, radius 12, accent focus, primary button 40px) */
 .text-input-box-container {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  background: var(--surface);
+  gap: 12px;
+  background: var(--surface-hover);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--ts-radius-md, 12px);
   padding: 14px 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  box-shadow: none;
+  box-sizing: border-box;
   transition: border-color var(--ts-dur-fast, 150ms) var(--ts-ease),
               box-shadow var(--ts-dur-fast, 150ms) var(--ts-ease);
 }
 
 .text-input-box-container:focus-within {
-  border-color: var(--text);
-  box-shadow: 0 0 0 1px var(--text);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .text-input-field {
@@ -326,11 +469,12 @@
   border: none;
   outline: none;
   font-family: var(--font-body, "Nunito", sans-serif);
-  font-size: 14.5px;
-  line-height: 1.6;
+  font-size: var(--ts-type-body-size, 14px);
+  line-height: var(--ts-type-body-lh, 22px);
   color: var(--text);
   resize: vertical;
   min-height: 90px;
+  box-sizing: border-box;
 }
 
 .text-input-field:focus {
@@ -352,41 +496,48 @@
 }
 
 .text-size-caption {
-  font-size: 13px;
+  font-size: var(--ts-type-caption-size, 12px);
+  line-height: var(--ts-type-caption-lh, 16px);
   color: var(--text-muted);
   font-family: var(--font-body, "Nunito", sans-serif);
   font-weight: 500;
 }
 
-/* Real "Add Snippet" Button */
+/* Primary "Add Snippet" Button: height 40, radius 12, accent background, accent-ink text, soft glow on hover */
 .btn-add-snippet {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 36px;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
   padding: 0 18px;
-  background: var(--text);
-  color: var(--bg);
+  background: var(--accent);
+  color: var(--accent-ink);
   font-family: var(--font-body, "Nunito", sans-serif);
-  font-weight: 700;
-  font-size: 13.5px;
-  border-radius: 9999px;
+  font-weight: 600;
+  font-size: var(--ts-type-label-size, 13px);
+  line-height: var(--ts-type-label-lh, 18px);
+  border-radius: var(--ts-radius-md, 12px);
   border: none;
-  outline: none;
+  outline: none !important;
   cursor: pointer;
   user-select: none;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-  transition: opacity var(--ts-dur-fast, 150ms) var(--ts-ease),
-              transform 80ms ease;
+  box-shadow: 0 0 0 0 transparent;
+  transition: box-shadow 220ms ease,
+              filter 220ms ease,
+              transform 150ms ease,
+              opacity 150ms ease;
 }
 
-.btn-add-snippet:hover:not(:disabled) {
-  opacity: 0.9;
-  transform: translateY(-0.5px);
+@media (hover: hover) {
+  .btn-add-snippet:hover:not(:disabled) {
+    box-shadow: 0 6px 24px -4px var(--accent-glow);
+    filter: brightness(1.04);
+  }
 }
 
 .btn-add-snippet:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .btn-add-snippet:disabled {
@@ -394,17 +545,81 @@
   color: var(--text-subtle);
   border: 1px solid var(--border);
   box-shadow: none;
-  opacity: 0.7;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .btn-add-snippet:focus:not(:focus-visible) {
-  outline: none;
+  outline: none !important;
 }
 
 .btn-add-snippet:focus-visible {
-  outline: 2px solid var(--ts-focus-ring) !important;
-  outline-offset: 2px;
+  outline: 2px solid var(--accent-strong) !important;
+  outline-offset: 2px !important;
+}
+
+/* Inline Spinner (16px circle) without layout jump */
+@keyframes tsSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.btn-spinner-icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: tsSpin 600ms linear infinite;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* Success Pop & Pulse (600ms once) */
+@keyframes tsBtnSuccessPop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.05); }
+  60% { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+
+@keyframes tsGlowPulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--accent-glow);
+  }
+  50% {
+    box-shadow: 0 0 0 6px var(--accent-glow);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@keyframes tsIconPop {
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+.btn-success-pop {
+  animation: tsBtnSuccessPop 600ms var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+             tsGlowPulse 600ms var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1)) !important;
+}
+
+.icon-pop {
+  animation: tsIconPop 400ms var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1)) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-spinner-icon {
+    animation-duration: 1.5s;
+  }
+  .btn-success-pop,
+  .icon-pop {
+    animation: none !important;
+  }
 }
 
 /* ══ 6. HISTORY, SETTINGS & PIN DRAWERS ══ */
@@ -623,75 +838,102 @@
 .pill-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
   font-family: var(--font-body, "Nunito", sans-serif);
-  font-size: 13px;
+  font-size: var(--ts-type-label-size, 13px);
   font-weight: 600;
-  background: var(--accent-soft);
+  background: var(--surface-hover);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--ts-radius-md, 12px);
   color: var(--text);
   cursor: pointer;
   user-select: none;
   transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
-              transform 80ms ease;
+              transform 150ms ease;
 }
 
 .pill-btn:hover {
-  background: var(--surface-hover);
+  background: var(--surface-active, var(--surface-hover));
 }
 
 .pill-btn:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .pill-btn:focus:not(:focus-visible) {
-  outline: none;
+  outline: none !important;
+}
+
+.pill-btn:focus-visible {
+  outline: 2px solid var(--ts-focus-ring) !important;
+  outline-offset: 2px !important;
 }
 
 /* Receiver Section */
+/* Receiver Section: label token, 48px code Input (radius 14, tabular numbers, letter-spacing 0.08em, accent focus ring, filled gray background) */
 .receiver-input-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--ts-radius-md, 12px);
+  padding: 16px 20px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .code-input-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .code-input-label {
-  font-family: var(--font-heading, "Nunito", sans-serif);
-  font-size: 16px;
-  font-weight: 600;
+  font-family: var(--font-body, "Nunito", sans-serif);
+  font-size: var(--ts-type-label-size, 13px);
+  font-weight: var(--ts-type-label-weight, 600);
+  line-height: var(--ts-type-label-lh, 18px);
   color: var(--text);
+  margin: 0;
 }
 
 .code-input-box {
   position: relative;
   max-width: 360px;
+  width: 100%;
 }
 
 .digits-input {
   width: 100%;
+  height: 48px;
+  box-sizing: border-box;
   font-family: var(--ts-font-mono);
-  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.08em;
-  padding: 10px 14px;
-  background: var(--accent-soft);
+  padding: 0 16px;
+  background: var(--surface-hover);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 14px;
   color: var(--text);
-  outline: none;
-  transition: border-color var(--ts-dur-fast, 150ms) var(--ts-ease);
+  outline: none !important;
+  transition: border-color var(--ts-dur-fast, 150ms) var(--ts-ease),
+              box-shadow var(--ts-dur-fast, 150ms) var(--ts-ease);
 }
 
 .digits-input:focus {
-  border-color: var(--text);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-border);
+}
+
+.digits-input:focus-visible {
+  outline: 2px solid var(--accent-strong) !important;
+  outline-offset: 2px !important;
 }
 
 .digits-input::placeholder {
@@ -699,92 +941,197 @@
   opacity: 1;
 }
 
+.code-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .code-hint {
-  font-size: 13px;
+  font-family: var(--font-body, "Nunito", sans-serif);
+  font-size: var(--ts-type-caption-size, 12px);
+  line-height: var(--ts-type-caption-lh, 16px);
   color: var(--text-muted);
   margin: 0;
+}
+
+/* Valid-code inline accent-soft status */
+.valid-code-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body, "Nunito", sans-serif);
+  font-size: var(--ts-type-caption-size, 12px);
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  color: var(--accent-strong);
 }
 
 .pin-entry-card {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: var(--accent-soft);
+  background: var(--surface-hover);
   border: 1px solid var(--border);
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: var(--ts-radius-md, 12px);
 }
 
 .pin-input {
   max-width: 140px;
-  padding: 8px 12px;
+  height: 40px;
+  padding: 0 12px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
   font-size: 14px;
+  box-sizing: border-box;
+}
+
+.pin-input:focus-visible {
+  outline: 2px solid var(--accent-strong) !important;
+  outline-offset: 2px !important;
 }
 
 .btn-unlock {
-  padding: 8px 16px;
-  background: var(--text);
-  color: var(--bg);
+  height: 40px;
+  padding: 0 16px;
+  background: var(--accent);
+  color: var(--accent-ink);
   font-weight: 600;
   font-size: 13px;
-  border-radius: 8px;
+  border-radius: var(--ts-radius-md, 12px);
   border: none;
   cursor: pointer;
-  transition: opacity 150ms;
+  box-shadow: 0 0 0 0 transparent;
+  transition: box-shadow 220ms ease, filter 220ms ease, transform 150ms ease;
 }
 
-.btn-unlock:hover {
-  opacity: 0.9;
+@media (hover: hover) {
+  .btn-unlock:hover {
+    box-shadow: 0 6px 24px -4px var(--accent-glow);
+    filter: brightness(1.04);
+  }
 }
 
-.receive-error-card {
+.btn-unlock:active {
+  transform: scale(0.98);
+}
+
+.btn-unlock:focus-visible {
+  outline: 2px solid var(--accent-strong) !important;
+  outline-offset: 2px !important;
+}
+
+/* Error Alert Slide Down 8px & Fade In (280ms) */
+@keyframes tsAlertSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* One-time soft shake on input: 2 small movements over 300ms */
+@keyframes tsInputSoftShake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+.input-soft-shake {
+  animation: tsInputSoftShake 300ms var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+/* Spartan Alert: Soft red tint background (danger-soft), 16px icon, 14px text, radius 12, no heavy border */
+.receive-alert-card {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: var(--accent-soft);
-  border: 1px solid var(--border-accent);
+  background: var(--danger-soft, rgba(239, 68, 68, 0.12));
+  border: 1px solid var(--danger-border, rgba(239, 68, 68, 0.25));
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: var(--ts-radius-md, 12px);
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--ts-type-body-size, 14px);
+  line-height: var(--ts-type-body-lh, 22px);
+  box-shadow: none;
+  animation: tsAlertSlideDown var(--ts-dur-panel, 280ms) var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
-/* ══ 7. FILE DROP ZONE ══ */
+.receive-alert-card .size-4 {
+  width: 16px;
+  height: 16px;
+  color: var(--danger, #EF4444);
+  flex-shrink: 0;
+}
+
+/* ══ 7. FILE DROP ZONE (Dashed hairline border inside gray panel, upload icon 24px, 1 line text, 1 button) ══ */
 .file-drop-zone {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 32px 20px;
-  background: var(--surface);
+  background: var(--surface-hover);
   border: 1px dashed var(--border);
-  border-radius: 16px;
+  border-radius: var(--ts-radius-md, 12px);
   cursor: pointer;
   user-select: none;
   transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
-              border-color var(--ts-dur-fast, 150ms) var(--ts-ease);
+              border-color var(--ts-dur-fast, 150ms) var(--ts-ease),
+              transform 150ms ease;
   text-align: center;
+  box-sizing: border-box;
 }
 
 .file-drop-zone:hover, .file-drop-zone.drag-over {
-  background: var(--surface-hover);
-  border-color: var(--text);
+  background: var(--surface-active, var(--surface-hover));
+  border-color: var(--accent);
+}
+
+.file-drop-zone .drop-icon-tile {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--ts-radius-md, 12px);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.file-drop-zone .drop-icon-tile .size-6 {
+  width: 24px;
+  height: 24px;
+  color: var(--accent);
 }
 
 .drop-title {
-  font-family: var(--font-heading, "Nunito", sans-serif);
-  font-size: 16px;
+  font-family: var(--font-body, "Nunito", sans-serif);
+  font-size: var(--ts-type-body-size, 14px);
+  line-height: var(--ts-type-body-lh, 22px);
   font-weight: 600;
   color: var(--text);
   margin: 0;
 }
 
 .drop-hint {
-  font-size: 13px;
+  font-family: var(--font-body, "Nunito", sans-serif);
+  font-size: var(--ts-type-caption-size, 12px);
+  line-height: var(--ts-type-caption-lh, 16px);
   color: var(--text-muted);
   margin-top: 4px;
 }
@@ -852,6 +1199,18 @@
   gap: 12px;
 }
 
+/* Item Entrance Slide-In (8px from top, 220ms) */
+@keyframes tsItemSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .snippet-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -861,6 +1220,7 @@
   flex-direction: column;
   gap: 10px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  animation: tsItemSlideIn var(--ts-dur-hover, 220ms) var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 .snippet-card-header {
@@ -963,6 +1323,7 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  animation: tsItemSlideIn var(--ts-dur-hover, 220ms) var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 .image-thumbnail-box {
@@ -1014,6 +1375,7 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  animation: tsItemSlideIn var(--ts-dur-hover, 220ms) var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 .file-info-col {
@@ -1102,47 +1464,117 @@
   outline: none;
 }
 
-/* ══ 9. EMPTY PLACEHOLDER ══ */
-.empty-items-placeholder {
+/* ══ 9. EMPTY STATE: Spartan Empty ══
+   48px icon tile (accent-soft background, accent icon), one title (section token: 18px / 650 weight),
+   one muted line (14px / 22px), one primary button (accent background, accent-ink text, 40px, radius 12).
+*/
+/* The ONLY looping animation: slow float (3px, 4s, infinite), pauses when tab is hidden or reduced motion */
+@keyframes tsEmptyTileFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.empty-spartan-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 16px;
+  padding: 40px 20px;
   text-align: center;
   background: var(--surface);
   border: 1px dashed var(--border);
-  border-radius: 14px;
-  gap: 6px;
+  border-radius: var(--ts-radius-md, 12px);
+  gap: 0;
+  box-sizing: border-box;
 }
 
-.empty-icon-circle {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
+.empty-spartan-card [hlmEmptyIcon] {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--ts-radius-md, 12px);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text);
-  margin-bottom: 4px;
+  margin-bottom: 16px;
+  animation: tsEmptyTileFloat 4s ease-in-out infinite;
 }
 
-.empty-title {
+/* Pause float animation when user prefers reduced motion or document is hidden */
+@media (prefers-reduced-motion: reduce) {
+  .empty-spartan-card [hlmEmptyIcon] {
+    animation: none !important;
+  }
+}
+
+.empty-spartan-card [hlmEmptyIcon] .size-6 {
+  width: 24px;
+  height: 24px;
+  color: var(--accent);
+}
+
+.empty-spartan-card [hlmEmptyTitle] {
   font-family: var(--font-heading, "Nunito", sans-serif);
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--ts-type-section-title-size, 18px);
+  line-height: var(--ts-type-section-title-lh, 26px);
+  font-weight: var(--ts-type-section-title-weight, 650);
+  letter-spacing: var(--ts-type-section-title-tracking, -0.01em);
   color: var(--text);
-  margin: 0;
+  margin: 0 0 6px 0;
 }
 
-.empty-desc {
-  font-size: 13.5px;
+.empty-spartan-card [hlmEmptyDescription] {
+  font-family: var(--font-body, "Nunito", sans-serif);
+  font-size: var(--ts-type-body-size, 14px);
+  line-height: var(--ts-type-body-lh, 22px);
   color: var(--text-muted);
-  margin: 0;
+  margin: 0 0 16px 0;
   max-width: 420px;
-  line-height: 1.4;
+}
+
+.empty-spartan-card [hlmEmptyActions] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.empty-spartan-card [hlmEmptyActions] button {
+  height: 40px;
+  padding: 0 18px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-body, "Nunito", sans-serif);
+  font-size: var(--ts-type-label-size, 13px);
+  font-weight: 600;
+  border-radius: var(--ts-radius-md, 12px);
+  border: none;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.empty-spartan-card [hlmEmptyActions] button:hover {
+  opacity: 0.92;
+}
+
+.empty-spartan-card [hlmEmptyActions] button:active {
+  transform: scale(0.98);
+}
+
+.empty-spartan-card [hlmEmptyActions] button:focus:not(:focus-visible) {
+  outline: none !important;
+}
+
+.empty-spartan-card [hlmEmptyActions] button:focus-visible {
+  outline: 2px solid var(--ts-focus-ring) !important;
+  outline-offset: 2px !important;
 }
 
 /* ══ 10. MODALS ══ */
