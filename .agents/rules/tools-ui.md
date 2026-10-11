@@ -18,6 +18,13 @@
 - Cards: 20px radius. Gaps between shell cards: 12px. Spacing scale 4/8/12/16/24/32/48.
 - ONE font family for the whole Tools surface (Nunito). Hierarchy by size and weight only.
 
+### Adding a new accent (5 lines)
+1. Add named block in `tokens.css`: `[data-accent="<name>"]` and `[data-theme="light"][data-accent="<name>"]`.
+2. Supply only 3 tokens per mode: `--accent` (bright fill), `--accent-ink` (text/icon on fill, >= 4.5:1), `--accent-strong` (text/links/icons on surfaces, >= 4.5:1).
+3. All tints, borders, and glows are auto-derived via `color-mix`: `--accent-soft`, `--accent-border`, and `--accent-glow`.
+4. Register the accent name on the tool in `tools.manifest.ts` (`accent: '<name>'`).
+5. Tool shell automatically injects `[data-accent="<name>"]` onto `.ts-root` to theme the entire tool experience.
+
 ## Interaction
 - Hover on icons/buttons/rows: rounded gray background. NO border, outline or ring on mouse hover or click. Active = soft gray fill. Keyboard-only :focus-visible ring is allowed.
 - Icon-only buttons: 40px hit area, aria-label, tooltip.

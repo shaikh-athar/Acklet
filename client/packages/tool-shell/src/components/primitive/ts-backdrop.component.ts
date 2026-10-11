@@ -8,81 +8,103 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule],
   template: `
     <div 
-      class="ts-backdrop-root" 
+      class="ts-bg ts-bg-page" 
       aria-hidden="true"
       [style.--ts-tool-hue]="accentHueStyle()"
     >
-      <div class="ts-gradient-orb orb-1"></div>
-      <div class="ts-gradient-orb orb-2"></div>
-      <div class="ts-gradient-orb orb-3"></div>
+      <div class="ts-bg-grid"></div>
     </div>
   `,
   styles: [`
     :host {
       display: block;
-      position: absolute;
-      inset: 0 0 auto 0;
-      height: clamp(280px, 38dvh, 420px);
+      position: fixed;
+      inset: 0;
       pointer-events: none;
-      z-index: var(--ts-z-base, 0);
+      z-index: 0;
       overflow: hidden;
     }
 
-    .ts-backdrop-root {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      mask-image: linear-gradient(to bottom, #000 35%, transparent 100%);
-      -webkit-mask-image: linear-gradient(to bottom, #000 35%, transparent 100%);
-      contain: strict;
+    .ts-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+      background: radial-gradient(ellipse 70% 40% at 50% 0%, var(--fx-highlight), transparent);
     }
 
-    .ts-gradient-orb {
+    .ts-bg-grid {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(to right,  var(--fx-grid) 1px, transparent 1px) 0 0 / var(--fx-grid-size) var(--fx-grid-size),
+        linear-gradient(to bottom, var(--fx-grid) 1px, transparent 1px) 0 0 / var(--fx-grid-size) var(--fx-grid-size);
+      -webkit-mask-image: radial-gradient(ellipse 90% 75% at 50% 0%, #000 35%, transparent 100%);
+      mask-image: radial-gradient(ellipse 90% 75% at 50% 0%, #000 35%, transparent 100%);
+    }
+
+    .ts-bg::before,
+    .ts-bg::after {
+      content: "";
       position: absolute;
       border-radius: 50%;
       pointer-events: none;
-      mix-blend-mode: normal;
     }
 
-    .orb-1 {
-      top: -20%;
-      left: 20%;
-      width: 60vw;
-      height: 360px;
-      background: radial-gradient(circle, var(--ts-glow-1) 0%, transparent 70%);
-      animation: tsDrift1 calc(50s * var(--ts-motion-scale, 1)) ease-in-out infinite alternate;
+    /* glow 1: accent, top left */
+    .ts-bg::before {
+      width: 60%;
+      aspect-ratio: 1;
+      left: -8%;
+      top: -28%;
+      background: radial-gradient(closest-side, var(--fx-glow-1), transparent 100%);
     }
 
-    .orb-2 {
-      top: -30%;
-      right: 15%;
-      width: 50vw;
-      height: 320px;
-      background: radial-gradient(circle, var(--ts-glow-2) 0%, transparent 65%);
-      animation: tsDrift2 calc(60s * var(--ts-motion-scale, 1)) ease-in-out infinite alternate;
+    /* glow 2: second tone, top right */
+    .ts-bg::after {
+      width: 52%;
+      aspect-ratio: 1;
+      right: -10%;
+      top: -22%;
+      background: radial-gradient(closest-side, var(--fx-glow-2), transparent 100%);
     }
 
-    .orb-3 {
-      top: -10%;
-      left: 45%;
-      width: 40vw;
-      height: 280px;
-      background: radial-gradient(circle, var(--ts-glow-3) 0%, transparent 60%);
+    /* Responsive: under 768px reduce grid size to 32px and glow sizes by 25% */
+    @media (max-width: 768px) {
+      .ts-bg-grid {
+        background-size: 32px 32px;
+      }
+      .ts-bg::before {
+        width: 45%;
+        left: -5%;
+        top: -20%;
+      }
+      .ts-bg::after {
+        width: 39%;
+        right: -6%;
+        top: -16%;
+      }
     }
 
-    @keyframes tsDrift1 {
-      0% { transform: translate(0, 0); }
-      100% { transform: translate(-30px, 20px); }
+    /* High contrast: remove glows, keep faint grid */
+    @media (prefers-contrast: more) {
+      .ts-bg::before,
+      .ts-bg::after {
+        display: none !important;
+      }
+      .ts-bg {
+        background: transparent !important;
+      }
     }
 
-    @keyframes tsDrift2 {
-      0% { transform: translate(0, 0); }
-      100% { transform: translate(30px, -15px); }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .ts-gradient-orb {
-        animation: none !important;
+    /* Forced colors and print: hide decorative layers entirely */
+    @media (forced-colors: active), print {
+      :host,
+      .ts-bg,
+      .ts-bg-grid {
+        display: none !important;
       }
     }
   `]

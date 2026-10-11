@@ -6,7 +6,6 @@ import { getToolUrl } from '@acklet/shared';
 import { HlmBadgeImports } from '../../helm/badge';
 import { HlmItemImports } from '../../helm/item';
 import { TsIconComponent } from '../icon/ts-icon.component';
-import { TsToolTileComponent } from './ts-tool-tile.component';
 import { TsFaqComponent } from './ts-faq.component';
 
 @Component({
@@ -17,7 +16,6 @@ import { TsFaqComponent } from './ts-faq.component';
     HlmBadgeImports,
     HlmItemImports,
     TsIconComponent,
-    TsToolTileComponent,
     TsFaqComponent
   ],
   template: `
@@ -110,49 +108,6 @@ import { TsFaqComponent } from './ts-faq.component';
           </section>
         }
 
-        <!-- ══════════════════════════════════════════════════════ -->
-        <!-- 4. Related Tools Section                              -->
-        <!-- ══════════════════════════════════════════════════════ -->
-        @if (relatedTools().length > 0) {
-          <div class="ts-section-divider" role="separator"></div>
-          <section 
-            id="related" 
-            class="ts-content-section" 
-            aria-label="Related tools"
-          >
-            <div class="ts-section-header">
-              <h2 class="ts-section-title">Related tools</h2>
-              <span class="ts-section-subtitle">Explore other online tools and utilities in Acklet.</span>
-            </div>
-
-            <div class="ts-related-grid" role="list">
-              @for (relTool of relatedTools(); track relTool.slug) {
-                <a 
-                  [href]="getToolSubdomainUrl(relTool.slug)" 
-                  class="ts-related-link-wrapper"
-                  role="listitem"
-                  [attr.aria-label]="relTool.name + ': ' + relTool.shortDescription"
-                >
-                  <hlm-item variant="outline" class="ts-related-item-card">
-                    <hlm-item-media>
-                      <ts-tool-tile [icon]="relTool.icon" [name]="relTool.name" [size]="40" />
-                    </hlm-item-media>
-                    <hlm-item-content>
-                      <span hlmItemTitle class="ts-related-title">{{ relTool.name }}</span>
-                      <p hlmItemDescription class="ts-related-desc">{{ relTool.shortDescription }}</p>
-                    </hlm-item-content>
-                    <hlm-item-actions>
-                      <div class="ts-related-arrow-btn" aria-hidden="true">
-                        <ts-icon name="arrow-up-right" [size]="15" />
-                      </div>
-                    </hlm-item-actions>
-                  </hlm-item>
-                </a>
-              }
-            </div>
-          </section>
-        }
-
       </div>
     }
   `,
@@ -193,14 +148,24 @@ import { TsFaqComponent } from './ts-faq.component';
       scroll-margin-top: 24px;
       opacity: 0;
       transform: translateY(8px);
-      transition: opacity 300ms cubic-bezier(0.16, 1, 0.3, 1),
-                  transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+      transition: opacity var(--ts-dur-enter, 420ms) var(--ts-ease-out),
+                  transform var(--ts-dur-enter, 420ms) var(--ts-ease-out),
+                  background-color 600ms ease;
       will-change: opacity, transform;
+      border-radius: var(--ts-radius-card, 16px);
+      padding: 4px 8px;
+      margin: -4px -8px;
     }
 
     .ts-content-section.is-revealed {
       opacity: 1;
       transform: translateY(0);
+    }
+
+    /* Target Section Flash Highlight (600ms quick accent-soft flash) */
+    .ts-content-section.section-flash-active {
+      background-color: var(--accent-soft) !important;
+      transition: background-color 600ms ease;
     }
 
     .ts-section-header {
@@ -211,12 +176,12 @@ import { TsFaqComponent } from './ts-faq.component';
 
     .ts-section-title {
       font-family: var(--font-heading, "Nunito", sans-serif);
-      font-size: 20px;
-      font-weight: 700;
+      font-size: var(--ts-type-section-title-size, 18px);
+      line-height: var(--ts-type-section-title-lh, 26px);
+      font-weight: var(--ts-type-section-title-weight, 650);
+      letter-spacing: var(--ts-type-title-tracking, -0.01em);
       color: var(--text, #18181B);
-      letter-spacing: -0.02em;
       margin: 0;
-      line-height: 1.3;
     }
 
     :host-context([data-theme="dark"]) .ts-section-title {
@@ -582,12 +547,24 @@ export class TsToolContentComponent implements OnInit, OnDestroy {
       });
     }, {
       root: mainCard,
-      rootMargin: '0px 0px -40px 0px',
-      threshold: 0.1
+      rootMargin: '0px 0px -20px 0px',
+      threshold: 0.15
     });
 
     const sections = this.el.nativeElement.querySelectorAll('.ts-content-section');
     sections.forEach((s: Element) => this.observer?.observe(s));
+
+    // Safety failsafe: If observer fails or JS is slow, make sure everything is visible after 1s
+    setTimeout(() => {
+      sections.forEach((s: Element) => s.classList.add('is-revealed'));
+    }, 1000);
+
+    // bfcache listener
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted) {
+        sections.forEach((s: Element) => s.classList.add('is-revealed'));
+      }
+    });
   }
 
   private updateFaqSchema(faqs?: ToolFaq[]): void {

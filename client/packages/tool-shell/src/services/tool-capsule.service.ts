@@ -16,7 +16,7 @@ export class ToolCapsuleService {
 
   /**
    * Encodes a DOM element bounding rect into a hash parameter string.
-   * Format: #cap=x,y,w,h,r
+   * Format: #acklet-cap=x,y,w,h,r
    */
   encodeRect(el: HTMLElement): string {
     const rect = el.getBoundingClientRect();
@@ -29,7 +29,7 @@ export class ToolCapsuleService {
     const h = Math.round(rect.height);
     const r = Math.round(radius);
 
-    return `cap=${x},${y},${w},${h},${r}`;
+    return `acklet-cap=${x},${y},${w},${h},${r}`;
   }
 
   /**
@@ -39,7 +39,7 @@ export class ToolCapsuleService {
   parseHash(hash: string): CapsuleRect | null {
     if (!hash) return null;
     const clean = hash.startsWith('#') ? hash.slice(1) : hash;
-    const match = clean.match(/cap=(-?\d+),(-?\d+),(\d+),(\d+),(\d+)/);
+    const match = clean.match(/(?:acklet-cap|cap)=(-?\d+),(-?\d+),(\d+),(\d+),(\d+)/);
     if (!match) return null;
 
     const [_, sx, sy, sw, sh, sr] = match;
@@ -161,7 +161,7 @@ export class ToolCapsuleService {
   }
 
   /**
-   * Plays the Tool-side reveal animation if #cap= was present in URL hash.
+   * Plays the Tool-side reveal animation if #acklet-cap= was present in URL hash or saved in window.__acklet_capsule.
    */
   playToolReveal(
     mainCardEl: HTMLElement, 
@@ -169,15 +169,23 @@ export class ToolCapsuleService {
   ): void {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
-    const hash = window.location.hash;
-    const parsed = this.parseHash(hash);
-
-    // Clean hash so refresh/back does not replay animation
-    if (hash.includes('cap=')) {
+    let parsed: CapsuleRect | null = null;
+    if ((window as any).__acklet_capsule) {
+      parsed = (window as any).__acklet_capsule;
       try {
-        const cleanUrl = window.location.pathname + window.location.search;
-        window.history.replaceState(null, '', cleanUrl);
-      } catch (e) {}
+        delete (window as any).__acklet_capsule;
+      } catch (e) {
+        (window as any).__acklet_capsule = null;
+      }
+    } else {
+      const hash = window.location.hash;
+      parsed = this.parseHash(hash);
+      if (hash && (hash.includes('acklet-cap=') || hash.includes('cap='))) {
+        try {
+          const cleanUrl = window.location.pathname + window.location.search;
+          window.history.replaceState(null, '', cleanUrl);
+        } catch (e) {}
+      }
     }
 
     if (!parsed) return;

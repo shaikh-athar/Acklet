@@ -58,7 +58,7 @@ export interface SectionNavLink {
 
         <!-- Acklet Tools Brand Link to Tools Hub -->
         <a [href]="hubUrl" class="ts-brand-link" title="Acklet Tools Hub">
-          <ts-icon name="zap" [size]="18" class="ts-brand-mark" />
+          <ts-icon name="zap" [size]="24" class="ts-brand-mark" />
           <span class="ts-brand-wordmark">Acklet</span>
         </a>
 
@@ -211,8 +211,12 @@ export interface SectionNavLink {
 
     .ts-brand-mark {
       color: var(--text);
-      display: flex;
+      display: inline-flex;
       align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
     }
 
     .ts-brand-wordmark {
@@ -221,6 +225,9 @@ export interface SectionNavLink {
       font-weight: 800;
       color: var(--text);
       letter-spacing: -0.02em;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
     }
 
     .ts-breadcrumb-separator {
@@ -277,7 +284,7 @@ export interface SectionNavLink {
       left: 0;
       height: calc(100% - 6px);
       border-radius: var(--ts-radius-full, 9999px);
-      background: var(--surface-hover, #F4F4F5);
+      background: var(--accent-soft);
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
       z-index: 1;
       pointer-events: none;
@@ -285,11 +292,6 @@ export interface SectionNavLink {
       transition: transform 220ms ease-out,
                   width 220ms ease-out,
                   opacity 150ms ease;
-    }
-
-    [data-theme="dark"] .ts-nav-active-pill {
-      background: #27272A;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     }
 
     .ts-nav-active-pill.is-ready {
@@ -326,16 +328,12 @@ export interface SectionNavLink {
     }
 
     .ts-nav-link-btn.active {
-      color: var(--text, #18181B);
+      color: var(--accent-strong);
       font-weight: 700;
     }
 
-    [data-theme="dark"] .ts-nav-link-btn.active {
-      color: var(--text, #FCFCFC);
-    }
-
     .ts-nav-link-btn:focus-visible {
-      outline: 2px solid var(--ts-focus-ring, #18181B) !important;
+      outline: 2px solid var(--accent-strong) !important;
       outline-offset: 1px;
       z-index: 3;
     }
@@ -439,36 +437,61 @@ export interface SectionNavLink {
     @media (max-width: 1023px) {
       .ts-mobile-menu-btn {
         display: inline-flex;
-        width: 40px;
-        height: 40px;
-        min-width: 40px;
-        min-height: 40px;
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+      }
+      .ts-zone-center {
+        display: none;
+      }
+      .ts-topbar-card {
+        grid-template-columns: 1fr auto;
       }
     }
 
     @media (max-width: 767px) {
       .ts-topbar-card {
         height: 56px;
-        padding: 0 10px;
+        padding: 0 8px;
         border-radius: 16px;
       }
-      .ts-zone-center {
-        display: none;
+      .ts-zone-left {
+        gap: 6px;
+      }
+      .ts-zone-right {
+        gap: 8px;
+      }
+      .ts-tool-chip {
+        max-width: 120px;
+        overflow: hidden;
+      }
+      .ts-tool-chip-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .hide-mobile {
         display: none !important;
       }
       .ts-search-btn {
         padding: 0 10px;
-        height: 40px;
-        min-height: 40px;
-        min-width: 40px;
+        height: 44px;
+        min-height: 44px;
+        min-width: 44px;
       }
       .ts-btn-primary-cta {
         padding: 0 14px;
         font-size: 13px;
-        height: 40px;
-        min-height: 40px;
+        height: 44px;
+        min-height: 44px;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .ts-breadcrumb-separator,
+      .ts-tool-chip {
+        display: none !important;
       }
     }
   `]
@@ -479,7 +502,7 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly activeTabId = input<string>('');
   readonly showSidebar = input<boolean>(true);
   readonly showPrimaryAction = input<boolean>(false);
-  readonly showSearch = input<boolean>(false);
+  readonly showSearch = input<boolean>(true);
   
   readonly tabChange = output<string>();
   readonly openCommandPalette = output<void>();
@@ -560,6 +583,11 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
     const targetEl = document.getElementById(sectionId);
     if (targetEl) {
       targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Quick accent-soft flash (600ms)
+      targetEl.classList.add('section-flash-active');
+      setTimeout(() => {
+        targetEl.classList.remove('section-flash-active');
+      }, 600);
     }
   }
 

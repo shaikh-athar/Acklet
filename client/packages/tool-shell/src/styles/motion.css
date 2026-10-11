@@ -3,15 +3,18 @@
 :root,
 .ts-root {
   /* Motion timing tokens */
-  --ts-dur-fast: calc(120ms * var(--ts-motion-scale, 1));
-  --ts-dur-base: calc(200ms * var(--ts-motion-scale, 1));
+  --ts-dur-press: calc(150ms * var(--ts-motion-scale, 1));
   --ts-dur-hover: calc(220ms * var(--ts-motion-scale, 1));
-  --ts-dur-slow: calc(350ms * var(--ts-motion-scale, 1));
+  --ts-dur-panel: calc(280ms * var(--ts-motion-scale, 1));
+  --ts-dur-enter: calc(420ms * var(--ts-motion-scale, 1));
+  --ts-dur-fast: calc(150ms * var(--ts-motion-scale, 1));
+  --ts-dur-base: calc(220ms * var(--ts-motion-scale, 1));
+  --ts-dur-slow: calc(420ms * var(--ts-motion-scale, 1));
   --ts-dur-scroll: calc(500ms * var(--ts-motion-scale, 1));
 
   /* Ultra-smooth quintic & ease-out curves */
   --ts-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --ts-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ts-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ts-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
   /* Standard transitions */

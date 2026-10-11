@@ -42,6 +42,18 @@ export * from './components/primitive/ts-faq.component';
 export * from './components/primitive/ts-tooltip.directive';
 export * from './components/primitive/ts-spotlight.directive';
 export * from './components/primitive/ts-tool-content.component';
+export * from './components/header/ts-tool-header.component';
+export * from './components/rail/ts-tool-details.component';
+export * from './components/rail/ts-tool-related.component';
+
+// Tools Helm Primitives (Spartan)
+export * from './helm/button';
+export * from './helm/badge';
+export * from './helm/input';
+export * from './helm/alert';
+export * from './helm/empty';
+export * from './helm/tabs';
+export * from './helm/tooltip';
 
 // Shell & Hub Pages
 export * from './components/shell/ts-shell.component';
