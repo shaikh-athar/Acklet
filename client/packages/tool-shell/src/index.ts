@@ -9,6 +9,7 @@ export * from './services/tool-storage.service';
 export * from './services/tool-context.service';
 export * from './services/tool-permissions.service';
 export * from './services/tool-ad.service';
+export * from './services/tool-capsule.service';
 
 // Icons & Primitives
 export * from './components/icon/tool-icon.component';
@@ -38,8 +39,9 @@ export * from './components/primitive/ts-backdrop.component';
 export * from './components/primitive/ts-info-card.component';
 export * from './components/primitive/ts-related-tools.component';
 export * from './components/primitive/ts-faq.component';
-export * from './components/primitive/ts-toast.component';
 export * from './components/primitive/ts-tooltip.directive';
+export * from './components/primitive/ts-spotlight.directive';
+export * from './components/primitive/ts-tool-content.component';
 
 // Shell & Hub Pages
 export * from './components/shell/ts-shell.component';

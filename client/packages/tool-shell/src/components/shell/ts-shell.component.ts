@@ -1,19 +1,21 @@
 // packages/tool-shell/src/components/shell/ts-shell.component.ts
-import { Component, input, output, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, input, output, signal, computed, inject, OnInit, AfterViewInit, ElementRef, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolRegistryItem, getAllTools } from '@acklet/tool-registry';
 import { ToolShellConfig, ToolTab } from '../../models/tool-shell.models';
 import { ToolSidebarService } from '../../services/tool-sidebar.service';
 import { ToolThemeService } from '../../services/tool-theme.service';
+import { ToolCapsuleService } from '../../services/tool-capsule.service';
 import { TsTopbarComponent } from '../topbar/ts-topbar.component';
 import { TsSidebarComponent } from '../sidebar/ts-sidebar.component';
 import { TsCommandPaletteComponent } from '../search/ts-command-palette.component';
 import { TsAboutCardComponent } from '../primitive/ts-about-card.component';
 import { TsAboutPanelComponent } from '../about-modal/ts-about-panel.component';
 import { TsBackdropComponent } from '../primitive/ts-backdrop.component';
+import { TsToolContentComponent } from '../primitive/ts-tool-content.component';
 
 @Component({
-  selector: 'lib-tool-layout',
+  selector: 'ts-shell, lib-tool-layout',
   standalone: true,
   imports: [
     CommonModule, 
@@ -22,7 +24,8 @@ import { TsBackdropComponent } from '../primitive/ts-backdrop.component';
     TsCommandPaletteComponent,
     TsAboutCardComponent,
     TsAboutPanelComponent,
-    TsBackdropComponent
+    TsBackdropComponent,
+    TsToolContentComponent
   ],
   template: `
     <div class="ts-root" [attr.data-theme]="themeService.effectiveTheme()">
@@ -40,9 +43,12 @@ import { TsBackdropComponent } from '../primitive/ts-backdrop.component';
         @if (showTopbar()) {
           <div class="ts-navbar-card-slot">
             <ts-topbar 
+              [tool]="tool()"
               [currentCategory]="tool()?.category || 'Utilities'"
               [activeTabId]="activeTabId()"
               [showSidebar]="showSidebar()"
+              [showPrimaryAction]="showPrimaryAction()"
+              [showSearch]="showSearch()"
               (tabChange)="onTabChange($event)"
               (aboutClick)="showAboutPanel.set(true)"
               (openCommandPalette)="showCommandPalette.set(true)"
@@ -66,6 +72,7 @@ import { TsBackdropComponent } from '../primitive/ts-backdrop.component';
 
           <!-- 3. Right/Center Card: MAIN CONTENT (Scrolls inside itself) -->
           <main 
+            #mainCard
             id="main-content" 
             class="ts-main-content-card" 
             role="main" 
@@ -74,9 +81,12 @@ import { TsBackdropComponent } from '../primitive/ts-backdrop.component';
             <div class="ts-main-scroll-container" [class.full-bleed]="isFullBleed()">
               
               <!-- Primary Tool Workspace Content -->
-              <div class="ts-tool-content-surface" [class.full-bleed]="isFullBleed()">
+              <div id="tool" class="ts-tool-content-surface" [class.full-bleed]="isFullBleed()">
                 <ng-content />
               </div>
+
+              <!-- Content Slot Placeholder (About, How to use, FAQ, Related) -->
+              <ts-tool-content [tool]="tool()" />
 
               <!-- About & Documentation Card Below Tool -->
               @if (showDescriptionCard() && tool()) {
@@ -110,16 +120,83 @@ import { TsBackdropComponent } from '../primitive/ts-backdrop.component';
     </div>
   `,
   styles: [`
-    /* Root Viewport Lock */
+    /* Root Viewport Lock & Comprehensive Theme Variables */
+    :host,
+    .ts-root,
+    .ts-root[data-theme="dark"] {
+      --page-bg: #0B0B0B;
+      --bg: #0B0B0B;
+      --shell-card: #141414;
+      --shell-card-border: #27272A;
+      --shell-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+      --surface: #141414;
+      --surface-hover: #1E1E22;
+      --surface-active: #27272A;
+      --border: #27272A;
+      --border-accent: #FCFCFC;
+      --text: #FCFCFC;
+      --text-muted: #A1A1AA;
+      --text-subtle: #71717A;
+      --accent: #FFFFFF;
+      --accent-soft: #1C1C1F;
+      --on-accent: #000000;
+      --spotlight: rgba(252, 252, 252, 0.08);
+      --ts-focus-ring: #FCFCFC;
+      --ts-raised: #1C1C1F;
+      --ts-raised-hover: #27272A;
+      --ts-scrollbar-thumb: #27272A;
+      --ts-scrollbar-thumb-hover: #3F3F46;
+      --ts-scrollbar-track: transparent;
+      --shell-padding: 12px;
+      --shell-gap: 12px;
+      --header-height: 64px;
+      --sidebar-width: 272px;
+      --sidebar-collapsed-width: 72px;
+      --shell-radius: 20px;
+      --ts-radius-full: 9999px;
+      --font-body: "Nunito", system-ui, -apple-system, sans-serif;
+      --font-heading: "Nunito", system-ui, -apple-system, sans-serif;
+    }
+
+    .ts-root[data-theme="light"] {
+      --page-bg: #f4f4f4;
+      --bg: #f4f4f4;
+      --shell-card: #FFFFFF;
+      --shell-card-border: rgba(0, 0, 0, 0.06);
+      --shell-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      --surface: #FFFFFF;
+      --surface-hover: #F4F4F5;
+      --surface-active: #E4E4E7;
+      --border: rgba(0, 0, 0, 0.06);
+      --border-accent: #09090B;
+      --text: #09090B;
+      --text-muted: #52525B;
+      --text-subtle: #71717A;
+      --accent: #09090B;
+      --accent-soft: #F4F4F5;
+      --on-accent: #FFFFFF;
+      --spotlight: rgba(0, 0, 0, 0.04);
+      --ts-focus-ring: #09090B;
+      --ts-raised: #F4F4F5;
+      --ts-raised-hover: #E4E4E7;
+      --ts-scrollbar-thumb: #D4D4D8;
+      --ts-scrollbar-thumb-hover: #A1A1AA;
+      --ts-scrollbar-track: transparent;
+    }
+
     .ts-root {
       width: 100vw;
       height: 100dvh;
+      max-height: 100dvh;
       overflow: hidden;
       position: relative;
       background-color: var(--page-bg);
       color: var(--text);
       font-family: var(--font-body, "Nunito", sans-serif);
-      padding: var(--shell-padding, 12px);
+      padding: max(var(--shell-padding, 12px), env(safe-area-inset-top, 0px))
+               max(var(--shell-padding, 12px), env(safe-area-inset-right, 0px))
+               max(var(--shell-padding, 12px), env(safe-area-inset-bottom, 0px))
+               max(var(--shell-padding, 12px), env(safe-area-inset-left, 0px));
       box-sizing: border-box;
       transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease);
     }
@@ -192,6 +269,8 @@ import { TsBackdropComponent } from '../primitive/ts-backdrop.component';
       min-width: 0;
       overflow-y: auto;
       overflow-x: hidden;
+      container-type: inline-size;
+      container-name: main-card;
       background: var(--shell-card);
       border: 1px solid var(--shell-card-border);
       border-radius: var(--shell-radius, 20px);
@@ -258,7 +337,10 @@ import { TsBackdropComponent } from '../primitive/ts-backdrop.component';
 
     @media (max-width: 767px) {
       .ts-root {
-        padding: 8px;
+        padding: max(8px, env(safe-area-inset-top, 0px))
+                 max(8px, env(safe-area-inset-right, 0px))
+                 max(8px, env(safe-area-inset-bottom, 0px))
+                 max(8px, env(safe-area-inset-left, 0px));
       }
       .ts-shell-grid {
         grid-template-rows: 56px 1fr;
@@ -274,22 +356,25 @@ import { TsBackdropComponent } from '../primitive/ts-backdrop.component';
         border-radius: 16px;
       }
       .ts-main-scroll-container {
-        padding: 16px 14px 32px;
+        padding: 16px;
         gap: 16px;
       }
     }
   `]
 })
-export class ToolLayoutComponent implements OnInit {
+export class ToolLayoutComponent implements OnInit, AfterViewInit {
   readonly tool = input<ToolRegistryItem | null>(null);
   readonly config = input<ToolShellConfig | null>(null);
   readonly tabChange = output<string>();
+
+  readonly mainCard = viewChild<ElementRef<HTMLElement>>('mainCard');
 
   readonly allTools = signal<ToolRegistryItem[]>(getAllTools());
   readonly showCommandPalette = signal<boolean>(false);
   readonly showAboutPanel = signal<boolean>(false);
   readonly sidebarService = inject(ToolSidebarService);
   readonly themeService = inject(ToolThemeService);
+  private readonly capsuleService = inject(ToolCapsuleService);
 
   readonly internalActiveTab = signal<string>('');
 
@@ -302,6 +387,14 @@ export class ToolLayoutComponent implements OnInit {
     }
   }
 
+  ngAfterViewInit(): void {
+    const card = this.mainCard()?.nativeElement;
+    if (card) {
+      const isDark = this.themeService.effectiveTheme() === 'dark';
+      this.capsuleService.playToolReveal(card, isDark);
+    }
+  }
+
   readonly showSidebar = computed(() => {
     return this.config()?.showSidebar ?? true;
   });
@@ -310,12 +403,20 @@ export class ToolLayoutComponent implements OnInit {
     return this.config()?.showTopbar ?? true;
   });
 
+  readonly showPrimaryAction = computed(() => {
+    return this.config()?.showPrimaryAction ?? false;
+  });
+
+  readonly showSearch = computed(() => {
+    return this.config()?.showSearch ?? false;
+  });
+
   readonly isFullBleed = computed(() => {
     return this.config()?.layout === 'fullBleed' || this.tool()?.layout === 'fullBleed';
   });
 
   readonly showDescriptionCard = computed(() => {
-    return this.config()?.showDescriptionCard !== false && this.activeTabId() !== 'about';
+    return this.config()?.showDescriptionCard === true && this.activeTabId() !== 'about';
   });
 
   readonly effectiveTabs = computed<ToolTab[]>(() => {

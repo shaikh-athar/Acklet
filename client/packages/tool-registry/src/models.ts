@@ -54,9 +54,13 @@ export interface ToolRegistryItem {
   related?: string[]; // slug references
   requires?: Array<'clipboard' | 'camera' | 'microphone' | 'notifications' | 'backend'>;
   tabs?: ToolManifestTab[];
+  about?: string;
   features?: string[];
+  howTo?: string[];
   howItWorks?: string[];
   faqs?: ToolFaq[];
   suggestedTools?: string[];
+  executionMode?: 'browser' | 'offline' | 'cloud';
+  navLinks?: { id: string; label: string }[];
   seo?: ToolSeo;
 }

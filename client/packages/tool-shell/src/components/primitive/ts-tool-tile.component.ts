@@ -38,7 +38,7 @@ import { TsIconComponent } from '../icon/ts-icon.component';
       flex-shrink: 0;
       transition: all var(--ts-dur-fast, 150ms) var(--ts-ease);
     }
-    [data-theme="dark"] .ts-tile-box {
+    :host-context([data-theme="dark"]) .ts-tile-box {
       background: var(--surface-hover, #1E1E22);
       border-color: var(--border, rgba(255, 255, 255, 0.08));
       color: var(--text, #FCFCFC);

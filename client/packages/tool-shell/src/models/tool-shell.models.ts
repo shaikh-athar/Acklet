@@ -25,5 +25,8 @@ export interface ToolShellConfig {
   showDescriptionCard?: boolean;
   showSidebar?: boolean;
   showTopbar?: boolean;
+  showSearch?: boolean;
+  showPrimaryAction?: boolean;
   layout?: 'standard' | 'fullBleed';
 }
+

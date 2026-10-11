@@ -1,6 +1,7 @@
 import { Component, signal, HostListener, inject, ElementRef, computed } from '@angular/core';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { getToolsHubUrl } from '@acklet/shared';
 import { IconComponent } from '../icon/icon';
 import { MagneticDirective } from '../../directives/magnetic.directive';
 import { ThemeService } from '../../../core/services/theme.service';
@@ -9,6 +10,7 @@ import { AuthService } from '../../../core/services/auth.service';
 interface NavLink {
   label: string;
   path?: string;
+  externalHref?: string;
   children?: { label: string; path: string; icon?: string; desc?: string }[];
 }
 
@@ -26,7 +28,11 @@ interface NavLink {
         <!-- Desktop Nav Links -->
         <div class="nav-links hide-mobile">
           @for (link of navLinks; track link.label) {
-            @if (link.children) {
+            @if (link.externalHref) {
+              <a [href]="link.externalHref" class="nav-link">
+                {{ link.label }}
+              </a>
+            } @else if (link.children) {
               <div class="nav-item-dropdown" [class.open]="activeDropdown() === link.label">
                 <button class="nav-dropdown-trigger" (click)="toggleDropdown(link.label, $event)">
                   {{ link.label }}
@@ -89,7 +95,11 @@ interface NavLink {
       <div class="mobile-drawer" [class.open]="mobileMenuOpen()">
         <div class="mobile-drawer-inner">
           @for (link of navLinks; track link.label) {
-            @if (link.children) {
+            @if (link.externalHref) {
+              <a [href]="link.externalHref" class="mobile-link" (click)="closeMobileMenu()">
+                {{ link.label }}
+              </a>
+            } @else if (link.children) {
               <div class="mobile-section-heading">{{ link.label }}</div>
               @for (child of link.children; track child.path) {
                 <a [routerLink]="child.path" routerLinkActive="mobile-link-active" class="mobile-link" (click)="closeMobileMenu()">
@@ -454,15 +464,7 @@ export class NavbarComponent {
 
   readonly navLinks: NavLink[] = [
     { label: 'Home', path: '/' },
-    {
-      label: 'Tools',
-      children: [
-        { label: 'Explore Solutions', path: '/tools/explore', icon: 'wrench', desc: 'Browse the complete catalog of developer tools.' },
-        { label: 'Categories', path: '/tools/categories', icon: 'grid', desc: 'Find tools grouped by category.' },
-        { label: 'Trending Tools', path: '/tools/trending', icon: 'trending-up', desc: 'Active utilities based on community usage.' },
-        { label: 'New Releases', path: '/tools/new', icon: 'sparkles', desc: 'Explore the latest offline-first solutions.' }
-      ]
-    },
+    { label: 'Tools', externalHref: getToolsHubUrl() },
     {
       label: 'Community',
       children: [

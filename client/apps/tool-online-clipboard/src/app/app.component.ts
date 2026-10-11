@@ -10,9 +10,9 @@ import { ClipboardComponent } from '../clipboard.component';
   standalone: true,
   imports: [CommonModule, ToolLayoutComponent, ClipboardComponent],
   template: `
-    <lib-tool-layout [tool]="manifest">
+    <ts-shell [tool]="manifest">
       <app-clipboard-tool />
-    </lib-tool-layout>
+    </ts-shell>
   `
 })
 export class AppComponent {
