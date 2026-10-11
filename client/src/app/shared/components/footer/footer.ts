@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { IconComponent } from '../icon/icon';
 import { ViewportDirective } from '../../viewport/viewport.directive';
 import { gsap } from 'gsap';
+import { getToolsHubUrl } from '@acklet/shared';
 
 @Component({
   selector: 'app-footer',
@@ -35,12 +36,14 @@ import { gsap } from 'gsap';
         <!-- Horizontal navigation links row -->
         <div class="footer-nav-row">
           <a routerLink="/">Home</a>
-          <a routerLink="/tools/explore">Explore Tools</a>
-          <a routerLink="/tools/categories">Categories</a>
+          <a [href]="toolsHubUrl">Explore Tools</a>
+          <a [href]="toolsHubUrl">Categories</a>
+          <a [href]="toolsHubUrl">Trending</a>
+          <a [href]="toolsHubUrl">New Releases</a>
+          <a routerLink="/community/discussions">Community</a>
+          <a routerLink="/blog">Blog</a>
           <a routerLink="/about">About</a>
           <a routerLink="/contact">Contact</a>
-          <a routerLink="/privacy">Privacy Policy</a>
-          <a routerLink="/terms">Terms</a>
           <a routerLink="/auth/login">Sign In</a>
         </div>
 
@@ -152,6 +155,7 @@ import { gsap } from 'gsap';
 })
 export class FooterComponent {
   private readonly el = inject(ElementRef);
+  readonly toolsHubUrl = getToolsHubUrl();
 
   private footerTimelinePlayed = false;
 

@@ -92,7 +92,7 @@ import { TsToolTileComponent } from './ts-tool-tile.component';
       position: relative;
       min-width: 0;
     }
-    [data-theme="dark"] .ts-card-root {
+    :host-context([data-theme="dark"]) .ts-card-root {
       background: #141416;
       border-color: #27272A;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
@@ -103,7 +103,7 @@ import { TsToolTileComponent } from './ts-tool-tile.component';
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         transform: translateY(-1px);
       }
-      [data-theme="dark"] .ts-card-root:hover {
+      :host-context([data-theme="dark"]) .ts-card-root:hover {
         background: #1C1C20;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
       }
@@ -214,12 +214,12 @@ import { TsToolTileComponent } from './ts-tool-tile.component';
       background: var(--surface, #FFFFFF);
       transform: scale(1.06);
     }
-    [data-theme="dark"] .ts-action-btn-circle {
+    :host-context([data-theme="dark"]) .ts-action-btn-circle {
       background: #18181B;
       border-color: #27272A;
       color: #A1A1AA;
     }
-    [data-theme="dark"] .ts-card-root:hover .ts-action-btn-circle {
+    :host-context([data-theme="dark"]) .ts-card-root:hover .ts-action-btn-circle {
       color: #FFFFFF;
       background: #27272A;
     }

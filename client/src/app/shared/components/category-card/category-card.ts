@@ -1,16 +1,16 @@
 // client/src/app/shared/components/category-card/category-card.ts
 import { Component, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { Category } from '../../../core/models/category.model';
 import { IconComponent } from '../icon/icon';
 import { SpotlightDirective } from '../../directives/spotlight.directive';
+import { getToolsHubUrl } from '@acklet/shared';
 
 @Component({
   selector: 'app-category-card',
   standalone: true,
-  imports: [RouterLink, IconComponent, SpotlightDirective],
+  imports: [IconComponent, SpotlightDirective],
   template: `
-    <a [routerLink]="['/tools']" [queryParams]="{ category: category().slug }"
+    <a [href]="hubUrl + '?category=' + category().slug"
        class="cat-card-root shimmer-border" [style.--cat-color]="category().color" appSpotlight>
       <div class="cat-icon-box">
         <app-icon [name]="category().icon" class="cat-icon size-6" />
@@ -85,4 +85,5 @@ import { SpotlightDirective } from '../../directives/spotlight.directive';
 })
 export class CategoryCardComponent {
   readonly category = input.required<Category>();
+  readonly hubUrl = getToolsHubUrl();
 }

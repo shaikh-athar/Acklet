@@ -1,6 +1,7 @@
 import { Component, inject, signal, ElementRef, HostListener, effect } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { getToolsHubUrl } from '@acklet/shared';
 import { ToolsService } from '../../core/services/tools.service';
 import { ToolCardComponent } from '../../shared/components/tool-card/tool-card';
 import { CategoryCardComponent } from '../../shared/components/category-card/category-card';
@@ -42,14 +43,14 @@ import { gsap } from 'gsap';
 
           <!-- CTAs -->
           <div class="hero-ctas">
-            <a routerLink="/tools" class="btn btn-primary btn-lg">Browse solutions</a>
-            <a routerLink="/categories" class="btn btn-secondary btn-lg">Explore categories</a>
+            <a [href]="toolsHubUrl" class="btn btn-primary btn-lg">Browse solutions</a>
+            <a [href]="toolsHubUrl" class="btn btn-secondary btn-lg">Explore categories</a>
           </div>
 
           <!-- Quick category pills -->
           <div class="hero-pills">
             @for (cat of toolsSvc.featuredCategories().slice(0, 5); track cat.id) {
-              <a [routerLink]="['/tools']" [queryParams]="{category: cat.slug}" class="hero-pill">
+              <a [href]="toolsHubUrl + '?category=' + cat.slug" class="hero-pill">
                 <app-icon [name]="cat.icon" class="size-3.5 mr-1.5" />
                 {{ cat.name }}
               </a>
@@ -147,7 +148,7 @@ import { gsap } from 'gsap';
         <div class="container-main">
           <div class="section-header-row">
             <app-section-header eyebrow="New" title="Recently added solutions" subtitle="The latest additions to our catalog — quality-checked and ready to use." />
-            <a routerLink="/tools" [queryParams]="{filter:'new'}" class="btn btn-secondary">
+            <a [href]="toolsHubUrl" class="btn btn-secondary">
               See all new
               <app-icon name="arrow-right" class="size-3.5" />
             </a>
@@ -196,7 +197,7 @@ import { gsap } from 'gsap';
             <h2 class="cta-title">Your problem has a solution.<br><span class="gradient-text-brand">Find it here.</span></h2>
             <p class="cta-subtitle">One place for the digital work that used to take five websites. Fast, private, and free.</p>
             <div class="cta-actions">
-              <a routerLink="/tools" class="btn btn-primary btn-lg">Browse solutions</a>
+              <a [href]="toolsHubUrl" class="btn btn-primary btn-lg">Browse solutions</a>
               <a routerLink="/about" class="btn btn-secondary btn-lg">Learn about Acklet</a>
             </div>
           </div>
@@ -740,6 +741,7 @@ import { gsap } from 'gsap';
 export class HomeComponent {
   private readonly el = inject(ElementRef);
   readonly toolsSvc = inject(ToolsService);
+  readonly toolsHubUrl = getToolsHubUrl();
   readonly searchQuery = signal('');
   readonly searchResults = signal(this.toolsSvc.tools());
   readonly activeStoryIdx = signal(0);
@@ -758,7 +760,7 @@ export class HomeComponent {
     effect(() => {
       // Trigger effect when themeSvc.theme changes
       const activeTheme = this.themeSvc.theme();
-      
+
       // Reset animation guards
       this.heroTimelinePlayed = false;
 
@@ -820,25 +822,25 @@ export class HomeComponent {
       const subtitle = heroSec.querySelector('.hero-subtitle');
       const ctas = heroSec.querySelector('.hero-ctas');
       const pills = heroSec.querySelector('.hero-pills');
-      
+
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
       if (eyebrow) {
         tl.fromTo(eyebrow, { opacity: 0 }, { opacity: 1, duration: 0.6 });
       }
-      
+
       if (title) {
         let letters = title.querySelectorAll('.smoke-letter');
         if (letters.length === 0) {
           splitElement(title);
           letters = title.querySelectorAll('.smoke-letter');
         }
-        
+
         // Prevent FOUC: make container visible and animate letters
         gsap.set(title, { opacity: 1 });
-        
+
         tl.fromTo(letters,
-          { 
+          {
             opacity: 0,
             filter: 'blur(16px)',
             scale: 1.8,
@@ -846,7 +848,7 @@ export class HomeComponent {
             y: () => gsap.utils.random(-35, 35),
             rotation: () => gsap.utils.random(-15, 15)
           },
-          { 
+          {
             opacity: 1,
             filter: 'blur(0px)',
             scale: 1,
@@ -865,7 +867,7 @@ export class HomeComponent {
       }
 
       if (subtitle) {
-        tl.fromTo(subtitle, 
+        tl.fromTo(subtitle,
           { filter: 'blur(12px)', opacity: 0 },
           { filter: 'blur(0px)', opacity: 1, duration: 0.8 },
           '-=1.0'
@@ -873,7 +875,7 @@ export class HomeComponent {
       }
 
       if (ctas) {
-        tl.fromTo(ctas, 
+        tl.fromTo(ctas,
           { scale: 0.95, opacity: 0 },
           { scale: 1, opacity: 1, duration: 0.8 },
           '-=0.6'
@@ -883,13 +885,13 @@ export class HomeComponent {
       if (pills) {
         const pillItems = pills.querySelectorAll('.hero-pill');
         if (pillItems.length > 0) {
-          tl.fromTo(pillItems, 
+          tl.fromTo(pillItems,
             { opacity: 0, scale: 0.9 },
             { opacity: 1, scale: 1, duration: 0.6, stagger: 0.05 },
             '-=0.6'
           );
         } else {
-          tl.fromTo(pills, 
+          tl.fromTo(pills,
             { opacity: 0 },
             { opacity: 1, duration: 0.6 },
             '-=0.6'
@@ -910,16 +912,16 @@ export class HomeComponent {
       const header = catsSec.querySelector('app-section-header');
       const cards = catsSec.querySelectorAll('app-category-card');
       const btn = catsSec.querySelector('.btn-secondary');
-      
+
       const tl = gsap.timeline();
-      
+
       if (header) {
         tl.fromTo(header, { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.6 });
       }
       if (cards.length > 0) {
-        tl.fromTo(cards, 
-          { opacity: 0, filter: 'blur(10px)', scale: 0.95 }, 
-          { opacity: 1, filter: 'blur(0px)', scale: 1, duration: 0.8, stagger: 0.06 }, 
+        tl.fromTo(cards,
+          { opacity: 0, filter: 'blur(10px)', scale: 0.95 },
+          { opacity: 1, filter: 'blur(0px)', scale: 1, duration: 0.8, stagger: 0.06 },
           '-=0.4'
         );
       }
@@ -938,16 +940,16 @@ export class HomeComponent {
     if (whySec) {
       const header = whySec.querySelector('app-section-header');
       const viewer = whySec.querySelector('.story-viewer');
-      
+
       const tl = gsap.timeline();
-      
+
       if (header) {
         tl.fromTo(header, { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.6 });
       }
       if (viewer) {
-        tl.fromTo(viewer, 
-          { opacity: 0, filter: 'blur(10px)', y: 30 }, 
-          { opacity: 1, filter: 'blur(0px)', y: 0, duration: 0.8, ease: 'power2.out' }, 
+        tl.fromTo(viewer,
+          { opacity: 0, filter: 'blur(10px)', y: 30 },
+          { opacity: 1, filter: 'blur(0px)', y: 0, duration: 0.8, ease: 'power2.out' },
           '-=0.4'
         );
       }
@@ -963,16 +965,16 @@ export class HomeComponent {
     if (recentSec) {
       const header = recentSec.querySelector('.section-header-row');
       const cards = recentSec.querySelectorAll('app-tool-card');
-      
+
       const tl = gsap.timeline();
-      
+
       if (header) {
         tl.fromTo(header, { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.6 });
       }
       if (cards.length > 0) {
-        tl.fromTo(cards, 
-          { opacity: 0, filter: 'blur(10px)', scale: 0.96, y: 20 }, 
-          { opacity: 1, filter: 'blur(0px)', scale: 1, y: 0, duration: 0.8, stagger: 0.1, ease: 'power2.out' }, 
+        tl.fromTo(cards,
+          { opacity: 0, filter: 'blur(10px)', scale: 0.96, y: 20 },
+          { opacity: 1, filter: 'blur(0px)', scale: 1, y: 0, duration: 0.8, stagger: 0.1, ease: 'power2.out' },
           '-=0.4'
         );
       }
@@ -988,16 +990,16 @@ export class HomeComponent {
     if (reviewsSec) {
       const header = reviewsSec.querySelector('app-section-header');
       const cards = reviewsSec.querySelectorAll('.review-card');
-      
+
       const tl = gsap.timeline();
-      
+
       if (header) {
         tl.fromTo(header, { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.6 });
       }
       if (cards.length > 0) {
-        tl.fromTo(cards, 
-          { opacity: 0, filter: 'blur(10px)', scale: 0.96, y: 20 }, 
-          { opacity: 1, filter: 'blur(0px)', scale: 1, y: 0, duration: 0.8, stagger: 0.08, ease: 'power2.out' }, 
+        tl.fromTo(cards,
+          { opacity: 0, filter: 'blur(10px)', scale: 0.96, y: 20 },
+          { opacity: 1, filter: 'blur(0px)', scale: 1, y: 0, duration: 0.8, stagger: 0.08, ease: 'power2.out' },
           '-=0.4'
         );
       }
@@ -1089,15 +1091,15 @@ export class HomeComponent {
 
 function splitElement(el: HTMLElement | ChildNode): void {
   const childNodes = Array.from(el.childNodes);
-  
+
   for (const child of childNodes) {
     if (child.nodeType === Node.TEXT_NODE) {
       const text = child.nodeValue || '';
       if (!text.trim()) continue;
-      
+
       const fragment = document.createDocumentFragment();
       const words = text.split(/(\s+)/);
-      
+
       for (const word of words) {
         if (word.trim() === '') {
           fragment.appendChild(document.createTextNode(word));
@@ -1105,7 +1107,7 @@ function splitElement(el: HTMLElement | ChildNode): void {
           const wordSpan = document.createElement('span');
           wordSpan.style.display = 'inline-block';
           wordSpan.style.whiteSpace = 'nowrap';
-          
+
           for (const char of word) {
             const charSpan = document.createElement('span');
             charSpan.className = 'smoke-letter';
