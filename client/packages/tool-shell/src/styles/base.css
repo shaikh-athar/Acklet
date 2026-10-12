@@ -2,42 +2,63 @@
 @import "./tokens.css";
 @import "./motion.css";
 
-/* ══ 30px SLIDE-FADE-UP REVEAL (Part 6) ══════════════════════════ */
-/*
-  Hidden state: applied only after ts-reveal-ready is set on container.
-  The directive adds .ts-reveal-hidden via host binding when containerReady=true.
-  .ts-reveal-item.is-revealed → show immediately.
-*/
-.ts-reveal-item.ts-reveal-hidden {
+/* ══ SCROLL REVEAL (CSS ONLY, HARDWARE ACCELERATED) ═════ */
+.reveal {
   opacity: 0;
-  transform: translateY(var(--ts-reveal-distance, 24px));
-  pointer-events: none;
-}
-
-.ts-reveal-item {
-  transition:
-    opacity var(--ts-reveal-duration, 480ms) var(--ts-reveal-ease, cubic-bezier(0.16, 1, 0.3, 1)),
-    transform var(--ts-reveal-duration, 480ms) var(--ts-reveal-ease, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: opacity 0.65s cubic-bezier(.22, .61, .36, 1), transform 0.65s cubic-bezier(.22, .61, .36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
   will-change: opacity, transform;
 }
 
-.ts-reveal-item.is-revealed,
-.ts-reveal-item:not(.ts-reveal-hidden) {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
+/* 1. Standard text & headers */
+.reveal-up {
+  transform: translate3d(0, 24px, 0);
+}
+
+/* 2. Step cards: Horizontal glide from left */
+.reveal-left {
+  transform: translate3d(-32px, 0, 0);
+}
+
+/* 3. FAQ boxes: Depth & gentle scale */
+.reveal-scale {
+  transform: translate3d(0, 20px, 0) scale(0.975);
+}
+
+/* 4. Chips / Pills: Micro bounce pop */
+.reveal-pop {
+  transform: translate3d(0, 10px, 0) scale(0.88);
+}
+
+.is-visible,
+.ts-reveal-item.is-revealed {
+  opacity: 1 !important;
+  transform: none;
+  will-change: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ts-reveal-item,
-  .ts-reveal-item.ts-reveal-hidden {
+
+  .reveal,
+  .reveal-up,
+  .reveal-left,
+  .reveal-scale,
+  .reveal-pop,
+  .ts-reveal-item {
     transform: none !important;
-    transition: opacity 150ms ease !important;
+    opacity: 1 !important;
+    transition: none !important;
   }
 }
 
 @media print {
-  .ts-reveal-item.ts-reveal-hidden {
+
+  .reveal,
+  .reveal-up,
+  .reveal-left,
+  .reveal-scale,
+  .reveal-pop,
+  .ts-reveal-item {
     opacity: 1 !important;
     transform: none !important;
   }
@@ -99,7 +120,7 @@
   border-radius: var(--ts-radius-md, 12px);
   cursor: pointer;
   transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
-              color var(--ts-dur-fast, 150ms) var(--ts-ease);
+    color var(--ts-dur-fast, 150ms) var(--ts-ease);
 }
 
 .ts-root button:hover,
@@ -228,12 +249,12 @@
   text-decoration: none;
   position: relative;
   transition: transform 150ms ease,
-              background-color 220ms ease,
-              color 220ms ease,
-              border-color 220ms ease,
-              box-shadow 220ms ease,
-              filter 220ms ease,
-              opacity 150ms ease;
+    background-color 220ms ease,
+    color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    filter 220ms ease,
+    opacity 150ms ease;
 }
 
 .spartan-button:active:not(:disabled):not([data-disabled]) {
@@ -344,6 +365,7 @@
     background-color: var(--surface-active, var(--surface-hover));
     color: var(--text);
   }
+
   .spartan-button-variant-secondary:hover:not(:disabled):not([data-disabled]) svg,
   .spartan-button-variant-secondary:hover:not(:disabled):not([data-disabled]) [class*="icon"],
   .spartan-button-variant-secondary:hover:not(:disabled):not([data-disabled]) lib-tool-icon,
@@ -364,6 +386,7 @@
   .spartan-button-variant-outline:hover:not(:disabled):not([data-disabled]) {
     background-color: var(--surface-hover);
   }
+
   .spartan-button-variant-outline:hover:not(:disabled):not([data-disabled]) svg,
   .spartan-button-variant-outline:hover:not(:disabled):not([data-disabled]) [class*="icon"],
   .spartan-button-variant-outline:hover:not(:disabled):not([data-disabled]) lib-tool-icon,
@@ -384,6 +407,7 @@
     background-color: var(--surface-hover);
     color: var(--text);
   }
+
   .spartan-button-variant-ghost:hover:not(:disabled):not([data-disabled]) svg,
   .spartan-button-variant-ghost:hover:not(:disabled):not([data-disabled]) [class*="icon"],
   .spartan-button-variant-ghost:hover:not(:disabled):not([data-disabled]) lib-tool-icon,
@@ -512,6 +536,7 @@
 /* ══ MOBILE, TOUCH & DEVICE RESPONSIVENESS ══════════════════════════ */
 /* iOS 16px input font size to prevent automatic zoom on focus */
 @media (max-width: 767px) {
+
   .ts-root input,
   .ts-root textarea,
   .ts-root select {
@@ -524,7 +549,9 @@
 }
 
 /* Touch Targets: minimum 44px on touch screens, 8px spacing */
-@media (pointer: coarse), (max-width: 1023px) {
+@media (pointer: coarse),
+(max-width: 1023px) {
+
   .ts-root button,
   .ts-root .ts-btn,
   .ts-root a.ts-action-link,
@@ -537,6 +564,7 @@
 
 /* Hover-only effects: Ensure spotlights and hover glows run ONLY when supported */
 @media (hover: none) {
+
   .ts-tool-item:hover .ts-tile-box,
   .ts-related-item-link:hover .ts-tile-box,
   .ts-header-card:hover .ts-header-icon-tile,
@@ -560,3 +588,17 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* ══ VIEW TRANSITIONS: Circular Flower-Open Theme Reveal ═══════════ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 2;
+}

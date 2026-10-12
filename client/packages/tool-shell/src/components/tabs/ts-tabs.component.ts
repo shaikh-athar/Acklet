@@ -161,15 +161,15 @@ export class TsTabsComponent implements AfterViewInit {
 
   private updateIndicator(): void {
     if (!this.indicatorRef || !this.tabBtnRefs || !this.scrollWrapRef) return;
-    
+
     const buttons = this.tabBtnRefs.toArray();
     const activeIndex = this.tabs().findIndex(t => t.id === this.activeTabId());
-    
+
     if (activeIndex >= 0 && buttons[activeIndex]) {
       const activeButton = buttons[activeIndex].nativeElement;
       const wrapRect = this.scrollWrapRef.nativeElement.getBoundingClientRect();
       const btnRect = activeButton.getBoundingClientRect();
-      
+
       const left = btnRect.left - wrapRect.left + this.scrollWrapRef.nativeElement.scrollLeft;
       const width = btnRect.width;
 

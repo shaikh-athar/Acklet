@@ -38,7 +38,7 @@ export class ToolThemeService {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(this.THEME_KEY, theme);
-      } catch (_) {}
+      } catch (_) { }
     }
     this.resolveEffectiveTheme();
   }

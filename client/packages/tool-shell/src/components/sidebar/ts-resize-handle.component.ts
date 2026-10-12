@@ -1,5 +1,4 @@
-// packages/tool-shell/src/components/sidebar/ts-resize-handle.component.ts
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { 
   ToolSidebarService, 
@@ -11,6 +10,7 @@ import {
   selector: 'ts-resize-handle',
   standalone: true,
   imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
       class="ts-resize-handle"
@@ -64,36 +64,54 @@ import {
 })
 export class TsResizeHandleComponent {
   readonly sidebarService = inject(ToolSidebarService);
+  private readonly ngZone = inject(NgZone);
   readonly minWidth = SIDEBAR_MIN_WIDTH;
   readonly maxWidth = SIDEBAR_MAX_WIDTH;
 
   private startX = 0;
   private startWidth = 0;
+  private resizeRafId: number | null = null;
 
   onPointerDown(event: PointerEvent): void {
     if (this.sidebarService.isCollapsed()) return;
     event.preventDefault();
-    (event.target as HTMLElement).setPointerCapture(event.pointerId);
+    const target = event.target as HTMLElement;
+    target.setPointerCapture(event.pointerId);
 
     this.startX = event.clientX;
     this.startWidth = this.sidebarService.width();
     this.sidebarService.isDragging.set(true);
 
-    const onPointerMove = (e: PointerEvent) => {
-      // Left sidebar: dragging right increases width, dragging left decreases width
-      const deltaX = e.clientX - this.startX;
-      this.sidebarService.setWidth(this.startWidth + deltaX);
-    };
+    this.ngZone.runOutsideAngular(() => {
+      let pendingWidth = this.startWidth;
 
-    const onPointerUp = (e: PointerEvent) => {
-      (event.target as HTMLElement).releasePointerCapture(e.pointerId);
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-      this.sidebarService.isDragging.set(false);
-    };
+      const onPointerMove = (e: PointerEvent): void => {
+        const deltaX = e.clientX - this.startX;
+        pendingWidth = this.startWidth + deltaX;
 
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
+        if (this.resizeRafId === null) {
+          this.resizeRafId = requestAnimationFrame(() => {
+            this.resizeRafId = null;
+            this.sidebarService.setWidth(pendingWidth);
+          });
+        }
+      };
+
+      const onPointerUp = (e: PointerEvent): void => {
+        target.releasePointerCapture(e.pointerId);
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
+        if (this.resizeRafId !== null) {
+          cancelAnimationFrame(this.resizeRafId);
+          this.resizeRafId = null;
+        }
+        this.sidebarService.setWidth(pendingWidth);
+        this.sidebarService.isDragging.set(false);
+      };
+
+      window.addEventListener('pointermove', onPointerMove, { passive: true });
+      window.addEventListener('pointerup', onPointerUp, { passive: true });
+    });
   }
 
   onDoubleClick(): void {

@@ -12,7 +12,8 @@ import {
   viewChild,
   viewChildren,
   AfterViewInit,
-  NgZone
+  NgZone,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolSidebarService } from '../../services/tool-sidebar.service';
@@ -31,6 +32,7 @@ export interface SectionNavLink {
 @Component({
   selector: 'ts-topbar',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     TsIconComponent,
@@ -117,16 +119,36 @@ export interface SectionNavLink {
           <span class="ts-action-label hide-below-1100">{{ copiedLink() ? 'Copied' : 'Share' }}</span>
         </button>
 
-        <!-- Save / Favorite Button -->
+        <!-- Save / Favorite Button with Jewel Accent Gradient & Celebration Sparkles -->
         <button 
           type="button" 
-          class="ts-nav-action-btn hide-xs"
+          class="ts-nav-action-btn ts-save-btn hide-xs"
           [class.is-favorited]="isFavorited()"
+          [class.is-celebrating]="isCelebrating()"
           (click)="toggleFavorite()"
           [attr.aria-label]="isFavorited() ? 'Remove from favorites' : 'Add to favorites'"
           [tsTooltip]="isFavorited() ? 'Saved' : 'Save tool'"
         >
-          <ts-icon name="star" [size]="20" class="ts-nav-star-icon" />
+          <div class="ts-star-stage" aria-hidden="true">
+            <svg class="ts-nav-star-svg" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <defs>
+                <linearGradient id="tsStarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#F59E0B" />
+                  <stop offset="50%" stop-color="#10B981" />
+                  <stop offset="100%" stop-color="#06B6D4" />
+                </linearGradient>
+              </defs>
+              <polygon 
+                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+                [attr.fill]="isFavorited() ? 'url(#tsStarGradient)' : 'transparent'"
+                [attr.stroke]="isFavorited() ? 'url(#tsStarGradient)' : 'currentColor'"
+              />
+            </svg>
+            <svg class="ts-star-sparkle sp-1" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="#F59E0B"/></svg>
+            <svg class="ts-star-sparkle sp-2" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="#10B981"/></svg>
+            <svg class="ts-star-sparkle sp-3" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="#06B6D4"/></svg>
+            <svg class="ts-star-sparkle sp-4" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="#FBBF24"/></svg>
+          </div>
           <span class="ts-action-label hide-below-1100">{{ isFavorited() ? 'Saved' : 'Save' }}</span>
         </button>
 
@@ -410,12 +432,136 @@ export interface SectionNavLink {
       outline-offset: 2px;
     }
 
-    .ts-nav-action-btn.is-favorited {
-      color: #EAB308;
+    /* Enhanced Light Theme Navbar Focus & Capsule Track */
+    :root[data-theme="light"] .ts-nav-links-track,
+    html[data-theme="light"] .ts-nav-links-track {
+      background: rgba(15, 23, 42, 0.045);
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
     }
 
-    .ts-nav-action-btn.is-favorited .ts-nav-star-icon {
-      fill: #EAB308;
+    :root[data-theme="light"] .ts-nav-active-pill,
+    html[data-theme="light"] .ts-nav-active-pill {
+      background: #FFFFFF;
+      border: 1px solid var(--accent-border, rgba(15, 118, 110, 0.25));
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(15, 118, 110, 0.1);
+    }
+
+    :root[data-theme="light"] .ts-nav-link-btn,
+    html[data-theme="light"] .ts-nav-link-btn {
+      color: #64748B;
+      font-weight: 500;
+    }
+
+    :root[data-theme="light"] .ts-nav-link-btn:hover:not(.active),
+    html[data-theme="light"] .ts-nav-link-btn:hover:not(.active) {
+      color: #0F172A;
+      background: rgba(15, 23, 42, 0.04);
+    }
+
+    :root[data-theme="light"] .ts-nav-link-btn.active,
+    html[data-theme="light"] .ts-nav-link-btn.active {
+      color: var(--accent, #0F766E);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    /* Save Button Stage, Gradient & Celebration Animation */
+    .ts-star-stage {
+      position: relative;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ts-nav-star-svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: transparent;
+      transform: translateZ(0);
+      transition: fill 250ms ease, stroke 250ms ease, transform 250ms cubic-bezier(.22, 1, .36, 1);
+    }
+
+    .ts-save-btn:hover .ts-nav-star-svg {
+      color: var(--accent);
+      transform: scale(1.08);
+    }
+
+    .ts-save-btn.is-favorited {
+      color: var(--accent, #0F766E);
+    }
+
+    .ts-save-btn.is-favorited .ts-nav-star-svg {
+      filter: drop-shadow(0 2px 8px rgba(16, 185, 129, 0.4));
+    }
+
+    .ts-save-btn.is-favorited .ts-action-label {
+      background: linear-gradient(135deg, #F59E0B 0%, #10B981 50%, #06B6D4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 700;
+    }
+
+    @keyframes tsStarPop {
+      0% { transform: scale(1) rotate(0deg); }
+      30% { transform: scale(1.35) rotate(-15deg); }
+      60% { transform: scale(0.9) rotate(8deg); }
+      80% { transform: scale(1.1) rotate(-3deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+
+    .ts-save-btn.is-celebrating .ts-nav-star-svg {
+      animation: tsStarPop 700ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    /* Micro-burst sparkle star particles */
+    .ts-star-sparkle {
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      opacity: 0;
+      pointer-events: none;
+      transform-origin: center;
+    }
+
+    .ts-save-btn.is-celebrating .ts-star-sparkle.sp-1 {
+      animation: tsBurstStar1 650ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .ts-save-btn.is-celebrating .ts-star-sparkle.sp-2 {
+      animation: tsBurstStar2 650ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .ts-save-btn.is-celebrating .ts-star-sparkle.sp-3 {
+      animation: tsBurstStar3 650ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .ts-save-btn.is-celebrating .ts-star-sparkle.sp-4 {
+      animation: tsBurstStar4 650ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes tsBurstStar1 {
+      0% { transform: translate(0, 0) scale(0.2) rotate(0deg); opacity: 1; }
+      100% { transform: translate(-14px, -14px) scale(1) rotate(-45deg); opacity: 0; }
+    }
+    @keyframes tsBurstStar2 {
+      0% { transform: translate(0, 0) scale(0.2) rotate(0deg); opacity: 1; }
+      100% { transform: translate(14px, -14px) scale(1) rotate(45deg); opacity: 0; }
+    }
+    @keyframes tsBurstStar3 {
+      0% { transform: translate(0, 0) scale(0.2) rotate(0deg); opacity: 1; }
+      100% { transform: translate(-14px, 14px) scale(1) rotate(-30deg); opacity: 0; }
+    }
+    @keyframes tsBurstStar4 {
+      0% { transform: translate(0, 0) scale(0.2) rotate(0deg); opacity: 1; }
+      100% { transform: translate(14px, 14px) scale(1) rotate(30deg); opacity: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ts-save-btn.is-celebrating .ts-nav-star-svg,
+      .ts-save-btn.is-celebrating .ts-star-sparkle {
+        animation: none !important;
+      }
     }
 
     @media (max-width: 1099px) {
@@ -555,8 +701,15 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
     }).catch(() => { });
   }
 
+  readonly isCelebrating = signal<boolean>(false);
+
   toggleFavorite(): void {
-    this.isFavorited.update(v => !v);
+    const next = !this.isFavorited();
+    this.isFavorited.set(next);
+    if (next) {
+      this.isCelebrating.set(true);
+      setTimeout(() => this.isCelebrating.set(false), 850);
+    }
   }
 
   private intersectionObserver?: IntersectionObserver;
@@ -621,11 +774,6 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
     const targetEl = document.getElementById(sectionId);
     if (targetEl) {
       targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      // Quick accent-soft flash (600ms)
-      targetEl.classList.add('section-flash-active');
-      setTimeout(() => {
-        targetEl.classList.remove('section-flash-active');
-      }, 600);
     }
   }
 

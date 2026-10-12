@@ -1,5 +1,4 @@
-// packages/tool-shell/src/components/sidebar/ts-sidebar.component.ts
-import { Component, input, inject, signal, computed, HostListener, ElementRef } from '@angular/core';
+import { Component, input, inject, signal, computed, HostListener, ElementRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolRegistryItem } from '@acklet/tool-registry';
 import { getToolsHubUrl, getPortalUrl } from '@acklet/shared';
@@ -12,6 +11,7 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
 @Component({
   selector: 'ts-sidebar',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     TsIconComponent,

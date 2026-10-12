@@ -468,29 +468,29 @@ html[data-theme="light"],
 :root,
 .ts-root {
   /* Slightly lighter than --ts-page-bg (#0F1011) so cards stand out */
-  --ts-glass:   #1E2027;
+  --ts-glass: #1E2027;
   --ts-page-bg: #0F1011;
-  --ts-lift:    color-mix(in oklab, var(--accent) 35%, #FFFFFF);
-  --ts-edge:    0 0 0 1px rgba(255,255,255,0.12),
-                inset 0 0 0 1px rgba(255,255,255,0.05),
-                inset 0 1px 0 rgba(255,255,255,0.08);
-  --ts-shadow:  0 1px 2px rgba(0,0,0,0.4),
-                0 18px 36px -20px rgba(0,0,0,0.7);
+  --ts-lift: color-mix(in oklab, var(--accent) 35%, #FFFFFF);
+  --ts-edge: 0 0 0 1px rgba(255, 255, 255, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --ts-shadow: 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 18px 36px -20px rgba(0, 0, 0, 0.7);
 
   /* Legacy compat tokens (still read by overlay/dropdown code) */
-  --ts-nav-bg:     var(--ts-glass-bg, rgba(30,32,39,0.52));
+  --ts-nav-bg: var(--ts-glass-bg, rgba(30, 32, 39, 0.52));
   --ts-nav-filter: var(--ts-blur, blur(5px) saturate(160%));
-  --ts-nav-border: rgba(255,255,255,0.10);
+  --ts-nav-border: rgba(255, 255, 255, 0.10);
   --ts-nav-shadow: var(--ts-edge), var(--ts-shadow);
-  --ts-overlay-bg:     rgba(22,22,26,0.80);
-  --ts-overlay-border: rgba(255,255,255,0.08);
-  --ts-overlay-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 16px 36px -12px rgba(0,0,0,0.85);
+  --ts-overlay-bg: rgba(22, 22, 26, 0.80);
+  --ts-overlay-border: rgba(255, 255, 255, 0.08);
+  --ts-overlay-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 16px 36px -12px rgba(0, 0, 0, 0.85);
   --ts-overlay-filter: blur(24px);
-  --ts-surface-raised:  #141416;
-  --ts-surface-border:  rgba(255,255,255,0.07);
-  --ts-row-hover:  rgba(255,255,255,0.04);
-  --ts-row-active: rgba(255,255,255,0.07);
-  --ts-tree-line:  rgba(255,255,255,0.08);
+  --ts-surface-raised: #141416;
+  --ts-surface-border: rgba(255, 255, 255, 0.07);
+  --ts-row-hover: rgba(255, 255, 255, 0.04);
+  --ts-row-active: rgba(255, 255, 255, 0.07);
+  --ts-tree-line: rgba(255, 255, 255, 0.08);
 }
 
 /* ── BASE GLASS TOKENS (Light) ──────────────────────────────────────── */
@@ -498,28 +498,28 @@ html[data-theme="light"],
 :root[data-theme="light"],
 .ts-root[data-theme="light"] {
   /* Subtle blue tint vs page-bg #F7F8F8 so glass cards are visible */
-  --ts-glass:   #F0F3FF;
+  --ts-glass: #F0F3FF;
   --ts-page-bg: #F7F8F8;
-  --ts-lift:    color-mix(in oklab, var(--accent) 35%, #FFFFFF);
-  --ts-edge:    0 0 0 1px rgba(15,23,42,0.12),
-                inset 0 0 0 1px rgba(255,255,255,0.70),
-                inset 0 1px 0 rgba(255,255,255,0.95);
-  --ts-shadow:  0 1px 2px rgba(15,23,42,0.05),
-                0 18px 36px -20px rgba(15,23,42,0.24);
+  --ts-lift: color-mix(in oklab, var(--accent) 35%, #FFFFFF);
+  --ts-edge: 0 0 0 1px rgba(15, 23, 42, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.70),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  --ts-shadow: 0 1px 2px rgba(15, 23, 42, 0.05),
+    0 18px 36px -20px rgba(15, 23, 42, 0.24);
 
-  --ts-nav-bg:     var(--ts-glass-bg, rgba(240,243,255,0.52));
+  --ts-nav-bg: var(--ts-glass-bg, rgba(240, 243, 255, 0.52));
   --ts-nav-filter: var(--ts-blur, blur(5px) saturate(160%));
-  --ts-nav-border: rgba(15,23,42,0.10);
+  --ts-nav-border: rgba(15, 23, 42, 0.10);
   --ts-nav-shadow: var(--ts-edge), var(--ts-shadow);
-  --ts-overlay-bg:     rgba(255,255,255,0.84);
-  --ts-overlay-border: rgba(255,255,255,0.80);
-  --ts-overlay-shadow: 0 0 0 1px rgba(15,23,42,0.08), 0 16px 36px -12px rgba(15,23,42,0.2);
+  --ts-overlay-bg: rgba(255, 255, 255, 0.84);
+  --ts-overlay-border: rgba(255, 255, 255, 0.80);
+  --ts-overlay-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08), 0 16px 36px -12px rgba(15, 23, 42, 0.2);
   --ts-overlay-filter: blur(24px) saturate(150%);
   --ts-surface-raised: #FFFFFF;
-  --ts-surface-border: rgba(15,23,42,0.06);
-  --ts-row-hover:  rgba(15,23,42,0.035);
-  --ts-row-active: rgba(15,23,42,0.05);
-  --ts-tree-line:  rgba(15,23,42,0.08);
+  --ts-surface-border: rgba(15, 23, 42, 0.06);
+  --ts-row-hover: rgba(15, 23, 42, 0.035);
+  --ts-row-active: rgba(15, 23, 42, 0.05);
+  --ts-tree-line: rgba(15, 23, 42, 0.08);
 }
 
 /* ── REVEAL ANIMATION TOKENS ──────────────────────────────────────── */
@@ -527,8 +527,8 @@ html[data-theme="light"],
 .ts-root {
   --ts-reveal-distance: 24px;
   --ts-reveal-duration: 480ms;
-  --ts-reveal-ease:     cubic-bezier(0.16, 1, 0.3, 1);
-  --ts-reveal-stagger:  50ms;
+  --ts-reveal-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ts-reveal-stagger: 50ms;
 }
 
 /* ══ VARIANT "clear" (DEFAULT) ══════════════════════════════════════
@@ -539,16 +539,20 @@ html[data-theme="light"],
 :root,
 [data-surface="clear"],
 .ts-root[data-surface="clear"] {
-  --ts-a1: .52; --ts-a2: .34;
-  --ts-b1: .46; --ts-b2: .30;
-  --ts-a1-pct: 52%; --ts-a2-pct: 34%;
-  --ts-b1-pct: 46%; --ts-b2-pct: 30%;
-  --ts-blur:      blur(5px) saturate(160%);
+  --ts-a1: .52;
+  --ts-a2: .34;
+  --ts-b1: .46;
+  --ts-b2: .30;
+  --ts-a1-pct: 52%;
+  --ts-a2-pct: 34%;
+  --ts-b1-pct: 46%;
+  --ts-b2-pct: 30%;
+  --ts-blur: blur(10px) saturate(160%);
   --ts-blur-main: none;
   /* Computed fill references used by card rules */
-  --ts-glass-bg:    color-mix(in srgb, var(--ts-glass) 52%, transparent);
+  --ts-glass-bg: color-mix(in srgb, var(--ts-glass) 52%, transparent);
   --ts-glass-filter: var(--ts-blur);
-  --ts-glass-border: rgba(255,255,255,0.10);
+  --ts-glass-border: rgba(255, 255, 255, 0.10);
   --ts-glass-shadow: var(--ts-edge), var(--ts-shadow);
 }
 
@@ -559,46 +563,58 @@ html[data-theme="light"],
 .ts-root[data-theme="light"][data-surface="clear"],
 [data-theme="light"][data-surface="clear"],
 .ts-root[data-theme="light"] {
-  --ts-a1: .52; --ts-a2: .34;
-  --ts-b1: .46; --ts-b2: .30;
-  --ts-a1-pct: 52%; --ts-a2-pct: 34%;
-  --ts-b1-pct: 46%; --ts-b2-pct: 30%;
-  --ts-blur:      blur(5px) saturate(160%);
+  --ts-a1: .52;
+  --ts-a2: .34;
+  --ts-b1: .46;
+  --ts-b2: .30;
+  --ts-a1-pct: 52%;
+  --ts-a2-pct: 34%;
+  --ts-b1-pct: 46%;
+  --ts-b2-pct: 30%;
+  --ts-blur: blur(10px) saturate(160%);
   --ts-blur-main: none;
-  --ts-glass-bg:    color-mix(in srgb, var(--ts-glass) 52%, transparent);
+  --ts-glass-bg: color-mix(in srgb, var(--ts-glass) 52%, transparent);
   --ts-glass-filter: var(--ts-blur);
-  --ts-glass-border: rgba(15,23,42,0.10);
+  --ts-glass-border: rgba(15, 23, 42, 0.10);
   --ts-glass-shadow: var(--ts-edge), var(--ts-shadow);
 }
 
 /* ══ VARIANT "frost" ════════════════════════════════════════════════
-   Higher opacity, stronger blur (14px nav, 6px main).
+   Higher opacity, 12px nav blur max, NO main card blur.
    ══════════════════════════════════════════════════════════════════ */
 [data-surface="frost"],
 .ts-root[data-surface="frost"] {
-  --ts-a1: .72; --ts-a2: .52;
-  --ts-b1: .58; --ts-b2: .42;
-  --ts-a1-pct: 72%; --ts-a2-pct: 52%;
-  --ts-b1-pct: 58%; --ts-b2-pct: 42%;
-  --ts-blur:      blur(14px) saturate(170%);
-  --ts-blur-main: blur(6px) saturate(150%);
-  --ts-glass-bg:    color-mix(in srgb, var(--ts-glass) 72%, transparent);
+  --ts-a1: .72;
+  --ts-a2: .52;
+  --ts-b1: .58;
+  --ts-b2: .42;
+  --ts-a1-pct: 72%;
+  --ts-a2-pct: 52%;
+  --ts-b1-pct: 58%;
+  --ts-b2-pct: 42%;
+  --ts-blur: blur(12px) saturate(170%);
+  --ts-blur-main: none;
+  --ts-glass-bg: color-mix(in srgb, var(--ts-glass) 72%, transparent);
   --ts-glass-filter: var(--ts-blur);
-  --ts-glass-border: rgba(255,255,255,0.10);
+  --ts-glass-border: rgba(255, 255, 255, 0.10);
   --ts-glass-shadow: var(--ts-edge), var(--ts-shadow);
 }
 
 [data-theme="light"][data-surface="frost"],
 .ts-root[data-theme="light"][data-surface="frost"] {
-  --ts-a1: .72; --ts-a2: .52;
-  --ts-b1: .58; --ts-b2: .42;
-  --ts-a1-pct: 72%; --ts-a2-pct: 52%;
-  --ts-b1-pct: 58%; --ts-b2-pct: 42%;
-  --ts-blur:      blur(14px) saturate(170%);
-  --ts-blur-main: blur(6px) saturate(150%);
-  --ts-glass-bg:    color-mix(in srgb, var(--ts-glass) 72%, transparent);
+  --ts-a1: .72;
+  --ts-a2: .52;
+  --ts-b1: .58;
+  --ts-b2: .42;
+  --ts-a1-pct: 72%;
+  --ts-a2-pct: 52%;
+  --ts-b1-pct: 58%;
+  --ts-b2-pct: 42%;
+  --ts-blur: blur(12px) saturate(170%);
+  --ts-blur-main: none;
+  --ts-glass-bg: color-mix(in srgb, var(--ts-glass) 72%, transparent);
   --ts-glass-filter: var(--ts-blur);
-  --ts-glass-border: rgba(15,23,42,0.10);
+  --ts-glass-border: rgba(15, 23, 42, 0.10);
   --ts-glass-shadow: var(--ts-edge), var(--ts-shadow);
 }
 
@@ -607,49 +623,57 @@ html[data-theme="light"],
    ══════════════════════════════════════════════════════════════════ */
 [data-surface="solid"],
 .ts-root[data-surface="solid"] {
-  --ts-a1: 1; --ts-a2: 1;
-  --ts-b1: 1; --ts-b2: 1;
-  --ts-a1-pct: 100%; --ts-a2-pct: 100%;
-  --ts-b1-pct: 100%; --ts-b2-pct: 100%;
-  --ts-blur:      none;
+  --ts-a1: 1;
+  --ts-a2: 1;
+  --ts-b1: 1;
+  --ts-b2: 1;
+  --ts-a1-pct: 100%;
+  --ts-a2-pct: 100%;
+  --ts-b1-pct: 100%;
+  --ts-b2-pct: 100%;
+  --ts-blur: none;
   --ts-blur-main: none;
-  --ts-glass-bg:     #141416;
+  --ts-glass-bg: #141416;
   --ts-glass-filter: none;
-  --ts-glass-border: rgba(255,255,255,0.07);
+  --ts-glass-border: rgba(255, 255, 255, 0.07);
   --ts-glass-shadow: var(--ts-edge), var(--ts-shadow);
-  --ts-surface-raised:  #141416;
-  --ts-surface-border:  rgba(255,255,255,0.07);
+  --ts-surface-raised: #141416;
+  --ts-surface-border: rgba(255, 255, 255, 0.07);
   --ts-surface-raised-shadow: var(--ts-edge), var(--ts-shadow);
-  --ts-nav-bg:     #141416;
+  --ts-nav-bg: #141416;
   --ts-nav-filter: none;
-  --ts-nav-border: rgba(255,255,255,0.07);
+  --ts-nav-border: rgba(255, 255, 255, 0.07);
   --ts-nav-shadow: var(--ts-edge), var(--ts-shadow);
-  --ts-overlay-bg:     #141416;
-  --ts-overlay-border: rgba(255,255,255,0.08);
+  --ts-overlay-bg: #141416;
+  --ts-overlay-border: rgba(255, 255, 255, 0.08);
   --ts-overlay-filter: none;
 }
 
 [data-theme="light"][data-surface="solid"],
 .ts-root[data-theme="light"][data-surface="solid"] {
-  --ts-a1: 1; --ts-a2: 1;
-  --ts-b1: 1; --ts-b2: 1;
-  --ts-a1-pct: 100%; --ts-a2-pct: 100%;
-  --ts-b1-pct: 100%; --ts-b2-pct: 100%;
-  --ts-blur:      none;
+  --ts-a1: 1;
+  --ts-a2: 1;
+  --ts-b1: 1;
+  --ts-b2: 1;
+  --ts-a1-pct: 100%;
+  --ts-a2-pct: 100%;
+  --ts-b1-pct: 100%;
+  --ts-b2-pct: 100%;
+  --ts-blur: none;
   --ts-blur-main: none;
-  --ts-glass-bg:     #FFFFFF;
+  --ts-glass-bg: #FFFFFF;
   --ts-glass-filter: none;
-  --ts-glass-border: rgba(15,23,42,0.06);
+  --ts-glass-border: rgba(15, 23, 42, 0.06);
   --ts-glass-shadow: var(--ts-edge), var(--ts-shadow);
-  --ts-surface-raised:  #FFFFFF;
-  --ts-surface-border:  rgba(15,23,42,0.06);
+  --ts-surface-raised: #FFFFFF;
+  --ts-surface-border: rgba(15, 23, 42, 0.06);
   --ts-surface-raised-shadow: var(--ts-edge), var(--ts-shadow);
-  --ts-nav-bg:     #FFFFFF;
+  --ts-nav-bg: #FFFFFF;
   --ts-nav-filter: none;
-  --ts-nav-border: rgba(15,23,42,0.06);
+  --ts-nav-border: rgba(15, 23, 42, 0.06);
   --ts-nav-shadow: var(--ts-edge), var(--ts-shadow);
-  --ts-overlay-bg:     #FFFFFF;
-  --ts-overlay-border: rgba(15,23,42,0.06);
+  --ts-overlay-bg: #FFFFFF;
+  --ts-overlay-border: rgba(15, 23, 42, 0.06);
   --ts-overlay-filter: none;
 }
 
@@ -658,25 +682,29 @@ html[data-theme="light"],
    ══════════════════════════════════════════════════════════════════ */
 [data-surface="tinted"],
 .ts-root[data-surface="tinted"] {
-  --ts-a1: 1; --ts-a2: 1;
-  --ts-b1: 1; --ts-b2: 1;
-  --ts-a1-pct: 100%; --ts-a2-pct: 100%;
-  --ts-b1-pct: 100%; --ts-b2-pct: 100%;
-  --ts-blur:      none;
+  --ts-a1: 1;
+  --ts-a2: 1;
+  --ts-b1: 1;
+  --ts-b2: 1;
+  --ts-a1-pct: 100%;
+  --ts-a2-pct: 100%;
+  --ts-b1-pct: 100%;
+  --ts-b2-pct: 100%;
+  --ts-blur: none;
   --ts-blur-main: none;
-  --ts-glass-bg:    color-mix(in srgb, var(--accent) 5%, #141416);
+  --ts-glass-bg: color-mix(in srgb, var(--accent) 5%, #141416);
   --ts-glass-filter: none;
   --ts-glass-border: color-mix(in srgb, var(--accent) 14%, transparent);
   --ts-glass-shadow: var(--ts-edge), var(--ts-shadow);
-  --ts-surface-raised:  color-mix(in srgb, var(--accent) 5%, #141416);
-  --ts-surface-border:  color-mix(in srgb, var(--accent) 14%, transparent);
-  --ts-surface-inset:   color-mix(in srgb, var(--accent) 5%, #1A1B1E);
+  --ts-surface-raised: color-mix(in srgb, var(--accent) 5%, #141416);
+  --ts-surface-border: color-mix(in srgb, var(--accent) 14%, transparent);
+  --ts-surface-inset: color-mix(in srgb, var(--accent) 5%, #1A1B1E);
   --ts-surface-raised-shadow: var(--ts-edge), var(--ts-shadow);
-  --ts-nav-bg:     color-mix(in srgb, var(--accent) 5%, #141416);
+  --ts-nav-bg: color-mix(in srgb, var(--accent) 5%, #141416);
   --ts-nav-filter: none;
   --ts-nav-border: color-mix(in srgb, var(--accent) 14%, transparent);
   --ts-nav-shadow: var(--ts-edge), var(--ts-shadow);
-  --ts-overlay-bg:     color-mix(in srgb, var(--accent) 5%, #141416);
+  --ts-overlay-bg: color-mix(in srgb, var(--accent) 5%, #141416);
   --ts-overlay-border: color-mix(in srgb, var(--accent) 14%, transparent);
   --ts-overlay-shadow: var(--ts-edge), var(--ts-shadow);
   --ts-overlay-filter: none;
@@ -684,25 +712,29 @@ html[data-theme="light"],
 
 [data-theme="light"][data-surface="tinted"],
 .ts-root[data-theme="light"][data-surface="tinted"] {
-  --ts-a1: 1; --ts-a2: 1;
-  --ts-b1: 1; --ts-b2: 1;
-  --ts-a1-pct: 100%; --ts-a2-pct: 100%;
-  --ts-b1-pct: 100%; --ts-b2-pct: 100%;
-  --ts-blur:      none;
+  --ts-a1: 1;
+  --ts-a2: 1;
+  --ts-b1: 1;
+  --ts-b2: 1;
+  --ts-a1-pct: 100%;
+  --ts-a2-pct: 100%;
+  --ts-b1-pct: 100%;
+  --ts-b2-pct: 100%;
+  --ts-blur: none;
   --ts-blur-main: none;
-  --ts-glass-bg:    color-mix(in srgb, var(--accent) 3%, #FFFFFF);
+  --ts-glass-bg: color-mix(in srgb, var(--accent) 3%, #FFFFFF);
   --ts-glass-filter: none;
   --ts-glass-border: color-mix(in srgb, var(--accent) 14%, transparent);
   --ts-glass-shadow: var(--ts-edge), var(--ts-shadow);
-  --ts-surface-raised:  color-mix(in srgb, var(--accent) 3%, #FFFFFF);
-  --ts-surface-border:  color-mix(in srgb, var(--accent) 14%, transparent);
-  --ts-surface-inset:   color-mix(in srgb, var(--accent) 5%, #F6F7F7);
+  --ts-surface-raised: color-mix(in srgb, var(--accent) 3%, #FFFFFF);
+  --ts-surface-border: color-mix(in srgb, var(--accent) 14%, transparent);
+  --ts-surface-inset: color-mix(in srgb, var(--accent) 5%, #F6F7F7);
   --ts-surface-raised-shadow: var(--ts-edge), var(--ts-shadow);
-  --ts-nav-bg:     color-mix(in srgb, var(--accent) 3%, #FFFFFF);
+  --ts-nav-bg: color-mix(in srgb, var(--accent) 3%, #FFFFFF);
   --ts-nav-filter: none;
   --ts-nav-border: color-mix(in srgb, var(--accent) 14%, transparent);
   --ts-nav-shadow: var(--ts-edge), var(--ts-shadow);
-  --ts-overlay-bg:     color-mix(in srgb, var(--accent) 3%, #FFFFFF);
+  --ts-overlay-bg: color-mix(in srgb, var(--accent) 3%, #FFFFFF);
   --ts-overlay-border: color-mix(in srgb, var(--accent) 14%, transparent);
   --ts-overlay-shadow: var(--ts-edge), var(--ts-shadow);
   --ts-overlay-filter: none;
@@ -711,64 +743,72 @@ html[data-theme="light"],
 /* ══ GLASS FALLBACKS ════════════════════════════════════════════════ */
 /* @supports not backdrop-filter → 90% opaque fills */
 @supports not (backdrop-filter: blur(1px)) {
+
   :root,
   .ts-root,
   [data-surface="clear"],
   [data-surface="frost"],
   .ts-root[data-surface="clear"],
   .ts-root[data-surface="frost"] {
-    --ts-glass-bg:     rgba(22,22,26,0.90);
+    --ts-glass-bg: rgba(22, 22, 26, 0.90);
     --ts-glass-filter: none;
-    --ts-nav-bg:       rgba(22,22,26,0.90);
-    --ts-nav-filter:   none;
-    --ts-blur:         none;
-    --ts-blur-main:    none;
+    --ts-nav-bg: rgba(22, 22, 26, 0.90);
+    --ts-nav-filter: none;
+    --ts-blur: none;
+    --ts-blur-main: none;
   }
+
   [data-theme="light"],
   :root[data-theme="light"],
   [data-theme="light"][data-surface="clear"],
   [data-theme="light"][data-surface="frost"],
   .ts-root[data-theme="light"][data-surface="clear"],
   .ts-root[data-theme="light"][data-surface="frost"] {
-    --ts-glass-bg:     rgba(255,255,255,0.90);
+    --ts-glass-bg: rgba(255, 255, 255, 0.90);
     --ts-glass-filter: none;
-    --ts-nav-bg:       rgba(255,255,255,0.90);
-    --ts-nav-filter:   none;
-    --ts-blur:         none;
-    --ts-blur-main:    none;
+    --ts-nav-bg: rgba(255, 255, 255, 0.90);
+    --ts-nav-filter: none;
+    --ts-blur: none;
+    --ts-blur-main: none;
   }
 }
 
 /* prefers-reduced-transparency → solid fills, same edge/shadow/radius */
 @media (prefers-reduced-transparency: reduce) {
+
   :root,
   .ts-root,
   [data-surface="clear"],
   [data-surface="frost"],
   .ts-root[data-surface="clear"],
   .ts-root[data-surface="frost"] {
-    --ts-glass-bg:     #141416;
+    --ts-glass-bg: #141416;
     --ts-glass-filter: none;
-    --ts-nav-bg:       #141416;
-    --ts-nav-filter:   none;
-    --ts-blur:         none;
-    --ts-blur-main:    none;
-    --ts-a1: 1; --ts-a2: 1;
-    --ts-b1: 1; --ts-b2: 1;
+    --ts-nav-bg: #141416;
+    --ts-nav-filter: none;
+    --ts-blur: none;
+    --ts-blur-main: none;
+    --ts-a1: 1;
+    --ts-a2: 1;
+    --ts-b1: 1;
+    --ts-b2: 1;
   }
+
   [data-theme="light"],
   :root[data-theme="light"],
   [data-theme="light"][data-surface="clear"],
   [data-theme="light"][data-surface="frost"],
   .ts-root[data-theme="light"][data-surface="clear"],
   .ts-root[data-theme="light"][data-surface="frost"] {
-    --ts-glass-bg:     #FFFFFF;
+    --ts-glass-bg: #FFFFFF;
     --ts-glass-filter: none;
-    --ts-nav-bg:       #FFFFFF;
-    --ts-nav-filter:   none;
-    --ts-blur:         none;
-    --ts-blur-main:    none;
-    --ts-a1: 1; --ts-a2: 1;
-    --ts-b1: 1; --ts-b2: 1;
+    --ts-nav-bg: #FFFFFF;
+    --ts-nav-filter: none;
+    --ts-blur: none;
+    --ts-blur-main: none;
+    --ts-a1: 1;
+    --ts-a2: 1;
+    --ts-b1: 1;
+    --ts-b2: 1;
   }
 }

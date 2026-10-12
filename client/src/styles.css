@@ -1,4 +1,3 @@
-@import "devicon/devicon.min.css";
 @import "tailwindcss";
 @import "../packages/tool-shell/src/styles/tokens.css";
 @import "../packages/tool-shell/src/styles/base.css";
@@ -11,34 +10,6 @@
 @source "../packages/tool-shell/src/**/*.html";
 @source "../apps/**/*.ts";
 @source "../apps/**/*.html";
-
-/* ============================================================
-   BASE HTML & ROOT CONTAINER ARCHITECTURE
-   ============================================================ */
-html,
-body {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
-
-app-root {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-app-airvault,
-app-data-lens,
-app-tool-shell {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
 
 /* ============================================================
    TAILWIND UTILITY ENGINE OVERRIDES & CSS FALLBACKS
@@ -188,268 +159,8 @@ app-tool-shell {
 }
 
 /* ============================================================
-   GLOBAL VSCODE SYNTAX HIGHLIGHTING & RAINBOW BRACKETS
-   (Applies to all dynamically inserted [innerHTML] code elements)
+   NATIVE CSS VARIABLES (Guarantees runtime resolution in all browsers)
    ============================================================ */
-.hl-key {
-  color: var(--json-key, #9CDCFE) !important;
-  font-weight: 600 !important;
-}
-
-.hl-string {
-  color: var(--json-string, #CE9178) !important;
-}
-
-.hl-number {
-  color: var(--json-number, #B5CEA8) !important;
-}
-
-.hl-boolean {
-  color: var(--json-boolean, #569CD6) !important;
-  font-weight: 600 !important;
-}
-
-.hl-null {
-  color: var(--json-null, #4EC9B0) !important;
-  font-weight: 600 !important;
-}
-
-.hl-colon {
-  color: var(--json-structure, #808080) !important;
-}
-
-.hl-comma {
-  color: var(--json-structure, #808080) !important;
-}
-
-.hl-punct {
-  color: var(--json-structure, #808080) !important;
-}
-
-.hl-attr {
-  color: var(--json-key, #9CDCFE) !important;
-}
-
-.hl-keyword {
-  color: var(--hl-keyword, #C586C0) !important;
-  font-weight: 600 !important;
-}
-
-.hl-type {
-  color: var(--hl-type, #4EC9B0) !important;
-  font-weight: 600 !important;
-}
-
-.hl-bracket.lvl-1 {
-  color: var(--hl-bracket-1, #FFD700) !important;
-  font-weight: 700 !important;
-}
-
-.hl-bracket.lvl-2 {
-  color: var(--hl-bracket-2, #DA70D6) !important;
-  font-weight: 700 !important;
-}
-
-.hl-bracket.lvl-3 {
-  color: var(--hl-bracket-3, #1E90FF) !important;
-  font-weight: 700 !important;
-}
-
-/* Standard Live Search Highlight Match */
-mark.search-highlight-match {
-  background: rgba(245, 158, 11, 0.3) !important;
-  color: inherit !important;
-  border-radius: 3px !important;
-  padding: 0.05rem 0.25rem !important;
-  border-bottom: 2px solid #F59E0B !important;
-  transition: background 0.15s ease, box-shadow 0.15s ease !important;
-}
-
-[data-theme="light"] mark.search-highlight-match {
-  background: rgba(245, 158, 11, 0.25) !important;
-  color: #1F2328 !important;
-}
-
-/* UNIQUE HIGH-VISIBILITY CURRENT ACTIVE MATCH HIGHLIGHT */
-mark.search-highlight-match.active-match {
-  background: #10B981 !important;
-  color: #000000 !important;
-  font-weight: 800 !important;
-  padding: 0.12rem 0.4rem !important;
-  border-radius: 4px !important;
-  box-shadow: 0 0 14px rgba(16, 185, 129, 0.95), 0 0 0 2px #059669 !important;
-  transform: scale(1.06) !important;
-  display: inline-block !important;
-  z-index: 10 !important;
-  position: relative !important;
-  animation: activeSearchMatchPulse 1.4s infinite ease-in-out !important;
-}
-
-[data-theme="light"] mark.search-highlight-match.active-match {
-  background: #059669 !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 0 14px rgba(5, 150, 105, 0.7), 0 0 0 2px #047857 !important;
-}
-
-@keyframes activeSearchMatchPulse {
-  0% {
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.8), 0 0 0 2px #059669;
-  }
-
-  50% {
-    box-shadow: 0 0 20px rgba(16, 185, 129, 1), 0 0 0 3px #10B981;
-  }
-
-  100% {
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.8), 0 0 0 2px #059669;
-  }
-}
-
-.filter-matched-line {
-  background: rgba(16, 185, 129, 0.08) !important;
-  display: block !important;
-  border-left: 3px solid var(--jl-accent, #10B981) !important;
-  padding-left: 4px !important;
-  margin-left: -4px !important;
-  border-radius: 0 4px 4px 0 !important;
-}
-
-[data-theme="light"] .filter-matched-line {
-  background: rgba(16, 185, 129, 0.1) !important;
-}
-
-/* Interactive Code Folding Pill Button */
-.hl-fold-pill {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 0.05rem 0.4rem !important;
-  margin: 0 0.25rem !important;
-  border-radius: 4px !important;
-  background: rgba(47, 160, 132, 0.14) !important;
-  border: 1px solid rgba(47, 160, 132, 0.35) !important;
-  color: var(--jl-accent, #2FA084) !important;
-  font-size: 0.74rem !important;
-  font-weight: 700 !important;
-  font-family: var(--jl-font-mono, monospace) !important;
-  cursor: pointer !important;
-  user-select: none !important;
-  transition: all 0.15s ease !important;
-  vertical-align: middle !important;
-}
-
-.hl-fold-pill:hover {
-  background: var(--jl-accent, #2FA084) !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 0 10px rgba(47, 160, 132, 0.5) !important;
-  transform: scale(1.05);
-}
-
-/* VSCode / IntelliJ Premium Error Hover Popup Widget */
-.hl-syntax-error-wavy {
-  text-decoration: underline wavy var(--jl-error, #EF4444) !important;
-  text-decoration-thickness: 2px !important;
-  text-underline-offset: 4px !important;
-  background: rgba(239, 68, 68, 0.16) !important;
-  border-radius: 4px !important;
-  position: relative !important;
-  cursor: help !important;
-  display: inline-block !important;
-  pointer-events: auto !important;
-  z-index: 10 !important;
-}
-
-.hl-error-tooltip-popup {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 0;
-  transform: translateY(6px) scale(0.96);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  background: #0F172A !important;
-  color: #F8FAFC !important;
-  border: 1px solid rgba(239, 68, 68, 0.5) !important;
-  padding: 0.75rem 0.95rem !important;
-  border-radius: 12px !important;
-  font-family: var(--jl-font-sans, system-ui, -apple-system, sans-serif) !important;
-  font-size: 0.76rem !important;
-  line-height: 1.45 !important;
-  white-space: normal !important;
-  width: 320px !important;
-  max-width: 380px !important;
-  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.55), 0 0 20px rgba(239, 68, 68, 0.25) !important;
-  z-index: 20000 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 0.45rem !important;
-  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s !important;
-}
-
-[data-theme="light"] .hl-error-tooltip-popup {
-  background: #FFFFFF !important;
-  color: #0F172A !important;
-  border-color: rgba(239, 68, 68, 0.5) !important;
-  box-shadow: 0 14px 35px rgba(239, 68, 68, 0.2), 0 4px 12px rgba(0, 0, 0, 0.12) !important;
-}
-
-.err-popup-header {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  padding-bottom: 0.4rem !important;
-  border-bottom: 1px solid rgba(239, 68, 68, 0.25) !important;
-  gap: 0.5rem !important;
-}
-
-.err-title {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 0.35rem !important;
-  font-weight: 700 !important;
-  color: #EF4444 !important;
-  font-size: 0.78rem !important;
-}
-
-.err-icon {
-  font-size: 0.85rem !important;
-}
-
-.err-loc-badge {
-  font-family: var(--jl-font-mono, monospace) !important;
-  font-size: 0.68rem !important;
-  font-weight: 700 !important;
-  color: #DC2626 !important;
-  background: rgba(239, 68, 68, 0.14) !important;
-  border: 1px solid rgba(239, 68, 68, 0.35) !important;
-  padding: 0.1rem 0.45rem !important;
-  border-radius: 6px !important;
-  white-space: nowrap !important;
-}
-
-[data-theme="dark"] .err-loc-badge {
-  color: #F87171 !important;
-  background: rgba(239, 68, 68, 0.2) !important;
-}
-
-.err-popup-body {
-  color: #334155 !important;
-  font-size: 0.74rem !important;
-  font-weight: 500 !important;
-  word-break: break-word !important;
-  line-height: 1.45 !important;
-}
-
-[data-theme="dark"] .err-popup-body {
-  color: #E2E8F0 !important;
-}
-
-.hl-syntax-error-wavy:hover .hl-error-tooltip-popup {
-  opacity: 1 !important;
-  visibility: visible !important;
-  transform: translateY(0) scale(1) !important;
-}
-
 :root {
   /* --- Brand Colors (Navy/Charcoal) --- */
   --color-brand-50: #f8fafc;
@@ -803,17 +514,10 @@ kbd,
   background-color: #6b7280;
 }
 
-/* Keyboard Navigation & Contenteditable Focus Outline Resets */
-.ProseMirror,
-.ProseMirror:focus,
-.ProseMirror:focus-visible,
-.ProseMirror-focused,
-[contenteditable="true"],
-[contenteditable="true"]:focus,
-[contenteditable="true"]:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
-  border: none !important;
+/* Keyboard Navigation Focus Rings — Theme Harmonious */
+*:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
 }
 
 /* Browser Autofill Theme Harmony Overrides */
@@ -858,6 +562,7 @@ body {
 body:has(.ts-root) {
   background-color: var(--ts-page-bg, var(--page-bg, #F7F8F8));
 }
+
 html[data-theme="dark"] body:has(.ts-root) {
   background-color: var(--ts-page-bg, var(--page-bg, #0F1011));
 }
@@ -1399,28 +1104,87 @@ html[data-theme="dark"] {
    ============================================================ */
 
 
+
+
 /* ============================================================
-   LENIS SMOOTH SCROLLING SUPPORT
+   PERF SWITCHES (?perf=noblur,nobg,noshadow,noanim,noicons)
    ============================================================ */
-html.lenis,
-html.lenis body {
-  height: auto;
+.perf-noblur * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
-.lenis-smooth {
-  scroll-behavior: auto !important;
+.perf-nobg .page-bg,
+.perf-nobg .page-bg::before,
+.perf-nobg .page-bg::after,
+.perf-nobg ts-backdrop,
+.perf-nobg .ts-bg {
+  display: none !important;
 }
 
-.lenis-smooth [data-lenis-prevent] {
-  overscroll-behavior: contain;
+.perf-noshadow * {
+  box-shadow: none !important;
+  filter: none !important;
 }
 
-.lenis-stopped {
-  overflow: hidden;
+.perf-noanim * {
+  animation: none !important;
+  transition: none !important;
 }
 
-.lenis-scrolling iframe {
-  pointer-events: none;
+.perf-noicons lord-icon,
+.perf-noicons [class*="lottie"],
+.perf-noicons .ts-lord-icon {
+  display: none !important;
 }
 
-/* Grayscale theme on load removed to allow color display */
+/* ============================================================
+   Scroll Reveal (CSS Only, GPU Accelerated)
+   ============================================================ */
+.reveal {
+  opacity: 0;
+  transition: opacity 0.65s cubic-bezier(.22, .61, .36, 1), transform 0.65s cubic-bezier(.22, .61, .36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+/* 1. Subtle Text / Section Fade-Up */
+.reveal-up {
+  transform: translate3d(0, 24px, 0);
+}
+
+/* 2. Step Cards: Smooth horizontal glide from left */
+.reveal-left {
+  transform: translate3d(-32px, 0, 0);
+}
+
+/* 3. FAQ Boxes: Depth & gentle scale-up */
+.reveal-scale {
+  transform: translate3d(0, 20px, 0) scale(0.975);
+}
+
+/* 4. Chips / Badges: Micro tactile pop */
+.reveal-pop {
+  transform: translate3d(0, 10px, 0) scale(0.88);
+}
+
+.is-visible,
+.ts-reveal-item.is-revealed {
+  opacity: 1 !important;
+  transform: none;
+  will-change: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .reveal,
+  .reveal-up,
+  .reveal-left,
+  .reveal-scale,
+  .reveal-pop,
+  .ts-reveal-item {
+    transform: none !important;
+    opacity: 1 !important;
+    transition: none !important;
+  }
+}
