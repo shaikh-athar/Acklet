@@ -45,38 +45,41 @@ import { TsIconComponent } from '../icon/ts-icon.component';
     :host {
       display: block;
       width: 100%;
+      min-height: 0;
+      flex: 1 1 0;
+    }
+
+    @media (max-height: 759px) {
+      :host {
+        display: none !important;
+      }
     }
 
     .ts-related-panel {
       display: flex;
       flex-direction: column;
       gap: 12px;
-      padding: 16px;
-      background: var(--surface-hover, #F4F4F5);
-      border: 1px solid var(--border, rgba(0, 0, 0, 0.06));
-      border-radius: var(--ts-radius-tile, 14px);
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+      padding: 16px 20px;
+      background: var(--ts-surface-raised, #FFFFFF);
+      border: 1px solid var(--ts-surface-raised-border, rgba(15, 23, 42, 0.06));
+      border-radius: var(--ts-radius-card, 20px);
+      box-shadow: var(--ts-surface-raised-shadow);
       user-select: none;
-    }
-
-    :host-context([data-theme="dark"]) .ts-related-panel {
-      background: #18181B;
-      border-color: var(--border, #27272A);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      height: 100%;
+      min-height: 0;
+      box-sizing: border-box;
     }
 
     .ts-related-title {
       font-family: var(--font-heading, "Nunito", sans-serif);
-      font-size: var(--ts-type-label-size, 13px);
-      font-weight: 700;
+      font-size: var(--ts-type-section-label-size, 12px);
+      line-height: var(--ts-type-section-label-lh, 16px);
+      font-weight: var(--ts-type-section-label-weight, 600);
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted, #71717A);
+      letter-spacing: var(--ts-type-section-label-tracking, 0.08em);
+      color: var(--text-3, #6B7280);
       margin: 0;
-    }
-
-    :host-context([data-theme="dark"]) .ts-related-title {
-      color: var(--text-muted, #A1A1AA);
+      flex-shrink: 0;
     }
 
     .ts-related-items-list {
@@ -84,6 +87,11 @@ import { TsIconComponent } from '../icon/ts-icon.component';
       flex-direction: column;
       gap: 6px;
       width: 100%;
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      max-height: calc(3 * 54px + 12px);
     }
 
     .ts-related-item-link {
@@ -108,46 +116,33 @@ import { TsIconComponent } from '../icon/ts-icon.component';
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 8px 10px;
+      padding: 10px 12px;
       border-radius: var(--ts-radius-control, 12px);
-      background: var(--surface, #FFFFFF);
-      border: 1px solid var(--border, rgba(0, 0, 0, 0.06));
+      background: var(--ts-surface-inset, #F6F7F7);
+      border: 1px solid var(--ts-surface-inset-border, rgba(15, 23, 42, 0.05));
       cursor: pointer;
       transition: background-color 150ms ease,
                   border-color 150ms ease;
     }
 
-    :host-context([data-theme="dark"]) .ts-related-hlm-item {
-      background: #141416;
-      border-color: var(--border, #27272A);
-    }
-
     .ts-related-item-link:hover .ts-related-hlm-item {
-      background: var(--surface-hover, #F4F4F5);
-      border-color: rgba(0, 0, 0, 0.1);
-    }
-
-    :host-context([data-theme="dark"]) .ts-related-item-link:hover .ts-related-hlm-item {
-      background: #202024;
-      border-color: #3F3F46;
+      background: var(--surface-hover);
+      border-color: var(--ts-surface-raised-border);
     }
 
     .ts-related-name {
       font-family: var(--font-body, "Nunito", sans-serif);
-      font-size: var(--ts-type-label-size, 13.5px);
+      font-size: var(--ts-type-label-size, 13px);
+      line-height: var(--ts-type-label-lh, 18px);
       font-weight: 600;
-      color: var(--text, #18181B);
+      color: var(--text, #09090B);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    :host-context([data-theme="dark"]) .ts-related-name {
-      color: var(--text, #FCFCFC);
-    }
-
     .ts-related-arrow {
-      color: var(--text-muted, #71717A);
+      color: var(--text-3, #6B7280);
       transition: transform 150ms ease, color 150ms ease;
     }
 

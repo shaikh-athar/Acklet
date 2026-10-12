@@ -1,8 +1,16 @@
-/* apps/tool-online-clipboard/src/clipboard.component.css */
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+}
 
 .clipboard-container {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 0;
   gap: 16px;
   width: 100%;
   min-width: 0;
@@ -417,6 +425,8 @@
 .clipboard-tab-body {
   display: flex;
   flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
   gap: 16px;
   width: 100%;
   padding: 0;
@@ -438,6 +448,8 @@
 .tab-panel {
   display: flex;
   flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
   gap: 16px;
   width: 100%;
   animation: tsTabPanelFadeIn var(--ts-dur-hover, 220ms) var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
@@ -454,6 +466,7 @@
   padding: 14px 16px;
   box-shadow: none;
   box-sizing: border-box;
+  flex-shrink: 0;
   transition: border-color var(--ts-dur-fast, 150ms) var(--ts-ease),
               box-shadow var(--ts-dur-fast, 150ms) var(--ts-ease);
 }
@@ -473,7 +486,9 @@
   line-height: var(--ts-type-body-lh, 22px);
   color: var(--text);
   resize: vertical;
-  min-height: 90px;
+  min-height: 120px;
+  max-height: 45%;
+  flex: 1 1 auto;
   box-sizing: border-box;
 }
 
@@ -1191,6 +1206,10 @@
   flex-direction: column;
   gap: 12px;
   width: 100%;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .text-items-grid {
@@ -1483,7 +1502,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  padding: 24px 20px;
   text-align: center;
   background: var(--surface);
   border: 1px dashed var(--border);
@@ -1493,8 +1512,8 @@
 }
 
 .empty-spartan-card [hlmEmptyIcon] {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--ts-radius-md, 12px);
   background: var(--accent-soft);
   border: 1px solid var(--accent-border);
@@ -1502,7 +1521,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   animation: tsEmptyTileFloat 4s ease-in-out infinite;
 }
 
@@ -1514,28 +1533,28 @@
 }
 
 .empty-spartan-card [hlmEmptyIcon] .size-6 {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   color: var(--accent);
 }
 
 .empty-spartan-card [hlmEmptyTitle] {
   font-family: var(--font-heading, "Nunito", sans-serif);
-  font-size: var(--ts-type-section-title-size, 18px);
-  line-height: var(--ts-type-section-title-lh, 26px);
-  font-weight: var(--ts-type-section-title-weight, 650);
-  letter-spacing: var(--ts-type-section-title-tracking, -0.01em);
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   color: var(--text);
-  margin: 0 0 6px 0;
+  margin: 0 0 4px 0;
 }
 
 .empty-spartan-card [hlmEmptyDescription] {
   font-family: var(--font-body, "Nunito", sans-serif);
-  font-size: var(--ts-type-body-size, 14px);
-  line-height: var(--ts-type-body-lh, 22px);
+  font-size: 13px;
+  line-height: 18px;
   color: var(--text-muted);
-  margin: 0 0 16px 0;
-  max-width: 420px;
+  margin: 0 0 12px 0;
+  max-width: 380px;
 }
 
 .empty-spartan-card [hlmEmptyActions] {

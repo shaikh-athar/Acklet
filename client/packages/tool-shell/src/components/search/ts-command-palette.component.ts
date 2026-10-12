@@ -101,10 +101,12 @@ export interface CommandAction {
     .ts-cmd-panel {
       width: 100%;
       max-width: 580px;
-      background: var(--ts-surface);
-      border: 1px solid var(--ts-border);
+      background: var(--ts-overlay-bg, var(--ts-surface));
+      -webkit-backdrop-filter: var(--ts-overlay-filter, none);
+      backdrop-filter: var(--ts-overlay-filter, none);
+      border: 1px solid var(--ts-overlay-border, var(--ts-border));
       border-radius: var(--ts-radius-lg, 16px);
-      box-shadow: var(--ts-shadow-lg);
+      box-shadow: var(--ts-overlay-shadow, var(--ts-shadow-lg));
       display: flex;
       flex-direction: column;
       overflow: hidden;

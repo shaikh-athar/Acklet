@@ -1,5 +1,5 @@
 // packages/tool-shell/src/components/shell/ts-shell.component.ts
-import { Component, input, output, signal, computed, inject, OnInit, AfterViewInit, ElementRef, viewChild } from '@angular/core';
+import { Component, input, output, signal, computed, inject, OnInit, AfterViewInit, ElementRef, viewChild, isDevMode } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolRegistryItem, getAllTools } from '@acklet/tool-registry';
 import { ToolShellConfig, ToolTab } from '../../models/tool-shell.models';
@@ -21,15 +21,14 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
   selector: 'ts-shell, lib-tool-layout',
   standalone: true,
   imports: [
-    CommonModule, 
-    TsTopbarComponent, 
-    TsSidebarComponent, 
+    CommonModule,
+    TsTopbarComponent,
+    TsSidebarComponent,
     TsCommandPaletteComponent,
     TsAboutCardComponent,
     TsAboutPanelComponent,
     TsBackdropComponent,
     TsToolContentComponent,
-    TsToolHeaderComponent,
     TsToolDetailsComponent,
     TsToolRelatedComponent
   ],
@@ -38,6 +37,7 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
       class="ts-root" 
       [attr.data-theme]="themeService.effectiveTheme()"
       [attr.data-accent]="tool()?.accent || 'neutral'"
+      [attr.data-surface]="effectiveSurface()"
     >
       
       <!-- Skip to main content accessibility link -->
@@ -89,39 +89,28 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
             role="main" 
             tabindex="-1"
           >
-            <!-- Background Layer B: Checkered grid + ambient glow inside main card -->
-            <div class="ts-bg ts-bg-card" aria-hidden="true">
-              <div class="ts-bg-grid"></div>
-            </div>
+            <!-- Visually hidden heading for screen readers and document outline -->
+            @if (tool(); as currentTool) {
+              <h1 class="sr-only">{{ currentTool.name }}</h1>
+            }
 
             <div class="ts-main-scroll-container" [class.full-bleed]="isFullBleed()">
-              
-              <!-- 1. TOOL HEADER (full width, top) -->
-              @if (!isFullBleed()) {
-                <ts-tool-header 
-                  class="ts-entry-header"
-                  [tool]="tool()" 
-                  (openAbout)="showAboutPanel.set(true)" 
-                />
-              }
-
-              <!-- 2. WORKSPACE GRID below the header -->
-              <div class="ts-workspace-grid" [class.full-bleed]="isFullBleed()">
-                
-                <!-- Left: the tool in a tinted panel with white card layer inside -->
-                <div id="tool" class="ts-tool-panel-wrapper ts-entry-panel" [class.full-bleed]="isFullBleed()">
-                  <div class="ts-tool-card-surface">
+              <!-- WORKSPACE SECTION (Desktop One-Screen Workspace) -->
+              <div id="tool" class="ts-workspace-section" [class.full-bleed]="isFullBleed()">
+                <div class="ts-workspace-grid" [class.full-bleed]="isFullBleed()">
+                  <!-- Left: the tool as ONE raised card on the base -->
+                  <div class="ts-tool-card-surface ts-entry-panel" [class.full-bleed]="isFullBleed()">
                     <ng-content />
                   </div>
-                </div>
 
-                <!-- Right: sticky info rail -->
-                @if (!isFullBleed()) {
-                  <aside class="ts-info-rail ts-entry-rail" aria-label="Tool specifications and related tools">
-                    <ts-tool-details [tool]="tool()" />
-                    <ts-tool-related [tool]="tool()" />
-                  </aside>
-                }
+                  <!-- Right: sticky info rail -->
+                  @if (!isFullBleed()) {
+                    <aside class="ts-info-rail ts-entry-rail" aria-label="Tool specifications and related tools">
+                      <ts-tool-details [tool]="tool()" />
+                      <ts-tool-related [tool]="tool()" />
+                    </aside>
+                  }
+                </div>
               </div>
 
               <!-- 4. BELOW the grid, full width: About, How to use, FAQ -->
@@ -167,19 +156,28 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
     :host,
     .ts-root,
     .ts-root[data-theme="dark"] {
-      --page-bg: #0B0B0B;
-      --bg: #0B0B0B;
-      --shell-card: #141414;
-      --shell-card-border: #27272A;
-      --shell-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-      --surface: #141414;
-      --surface-hover: #1E1E22;
-      --surface-active: #27272A;
-      --border: #27272A;
+      --page-bg: #0F1011;
+      --bg: #0F1011;
+      --ts-main-bg: #0F1011;
+      --ts-surface-base: #0F1011;
+      --ts-surface-raised: #141416;
+      --ts-surface-raised-border: rgba(255, 255, 255, 0.07);
+      --ts-surface-raised-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 28px -18px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      --ts-surface-inset: #1A1B1E;
+      --ts-surface-inset-border: rgba(255, 255, 255, 0.06);
+      --shell-card: var(--ts-surface-raised);
+      --shell-card-border: var(--ts-surface-raised-border);
+      --shell-card-shadow: var(--ts-surface-raised-shadow);
+      --surface: var(--ts-surface-raised);
+      --surface-hover: #1E1F23;
+      --surface-active: #27282D;
+      --border: var(--ts-surface-raised-border);
       --border-accent: #FCFCFC;
       --text: #FCFCFC;
-      --text-muted: #A1A1AA;
-      --text-subtle: #71717A;
+      --text-2: #B3B3B8;
+      --text-3: #8E8E93;
+      --text-muted: #B3B3B8;
+      --text-subtle: #8E8E93;
       --accent: #FFFFFF;
       --accent-ink: #000000;
       --accent-soft: #1C1C1F;
@@ -187,48 +185,72 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
       --on-accent: #000000;
       --spotlight: rgba(252, 252, 252, 0.08);
       --ts-focus-ring: #FCFCFC;
-      --ts-raised: #1C1C1F;
-      --ts-raised-hover: #27272A;
+      --ts-raised: var(--ts-surface-raised);
+      --ts-raised-hover: #1E1F23;
       --ts-scrollbar-thumb: #27272A;
       --ts-scrollbar-thumb-hover: #3F3F46;
       --ts-scrollbar-track: transparent;
+      --fx-grid-size: 32px;
+      --fx-grid: color-mix(in srgb, var(--accent-strong, var(--accent)) 9%, transparent);
+      --fx-glow-1: color-mix(in srgb, var(--accent) 14%, transparent);
+      --fx-glow-2: color-mix(in srgb, var(--accent) 6%, transparent);
+      --fx-highlight: rgba(255, 255, 255, 0.03);
       --shell-padding: 12px;
       --shell-gap: 12px;
       --header-height: 64px;
       --sidebar-width: 272px;
       --sidebar-collapsed-width: 72px;
       --shell-radius: 20px;
+      --ts-radius-card: 20px;
+      --ts-radius-inner: 16px;
+      --ts-radius-control: 12px;
+      --ts-radius-tile: 16px;
       --ts-radius-full: 9999px;
       --font-body: "Nunito", system-ui, -apple-system, sans-serif;
       --font-heading: "Nunito", system-ui, -apple-system, sans-serif;
     }
 
     .ts-root[data-theme="light"] {
-      --page-bg: #f4f4f4;
-      --bg: #f4f4f4;
-      --shell-card: #FFFFFF;
-      --shell-card-border: rgba(0, 0, 0, 0.06);
-      --shell-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-      --surface: #FFFFFF;
-      --surface-hover: #F4F4F5;
-      --surface-active: #E4E4E7;
-      --border: rgba(0, 0, 0, 0.06);
+      --page-bg: #F7F8F8;
+      --bg: #F7F8F8;
+      --ts-main-bg: #F7F8F8;
+      --ts-surface-base: #F7F8F8;
+      --ts-surface-raised: #FFFFFF;
+      --ts-surface-raised-border: rgba(15, 23, 42, 0.06);
+      --ts-surface-raised-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 14px 28px -18px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      --ts-surface-inset: #F6F7F7;
+      --ts-surface-inset-border: rgba(15, 23, 42, 0.05);
+      --shell-card: var(--ts-surface-raised);
+      --shell-card-border: var(--ts-surface-raised-border);
+      --shell-card-shadow: var(--ts-surface-raised-shadow);
+      --surface: var(--ts-surface-raised);
+      --surface-hover: #F6F7F7;
+      --surface-active: #EDEEEE;
+      --border: var(--ts-surface-raised-border);
       --border-accent: #09090B;
       --text: #09090B;
+      --text-2: #52525B;
+      --text-3: #6B7280;
       --text-muted: #52525B;
-      --text-subtle: #71717A;
+      --text-subtle: #6B7280;
       --accent: #09090B;
       --accent-ink: #FFFFFF;
+      --accent-light: color-mix(in srgb, var(--accent) 40%, #FFFFFF);
       --accent-soft: #F4F4F5;
       --accent-border: rgba(0, 0, 0, 0.08);
       --on-accent: #FFFFFF;
       --spotlight: rgba(0, 0, 0, 0.04);
       --ts-focus-ring: #09090B;
-      --ts-raised: #F4F4F5;
-      --ts-raised-hover: #E4E4E7;
-      --ts-scrollbar-thumb: #D4D4D8;
+      --ts-raised: var(--ts-surface-raised);
+      --ts-raised-hover: #F6F7F7;
+      --ts-scrollbar-thumb: #D4D4E8;
       --ts-scrollbar-thumb-hover: #A1A1AA;
       --ts-scrollbar-track: transparent;
+      --fx-grid-size: 32px;
+      --fx-grid: color-mix(in srgb, var(--accent-strong, var(--accent)) 6%, transparent);
+      --fx-glow-1: color-mix(in srgb, var(--accent-light) 55%, transparent);
+      --fx-glow-2: color-mix(in srgb, var(--accent-light) 22%, transparent);
+      --fx-highlight: rgba(255, 255, 255, 0.80);
     }
 
     .ts-root[data-accent="teal"] {
@@ -323,7 +345,21 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
       grid-template-columns: minmax(0, 1fr);
     }
 
+    /* Accessibility visually-hidden utility */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
     /* Main Content Card: Standalone Floating Card with non-scrolling background */
+    /* Main Content Card: Semi-transparent sheet over single page background */
     .ts-main-content-card {
       position: relative;
       height: 100%;
@@ -334,61 +370,14 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
       container-type: inline-size;
       container-name: main-card;
       isolation: isolate;
-      background: var(--shell-card);
-      border: 1px solid var(--shell-card-border);
+      background: var(--ts-main-surface, rgba(255, 255, 255, 0.45));
+      border: 1px solid var(--ts-main-border, rgba(255, 255, 255, 0.60));
       border-radius: var(--shell-radius, 20px);
       box-shadow: var(--shell-card-shadow);
       box-sizing: border-box;
       outline: none;
       transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
                   border-color var(--ts-dur-base, 200ms) var(--ts-ease);
-    }
-
-    /* Background Layer B: inside main card, non-scrolling */
-    .ts-bg {
-      position: absolute;
-      inset: 0;
-      z-index: 0;
-      pointer-events: none;
-      overflow: hidden;
-      background: radial-gradient(ellipse 70% 40% at 50% 0%, var(--fx-highlight), transparent);
-    }
-
-    .ts-bg-grid {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      background:
-        linear-gradient(to right,  var(--fx-grid) 1px, transparent 1px) 0 0 / var(--fx-grid-size) var(--fx-grid-size),
-        linear-gradient(to bottom, var(--fx-grid) 1px, transparent 1px) 0 0 / var(--fx-grid-size) var(--fx-grid-size);
-      -webkit-mask-image: radial-gradient(ellipse 90% 75% at 50% 0%, #000 35%, transparent 100%);
-      mask-image: radial-gradient(ellipse 90% 75% at 50% 0%, #000 35%, transparent 100%);
-    }
-
-    .ts-bg::before,
-    .ts-bg::after {
-      content: "";
-      position: absolute;
-      border-radius: 50%;
-      pointer-events: none;
-    }
-
-    /* glow 1: accent, top left */
-    .ts-bg::before {
-      width: 60%;
-      aspect-ratio: 1;
-      left: -8%;
-      top: -28%;
-      background: radial-gradient(closest-side, var(--fx-glow-1), transparent 100%);
-    }
-
-    /* glow 2: second tone, top right */
-    .ts-bg::after {
-      width: 52%;
-      aspect-ratio: 1;
-      right: -10%;
-      top: -22%;
-      background: radial-gradient(closest-side, var(--fx-glow-2), transparent 100%);
     }
 
     .ts-main-scroll-container {
@@ -400,19 +389,60 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
       scrollbar-width: thin;
       scrollbar-color: var(--ts-scrollbar-thumb) transparent;
       width: 100%;
-      max-width: 1280px;
+      max-width: 1440px;
       margin: 0 auto;
-      padding: 24px 28px 48px;
+      padding: var(--ts-main-pad, 24px);
       display: flex;
       flex-direction: column;
-      gap: 24px;
+      gap: 32px;
       box-sizing: border-box;
+      /* Top scroll fade effect */
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24px, #000 100%);
+              mask-image: linear-gradient(to bottom, transparent 0, #000 24px, #000 100%);
     }
 
     .ts-main-scroll-container.full-bleed {
       max-width: 100%;
       padding: 0;
       gap: 0;
+      -webkit-mask-image: none;
+              mask-image: none;
+    }
+
+    /* ══ WORKSPACE SECTION: Desktop One-Screen Workspace ══ */
+    .ts-workspace-section {
+      width: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .ts-workspace-section.full-bleed {
+      height: 100%;
+    }
+
+    @media (min-width: 1024px) and (min-height: 600px) {
+      .ts-workspace-section:not(.full-bleed) {
+        --ts-workspace-h: calc(100dvh - 2 * var(--shell-padding, 12px) - var(--header-height, 64px) - var(--shell-gap, 12px) - 2 * var(--ts-main-pad, 24px));
+        height: var(--ts-workspace-h);
+        min-height: 520px;
+        flex-shrink: 0;
+      }
+      .ts-workspace-grid:not(.full-bleed) {
+        height: 100%;
+        min-height: 0;
+      }
+      .ts-tool-card-surface:not(.full-bleed) {
+        height: 100%;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .ts-info-rail {
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+      }
     }
 
     /* ══ 2. WORKSPACE GRID: Tool (left) + Info Rail (right) ════════ */
@@ -435,14 +465,20 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
     @container main-card (min-width: 960px) {
       .ts-workspace-grid:not(.full-bleed) {
         grid-template-columns: minmax(0, 1fr) 320px;
-        align-items: start;
+        align-items: stretch;
+        gap: 24px;
       }
       .ts-info-rail {
         display: flex;
         flex-direction: column;
-        position: sticky;
-        top: 0;
-        align-self: start;
+        gap: 16px;
+        align-self: stretch;
+      }
+    }
+
+    @container main-card (min-width: 960px) and (max-width: 1099px) {
+      .ts-workspace-grid:not(.full-bleed) {
+        gap: 16px;
       }
     }
 
@@ -456,8 +492,6 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 16px;
-        position: static;
-        top: auto;
         align-self: stretch;
       }
     }
@@ -466,27 +500,27 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
     @container main-card (max-width: 599px) {
       .ts-workspace-grid:not(.full-bleed) {
         grid-template-columns: 100%;
-        gap: 14px;
+        gap: 16px;
       }
       .ts-info-rail {
         display: flex;
         flex-direction: column;
         gap: 12px;
-        position: static;
-        top: auto;
+        align-self: stretch;
       }
       .ts-main-scroll-container {
-        padding: 12px 12px 32px;
-        gap: 14px;
+        padding: 16px;
+        gap: 16px;
       }
     }
 
-    /* Left: Tinted panel (page-gray background, radius 20, padding 16) */
-    .ts-tool-panel-wrapper {
-      background: var(--page-bg, #f4f4f4);
-      border: 1px solid var(--border, rgba(0, 0, 0, 0.06));
+    /* Tool raised card on the base (always solid raised surface) */
+    .ts-tool-card-surface {
+      background: var(--ts-surface-raised, #FFFFFF);
+      border: 1px solid var(--ts-surface-raised-border, rgba(15, 23, 42, 0.06));
       border-radius: var(--ts-radius-card, 20px);
-      padding: 16px;
+      padding: 24px;
+      box-shadow: var(--ts-surface-raised-shadow);
       box-sizing: border-box;
       min-width: 0;
       width: 100%;
@@ -494,34 +528,12 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
       z-index: var(--ts-z-surface, 20);
     }
 
-    .ts-tool-panel-wrapper.full-bleed {
+    .ts-tool-card-surface.full-bleed {
       background: transparent;
       border: none;
       border-radius: 0;
       padding: 0;
-    }
-
-    :host-context([data-theme="dark"]) .ts-tool-panel-wrapper {
-      background: #111113;
-      border-color: var(--border, #27272A);
-    }
-
-    /* Tool's own white card inside the tinted panel */
-    .ts-tool-card-surface {
-      background: var(--shell-card, #FFFFFF);
-      border: 1px solid var(--border, rgba(0, 0, 0, 0.06));
-      border-radius: var(--ts-radius-tile, 14px);
-      padding: 20px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-      box-sizing: border-box;
-      min-width: 0;
-      width: 100%;
-    }
-
-    :host-context([data-theme="dark"]) .ts-tool-card-surface {
-      background: #161618;
-      border-color: var(--border, #27272A);
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+      box-shadow: none;
     }
 
     /* Cleanly hide duplicate header & trust chips if present in tool child template */
@@ -530,7 +542,7 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
       display: none !important;
     }
 
-    /* Right: Info Rail base rules (container queries above handle responsive layout) */
+    /* Right: Info Rail base rules */
     .ts-info-rail {
       display: flex;
       flex-direction: column;
@@ -553,7 +565,7 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
       z-index: var(--ts-z-surface, 20);
     }
 
-    /* ══ ENTRY ANIMATION: 8px slide/fade with 40ms stagger (enter duration 420ms) ═══════ */
+    /* ══ ENTRY ANIMATION: 8px slide/fade with 40ms stagger ═══════ */
     @keyframes tsFadeSlideIn {
       from {
         opacity: 0;
@@ -563,10 +575,6 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
         opacity: 1;
         transform: translateY(0);
       }
-    }
-
-    .ts-entry-header {
-      animation: tsFadeSlideIn var(--ts-dur-enter, 420ms) var(--ts-ease-out) 0ms forwards;
     }
 
     .ts-entry-panel {
@@ -582,7 +590,6 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
     }
 
     /* Failsafe: After 1s, force all animated items to full opacity and reset transform */
-    .ts-entry-header.is-forced-visible,
     .ts-entry-panel.is-forced-visible,
     .ts-entry-rail.is-forced-visible,
     .ts-entry-content.is-forced-visible {
@@ -592,7 +599,6 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .ts-entry-header,
       .ts-entry-panel,
       .ts-entry-rail,
       .ts-entry-content {
@@ -643,45 +649,9 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
         padding: 16px;
         gap: 16px;
       }
-      .ts-tool-panel-wrapper {
-        padding: 10px;
-        border-radius: 16px;
-      }
       .ts-tool-card-surface {
-        padding: 14px;
-        border-radius: 12px;
-      }
-      .ts-bg-grid {
-        background-size: 32px 32px;
-      }
-      .ts-bg::before {
-        width: 45%;
-        left: -5%;
-        top: -20%;
-      }
-      .ts-bg::after {
-        width: 39%;
-        right: -6%;
-        top: -16%;
-      }
-    }
-
-    /* High contrast: remove glows, keep faint grid */
-    @media (prefers-contrast: more) {
-      .ts-bg::before,
-      .ts-bg::after {
-        display: none !important;
-      }
-      .ts-bg {
-        background: transparent !important;
-      }
-    }
-
-    /* Forced colors and print: hide decorative layers entirely */
-    @media (forced-colors: active), print {
-      .ts-bg,
-      .ts-bg-grid {
-        display: none !important;
+        padding: 16px;
+        border-radius: 16px;
       }
     }
   `]
@@ -689,6 +659,7 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
 export class ToolLayoutComponent implements OnInit, AfterViewInit {
   readonly tool = input<ToolRegistryItem | null>(null);
   readonly config = input<ToolShellConfig | null>(null);
+  readonly surface = input<'glass' | 'tinted' | 'solid'>('glass');
   readonly tabChange = output<string>();
 
   readonly mainCard = viewChild<ElementRef<HTMLElement>>('mainCard');
@@ -701,12 +672,24 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit {
   private readonly capsuleService = inject(ToolCapsuleService);
 
   readonly internalActiveTab = signal<string>('');
+  private readonly devSurfaceOverride = signal<'glass' | 'tinted' | 'solid' | null>(null);
+
+  readonly effectiveSurface = computed<'glass' | 'tinted' | 'solid'>(() => {
+    return this.devSurfaceOverride() ?? this.surface() ?? 'glass';
+  });
 
   ngOnInit(): void {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('panel') === 'about') {
         this.showAboutPanel.set(true);
+      }
+
+      if (isDevMode()) {
+        const surfParam = params.get('surface');
+        if (surfParam === 'glass' || surfParam === 'tinted' || surfParam === 'solid') {
+          this.devSurfaceOverride.set(surfParam);
+        }
       }
 
       // Safety failsafe: After 1s, force all entrance elements visible
@@ -726,7 +709,7 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit {
   private forceAllVisible(): void {
     const card = this.mainCard()?.nativeElement;
     if (!card) return;
-    const items = card.querySelectorAll('.ts-entry-header, .ts-entry-panel, .ts-entry-rail, .ts-entry-content');
+    const items = card.querySelectorAll('.ts-entry-panel, .ts-entry-rail, .ts-entry-content');
     items.forEach(el => el.classList.add('is-forced-visible'));
   }
 

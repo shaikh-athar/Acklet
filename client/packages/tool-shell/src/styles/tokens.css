@@ -26,14 +26,25 @@ html[data-theme="dark"],
   --ts-font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* ══ TYPE SCALE ═════════════════════════════════════════════════════
-     Page title: 28/34 weight 700; section title: 18/26 weight 650;
-     body: 14/22; label: 13/18 weight 600; caption: 12/16.
-     Letter-spacing: -0.01em on titles.
+     Page title: 28/34 weight 650, letter-spacing -0.02em, color --text.
+     Description: 15/24, color --text-2 (about 70% strength).
+     Section labels: 12/16, weight 600, letter-spacing 0.08em, color --text-3, uppercase.
+     Buttons: primary 600, secondary and ghost 500. Tabs: inactive 500, active 600.
+     Spec row: label --text-2, value weight 600.
   */
   --ts-type-page-title-size: 28px;
   --ts-type-page-title-lh: 34px;
-  --ts-type-page-title-weight: 700;
-  --ts-type-page-title-tracking: -0.01em;
+  --ts-type-page-title-weight: 650;
+  --ts-type-page-title-tracking: -0.02em;
+
+  --ts-type-description-size: 15px;
+  --ts-type-description-lh: 24px;
+  --ts-type-description-weight: 400;
+
+  --ts-type-section-label-size: 12px;
+  --ts-type-section-label-lh: 16px;
+  --ts-type-section-label-weight: 600;
+  --ts-type-section-label-tracking: 0.08em;
 
   --ts-type-section-title-size: 18px;
   --ts-type-section-title-lh: 26px;
@@ -52,8 +63,8 @@ html[data-theme="dark"],
   --ts-type-caption-lh: 16px;
   --ts-type-caption-weight: 400;
 
-  --ts-type-title-tracking: -0.01em;
-  --ts-tracking-titles: -0.01em;
+  --ts-type-title-tracking: -0.02em;
+  --ts-tracking-titles: -0.02em;
 
   /* Legacy type scale aliases */
   --ts-text-xs: 12px;
@@ -89,16 +100,16 @@ html[data-theme="dark"],
   --ts-space-8: 32px;
 
   /* ══ CONTROL SIZES & RADII ══════════════════════════════════════════
-     Control heights: 40 (default), 48 (large).
-     Control radius: 12px, card radius: 20px, tile radius: 14px.
+     Radii: card 20px, inner blocks 16px, controls 12px. One consistent value each.
   */
   --ts-control-height: 40px;
   --ts-control-height-default: 40px;
   --ts-control-height-lg: 48px;
 
-  --ts-radius-control: 12px;
   --ts-radius-card: 20px;
-  --ts-radius-tile: 14px;
+  --ts-radius-inner: 16px;
+  --ts-radius-control: 12px;
+  --ts-radius-tile: 16px;
 
   --shell-padding: 12px;
   --shell-gap: 12px;
@@ -133,20 +144,33 @@ html[data-theme="dark"],
   --ts-z-overlay: 40;
 
   /* ══ GOTH THEME (Dark Mode - Default) ══════════════════════════ */
-  --page-bg: #0B0B0B;
-  --bg: #0B0B0B;
-  --shell-card: #141414;
-  --shell-card-border: #27272A;
-  --shell-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --surface: #141414;
-  --surface-hover: #27272A;
-  --surface-active: #27272A;
-  --border: #27272A;
+  --page-bg: #0F1011;
+  --bg: #0F1011;
+  --ts-main-bg: #0F1011;
+
+  /* ── THREE-LEVEL SURFACE SYSTEM (Dark) ─────────────────────────── */
+  --ts-surface-base: #0F1011;
+  --ts-surface-raised: #141416;
+  --ts-surface-raised-border: rgba(255, 255, 255, 0.07);
+  --ts-surface-raised-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 28px -18px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --ts-surface-inset: #1A1B1E;
+  --ts-surface-inset-border: rgba(255, 255, 255, 0.06);
+
+  --shell-card: var(--ts-surface-raised);
+  --shell-card-border: var(--ts-surface-raised-border);
+  --shell-card-shadow: var(--ts-surface-raised-shadow);
+  --surface: var(--ts-surface-raised);
+  --surface-hover: #1E1F23;
+  --surface-active: #27282D;
+  --border: var(--ts-surface-raised-border);
   --border-accent: #FCFCFC;
+
   --text: #FCFCFC;
-  --text-muted: #A1A1AA;
+  --text-2: #B3B3B8;
+  --text-3: #8E8E93;
+  --text-muted: #B3B3B8;
   --text-subtle: #8E8E93;
-  --icon-muted: #A1A1AA;
+  --icon-muted: #B3B3B8;
   --ts-icon-stroke: 45;
   /* ══ ACCENT DERIVATION DEFAULTS (Dark Mode - Default) ══════════════
      Derived automatically from --accent and --surface:
@@ -170,8 +194,8 @@ html[data-theme="dark"],
   /* Legacy & Bridge variables mapped to GOTH */
   --ts-bg: var(--bg);
   --ts-surface: var(--shell-card);
-  --ts-raised: #1C1C1F;
-  --ts-raised-hover: #27272A;
+  --ts-raised: var(--ts-surface-raised);
+  --ts-raised-hover: #1E1F23;
   --ts-border: var(--border);
   --ts-border-subtle: #202023;
   --ts-border-hover: #3F3F46;
@@ -194,8 +218,8 @@ html[data-theme="dark"],
   --tool-border-subtle: #202023;
   --tool-border-focus: #FCFCFC;
   --tool-text-primary: #FCFCFC;
-  --tool-text-secondary: #A1A1AA;
-  --tool-text-muted: #71717A;
+  --tool-text-secondary: #B3B3B8;
+  --tool-text-muted: #8E8E93;
   --tool-brand-accent: #FFFFFF;
 
   /* Backdrop glow colors */
@@ -204,11 +228,12 @@ html[data-theme="dark"],
   --ts-glow-3: rgba(255, 255, 255, 0.015);
 
   /* ── Background Grid & Ambient Glow (Checkered Grid + Soft Glow) ── */
-  --fx-grid: rgba(255, 255, 255, 0.045);
-  --fx-grid-size: 40px;
-  --fx-highlight: rgba(255, 255, 255, 0.04);
-  --fx-glow-1: color-mix(in srgb, var(--accent) 22%, transparent);
-  --fx-glow-2: var(--accent-2-glow-dark, rgba(148, 163, 184, 0.10));
+  --fx-grid-size: 32px;
+  --fx-grid: color-mix(in srgb, var(--accent-strong) 9%, transparent);
+  --fx-glow-1: color-mix(in srgb, var(--accent) 14%, transparent);
+  --fx-glow-2: color-mix(in srgb, var(--accent) 6%, transparent);
+  --ts-main-surface: rgba(255, 255, 255, 0.025);
+  --ts-main-border: rgba(255, 255, 255, 0.06);
 
   /* ── Shadows ──────────────────────────────────────────────────── */
   --ts-shadow-sm: var(--shell-card-shadow);
@@ -221,28 +246,44 @@ html[data-theme="dark"],
   --ts-scrollbar-track: transparent;
   --ts-scrollbar-thumb: #27272A;
   --ts-scrollbar-thumb-hover: #3F3F46;
+  /* ── 3-Tier Surface Tokens ───────────────────────────────────── */
+  --ts-tree-line: rgba(255, 255, 255, 0.08);
 }
 
 /* ══ GOTH THEME (Light Mode) ══════════════════════════════════════
-   Page background: #f4f4f4, Shell cards: #FFFFFF, hairline border: rgba(0,0,0,0.06)
+   Page background: #F7F8F8, Shell cards: #FFFFFF, hairline border: rgba(0,0,0,0.06)
 */
 [data-theme="light"],
 html[data-theme="light"],
 :root[data-theme="light"],
 .ts-root[data-theme="light"] {
-  --page-bg: #f4f4f4;
-  --bg: #f4f4f4;
-  --shell-card: #FFFFFF;
-  --shell-card-border: rgba(0, 0, 0, 0.06);
-  --shell-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --surface: #FFFFFF;
-  --surface-hover: #F4F4F5;
-  --surface-active: #E4E4E7;
-  --border: rgba(0, 0, 0, 0.06);
+  --page-bg: #F7F8F8;
+  --bg: #F7F8F8;
+  --ts-main-bg: #F7F8F8;
+  --ts-tree-line: rgba(15, 23, 42, 0.08);
+
+  /* ── THREE-LEVEL SURFACE SYSTEM (Light) ────────────────────────── */
+  --ts-surface-base: #F7F8F8;
+  --ts-surface-raised: #FFFFFF;
+  --ts-surface-raised-border: rgba(15, 23, 42, 0.06);
+  --ts-surface-raised-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 14px 28px -18px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --ts-surface-inset: #F6F7F7;
+  --ts-surface-inset-border: rgba(15, 23, 42, 0.05);
+
+  --shell-card: var(--ts-surface-raised);
+  --shell-card-border: var(--ts-surface-raised-border);
+  --shell-card-shadow: var(--ts-surface-raised-shadow);
+  --surface: var(--ts-surface-raised);
+  --surface-hover: #F6F7F7;
+  --surface-active: #EDEEEE;
+  --border: var(--ts-surface-raised-border);
   --border-accent: #09090B;
+
   --text: #09090B;
+  --text-2: #52525B;
+  --text-3: #6B7280;
   --text-muted: #52525B;
-  --text-subtle: #71717A;
+  --text-subtle: #6B7280;
   --icon-muted: #52525B;
   --ts-icon-stroke: 45;
   /* ══ ACCENT DERIVATION DEFAULTS (Light Mode) ══════════════════════
@@ -254,6 +295,7 @@ html[data-theme="light"],
   --accent: #111111;
   --accent-ink: #FFFFFF;
   --accent-strong: #111111;
+  --accent-light: color-mix(in oklab, var(--accent) 35%, #FFFFFF);
   --accent-soft: color-mix(in srgb, var(--accent) 12%, var(--surface));
   --accent-border: color-mix(in srgb, var(--accent) 30%, transparent);
   --accent-glow: color-mix(in srgb, var(--accent) 35%, transparent);
@@ -267,10 +309,10 @@ html[data-theme="light"],
   /* Legacy & Bridge variables mapped to Light */
   --ts-bg: var(--bg);
   --ts-surface: var(--shell-card);
-  --ts-raised: #F4F4F5;
-  --ts-raised-hover: #E4E4E7;
+  --ts-raised: var(--ts-surface-raised);
+  --ts-raised-hover: #F6F7F7;
   --ts-border: var(--border);
-  --ts-border-subtle: #F4F4F5;
+  --ts-border-subtle: #F6F7F7;
   --ts-border-hover: #D4D4D8;
   --ts-text: var(--text);
   --ts-text-muted: var(--text-muted);
@@ -285,14 +327,14 @@ html[data-theme="light"],
   /* Tool-* bridge variables */
   --tool-bg: var(--page-bg);
   --tool-bg-surface: var(--shell-card);
-  --tool-bg-subtle: #F4F4F5;
-  --tool-bg-hover: #E4E4E7;
+  --tool-bg-subtle: #F6F7F7;
+  --tool-bg-hover: #EDEEEE;
   --tool-border: var(--border);
-  --tool-border-subtle: #F4F4F5;
+  --tool-border-subtle: #F6F7F7;
   --tool-border-focus: #09090B;
   --tool-text-primary: #09090B;
-  --tool-text-secondary: #71717A;
-  --tool-text-muted: #A1A1AA;
+  --tool-text-secondary: #52525B;
+  --tool-text-muted: #6B7280;
   --tool-brand-accent: #09090B;
 
   /* Backdrop glow colors */
@@ -301,11 +343,12 @@ html[data-theme="light"],
   --ts-glow-3: rgba(0, 0, 0, 0.01);
 
   /* ── Background Grid & Ambient Glow (Checkered Grid + Soft Glow) ── */
-  --fx-grid: rgba(15, 23, 42, 0.055);
-  --fx-grid-size: 40px;
-  --fx-highlight: rgba(255, 255, 255, 0.9);
-  --fx-glow-1: color-mix(in srgb, var(--accent) 30%, transparent);
-  --fx-glow-2: var(--accent-2-glow, rgba(148, 163, 184, 0.22));
+  --fx-grid-size: 32px;
+  --fx-grid: color-mix(in srgb, var(--accent-strong) 6%, transparent);
+  --fx-glow-1: color-mix(in oklab, var(--accent-light) 55%, transparent);
+  --fx-glow-2: color-mix(in oklab, var(--accent-light) 22%, transparent);
+  --ts-main-surface: rgba(255, 255, 255, 0.45);
+  --ts-main-border: rgba(255, 255, 255, 0.60);
 
   /* Shadows */
   --ts-shadow-sm: var(--shell-card-shadow);
@@ -325,6 +368,7 @@ html[data-theme="light"],
   --border-accent: #FCFCFC;
   --spotlight: rgba(252, 252, 252, 0.08);
 }
+
 [data-theme="light"][data-theme="goth"],
 [data-theme="light"] [data-theme="goth"] {
   --border-accent: #000000;
@@ -386,8 +430,6 @@ html[data-theme="light"],
   --accent: #2DD4BF;
   --accent-ink: #04211E;
   --accent-strong: #5EEAD4;
-  --accent-2-glow: rgba(253, 164, 175, 0.38);
-  --accent-2-glow-dark: rgba(251, 113, 133, 0.16);
   --on-accent: var(--accent-ink);
   --ts-accent: var(--accent);
   --ts-accent-contrast: var(--accent-ink);
@@ -401,10 +443,230 @@ html[data-theme="light"],
   --accent: #2DD4BF;
   --accent-ink: #04211E;
   --accent-strong: #0F766E;
-  --accent-2-glow: rgba(253, 164, 175, 0.38);
-  --accent-2-glow-dark: rgba(251, 113, 133, 0.16);
   --on-accent: var(--accent-ink);
   --ts-accent: var(--accent);
   --ts-accent-contrast: var(--accent-ink);
   --tool-brand-accent: var(--accent);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   THREE SURFACE VARIANTS: "glass" (default) | "tinted" | "solid"
+   Controlled via [data-surface="..."] attribute on shell root.
+   Tokens defined:
+     --ts-nav-bg, --ts-nav-border, --ts-nav-shadow, --ts-nav-filter
+     --ts-overlay-bg, --ts-overlay-border, --ts-overlay-shadow, --ts-overlay-filter
+     --ts-surface-raised, --ts-surface-border
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 1. VARIANT "glass" (Default - Light Glass Look) ──────────────── */
+:root,
+[data-surface="glass"],
+:root[data-surface="glass"],
+.ts-root[data-surface="glass"] {
+  /* Dark Mode Glass */
+  --ts-glass-bg: rgba(22, 22, 26, 0.45);
+  --ts-glass-border: rgba(255, 255, 255, 0.08);
+  --ts-glass-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 10px 22px -16px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --ts-glass-filter: blur(6px) saturate(150%);
+
+  --ts-nav-bg: var(--ts-glass-bg);
+  --ts-nav-border: var(--ts-glass-border);
+  --ts-nav-shadow: var(--ts-glass-shadow);
+  --ts-nav-filter: var(--ts-glass-filter);
+
+  --ts-overlay-bg: rgba(22, 22, 26, 0.80);
+  --ts-overlay-border: rgba(255, 255, 255, 0.08);
+  --ts-overlay-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 16px 36px -12px rgba(0, 0, 0, 0.85);
+  --ts-overlay-filter: blur(24px);
+
+  --ts-surface-raised: #141416;
+  --ts-surface-border: rgba(255, 255, 255, 0.07);
+
+  --ts-row-hover: rgba(255, 255, 255, 0.06);
+  --ts-row-active: rgba(255, 255, 255, 0.09);
+  --ts-tree-line: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="light"],
+:root[data-theme="light"],
+[data-theme="light"][data-surface="glass"],
+.ts-root[data-theme="light"][data-surface="glass"] {
+  /* Light Mode Glass */
+  --ts-glass-bg: rgba(255, 255, 255, 0.42);
+  --ts-glass-border: rgba(255, 255, 255, 0.7);
+  --ts-glass-shadow: 0 0 0 1px rgba(15, 23, 42, 0.05), 0 10px 22px -16px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --ts-glass-filter: blur(6px) saturate(150%);
+
+  --ts-nav-bg: var(--ts-glass-bg);
+  --ts-nav-border: var(--ts-glass-border);
+  --ts-nav-shadow: var(--ts-glass-shadow);
+  --ts-nav-filter: var(--ts-glass-filter);
+
+  --ts-overlay-bg: rgba(255, 255, 255, 0.84);
+  --ts-overlay-border: rgba(255, 255, 255, 0.80);
+  --ts-overlay-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08), 0 16px 36px -12px rgba(15, 23, 42, 0.2);
+  --ts-overlay-filter: blur(24px) saturate(150%);
+
+  --ts-surface-raised: #FFFFFF;
+  --ts-surface-border: rgba(15, 23, 42, 0.06);
+
+  --ts-row-hover: rgba(15, 23, 42, 0.05);
+  --ts-row-active: rgba(15, 23, 42, 0.07);
+  --ts-tree-line: rgba(15, 23, 42, 0.08);
+}
+
+/* Glass fallback: when backdrop-filter is unsupported (88% opaque) */
+@supports not (backdrop-filter: blur(1px)) {
+
+  :root,
+  [data-surface="glass"],
+  .ts-root[data-surface="glass"] {
+    --ts-glass-bg: rgba(22, 22, 26, 0.88);
+    --ts-glass-filter: none;
+    --ts-nav-bg: rgba(22, 22, 26, 0.88);
+    --ts-nav-filter: none;
+    --ts-overlay-bg: rgba(22, 22, 26, 0.88);
+    --ts-overlay-filter: none;
+  }
+
+  [data-theme="light"],
+  :root[data-theme="light"],
+  [data-theme="light"][data-surface="glass"],
+  .ts-root[data-theme="light"][data-surface="glass"] {
+    --ts-glass-bg: rgba(255, 255, 255, 0.88);
+    --ts-glass-filter: none;
+    --ts-nav-bg: rgba(255, 255, 255, 0.88);
+    --ts-nav-filter: none;
+    --ts-overlay-bg: rgba(255, 255, 255, 0.88);
+    --ts-overlay-filter: none;
+  }
+}
+
+/* Glass fallback: reduced transparency (prefers-reduced-transparency: reduce) */
+@media (prefers-reduced-transparency: reduce) {
+
+  :root,
+  [data-surface="glass"],
+  .ts-root[data-surface="glass"] {
+    --ts-glass-bg: #141416;
+    --ts-glass-border: rgba(255, 255, 255, 0.07);
+    --ts-glass-shadow: var(--ts-surface-raised-shadow);
+    --ts-glass-filter: none;
+    --ts-nav-bg: #141416;
+    --ts-nav-border: rgba(255, 255, 255, 0.07);
+    --ts-nav-shadow: var(--ts-surface-raised-shadow);
+    --ts-nav-filter: none;
+    --ts-overlay-bg: #141416;
+    --ts-overlay-border: rgba(255, 255, 255, 0.08);
+    --ts-overlay-filter: none;
+  }
+
+  [data-theme="light"],
+  :root[data-theme="light"],
+  [data-theme="light"][data-surface="glass"],
+  .ts-root[data-theme="light"][data-surface="glass"] {
+    --ts-glass-bg: #FFFFFF;
+    --ts-glass-border: rgba(15, 23, 42, 0.06);
+    --ts-glass-shadow: var(--ts-surface-raised-shadow);
+    --ts-glass-filter: none;
+    --ts-nav-bg: #FFFFFF;
+    --ts-nav-border: rgba(15, 23, 42, 0.06);
+    --ts-nav-shadow: var(--ts-surface-raised-shadow);
+    --ts-nav-filter: none;
+    --ts-overlay-bg: #FFFFFF;
+    --ts-overlay-border: rgba(15, 23, 42, 0.06);
+    --ts-overlay-filter: none;
+  }
+}
+
+/* ── 2. VARIANT "tinted" (No Glass, No Blur) ──────────────────────── */
+[data-surface="tinted"],
+.ts-root[data-surface="tinted"] {
+  /* Dark Tinted */
+  --ts-surface-raised: color-mix(in srgb, var(--accent) 5%, #141416);
+  --ts-surface-border: color-mix(in srgb, var(--accent) 14%, transparent);
+  --ts-surface-inset: color-mix(in srgb, var(--accent) 5%, #1A1B1E);
+
+  --ts-glass-bg: var(--ts-surface-raised);
+  --ts-glass-border: var(--ts-surface-border);
+  --ts-glass-shadow: var(--ts-surface-raised-shadow);
+  --ts-glass-filter: none;
+
+  --ts-nav-bg: var(--ts-surface-raised);
+  --ts-nav-border: var(--ts-surface-border);
+  --ts-nav-shadow: var(--ts-surface-raised-shadow);
+  --ts-nav-filter: none;
+
+  --ts-overlay-bg: var(--ts-surface-raised);
+  --ts-overlay-border: var(--ts-surface-border);
+  --ts-overlay-shadow: var(--ts-surface-raised-shadow);
+  --ts-overlay-filter: none;
+}
+
+[data-theme="light"][data-surface="tinted"],
+.ts-root[data-theme="light"][data-surface="tinted"] {
+  /* Light Tinted */
+  --ts-surface-raised: color-mix(in srgb, var(--accent) 3%, #FFFFFF);
+  --ts-surface-border: color-mix(in srgb, var(--accent) 14%, transparent);
+  --ts-surface-inset: color-mix(in srgb, var(--accent) 5%, #F6F7F7);
+
+  --ts-glass-bg: var(--ts-surface-raised);
+  --ts-glass-border: var(--ts-surface-border);
+  --ts-glass-shadow: var(--ts-surface-raised-shadow);
+  --ts-glass-filter: none;
+
+  --ts-nav-bg: var(--ts-surface-raised);
+  --ts-nav-border: var(--ts-surface-border);
+  --ts-nav-shadow: var(--ts-surface-raised-shadow);
+  --ts-nav-filter: none;
+
+  --ts-overlay-bg: var(--ts-surface-raised);
+  --ts-overlay-border: var(--ts-surface-border);
+  --ts-overlay-shadow: var(--ts-surface-raised-shadow);
+  --ts-overlay-filter: none;
+}
+
+/* ── 3. VARIANT "solid" ────────────────────────────────────────────── */
+[data-surface="solid"],
+.ts-root[data-surface="solid"] {
+  /* Dark Solid */
+  --ts-surface-raised: #141416;
+  --ts-surface-border: rgba(255, 255, 255, 0.07);
+
+  --ts-glass-bg: var(--ts-surface-raised);
+  --ts-glass-border: var(--ts-surface-border);
+  --ts-glass-shadow: var(--ts-surface-raised-shadow);
+  --ts-glass-filter: none;
+
+  --ts-nav-bg: var(--ts-surface-raised);
+  --ts-nav-border: var(--ts-surface-border);
+  --ts-nav-shadow: var(--ts-surface-raised-shadow);
+  --ts-nav-filter: none;
+
+  --ts-overlay-bg: var(--ts-surface-raised);
+  --ts-overlay-border: var(--ts-surface-border);
+  --ts-overlay-shadow: var(--ts-surface-raised-shadow);
+  --ts-overlay-filter: none;
+}
+
+[data-theme="light"][data-surface="solid"],
+.ts-root[data-theme="light"][data-surface="solid"] {
+  /* Light Solid */
+  --ts-surface-raised: #FFFFFF;
+  --ts-surface-border: rgba(15, 23, 42, 0.06);
+
+  --ts-glass-bg: var(--ts-surface-raised);
+  --ts-glass-border: var(--ts-surface-border);
+  --ts-glass-shadow: var(--ts-surface-raised-shadow);
+  --ts-glass-filter: none;
+
+  --ts-nav-bg: var(--ts-surface-raised);
+  --ts-nav-border: var(--ts-surface-border);
+  --ts-nav-shadow: var(--ts-surface-raised-shadow);
+  --ts-nav-filter: none;
+
+  --ts-overlay-bg: var(--ts-surface-raised);
+  --ts-overlay-border: var(--ts-surface-border);
+  --ts-overlay-shadow: var(--ts-surface-raised-shadow);
+  --ts-overlay-filter: none;
 }

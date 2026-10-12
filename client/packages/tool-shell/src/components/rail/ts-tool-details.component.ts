@@ -38,32 +38,23 @@ interface DetailRow {
       display: flex;
       flex-direction: column;
       gap: 12px;
-      padding: 16px;
-      background: var(--surface-hover, #F4F4F5);
-      border: 1px solid var(--border, rgba(0, 0, 0, 0.06));
-      border-radius: var(--ts-radius-tile, 14px);
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+      padding: 20px;
+      background: var(--ts-surface-raised, #FFFFFF);
+      border: 1px solid var(--ts-surface-raised-border, rgba(15, 23, 42, 0.06));
+      border-radius: var(--ts-radius-card, 20px);
+      box-shadow: var(--ts-surface-raised-shadow);
       user-select: none;
-    }
-
-    :host-context([data-theme="dark"]) .ts-details-panel {
-      background: #18181B;
-      border-color: var(--border, #27272A);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
 
     .ts-details-title {
       font-family: var(--font-heading, "Nunito", sans-serif);
-      font-size: var(--ts-type-label-size, 13px);
-      font-weight: 700;
+      font-size: var(--ts-type-section-label-size, 12px);
+      line-height: var(--ts-type-section-label-lh, 16px);
+      font-weight: var(--ts-type-section-label-weight, 600);
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted, #71717A);
+      letter-spacing: var(--ts-type-section-label-tracking, 0.08em);
+      color: var(--text-3, #6B7280);
       margin: 0;
-    }
-
-    :host-context([data-theme="dark"]) .ts-details-title {
-      color: var(--text-muted, #A1A1AA);
     }
 
     .ts-details-table {
@@ -77,48 +68,32 @@ interface DetailRow {
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 9px 0;
-      border-bottom: 1px solid var(--border, rgba(0, 0, 0, 0.06));
-    }
-
-    :host-context([data-theme="dark"]) .ts-details-row {
-      border-bottom-color: var(--border, rgba(255, 255, 255, 0.06));
+      min-height: 36px;
+      padding: 0;
+      border-bottom: 1px solid var(--ts-surface-raised-border, rgba(15, 23, 42, 0.06));
     }
 
     .ts-details-row:last-child {
       border-bottom: none;
-      padding-bottom: 0;
-    }
-
-    .ts-details-row:first-child {
-      padding-top: 4px;
     }
 
     .ts-details-label {
       font-family: var(--font-body, "Nunito", sans-serif);
-      font-size: var(--ts-type-label-size, 13px);
-      line-height: var(--ts-type-label-lh, 18px);
+      font-size: 14px;
+      line-height: 20px;
       font-weight: 500;
-      color: var(--text-muted, #71717A);
+      color: var(--text-2, #52525B);
       white-space: nowrap;
-    }
-
-    :host-context([data-theme="dark"]) .ts-details-label {
-      color: var(--text-muted, #A1A1AA);
     }
 
     .ts-details-value {
       font-family: var(--font-body, "Nunito", sans-serif);
-      font-size: var(--ts-type-label-size, 13px);
-      line-height: var(--ts-type-label-lh, 18px);
-      font-weight: var(--ts-type-label-weight, 600);
-      color: var(--text, #18181B);
+      font-size: 14px;
+      line-height: 20px;
+      font-weight: 600;
+      color: var(--text, #09090B);
       text-align: right;
       word-break: break-word;
-    }
-
-    :host-context([data-theme="dark"]) .ts-details-value {
-      color: var(--text, #FCFCFC);
     }
   `]
 })

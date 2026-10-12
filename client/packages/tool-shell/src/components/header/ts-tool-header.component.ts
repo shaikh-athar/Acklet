@@ -88,19 +88,11 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       position: relative;
       width: 100%;
       border-radius: var(--ts-radius-card, 20px);
-      overflow: hidden;
-      margin-bottom: 24px;
       user-select: none;
     }
 
-    /* Soft Accent-Tinted Strip (accent-soft to transparent, very subtle) */
     .ts-header-tint-strip {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(180deg, var(--accent-soft, rgba(45, 212, 191, 0.08)) 0%, transparent 100%);
-      opacity: 0.85;
-      pointer-events: none;
-      border-radius: inherit;
+      display: none;
     }
 
     .ts-header-inner {
@@ -111,14 +103,10 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       justify-content: space-between;
       gap: 20px;
       padding: 16px 20px;
-      border: 1px solid var(--border, rgba(0, 0, 0, 0.06));
+      border: 1px solid var(--ts-surface-raised-border, rgba(15, 23, 42, 0.06));
       border-radius: var(--ts-radius-card, 20px);
-      background: var(--surface, #FFFFFF);
-    }
-
-    :host-context([data-theme="dark"]) .ts-header-inner {
-      background: var(--shell-card, #141414);
-      border-color: var(--border, #27272A);
+      background: var(--ts-surface-raised, #FFFFFF);
+      box-shadow: var(--ts-surface-raised-shadow);
     }
 
     .ts-header-left {
@@ -129,7 +117,7 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       flex: 1;
     }
 
-    /* Icon Tile: 56px, radius 14, accent-soft background, accent-strong icon */
+    /* Icon Tile: 56px, radius 16, accent-soft background, accent-strong icon */
     .ts-header-icon-tile {
       display: flex;
       align-items: center;
@@ -138,12 +126,12 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       height: 56px;
       min-width: 56px;
       min-height: 56px;
-      border-radius: var(--ts-radius-tile, 14px);
+      border-radius: var(--ts-radius-inner, 16px);
       background: var(--accent-soft);
       color: var(--accent-strong);
       border: 1px solid var(--accent-border);
       flex-shrink: 0;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
       transition: box-shadow 220ms ease;
     }
 
@@ -165,19 +153,15 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       flex-wrap: wrap;
     }
 
-    /* Page title: 28/34 weight 700; Letter-spacing -0.01em */
+    /* Page title: 28/34 weight 650; Letter-spacing -0.02em, color --text */
     .ts-header-title {
       font-family: var(--font-heading, "Nunito", sans-serif);
       font-size: var(--ts-type-page-title-size, 28px);
       line-height: var(--ts-type-page-title-lh, 34px);
-      font-weight: var(--ts-type-page-title-weight, 700);
-      letter-spacing: var(--ts-type-title-tracking, -0.01em);
-      color: var(--text, #18181B);
+      font-weight: var(--ts-type-page-title-weight, 650);
+      letter-spacing: var(--ts-type-page-title-tracking, -0.02em);
+      color: var(--text, #09090B);
       margin: 0;
-    }
-
-    :host-context([data-theme="dark"]) .ts-header-title {
-      color: var(--text, #FCFCFC);
     }
 
     .ts-header-badge {
@@ -194,20 +178,16 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       border: 1px solid var(--accent-border);
     }
 
-    /* One-line description: body 14/22 */
+    /* Description: 15/24, color --text-2 */
     .ts-header-description {
       font-family: var(--font-body, "Nunito", sans-serif);
-      font-size: var(--ts-type-body-size, 14px);
-      line-height: var(--ts-type-body-lh, 22px);
-      color: var(--text-muted, #71717A);
+      font-size: var(--ts-type-description-size, 15px);
+      line-height: var(--ts-type-description-lh, 24px);
+      color: var(--text-2, #52525B);
       margin: 0;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-
-    :host-context([data-theme="dark"]) .ts-header-description {
-      color: var(--text-muted, #A1A1AA);
     }
 
     /* Right: Small outline actions */

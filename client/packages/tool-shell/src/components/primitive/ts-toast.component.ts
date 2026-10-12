@@ -52,10 +52,12 @@ import { TsIconComponent } from '../icon/ts-icon.component';
       align-items: center;
       gap: 10px;
       padding: 10px 14px;
-      background: var(--ts-surface);
-      border: 1px solid var(--ts-border);
+      background: var(--ts-overlay-bg, var(--ts-surface));
+      -webkit-backdrop-filter: var(--ts-overlay-filter, none);
+      backdrop-filter: var(--ts-overlay-filter, none);
+      border: 1px solid var(--ts-overlay-border, var(--ts-border));
       border-radius: var(--ts-radius-md, 12px);
-      box-shadow: var(--ts-shadow-lg);
+      box-shadow: var(--ts-overlay-shadow, var(--ts-shadow-lg));
       pointer-events: auto;
       animation: tsFadeInUp var(--ts-dur-base) var(--ts-ease) both;
     }

@@ -1,18 +1,18 @@
 // packages/tool-shell/src/components/topbar/ts-topbar.component.ts
-import { 
-  Component, 
-  input, 
-  output, 
-  inject, 
-  computed, 
-  signal, 
-  OnInit, 
-  OnDestroy, 
-  ElementRef, 
-  viewChild, 
-  viewChildren, 
-  AfterViewInit, 
-  NgZone 
+import {
+  Component,
+  input,
+  output,
+  inject,
+  computed,
+  signal,
+  OnInit,
+  OnDestroy,
+  ElementRef,
+  viewChild,
+  viewChildren,
+  AfterViewInit,
+  NgZone
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolSidebarService } from '../../services/tool-sidebar.service';
@@ -32,14 +32,14 @@ export interface SectionNavLink {
   selector: 'ts-topbar',
   standalone: true,
   imports: [
-    CommonModule, 
-    TsIconComponent, 
-    TsThemeToggleComponent, 
+    CommonModule,
+    TsIconComponent,
+    TsThemeToggleComponent,
     TsTooltipDirective,
     HlmKbdImports
   ],
   template: `
-    <header class="ts-topbar-card" role="banner">
+    <header class="ts-topbar-card ts-glass" role="banner">
       <!-- ══════════════════════════════════════════════════════ -->
       <!-- Left Zone: Logo / Name + Current Tool Chip Breadcrumb   -->
       <!-- ══════════════════════════════════════════════════════ -->
@@ -102,23 +102,33 @@ export interface SectionNavLink {
       </nav>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- Right Zone: Command Palette Search + Theme Toggle     -->
+      <!-- Right Zone: Share, Save, Theme Toggle (Order: Share, Save, Theme) -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div class="ts-zone-right">
-        <!-- Command Palette Trigger with Kbd Hint (Hidden by default / configurable) -->
-        @if (showSearch()) {
-          <button 
-            type="button" 
-            class="ts-search-btn" 
-            (click)="openCommandPalette.emit()"
-            aria-label="Search tools and commands (Ctrl+K or ⌘K)"
-            tsTooltip="Search tools (⌘K)"
-          >
-            <ts-icon name="search" [size]="15" />
-            <span class="ts-search-label hide-mobile">Search...</span>
-            <kbd hlmKbd class="ts-kbd-hint hide-mobile">⌘K</kbd>
-          </button>
-        }
+        <!-- Share / Copy Link Button -->
+        <button 
+          type="button" 
+          class="ts-nav-action-btn hide-xs"
+          (click)="copyShareLink()"
+          [attr.aria-label]="copiedLink() ? 'Link copied to clipboard' : 'Copy link to tool'"
+          [tsTooltip]="copiedLink() ? 'Copied!' : 'Copy link'"
+        >
+          <ts-icon [name]="copiedLink() ? 'check' : 'link'" [size]="20" />
+          <span class="ts-action-label hide-below-1100">{{ copiedLink() ? 'Copied' : 'Share' }}</span>
+        </button>
+
+        <!-- Save / Favorite Button -->
+        <button 
+          type="button" 
+          class="ts-nav-action-btn hide-xs"
+          [class.is-favorited]="isFavorited()"
+          (click)="toggleFavorite()"
+          [attr.aria-label]="isFavorited() ? 'Remove from favorites' : 'Add to favorites'"
+          [tsTooltip]="isFavorited() ? 'Saved' : 'Save tool'"
+        >
+          <ts-icon name="star" [size]="20" class="ts-nav-star-icon" />
+          <span class="ts-action-label hide-below-1100">{{ isFavorited() ? 'Saved' : 'Save' }}</span>
+        </button>
 
         <!-- ONE Single Theme Toggle -->
         <ts-theme-toggle />
@@ -144,22 +154,18 @@ export interface SectionNavLink {
       align-items: center;
       height: var(--header-height, 64px);
       padding: 0 16px;
-      background: var(--shell-card, #FFFFFF);
-      border: 1px solid var(--shell-card-border, rgba(0, 0, 0, 0.06));
+      background: var(--ts-glass-bg);
+      -webkit-backdrop-filter: var(--ts-glass-filter);
+      backdrop-filter: var(--ts-glass-filter);
+      border: 1px solid var(--ts-glass-border);
       border-radius: var(--shell-radius, 20px);
-      box-shadow: var(--shell-card-shadow, 0 1px 2px rgba(0, 0, 0, 0.04));
+      box-shadow: var(--ts-glass-shadow);
       position: relative;
       z-index: var(--ts-z-chrome, 11);
       user-select: none;
       box-sizing: border-box;
       transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
                   border-color var(--ts-dur-base, 200ms) var(--ts-ease);
-    }
-
-    :host-context([data-theme="dark"]) .ts-topbar-card {
-      background: var(--shell-card, #141414);
-      border-color: var(--shell-card-border, #27272A);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
     }
 
     /* Left Zone */
@@ -342,18 +348,20 @@ export interface SectionNavLink {
     .ts-zone-right {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       justify-self: end;
     }
 
-    .ts-search-btn {
+    .ts-nav-action-btn {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      height: 36px;
+      justify-content: center;
+      gap: 6px;
+      height: 40px;
+      min-width: 40px;
       padding: 0 12px;
-      border-radius: var(--ts-radius-full, 9999px);
-      background: var(--surface-hover, #F4F4F5);
+      border-radius: var(--ts-radius-control, 12px);
+      background: transparent;
       border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
       color: var(--text-muted, #71717A);
       font-family: var(--font-body, "Nunito", sans-serif);
@@ -362,53 +370,55 @@ export interface SectionNavLink {
       cursor: pointer;
       outline: none;
       user-select: none;
-      transition: all 150ms ease, transform 150ms ease;
+      transition: background-color 150ms ease, color 150ms ease, transform 100ms ease;
     }
 
-    [data-theme="dark"] .ts-search-btn {
-      background: var(--surface-hover, #1E1E22);
-      border-color: var(--border, rgba(255, 255, 255, 0.08));
+    :host-context([data-theme="dark"]) .ts-nav-action-btn {
+      border-color: var(--border, rgba(255, 255, 255, 0.1));
       color: var(--text-muted, #A1A1AA);
     }
 
-    .ts-search-btn:hover {
-      background: var(--surface-active, #E4E4E7);
+    .ts-nav-action-btn:hover {
+      background: var(--surface-hover, #F4F4F5);
       color: var(--text, #18181B);
     }
 
-    [data-theme="dark"] .ts-search-btn:hover {
-      background: #27272A;
-      color: #FCFCFC;
+    :host-context([data-theme="dark"]) .ts-nav-action-btn:hover {
+      background: var(--surface-hover, #1E1E22);
+      color: var(--text, #FCFCFC);
     }
 
-    .ts-search-btn:active {
-      transform: scale(0.98);
+    .ts-nav-action-btn:active {
+      transform: scale(0.97);
     }
 
-    .ts-search-btn:focus:not(:focus-visible) {
-      outline: none;
-    }
-
-    .ts-search-btn:focus-visible {
+    .ts-nav-action-btn:focus-visible {
       outline: 2px solid var(--ts-focus-ring) !important;
       outline-offset: 2px;
     }
 
-    .ts-kbd-hint {
-      font-family: var(--ts-font-mono, monospace);
-      font-size: 11px;
-      padding: 1px 5px;
-      border-radius: 4px;
-      background: var(--surface, #FFFFFF);
-      border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
-      color: var(--text-muted, #71717A);
-      line-height: 1.2;
+    .ts-nav-action-btn.is-favorited {
+      color: #EAB308;
     }
 
-    [data-theme="dark"] .ts-kbd-hint {
-      background: #27272A;
-      border-color: rgba(255, 255, 255, 0.1);
-      color: #A1A1AA;
+    .ts-nav-action-btn.is-favorited .ts-nav-star-icon {
+      fill: #EAB308;
+    }
+
+    @media (max-width: 1099px) {
+      .hide-below-1100 {
+        display: none !important;
+      }
+      .ts-nav-action-btn {
+        padding: 0;
+        width: 40px;
+      }
+    }
+
+    @media (max-width: 479px) {
+      .hide-xs {
+        display: none !important;
+      }
     }
 
     .ts-btn-primary-cta {
@@ -503,7 +513,7 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly showSidebar = input<boolean>(true);
   readonly showPrimaryAction = input<boolean>(false);
   readonly showSearch = input<boolean>(true);
-  
+
   readonly tabChange = output<string>();
   readonly openCommandPalette = output<void>();
   readonly aboutClick = output<void>();
@@ -520,6 +530,21 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly indicatorWidth = signal<number>(0);
   readonly indicatorTransform = signal<string>('translateX(0px)');
   readonly isIndicatorReady = signal<boolean>(false);
+  readonly copiedLink = signal<boolean>(false);
+  readonly isFavorited = signal<boolean>(false);
+
+  copyShareLink(): void {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return;
+    const url = window.location.href.split('#')[0];
+    navigator.clipboard.writeText(url).then(() => {
+      this.copiedLink.set(true);
+      setTimeout(() => this.copiedLink.set(false), 2000);
+    }).catch(() => { });
+  }
+
+  toggleFavorite(): void {
+    this.isFavorited.update(v => !v);
+  }
 
   private intersectionObserver?: IntersectionObserver;
 

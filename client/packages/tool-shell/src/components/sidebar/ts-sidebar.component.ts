@@ -13,58 +13,77 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
   selector: 'ts-sidebar',
   standalone: true,
   imports: [
-    CommonModule, 
-    TsIconComponent, 
-    TsToolListComponent, 
+    CommonModule,
+    TsIconComponent,
+    TsToolListComponent,
     TsSearchComponent,
     TsTooltipDirective
   ],
   template: `
     <!-- Desktop Left Sidebar (Floating Card) -->
     <aside
-      class="ts-sidebar-card hide-mobile"
+      class="ts-sidebar-card ts-glass hide-mobile"
       [class.is-collapsed]="sidebarService.isCollapsed()"
       [class.is-dragging]="sidebarService.isDragging()"
       [style.width.px]="sidebarService.isCollapsed() ? 72 : sidebarService.width()"
       aria-label="Tool Navigation Directory"
     >
       <div class="ts-sidebar-inner">
-        <!-- 1. Top Header: Title & Filter / Expand Button -->
-        <div class="ts-sidebar-top-header">
+        <!-- 1. Top Action Rows (Open) or Rail Top Actions (Collapsed) -->
+        <div class="ts-sidebar-top-actions">
           @if (!sidebarService.isCollapsed()) {
-            <span class="ts-sidebar-title">Tools</span>
-            <div class="ts-sidebar-header-actions">
+            <!-- Row 1: grid icon + All tools -->
+            <a [href]="hubUrl" class="ts-action-row" title="Browse all tools" aria-label="Browse all tools">
+              <ts-icon name="grid" [size]="20" class="ts-action-row-icon" />
+              <span class="ts-action-row-label">All tools</span>
+            </a>
+
+            <!-- Row 2: search icon + Search tools OR Inline ts-search -->
+            @if (showInlineSearch()) {
+              <div class="ts-sidebar-search-container">
+                <ts-search 
+                  #searchInput
+                  [value]="searchQuery()" 
+                  (valueChange)="searchQuery.set($event)" 
+                  (keydown)="onSearchKeydown($event)"
+                />
+              </div>
+            } @else {
               <button 
                 type="button" 
-                class="ts-icon-btn"
-                (click)="showInlineSearch.update(v => !v)"
-                [class.active]="showInlineSearch()"
-                aria-label="Filter tools"
-                tsTooltip="Filter tools"
+                class="ts-action-row ts-action-search-btn"
+                (click)="openSearch()"
+                aria-label="Search tools"
               >
-                <ts-icon name="search" [size]="15" />
+                <ts-icon name="search" [size]="20" class="ts-action-row-icon" />
+                <span class="ts-action-row-label">Search tools</span>
+              </button>
+            }
+          } @else {
+            <!-- Rail Top Buttons -->
+            <div class="ts-rail-top-column">
+              <a 
+                [href]="hubUrl" 
+                class="ts-rail-action-btn" 
+                tsTooltip="All tools" 
+                tooltipPosition="right" 
+                aria-label="All tools"
+              >
+                <ts-icon name="grid" [size]="20" />
+              </a>
+              <button 
+                type="button" 
+                class="ts-rail-action-btn"
+                (click)="openSearchFromRail()"
+                tsTooltip="Search tools"
+                tooltipPosition="right"
+                aria-label="Search tools"
+              >
+                <ts-icon name="search" [size]="20" />
               </button>
             </div>
-          } @else {
-            <button 
-              type="button" 
-              class="ts-rail-expand-btn"
-              (click)="sidebarService.toggleCollapse()"
-              aria-label="Expand sidebar"
-              tsTooltip="Expand sidebar"
-              tooltipPosition="right"
-            >
-              <ts-icon name="panel-left-open" [size]="16" />
-            </button>
           }
         </div>
-
-        <!-- Search Input (if opened) -->
-        @if (showInlineSearch() && !sidebarService.isCollapsed()) {
-          <div class="ts-sidebar-search-row">
-            <ts-search [value]="searchQuery()" (valueChange)="searchQuery.set($event)" />
-          </div>
-        }
 
         <!-- 2. Nav Area: Scrolls Internally -->
         <div class="ts-sidebar-scroll-body">
@@ -76,36 +95,51 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
           />
         </div>
 
-        <!-- 3. Pinned Bottom Bar: "All tools" link + Help/Info Button + Collapse Button -->
+        <!-- 3. Pinned Bottom Bar: Help (left) + Collapse/Expand (right) -->
         <div class="ts-sidebar-pinned-footer">
           @if (!sidebarService.isCollapsed()) {
-            <div class="ts-footer-left">
-              <a [href]="hubUrl" class="ts-footer-link" title="Browse all tools" aria-label="Browse all tools">
-                <ts-icon name="grid" [size]="14" />
-                <span>All tools</span>
-              </a>
-              <a [href]="portalUrl + '/community/help'" class="ts-footer-icon-btn" target="_blank" rel="noopener noreferrer" tsTooltip="Help & Support" aria-label="Help & Support">
-                <ts-icon name="help-circle" [size]="14" />
-              </a>
-            </div>
+            <a 
+              [href]="portalUrl + '/community/help'" 
+              class="ts-footer-btn" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              tsTooltip="Help & Support" 
+              aria-label="Help & Support"
+            >
+              <ts-icon name="help-circle" [size]="20" />
+            </a>
             <button 
               type="button" 
-              class="ts-footer-collapse-btn" 
+              class="ts-footer-btn" 
               (click)="sidebarService.toggleCollapse()" 
-              title="Collapse sidebar" 
+              tsTooltip="Collapse sidebar" 
               aria-label="Collapse sidebar"
             >
-              <ts-icon name="panel-left-close" [size]="14" />
-              <span>Collapse</span>
+              <ts-icon name="panel-left-close" [size]="20" />
             </button>
           } @else {
             <div class="ts-rail-footer-column">
-              <a [href]="hubUrl" class="ts-rail-footer-btn" tsTooltip="All tools" tooltipPosition="right" aria-label="All tools">
-                <ts-icon name="grid" [size]="16" />
+              <a 
+                [href]="portalUrl + '/community/help'" 
+                class="ts-rail-action-btn" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                tsTooltip="Help" 
+                tooltipPosition="right" 
+                aria-label="Help"
+              >
+                <ts-icon name="help-circle" [size]="20" />
               </a>
-              <a [href]="portalUrl + '/community/help'" class="ts-rail-footer-btn" target="_blank" rel="noopener noreferrer" tsTooltip="Help" tooltipPosition="right" aria-label="Help">
-                <ts-icon name="help-circle" [size]="16" />
-              </a>
+              <button 
+                type="button" 
+                class="ts-rail-action-btn"
+                (click)="sidebarService.toggleCollapse()"
+                tsTooltip="Expand sidebar"
+                tooltipPosition="right"
+                aria-label="Expand sidebar"
+              >
+                <ts-icon name="panel-left-open" [size]="20" />
+              </button>
             </div>
           }
         </div>
@@ -159,10 +193,33 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
             </div>
           }
 
+          <!-- Mobile Actions (Share & Save under 480px) -->
+          <div class="ts-sheet-mobile-actions">
+            <button 
+              type="button" 
+              class="ts-sheet-action-btn"
+              (click)="copyShareLink()"
+            >
+              <ts-icon [name]="copiedLink() ? 'check' : 'link'" [size]="16" />
+              <span>{{ copiedLink() ? 'Link copied' : 'Share tool' }}</span>
+            </button>
+            <button 
+              type="button" 
+              class="ts-sheet-action-btn"
+              [class.is-favorited]="isFavorited()"
+              (click)="toggleFavorite()"
+            >
+              <ts-icon name="star" [size]="16" [class.ts-sheet-star-icon]="isFavorited()" />
+              <span>{{ isFavorited() ? 'Saved to favorites' : 'Save to favorites' }}</span>
+            </button>
+          </div>
+
+          <!-- Mobile Search Row -->
           <div class="ts-sidebar-search-row">
             <ts-search [value]="searchQuery()" (valueChange)="searchQuery.set($event)" />
           </div>
 
+          <!-- Mobile Sheet Scroll Body with same ts-tool-list -->
           <div class="ts-sidebar-scroll-body">
             <ts-tool-list 
               [tools]="tools()" 
@@ -186,148 +243,174 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
     .ts-sidebar-card {
       position: relative;
       height: 100%;
-      background: var(--shell-card, #FFFFFF);
-      border: 1px solid var(--shell-card-border, rgba(0, 0, 0, 0.06));
+      background: var(--ts-glass-bg);
+      -webkit-backdrop-filter: var(--ts-glass-filter);
+      backdrop-filter: var(--ts-glass-filter);
+      border: 1px solid var(--ts-glass-border);
       border-radius: var(--shell-radius, 20px);
-      box-shadow: var(--shell-card-shadow, 0 1px 2px rgba(0, 0, 0, 0.04));
+      box-shadow: var(--ts-glass-shadow);
       overflow: hidden;
       flex-shrink: 0;
       box-sizing: border-box;
-      transition: width var(--ts-dur-hover, 220ms) var(--ts-ease-out),
+      transition: width 200ms var(--ts-ease-out),
                   background-color var(--ts-dur-hover, 220ms) var(--ts-ease),
                   border-color var(--ts-dur-hover, 220ms) var(--ts-ease);
       user-select: none;
       z-index: var(--ts-z-chrome, 10);
     }
 
-    :host-context([data-theme="dark"]) .ts-sidebar-card {
-      background: var(--shell-card, #141414);
-      border-color: var(--shell-card-border, #27272A);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-    }
-
     .ts-sidebar-inner {
       display: flex;
       flex-direction: column;
       height: 100%;
+      padding: 12px;
+      box-sizing: border-box;
       overflow: hidden;
-      background: inherit;
+      background: transparent;
     }
 
-    .ts-sidebar-top-header {
+    /* Top Action Rows: 36px, radius 10px, padding 0 10px, icon 20px, gap 12px, text 14.5px/20px weight 400 --text-2 */
+    .ts-sidebar-top-actions {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 12px;
-      height: 48px;
-      border-bottom: 1px solid var(--border, rgba(0, 0, 0, 0.06));
-      background: inherit;
+      flex-direction: column;
+      gap: 2px;
+      background: transparent;
       flex-shrink: 0;
     }
 
-    :host-context([data-theme="dark"]) .ts-sidebar-top-header {
-      border-bottom-color: var(--border, rgba(255, 255, 255, 0.08));
-    }
-
-    .ts-sidebar-title {
-      font-family: var(--font-body, "Nunito", sans-serif);
-      font-size: 13.5px;
-      font-weight: 700;
-      color: var(--text, #18181B);
-    }
-
-    :host-context([data-theme="dark"]) .ts-sidebar-title {
-      color: var(--text, #FCFCFC);
-    }
-
-    .ts-sidebar-header-actions {
+    .ts-action-row {
       display: flex;
       align-items: center;
-      gap: 4px;
-    }
-
-    .ts-icon-btn,
-    .ts-footer-icon-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 30px;
-      height: 30px;
-      border-radius: 8px;
+      gap: 12px;
+      height: 36px;
+      padding: 0 10px;
+      border-radius: 10px;
+      text-decoration: none;
+      color: var(--text-2, #52525B);
       background: transparent;
       border: none;
       outline: none;
-      color: var(--text-muted, #71717A);
       cursor: pointer;
-      text-decoration: none;
+      box-sizing: border-box;
+      user-select: none;
       transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
-                  color var(--ts-dur-fast, 150ms) var(--ts-ease);
+                  color var(--ts-dur-fast, 150ms) var(--ts-ease),
+                  transform var(--ts-dur-press, 150ms) var(--ts-ease);
     }
 
-    .ts-icon-btn:hover,
-    .ts-icon-btn.active,
-    .ts-footer-icon-btn:hover {
-      background: var(--surface-hover, #F4F4F5);
-      color: var(--text, #18181B);
+    @media (hover: hover) {
+      .ts-action-row:hover {
+        background: var(--ts-row-hover, rgba(15, 23, 42, 0.05));
+        color: var(--text, #09090B);
+      }
+      .ts-action-row:hover .ts-action-row-icon {
+        color: var(--accent-strong, #111111);
+      }
     }
 
-    :host-context([data-theme="dark"]) .ts-icon-btn:hover,
-    :host-context([data-theme="dark"]) .ts-icon-btn.active,
-    :host-context([data-theme="dark"]) .ts-footer-icon-btn:hover {
-      background: var(--surface-hover, #1E1E22);
-      color: #FFFFFF;
+    .ts-action-row:active {
+      transform: scale(0.98);
     }
 
-    .ts-icon-btn:focus-visible,
-    .ts-footer-icon-btn:focus-visible {
-      outline: 2px solid var(--ts-focus-ring, #18181B) !important;
-      outline-offset: 2px;
+    .ts-action-row:focus-visible {
+      outline: 2px solid var(--accent-strong) !important;
+      outline-offset: 1px;
     }
 
-    .ts-rail-expand-btn {
+    :host-context([data-theme="dark"]) .ts-action-row {
+      color: var(--text-2, #B3B3B8);
+    }
+
+    .ts-action-row-icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      color: var(--text-3, #8E8E93);
+      transition: color var(--ts-dur-fast, 150ms) var(--ts-ease);
+    }
+
+    .ts-action-row-label {
+      font-family: var(--font-body, "Nunito", sans-serif);
+      font-size: 14.5px;
+      line-height: 20px;
+      font-weight: 400;
+      color: inherit;
+      white-space: nowrap;
+      transition: opacity 200ms var(--ts-ease);
+    }
+
+    .ts-sidebar-card.is-collapsed .ts-action-row-label {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .ts-sidebar-search-container {
+      width: 100%;
+      height: 36px;
+      display: flex;
+      align-items: center;
+    }
+
+    /* Rail top/footer icon columns */
+    .ts-rail-top-column,
+    .ts-rail-footer-column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      width: 100%;
+    }
+
+    .ts-rail-action-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 36px;
-      height: 36px;
-      margin: 0 auto;
+      width: 40px;
+      height: 40px;
       border-radius: 10px;
       background: transparent;
       border: none;
       outline: none;
-      color: var(--text-muted, #71717A);
+      color: var(--text-2, #52525B);
       cursor: pointer;
+      text-decoration: none;
       transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
-                  color var(--ts-dur-fast, 150ms) var(--ts-ease);
+                  color var(--ts-dur-fast, 150ms) var(--ts-ease),
+                  transform var(--ts-dur-press, 150ms) var(--ts-ease);
     }
 
-    .ts-rail-expand-btn:hover {
-      background: var(--surface-hover, #F4F4F5);
-      color: var(--text, #18181B);
+    @media (hover: hover) {
+      .ts-rail-action-btn:hover {
+        background: var(--ts-row-hover, rgba(15, 23, 42, 0.05));
+        color: var(--accent-strong, #111111);
+      }
     }
 
-    :host-context([data-theme="dark"]) .ts-rail-expand-btn:hover {
-      background: var(--surface-hover, #1E1E22);
-      color: #FFFFFF;
+    .ts-rail-action-btn:active {
+      transform: scale(0.98);
     }
 
-    .ts-rail-expand-btn:focus-visible {
-      outline: 2px solid var(--ts-focus-ring, #18181B) !important;
-      outline-offset: 2px;
+    .ts-rail-action-btn:focus-visible {
+      outline: 2px solid var(--accent-strong) !important;
+      outline-offset: 1px;
+    }
+
+    :host-context([data-theme="dark"]) .ts-rail-action-btn {
+      color: var(--text-2, #B3B3B8);
     }
 
     .ts-sidebar-search-row {
       padding: 8px 10px;
       border-bottom: 1px solid var(--border, rgba(0, 0, 0, 0.06));
-      background: inherit;
+      background: transparent;
       flex-shrink: 0;
     }
 
     .ts-sidebar-scroll-body {
       flex: 1;
       overflow-y: auto;
-      padding: 10px 8px;
-      background: inherit;
+      padding: 0;
+      background: transparent;
       scrollbar-width: thin;
       scrollbar-color: var(--ts-scrollbar-thumb, #E4E4E7) transparent;
     }
@@ -336,21 +419,52 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 10px;
-      border-top: 1px solid var(--border, rgba(0, 0, 0, 0.06));
-      height: 48px;
-      background: inherit;
+      padding: 8px 4px 0;
+      border-top: 1px solid var(--ts-tree-line, rgba(15, 23, 42, 0.08));
+      background: transparent;
       flex-shrink: 0;
     }
 
     :host-context([data-theme="dark"]) .ts-sidebar-pinned-footer {
-      border-top-color: var(--border, rgba(255, 255, 255, 0.08));
+      border-top-color: var(--ts-tree-line, rgba(255, 255, 255, 0.08));
     }
 
-    .ts-footer-left {
-      display: flex;
+    .ts-footer-btn {
+      display: inline-flex;
       align-items: center;
-      gap: 4px;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-2, #52525B);
+      cursor: pointer;
+      text-decoration: none;
+      transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
+                  color var(--ts-dur-fast, 150ms) var(--ts-ease),
+                  transform var(--ts-dur-press, 150ms) var(--ts-ease);
+    }
+
+    @media (hover: hover) {
+      .ts-footer-btn:hover {
+        background: var(--ts-row-hover, rgba(15, 23, 42, 0.05));
+        color: var(--accent-strong, #111111);
+      }
+    }
+
+    .ts-footer-btn:active {
+      transform: scale(0.98);
+    }
+
+    .ts-footer-btn:focus-visible {
+      outline: 2px solid var(--accent-strong) !important;
+      outline-offset: 1px;
+    }
+
+    :host-context([data-theme="dark"]) .ts-footer-btn {
+      color: var(--text-2, #B3B3B8);
     }
 
     .ts-footer-link {
@@ -365,67 +479,6 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       font-weight: 600;
       text-decoration: none;
       transition: color 150ms ease, background-color 150ms ease;
-    }
-
-    .ts-footer-link:hover {
-      background: var(--surface-hover, #F4F4F5);
-      color: var(--text, #18181B);
-    }
-
-    :host-context([data-theme="dark"]) .ts-footer-link:hover {
-      background: var(--surface-hover, #1E1E22);
-      color: #FFFFFF;
-    }
-
-    .ts-footer-link:focus-visible {
-      outline: 2px solid var(--ts-focus-ring, #18181B) !important;
-      outline-offset: 1px;
-    }
-
-    .ts-footer-collapse-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 8px;
-      border-radius: 8px;
-      background: transparent;
-      border: none;
-      outline: none;
-      color: var(--text-muted, #71717A);
-      font-size: 12px;
-      font-family: var(--font-body, "Nunito", sans-serif);
-      font-weight: 600;
-      cursor: pointer;
-      transition: background-color 150ms ease, color 150ms ease;
-    }
-
-    .ts-footer-collapse-btn:hover {
-      background: var(--surface-hover, #F4F4F5);
-      color: var(--text, #18181B);
-    }
-
-    :host-context([data-theme="dark"]) .ts-footer-collapse-btn:hover {
-      background: var(--surface-hover, #1E1E22);
-      color: #FFFFFF;
-    }
-
-    .ts-footer-collapse-btn:focus-visible {
-      outline: 2px solid var(--ts-focus-ring, #18181B) !important;
-      outline-offset: 1px;
-    }
-
-    .ts-sidebar-card.is-collapsed .ts-sidebar-pinned-footer {
-      height: auto;
-      padding: 8px 0;
-    }
-
-    .ts-rail-footer-column {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      width: 100%;
     }
 
     .ts-rail-footer-btn {
@@ -475,17 +528,14 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       width: 85vw;
       max-width: 320px;
       height: 100%;
-      background: var(--shell-card, #FFFFFF);
-      border-right: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+      background: var(--ts-overlay-bg);
+      -webkit-backdrop-filter: var(--ts-overlay-filter);
+      backdrop-filter: var(--ts-overlay-filter);
+      border-right: 1px solid var(--ts-overlay-border);
       display: flex;
       flex-direction: column;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      box-shadow: var(--ts-overlay-shadow, 0 10px 25px rgba(0, 0, 0, 0.2));
       animation: tsSlideIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    :host-context([data-theme="dark"]) .ts-mobile-sheet-panel {
-      background: var(--shell-card, #141414);
-      border-right-color: var(--border, rgba(255, 255, 255, 0.08));
     }
 
     .ts-sheet-header {
@@ -602,6 +652,51 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       color: var(--accent-strong, #2DD4BF);
     }
 
+    .ts-sheet-mobile-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 0 16px 12px;
+      border-bottom: 1px solid var(--border, rgba(0, 0, 0, 0.06));
+    }
+
+    :host-context([data-theme="dark"]) .ts-sheet-mobile-actions {
+      border-bottom-color: var(--border, rgba(255, 255, 255, 0.08));
+    }
+
+    .ts-sheet-action-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 40px;
+      padding: 0 12px;
+      border-radius: var(--ts-radius-control, 12px);
+      background: var(--surface-hover, #F4F4F5);
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+      color: var(--text, #18181B);
+      font-family: var(--font-body, "Nunito", sans-serif);
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      transition: background-color 150ms ease;
+    }
+
+    :host-context([data-theme="dark"]) .ts-sheet-action-btn {
+      background: #202024;
+      border-color: rgba(255, 255, 255, 0.08);
+      color: var(--text, #FCFCFC);
+    }
+
+    .ts-sheet-action-btn.is-favorited {
+      color: #EAB308;
+    }
+
+    .ts-sheet-star-icon {
+      fill: #EAB308;
+      color: #EAB308;
+    }
+
     @keyframes tsFadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -639,6 +734,43 @@ export class TsSidebarComponent {
 
   readonly showInlineSearch = signal<boolean>(false);
   readonly searchQuery = signal<string>('');
+  readonly copiedLink = signal<boolean>(false);
+  readonly isFavorited = signal<boolean>(false);
+
+  openSearch(): void {
+    this.showInlineSearch.set(true);
+    setTimeout(() => {
+      if (typeof document !== 'undefined') {
+        const input = document.querySelector('.ts-sidebar-search-container input') as HTMLInputElement | null;
+        input?.focus();
+      }
+    }, 50);
+  }
+
+  openSearchFromRail(): void {
+    this.sidebarService.toggleCollapse();
+    this.openSearch();
+  }
+
+  onSearchKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      this.searchQuery.set('');
+      this.showInlineSearch.set(false);
+    }
+  }
+
+  copyShareLink(): void {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return;
+    const url = window.location.href.split('#')[0];
+    navigator.clipboard.writeText(url).then(() => {
+      this.copiedLink.set(true);
+      setTimeout(() => this.copiedLink.set(false), 2000);
+    }).catch(() => { });
+  }
+
+  toggleFavorite(): void {
+    this.isFavorited.update(v => !v);
+  }
 
   readonly sectionLinks = computed<{ id: string; label: string }[]>(() => {
     const t = this.tool();
