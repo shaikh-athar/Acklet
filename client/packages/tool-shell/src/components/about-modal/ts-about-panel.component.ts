@@ -120,9 +120,11 @@ import { TsScrollAreaComponent } from '../primitive/ts-scroll-area.component';
       width: 100%;
       max-width: 680px;
       height: 100%;
-      background: var(--ts-surface);
-      border-left: 1px solid var(--ts-border);
-      box-shadow: var(--ts-shadow-overlay);
+      background: var(--ts-overlay-bg, var(--ts-surface));
+      -webkit-backdrop-filter: var(--ts-overlay-filter, none);
+      backdrop-filter: var(--ts-overlay-filter, none);
+      border-left: 1px solid var(--ts-overlay-border, var(--ts-border));
+      box-shadow: var(--ts-overlay-shadow, var(--ts-shadow-overlay));
       display: flex;
       flex-direction: column;
       animation: tsSlideInRight var(--ts-dur-base) var(--ts-ease) both;
@@ -135,8 +137,8 @@ import { TsScrollAreaComponent } from '../primitive/ts-scroll-area.component';
       justify-content: space-between;
       height: var(--ts-topbar-height, 56px);
       padding: 0 var(--ts-space-6, 24px);
-      border-bottom: 1px solid var(--ts-border);
-      background: var(--ts-surface);
+      border-bottom: 1px solid var(--ts-overlay-border, var(--ts-border));
+      background: transparent;
       flex-shrink: 0;
     }
 

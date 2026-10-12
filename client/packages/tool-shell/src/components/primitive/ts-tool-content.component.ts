@@ -151,8 +151,7 @@ import { TsFaqComponent } from './ts-faq.component';
       transition: opacity var(--ts-dur-enter, 420ms) var(--ts-ease-out),
                   transform var(--ts-dur-enter, 420ms) var(--ts-ease-out),
                   background-color 600ms ease;
-      will-change: opacity, transform;
-      border-radius: var(--ts-radius-card, 16px);
+      border-radius: var(--ts-radius-inner, 16px);
       padding: 4px 8px;
       margin: -4px -8px;
     }
@@ -180,17 +179,13 @@ import { TsFaqComponent } from './ts-faq.component';
       line-height: var(--ts-type-section-title-lh, 26px);
       font-weight: var(--ts-type-section-title-weight, 650);
       letter-spacing: var(--ts-type-title-tracking, -0.01em);
-      color: var(--text, #18181B);
+      color: var(--text, #09090B);
       margin: 0;
-    }
-
-    :host-context([data-theme="dark"]) .ts-section-title {
-      color: var(--text, #FCFCFC);
     }
 
     .ts-section-subtitle {
       font-size: 13.5px;
-      color: var(--text-muted, #71717A);
+      color: var(--text-2, #52525B);
       line-height: 1.5;
     }
 
@@ -204,13 +199,9 @@ import { TsFaqComponent } from './ts-faq.component';
 
     .ts-about-paragraph {
       font-size: 14.5px;
-      color: var(--text-muted, #52525B);
+      color: var(--text-2, #52525B);
       line-height: 1.68;
       margin: 0;
-    }
-
-    :host-context([data-theme="dark"]) .ts-about-paragraph {
-      color: var(--text-muted, #A1A1AA);
     }
 
     .ts-feature-chips-wrap {
@@ -228,21 +219,15 @@ import { TsFaqComponent } from './ts-faq.component';
       border-radius: var(--ts-radius-full, 9999px);
       font-size: 12.5px;
       font-weight: 600;
-      background: var(--surface-hover, #F4F4F5);
-      border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
-      color: var(--text, #18181B);
+      background: var(--ts-surface-inset, #F6F7F7);
+      border: 1px solid var(--ts-surface-inset-border, rgba(15, 23, 42, 0.05));
+      color: var(--text, #09090B);
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
       transition: background-color 150ms ease, border-color 150ms ease;
     }
 
-    :host-context([data-theme="dark"]) .ts-feature-chip {
-      background: #1C1C20;
-      border-color: rgba(255, 255, 255, 0.08);
-      color: var(--text, #FCFCFC);
-    }
-
     .ts-chip-icon {
-      color: var(--text-muted, #71717A);
+      color: var(--text-3, #6B7280);
       flex-shrink: 0;
     }
 
@@ -255,16 +240,12 @@ import { TsFaqComponent } from './ts-faq.component';
     }
 
     .ts-step-item-card {
-      background: var(--surface, #FFFFFF);
-      border: 1px solid var(--border, rgba(0, 0, 0, 0.06));
-      border-radius: 14px;
+      background: var(--ts-surface-raised, #FFFFFF);
+      border: 1px solid var(--ts-surface-raised-border, rgba(15, 23, 42, 0.06));
+      border-radius: var(--ts-radius-inner, 16px);
+      box-shadow: var(--ts-surface-raised-shadow);
       padding: 14px 16px;
       transition: background-color 150ms ease, border-color 150ms ease;
-    }
-
-    :host-context([data-theme="dark"]) .ts-step-item-card {
-      background: #141416;
-      border-color: #27272A;
     }
 
     .ts-step-number-tile {
@@ -273,20 +254,14 @@ import { TsFaqComponent } from './ts-faq.component';
       justify-content: center;
       width: 32px;
       height: 32px;
-      border-radius: 9px;
-      background: var(--surface-hover, #F4F4F5);
-      border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
-      color: var(--text, #18181B);
+      border-radius: var(--ts-radius-control, 12px);
+      background: var(--ts-surface-inset, #F6F7F7);
+      border: 1px solid var(--ts-surface-inset-border, rgba(15, 23, 42, 0.05));
+      color: var(--text, #09090B);
       font-family: var(--font-heading, "Nunito", sans-serif);
       font-size: 13px;
       font-weight: 800;
       flex-shrink: 0;
-    }
-
-    :host-context([data-theme="dark"]) .ts-step-number-tile {
-      background: #202024;
-      border-color: rgba(255, 255, 255, 0.08);
-      color: var(--text, #FCFCFC);
     }
 
     .ts-step-text {
@@ -483,7 +458,7 @@ export class TsToolContentComponent implements OnInit, OnDestroy {
     if (!current) return [];
 
     const all = getAllTools().filter(t => t.slug !== current.slug);
-    
+
     // Explicitly specified related list first
     if (current.related && current.related.length > 0) {
       const explicit = current.related

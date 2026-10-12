@@ -2,6 +2,15 @@
 @import "./tokens.css";
 @import "./motion.css";
 
+/* ══ GLASS SURFACE UTILITY ═══════════════════════════════════════ */
+.ts-glass {
+  background: var(--ts-nav-bg) !important;
+  -webkit-backdrop-filter: var(--ts-nav-filter, blur(4px) saturate(140%)) !important;
+  backdrop-filter: var(--ts-nav-filter, blur(4px) saturate(140%)) !important;
+  border: 1px solid var(--ts-nav-border) !important;
+  box-shadow: var(--ts-nav-shadow) !important;
+}
+
 /* ══ ROOT RESET & FULL VIEWPORT LOCK ═════════════════════════════ */
 .ts-root {
   isolation: isolate;
@@ -135,13 +144,15 @@
   z-index: 3000;
   padding: 4px 8px;
   border-radius: var(--ts-radius-sm, 8px);
-  background: var(--ts-raised);
-  border: 1px solid var(--ts-border);
+  background: var(--ts-overlay-bg, var(--ts-raised));
+  -webkit-backdrop-filter: var(--ts-overlay-filter, none);
+  backdrop-filter: var(--ts-overlay-filter, none);
+  border: 1px solid var(--ts-overlay-border, var(--ts-border));
   color: var(--ts-text);
   font-size: var(--ts-text-xs, 12px);
   font-family: var(--ts-font-sans);
   pointer-events: none;
-  box-shadow: var(--ts-shadow-md);
+  box-shadow: var(--ts-overlay-shadow, var(--ts-shadow-md));
   opacity: 0;
   transition: opacity var(--ts-dur-base) var(--ts-ease);
 }

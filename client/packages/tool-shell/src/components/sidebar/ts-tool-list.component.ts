@@ -1,5 +1,5 @@
 // packages/tool-shell/src/components/sidebar/ts-tool-list.component.ts
-import { Component, input, computed, signal, OnInit } from '@angular/core';
+import { Component, input, computed, signal, OnInit, isDevMode } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolRegistryItem } from '@acklet/tool-registry';
 import { getToolUrl, getToolsHubUrl } from '@acklet/shared';
@@ -12,7 +12,7 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
   standalone: true,
   imports: [CommonModule, TsIconComponent, TsToolTileComponent, TsTooltipDirective],
   template: `
-    <div class="ts-tool-list-container" [class.is-rail]="isRail()">
+    <nav class="ts-tool-list-container" [class.is-rail]="isRail()" aria-label="Tools navigation">
       
       @if (searchQuery().trim()) {
         <!-- Search Results Flat View -->
@@ -20,242 +20,378 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
           <div class="ts-search-results-header">
             <span>{{ filteredTools().length }} tools found</span>
           </div>
-          <div class="ts-tools-group-items">
+          <ul class="ts-tools-group-items" role="list">
             @for (tool of filteredTools(); track tool.slug) {
-              <a 
-                [href]="getToolUrl(tool.slug)" 
-                class="ts-tool-item" 
-                [class.active]="tool.slug === currentSlug()"
-                [tsTooltip]="isRail() ? tool.name : ''"
-                tooltipPosition="right"
-                [attr.aria-label]="tool.name"
-              >
-                <ts-tool-tile [icon]="tool.icon" [name]="tool.name" [size]="24" />
-                @if (!isRail()) {
-                  <span class="ts-tool-name">{{ tool.name }}</span>
-                  @if (tool.slug === currentSlug()) {
-                    <span class="ts-active-dot" aria-hidden="true"></span>
+              <li role="listitem">
+                <a 
+                  [href]="getToolUrl(tool.slug)" 
+                  class="ts-tool-item" 
+                  [class.active]="tool.slug === currentSlug()"
+                  [attr.aria-current]="tool.slug === currentSlug() ? 'page' : null"
+                  [tsTooltip]="isRail() ? (tool.category + ' / ' + tool.name) : ''"
+                  tooltipPosition="right"
+                  [attr.aria-label]="tool.name"
+                >
+                  @if (treeMarker() === 'dot' && !isRail()) {
+                    <span class="ts-hollow-dot" aria-hidden="true"></span>
+                  } @else {
+                    <ts-tool-tile [icon]="tool.icon" [name]="tool.name" [size]="20" [flat]="true" />
                   }
-                }
-              </a>
+                  @if (!isRail()) {
+                    <span class="ts-tool-name">{{ tool.name }}</span>
+                    @if (tool.slug === currentSlug()) {
+                      <span class="ts-active-dot" aria-hidden="true"></span>
+                    }
+                  }
+                </a>
+              </li>
             }
-          </div>
+          </ul>
         </div>
       } @else {
-        <!-- Collapsible Category Groups View (Utilities, Developer, Security...) -->
-        @for (group of groupedCategories(); track group.category; let gIdx = $index) {
-          <div class="ts-tool-group">
-            @if (!isRail()) {
-              <button 
-                type="button" 
-                class="ts-group-header-btn"
-                (click)="toggleCategory(group.category)"
-                [attr.aria-expanded]="isCategoryOpen(group.category)"
-              >
-                <div class="ts-group-header-left">
+        <!-- Section Label: Categories -->
+        @if (!isRail()) {
+          <div class="ts-categories-label">Categories</div>
+        }
+
+        <!-- Category Tree: nav > ul > li (category) > button + ul (sub menu) > li > a (tool) -->
+        <ul class="ts-tree-root-list" role="list">
+          @for (group of groupedCategories(); track group.category; let gIdx = $index) {
+            <li class="ts-tool-group" role="listitem">
+              @if (!isRail()) {
+                <button 
+                  type="button" 
+                  class="ts-group-header-btn"
+                  (click)="toggleCategory(group.category)"
+                  [attr.aria-expanded]="isCategoryOpen(group.category)"
+                  [attr.aria-controls]="'ts-sub-' + group.category"
+                >
+                  <div class="ts-group-header-left">
+                    <ts-icon [name]="categoryIcon(group.category)" [size]="20" class="ts-cat-icon" />
+                    <span class="ts-group-title">{{ group.category }}</span>
+                  </div>
                   <ts-icon 
                     name="chevron-right" 
                     [size]="14" 
                     class="ts-chevron-icon"
                     [class.is-expanded]="isCategoryOpen(group.category)"
+                    [class.is-collapsed]="!isCategoryOpen(group.category)"
                   />
-                  <ts-icon [name]="categoryIcon(group.category)" [size]="14" class="ts-cat-icon text-muted" />
-                  <span class="ts-group-title">{{ group.category }}</span>
-                </div>
-                <span class="ts-group-count">{{ group.tools.length }}</span>
-              </button>
-            }
-            
-            @if (isRail() || isCategoryOpen(group.category)) {
-              <div class="ts-tools-group-items">
-                @for (tool of group.tools; track tool.slug) {
-                  <a 
-                    [href]="getToolUrl(tool.slug)" 
-                    class="ts-tool-item" 
-                    [class.active]="tool.slug === currentSlug()"
-                    [tsTooltip]="isRail() ? tool.name : ''"
-                    tooltipPosition="right"
-                    [attr.aria-label]="tool.name"
-                  >
-                    <ts-tool-tile [icon]="tool.icon" [name]="tool.name" [size]="24" />
-                    @if (!isRail()) {
-                      <span class="ts-tool-name">{{ tool.name }}</span>
-                      @if (tool.slug === currentSlug()) {
-                        <span class="ts-active-dot" aria-hidden="true"></span>
+                </button>
+              }
+              
+              @if (isRail()) {
+                <ul class="ts-tools-group-items" role="list">
+                  @for (tool of group.tools.slice(0, 5); track tool.slug) {
+                    <li role="listitem">
+                      <a 
+                        [href]="getToolUrl(tool.slug)" 
+                        class="ts-tool-item" 
+                        [class.active]="tool.slug === currentSlug()"
+                        [attr.aria-current]="tool.slug === currentSlug() ? 'page' : null"
+                        [tsTooltip]="group.category + ' / ' + tool.name"
+                        tooltipPosition="right"
+                        [attr.aria-label]="tool.name"
+                      >
+                        <ts-tool-tile [icon]="tool.icon" [name]="tool.name" [size]="20" [flat]="true" />
+                      </a>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <div 
+                  class="ts-tree-expandable-wrapper"
+                  [id]="'ts-sub-' + group.category"
+                  [class.is-open]="isCategoryOpen(group.category)"
+                >
+                  <div class="ts-tree-expandable-inner">
+                    <ul 
+                      class="ts-tools-group-items ts-tree-sub-menu" 
+                      [class.has-active]="groupHasActive(group.tools)"
+                      role="list"
+                    >
+                      @for (tool of group.tools.slice(0, 5); track tool.slug) {
+                        <li role="listitem">
+                          <a 
+                            [href]="getToolUrl(tool.slug)" 
+                            class="ts-tool-item" 
+                            [class.active]="tool.slug === currentSlug()"
+                            [attr.aria-current]="tool.slug === currentSlug() ? 'page' : null"
+                            [attr.aria-label]="tool.name"
+                          >
+                            @if (treeMarker() === 'dot') {
+                              <span class="ts-hollow-dot" aria-hidden="true"></span>
+                            } @else {
+                              <ts-tool-tile [icon]="tool.icon" [name]="tool.name" [size]="20" [flat]="true" />
+                            }
+                            <span class="ts-tool-name">{{ tool.name }}</span>
+                            @if (tool.slug === currentSlug()) {
+                              <span class="ts-active-dot" aria-hidden="true"></span>
+                            }
+                          </a>
+                        </li>
                       }
-                    }
-                  </a>
-                }
-              </div>
-            }
+                      @if (group.tools.length > 5) {
+                        <li role="listitem">
+                          <a 
+                            [href]="hubUrl + '?tab=' + encodeCategory(group.category)" 
+                            class="ts-tool-item ts-view-all-item"
+                          >
+                            <span class="ts-view-all-text">View all</span>
+                          </a>
+                        </li>
+                      }
+                    </ul>
+                  </div>
+                </div>
+              }
 
-            @if (isRail() && gIdx < groupedCategories().length - 1) {
-              <div class="ts-rail-separator" role="separator"></div>
-            }
-          </div>
-        }
+              @if (isRail() && gIdx < groupedCategories().length - 1) {
+                <div class="ts-rail-separator" role="separator"></div>
+              }
+            </li>
+          }
+        </ul>
       }
-    </div>
+    </nav>
   `,
   styles: [`
+    :host {
+      display: block;
+      background: transparent;
+    }
+
     .ts-tool-list-container {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 16px;
       padding: 0;
+      background: transparent;
+    }
+
+    .ts-categories-label {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-3, #6B7280);
+      padding: 16px 10px 6px;
+      text-transform: none;
+      letter-spacing: normal;
+      user-select: none;
+    }
+
+    .ts-tree-root-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      background: transparent;
     }
 
     .ts-tool-group {
       display: flex;
       flex-direction: column;
-      gap: 3px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      background: transparent;
     }
 
     .ts-rail-separator {
       height: 1px;
-      background: var(--border, rgba(0, 0, 0, 0.08));
+      background: var(--ts-tree-line, rgba(15, 23, 42, 0.08));
       margin: 8px auto;
       width: 28px;
       flex-shrink: 0;
     }
 
     :host-context([data-theme="dark"]) .ts-rail-separator {
-      background: var(--border, rgba(255, 255, 255, 0.08));
+      background: var(--ts-tree-line, rgba(255, 255, 255, 0.08));
     }
 
+    /* Category header button: 36px, radius 10px, thin stroke muted icon, 14px 500 --text-2 */
     .ts-group-header-btn {
       display: flex;
       align-items: center;
       justify-content: space-between;
       width: 100%;
-      height: 32px;
+      height: 36px;
       padding: 0 10px;
       background: transparent;
-      border: 1px solid transparent;
+      border: none;
       outline: none;
-      color: var(--text-muted, #71717A);
+      color: var(--text-2, #52525B);
       cursor: pointer;
       border-radius: 10px;
       user-select: none;
       transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
-                  color var(--ts-dur-fast, 150ms) var(--ts-ease);
+                  color var(--ts-dur-fast, 150ms) var(--ts-ease),
+                  transform var(--ts-dur-press, 150ms) var(--ts-ease);
     }
 
-    .ts-group-header-btn:hover {
-      background: var(--surface-hover, #F4F4F5);
-      color: var(--text, #18181B);
+    @media (hover: hover) {
+      .ts-group-header-btn:hover {
+        background: var(--ts-row-hover, rgba(15, 23, 42, 0.05));
+        color: var(--text, #09090B);
+      }
+      .ts-group-header-btn:hover .ts-cat-icon {
+        color: var(--accent-strong, #111111);
+      }
+      .ts-group-header-btn:hover .ts-chevron-icon {
+        opacity: 1;
+      }
     }
 
-    :host-context([data-theme="dark"]) .ts-group-header-btn:hover {
-      background: var(--surface-hover, #1E1E22);
-      color: var(--text, #FCFCFC);
+    .ts-group-header-btn:active {
+      transform: scale(0.98);
     }
 
     .ts-group-header-btn:focus-visible {
-      outline: 2px solid var(--ts-focus-ring, #18181B) !important;
+      outline: 2px solid var(--accent-strong) !important;
       outline-offset: 1px;
     }
 
     .ts-group-header-left {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 12px;
+    }
+
+    .ts-cat-icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      color: var(--text-3, #8E8E93);
+      transition: color var(--ts-dur-fast, 150ms) var(--ts-ease);
     }
 
     .ts-group-title {
       font-family: var(--font-body, "Nunito", sans-serif);
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text, #18181B);
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 20px;
+      color: var(--text-2, #52525B);
     }
 
     :host-context([data-theme="dark"]) .ts-group-title {
-      color: var(--text, #FCFCFC);
+      color: var(--text-2, #B3B3B8);
     }
 
-    .ts-group-count {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-muted, #71717A);
-      background: var(--surface-hover, #F4F4F5);
-      border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
-      padding: 1px 7px;
-      border-radius: 9999px;
-    }
-
-    :host-context([data-theme="dark"]) .ts-group-count {
-      background: #1E1E22;
-      border-color: rgba(255, 255, 255, 0.08);
-      color: #A1A1AA;
-    }
-
+    /* Chevron at right end (14px, rotates 90deg when open) */
     .ts-chevron-icon {
-      color: var(--text-muted, #71717A);
-      transition: transform 200ms var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+      color: var(--text-3, #8E8E93);
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      opacity: 0;
+      transition: transform 200ms var(--ts-ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+                  opacity 150ms var(--ts-ease);
     }
 
     .ts-chevron-icon.is-expanded {
       transform: rotate(90deg);
+      opacity: 0.7;
+    }
+
+    .ts-chevron-icon.is-collapsed {
+      opacity: 0.7;
+    }
+
+    .ts-group-header-btn:focus-visible .ts-chevron-icon {
+      opacity: 1;
+    }
+
+    /* Group expand/collapse: grid-template-rows 0fr to 1fr in 220ms */
+    .ts-tree-expandable-wrapper {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 220ms var(--ts-ease-out);
+      overflow: hidden;
+    }
+
+    .ts-tree-expandable-wrapper.is-open {
+      grid-template-rows: 1fr;
+    }
+
+    .ts-tree-expandable-inner {
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ts-tree-expandable-wrapper {
+        transition: none !important;
+      }
+      .ts-chevron-icon {
+        transition: none !important;
+      }
     }
 
     .ts-tools-group-items {
       display: flex;
       flex-direction: column;
       gap: 2px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
     }
 
-    /* Staggered entrance for items on first open / render (20ms step) */
-    @keyframes tsSidebarItemIn {
-      from {
-        opacity: 0;
-        transform: translateX(-4px);
-      }
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
+    /* Guide Line: 1px hairline gray centered under category icon (center of 10px pad + 20px icon = 20px).
+       8px gap between category row and its first tool.
+       Child rows start 10px to the right of the line and indent 24px from category text.
+    */
+    .ts-tree-sub-menu {
+      margin-top: 8px;
+      margin-left: 20px;
+      padding-left: 10px;
+      border-left: 1px solid var(--ts-tree-line, rgba(15, 23, 42, 0.08));
+      position: relative;
     }
 
-    .ts-tools-group-items .ts-tool-item {
-      animation: tsSidebarItemIn var(--ts-dur-panel, 280ms) var(--ts-ease-out) forwards;
+    .ts-tree-sub-menu.has-active {
+      border-left-color: var(--accent-border);
     }
 
-    .ts-tools-group-items .ts-tool-item:nth-child(1) { animation-delay: 0ms; }
-    .ts-tools-group-items .ts-tool-item:nth-child(2) { animation-delay: 20ms; }
-    .ts-tools-group-items .ts-tool-item:nth-child(3) { animation-delay: 40ms; }
-    .ts-tools-group-items .ts-tool-item:nth-child(4) { animation-delay: 60ms; }
-    .ts-tools-group-items .ts-tool-item:nth-child(5) { animation-delay: 80ms; }
-    .ts-tools-group-items .ts-tool-item:nth-child(6) { animation-delay: 100ms; }
-    .ts-tools-group-items .ts-tool-item:nth-child(7) { animation-delay: 120ms; }
-    .ts-tools-group-items .ts-tool-item:nth-child(8) { animation-delay: 140ms; }
-    .ts-tools-group-items .ts-tool-item:nth-child(n+9) { animation-delay: 160ms; }
+    .ts-tree-sub-menu > li {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
 
+    /* Tool item row: 36px, radius 10px, padding 0 10px, icon 20px, gap 12px, text 14.5px/20px 400 --text-2 */
     .ts-tool-item {
       display: flex;
       align-items: center;
-      gap: 10px;
-      height: 38px;
+      gap: 12px;
+      height: 36px;
       padding: 0 10px;
       border-radius: 10px;
       text-decoration: none;
-      color: var(--text-muted, #71717A);
+      color: var(--text-2, #52525B);
       background: transparent;
-      border: 1px solid transparent;
+      border: none;
       outline: none;
       position: relative;
-      transition: background-color var(--ts-dur-hover, 220ms) var(--ts-ease-out),
-                  color var(--ts-dur-hover, 220ms) var(--ts-ease-out),
+      cursor: pointer;
+      user-select: none;
+      box-sizing: border-box;
+      transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
+                  color var(--ts-dur-fast, 150ms) var(--ts-ease),
                   transform var(--ts-dur-press, 150ms) var(--ts-ease);
     }
 
-    .ts-tool-item:hover {
-      background: var(--surface-hover, #F4F4F5);
-      color: var(--text, #18181B);
-    }
-
-    :host-context([data-theme="dark"]) .ts-tool-item:hover {
-      background: var(--surface-hover, #1E1E22);
-      color: var(--text, #FCFCFC);
+    @media (hover: hover) {
+      .ts-tool-item:hover {
+        background: var(--ts-row-hover, rgba(15, 23, 42, 0.05));
+        color: var(--text, #09090B);
+      }
+      .ts-tool-item:hover ts-tool-tile {
+        color: var(--accent-strong, #111111);
+      }
+      .ts-tool-item:hover .ts-hollow-dot {
+        border-color: var(--accent-strong, #111111);
+      }
     }
 
     .ts-tool-item:active {
@@ -263,30 +399,50 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
     }
 
     .ts-tool-item.active {
-      background: var(--accent-soft);
-      color: var(--text);
-      font-weight: 700;
-      border-color: transparent;
+      background: var(--ts-row-active, rgba(15, 23, 42, 0.07));
+      color: var(--text, #09090B);
+      font-weight: 500;
     }
 
-    .ts-tool-item:focus:not(:focus-visible) {
-      outline: none;
+    .ts-tool-item.active ts-tool-tile {
+      color: var(--accent-strong, #111111);
+    }
+
+    .ts-tool-item.active .ts-hollow-dot {
+      border-color: var(--accent-strong, #111111);
+    }
+
+    :host-context([data-theme="dark"]) .ts-tool-item {
+      color: var(--text-2, #B3B3B8);
+    }
+
+    :host-context([data-theme="dark"]) .ts-tool-item.active {
+      color: var(--text, #FCFCFC);
     }
 
     .ts-tool-item:focus-visible {
       outline: 2px solid var(--accent-strong) !important;
-      outline-offset: 2px;
+      outline-offset: 1px;
     }
 
+    /* Long name right fade mask (no ellipsis) */
     .ts-tool-name {
       font-family: var(--font-body, "Nunito", sans-serif);
-      font-size: 13.5px;
+      font-size: 14.5px;
+      line-height: 20px;
+      font-weight: 400;
       flex: 1;
       white-space: nowrap;
       overflow: hidden;
-      text-overflow: ellipsis;
+      mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
     }
 
+    .ts-tool-item.active .ts-tool-name {
+      font-weight: 500;
+    }
+
+    /* 6px accent dot at right end */
     .ts-active-dot {
       width: 6px;
       height: 6px;
@@ -295,12 +451,39 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       flex-shrink: 0;
     }
 
+    /* Marker dot option: 6px hollow circle, 1.5px border, muted */
+    .ts-hollow-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      border: 1.5px solid var(--text-3, #8E8E93);
+      box-sizing: border-box;
+      margin: 0 7px;
+      flex-shrink: 0;
+      transition: border-color 150ms var(--ts-ease);
+    }
+
+    /* View all link */
+    .ts-view-all-item {
+      color: var(--text-3, #6B7280);
+      font-size: 13.5px;
+      font-weight: 400;
+    }
+
+    .ts-view-all-text {
+      font-family: var(--font-body, "Nunito", sans-serif);
+      font-size: 13.5px;
+      color: var(--text-3, #6B7280);
+    }
+
+    /* Collapsed Rail styling */
     .ts-tool-list-container.is-rail .ts-tool-item {
       justify-content: center;
       padding: 0;
-      width: 38px;
-      height: 38px;
+      width: 40px;
+      height: 40px;
       margin: 0 auto;
+      border-radius: 10px;
     }
 
     .ts-search-results-section {
@@ -312,7 +495,7 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
     .ts-search-results-header {
       font-size: 11.5px;
       font-weight: 600;
-      color: var(--text-muted, #71717A);
+      color: var(--text-3, #71717A);
       padding: 4px 10px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -328,6 +511,8 @@ export class TsToolListComponent implements OnInit {
   readonly getToolUrl = getToolUrl;
   readonly hubUrl = getToolsHubUrl();
 
+  readonly treeMarker = signal<'icon' | 'dot'>('icon');
+
   categoryIcon(category: string): string {
     const norm = (category || '').toLowerCase();
     if (norm === 'utilities') return 'boxes';
@@ -340,15 +525,34 @@ export class TsToolListComponent implements OnInit {
     return 'layers';
   }
 
+  encodeCategory(category: string): string {
+    return encodeURIComponent(category.toLowerCase());
+  }
+
+  groupHasActive(tools: ToolRegistryItem[]): boolean {
+    const slug = this.currentSlug();
+    return tools.some(t => t.slug === slug);
+  }
+
   // Collapsed categories state (current category open by default)
   readonly collapsedCategories = signal<Set<string>>(new Set());
 
   ngOnInit(): void {
-    // Keep current tool's category open by default, collapse others if desired or keep standard
+    // Check dev-mode marker query: ?tree=icon|dot
+    if (isDevMode() && typeof window !== 'undefined' && window.location) {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const marker = params.get('tree');
+        if (marker === 'dot' || marker === 'icon') {
+          this.treeMarker.set(marker);
+        }
+      } catch {}
+    }
+
     const currentTool = this.tools().find(t => t.slug === this.currentSlug());
     const currentCat = currentTool?.category || 'Utilities';
 
-    // Start with all open by default as standard, or ensure current category is definitely open
+    // Start with all open by default, and ensure active tool's category is explicitly open
     this.collapsedCategories.update(set => {
       const next = new Set(set);
       next.delete(currentCat);
@@ -412,3 +616,4 @@ export class TsToolListComponent implements OnInit {
     return categories;
   });
 }
+

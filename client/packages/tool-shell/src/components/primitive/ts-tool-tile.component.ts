@@ -8,19 +8,27 @@ import { TsIconComponent } from '../icon/ts-icon.component';
   standalone: true,
   imports: [CommonModule, TsIconComponent],
   template: `
-    <div 
-      class="ts-tile-box" 
-      [style.width.px]="size()" 
-      [style.height.px]="size()"
-      [style.border-radius.px]="size() <= 28 ? 8 : 12"
-      [attr.aria-hidden]="true"
-    >
+    @if (flat()) {
       @if (icon()) {
-        <ts-icon [name]="icon()!" [size]="iconSize()" />
+        <ts-icon [name]="icon()!" [size]="size()" class="ts-tile-flat-icon" />
       } @else {
         <span class="ts-tile-fallback">{{ fallbackChar() }}</span>
       }
-    </div>
+    } @else {
+      <div 
+        class="ts-tile-box" 
+        [style.width.px]="size()" 
+        [style.height.px]="size()"
+        [style.border-radius.px]="size() <= 28 ? 8 : 12"
+        [attr.aria-hidden]="true"
+      >
+        @if (icon()) {
+          <ts-icon [name]="icon()!" [size]="iconSize()" />
+        } @else {
+          <span class="ts-tile-fallback">{{ fallbackChar() }}</span>
+        }
+      </div>
+    }
   `,
   styles: [`
     :host {
@@ -60,6 +68,8 @@ export class TsToolTileComponent {
   readonly size = input<number>(44);
   readonly category = input<string | null>(null);
 
-  readonly iconSize = computed(() => Math.max(14, Math.round(this.size() * 0.55)));
+  readonly flat = input<boolean>(false);
+
+  readonly iconSize = computed(() => this.flat() ? this.size() : Math.max(14, Math.round(this.size() * 0.55)));
   readonly fallbackChar = computed(() => (this.name() ? this.name().charAt(0) : 'T'));
 }
