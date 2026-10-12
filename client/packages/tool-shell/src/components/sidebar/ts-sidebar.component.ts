@@ -22,7 +22,7 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
   template: `
     <!-- Desktop Left Sidebar (Floating Card) -->
     <aside
-      class="ts-sidebar-card ts-glass hide-mobile"
+      class="ts-sidebar-card hide-mobile"
       [class.is-collapsed]="sidebarService.isCollapsed()"
       [class.is-dragging]="sidebarService.isDragging()"
       [style.width.px]="sidebarService.isCollapsed() ? 72 : sidebarService.width()"
@@ -240,23 +240,36 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
     }
   `,
   styles: [`
+    :host {
+      display: block;
+      height: 100%;
+      min-height: 0;
+    }
+
     .ts-sidebar-card {
       position: relative;
       height: 100%;
-      background: var(--ts-glass-bg);
-      -webkit-backdrop-filter: var(--ts-glass-filter);
-      backdrop-filter: var(--ts-glass-filter);
-      border: 1px solid var(--ts-glass-border);
+      /* Glass card: gradient fill, blur, edge ring, shadow */
+      background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--ts-glass, #F0F3FF) var(--ts-a1-pct, calc(var(--ts-a1, .52) * 100%)), transparent),
+        color-mix(in srgb, var(--ts-glass, #F0F3FF) var(--ts-a2-pct, calc(var(--ts-a2, .34) * 100%)), transparent)
+      );
+      -webkit-backdrop-filter: var(--ts-blur, blur(5px) saturate(160%));
+      backdrop-filter: var(--ts-blur, blur(5px) saturate(160%));
       border-radius: var(--shell-radius, 20px);
-      box-shadow: var(--ts-glass-shadow);
+      box-shadow: var(--ts-edge), var(--ts-shadow);
+      border: none;
       overflow: hidden;
       flex-shrink: 0;
       box-sizing: border-box;
+      min-width: 0;
+      min-height: 0;
       transition: width 200ms var(--ts-ease-out),
-                  background-color var(--ts-dur-hover, 220ms) var(--ts-ease),
-                  border-color var(--ts-dur-hover, 220ms) var(--ts-ease);
+                  background var(--ts-dur-hover, 220ms) var(--ts-ease);
       user-select: none;
       z-index: var(--ts-z-chrome, 10);
+      transform: translateZ(0);
     }
 
     .ts-sidebar-inner {

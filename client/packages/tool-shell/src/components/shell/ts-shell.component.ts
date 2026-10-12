@@ -16,6 +16,7 @@ import { TsToolContentComponent } from '../primitive/ts-tool-content.component';
 import { TsToolHeaderComponent } from '../header/ts-tool-header.component';
 import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
 import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
+import { TsRevealDirective } from '../../directives/ts-reveal.directive';
 
 @Component({
   selector: 'ts-shell, lib-tool-layout',
@@ -30,7 +31,8 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
     TsBackdropComponent,
     TsToolContentComponent,
     TsToolDetailsComponent,
-    TsToolRelatedComponent
+    TsToolRelatedComponent,
+    TsRevealDirective
   ],
   template: `
     <div 
@@ -94,7 +96,7 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
               <h1 class="sr-only">{{ currentTool.name }}</h1>
             }
 
-            <div class="ts-main-scroll-container" [class.full-bleed]="isFullBleed()">
+            <div class="ts-main-scroll-container" #scrollContainer [class.full-bleed]="isFullBleed()">
               <!-- WORKSPACE SECTION (Desktop One-Screen Workspace) -->
               <div id="tool" class="ts-workspace-section" [class.full-bleed]="isFullBleed()">
                 <div class="ts-workspace-grid" [class.full-bleed]="isFullBleed()">
@@ -122,7 +124,11 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
 
               <!-- About & Documentation Card Below Tool -->
               @if (showDescriptionCard() && tool()) {
-                <section class="ts-tool-description-section" aria-label="About this tool">
+                <section 
+                  tsReveal [revealIndex]="1"
+                  class="ts-tool-description-section" 
+                  aria-label="About this tool"
+                >
                   <ts-about-card 
                     [tool]="tool()!" 
                     (readMore)="showAboutPanel.set(true)"
@@ -273,7 +279,8 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
       max-height: 100dvh;
       overflow: hidden;
       position: relative;
-      background-color: var(--page-bg);
+      /* transparent — page color comes from ts-backdrop (position:fixed) */
+      background-color: transparent;
       color: var(--text);
       font-family: var(--font-body, "Nunito", sans-serif);
       padding: max(var(--shell-padding, 12px), env(safe-area-inset-top, 0px))
@@ -281,7 +288,6 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
                max(var(--shell-padding, 12px), env(safe-area-inset-bottom, 0px))
                max(var(--shell-padding, 12px), env(safe-area-inset-left, 0px));
       box-sizing: border-box;
-      transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease);
     }
 
     /* Skip to content */
@@ -359,7 +365,7 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
     }
 
     /* Main Content Card: Standalone Floating Card with non-scrolling background */
-    /* Main Content Card: Semi-transparent sheet over single page background */
+    /* Main Content Card: Glass card with --ts-b1/b2 alpha tokens */
     .ts-main-content-card {
       position: relative;
       height: 100%;
@@ -370,14 +376,21 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
       container-type: inline-size;
       container-name: main-card;
       isolation: isolate;
-      background: var(--ts-main-surface, rgba(255, 255, 255, 0.45));
-      border: 1px solid var(--ts-main-border, rgba(255, 255, 255, 0.60));
+      /* Gradient fill using main-card alphas (b1/b2) */
+      background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--ts-glass, #F0F3FF) var(--ts-b1-pct, calc(var(--ts-b1, .46) * 100%)), transparent),
+        color-mix(in srgb, var(--ts-glass, #F0F3FF) var(--ts-b2-pct, calc(var(--ts-b2, .30) * 100%)), transparent)
+      );
+      -webkit-backdrop-filter: var(--ts-blur-main, none);
+      backdrop-filter: var(--ts-blur-main, none);
       border-radius: var(--shell-radius, 20px);
-      box-shadow: var(--shell-card-shadow);
+      box-shadow: var(--ts-edge), var(--ts-shadow);
+      border: none;
       box-sizing: border-box;
       outline: none;
-      transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
-                  border-color var(--ts-dur-base, 200ms) var(--ts-ease);
+      transition: background var(--ts-dur-base, 200ms) var(--ts-ease),
+                  box-shadow var(--ts-dur-base, 200ms) var(--ts-ease);
     }
 
     .ts-main-scroll-container {
@@ -396,17 +409,17 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
       flex-direction: column;
       gap: 32px;
       box-sizing: border-box;
-      /* Top scroll fade effect */
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24px, #000 100%);
-              mask-image: linear-gradient(to bottom, transparent 0, #000 24px, #000 100%);
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+      scroll-behavior: smooth;
+      transform: translateZ(0);
+      will-change: scroll-position;
     }
 
     .ts-main-scroll-container.full-bleed {
       max-width: 100%;
       padding: 0;
       gap: 0;
-      -webkit-mask-image: none;
-              mask-image: none;
     }
 
     /* ══ WORKSPACE SECTION: Desktop One-Screen Workspace ══ */
@@ -659,10 +672,11 @@ import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
 export class ToolLayoutComponent implements OnInit, AfterViewInit {
   readonly tool = input<ToolRegistryItem | null>(null);
   readonly config = input<ToolShellConfig | null>(null);
-  readonly surface = input<'glass' | 'tinted' | 'solid'>('glass');
+  readonly surface = input<'clear' | 'frost' | 'tinted' | 'solid'>('clear');
   readonly tabChange = output<string>();
 
   readonly mainCard = viewChild<ElementRef<HTMLElement>>('mainCard');
+  readonly scrollContainer = viewChild<ElementRef<HTMLElement>>('scrollContainer');
 
   readonly allTools = signal<ToolRegistryItem[]>(getAllTools());
   readonly showCommandPalette = signal<boolean>(false);
@@ -672,10 +686,10 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit {
   private readonly capsuleService = inject(ToolCapsuleService);
 
   readonly internalActiveTab = signal<string>('');
-  private readonly devSurfaceOverride = signal<'glass' | 'tinted' | 'solid' | null>(null);
+  private readonly devSurfaceOverride = signal<'clear' | 'frost' | 'tinted' | 'solid' | null>(null);
 
-  readonly effectiveSurface = computed<'glass' | 'tinted' | 'solid'>(() => {
-    return this.devSurfaceOverride() ?? this.surface() ?? 'glass';
+  readonly effectiveSurface = computed<'clear' | 'frost' | 'tinted' | 'solid'>(() => {
+    return this.devSurfaceOverride() ?? this.surface() ?? 'clear';
   });
 
   ngOnInit(): void {
@@ -687,8 +701,8 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit {
 
       if (isDevMode()) {
         const surfParam = params.get('surface');
-        if (surfParam === 'glass' || surfParam === 'tinted' || surfParam === 'solid') {
-          this.devSurfaceOverride.set(surfParam);
+        if (surfParam === 'clear' || surfParam === 'frost' || surfParam === 'solid' || surfParam === 'tinted') {
+          this.devSurfaceOverride.set(surfParam as 'clear' | 'frost' | 'solid' | 'tinted');
         }
       }
 
@@ -718,6 +732,11 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit {
     if (card) {
       const isDark = this.themeService.effectiveTheme() === 'dark';
       this.capsuleService.playToolReveal(card, isDark);
+    }
+    // Mark scroll container ready so tsReveal hidden states activate
+    const sc = this.scrollContainer()?.nativeElement;
+    if (sc) {
+      sc.classList.add('ts-reveal-ready');
     }
   }
 

@@ -7,7 +7,8 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "check:scope": "node ../scripts/check-surface-scope.mjs"
+    "check:scope": "node ../scripts/check-surface-scope.mjs",
+    "check:glass": "node ../scripts/check-glass.mjs"
   },
   "private": true,
   "packageManager": "npm@11.16.0",

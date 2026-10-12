@@ -39,7 +39,7 @@ export interface SectionNavLink {
     HlmKbdImports
   ],
   template: `
-    <header class="ts-topbar-card ts-glass" role="banner">
+    <header class="ts-topbar-card" role="banner">
       <!-- ══════════════════════════════════════════════════════ -->
       <!-- Left Zone: Logo / Name + Current Tool Chip Breadcrumb   -->
       <!-- ══════════════════════════════════════════════════════ -->
@@ -148,24 +148,37 @@ export interface SectionNavLink {
     </header>
   `,
   styles: [`
+    :host {
+      display: block;
+      width: 100%;
+    }
+
     .ts-topbar-card {
       display: grid;
       grid-template-columns: 1fr auto 1fr;
       align-items: center;
       height: var(--header-height, 64px);
       padding: 0 16px;
-      background: var(--ts-glass-bg);
-      -webkit-backdrop-filter: var(--ts-glass-filter);
-      backdrop-filter: var(--ts-glass-filter);
-      border: 1px solid var(--ts-glass-border);
+      /* Glass card: gradient fill, blur, edge ring, shadow */
+      background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--ts-glass, #F0F3FF) var(--ts-a1-pct, calc(var(--ts-a1, .52) * 100%)), transparent),
+        color-mix(in srgb, var(--ts-glass, #F0F3FF) var(--ts-a2-pct, calc(var(--ts-a2, .34) * 100%)), transparent)
+      );
+      -webkit-backdrop-filter: var(--ts-blur, blur(5px) saturate(160%));
+      backdrop-filter: var(--ts-blur, blur(5px) saturate(160%));
       border-radius: var(--shell-radius, 20px);
-      box-shadow: var(--ts-glass-shadow);
+      box-shadow: var(--ts-edge), var(--ts-shadow);
+      border: none;
       position: relative;
       z-index: var(--ts-z-chrome, 11);
       user-select: none;
       box-sizing: border-box;
-      transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
-                  border-color var(--ts-dur-base, 200ms) var(--ts-ease);
+      min-width: 0;
+      overflow: hidden;
+      transform: translateZ(0);
+      transition: background var(--ts-dur-base, 200ms) var(--ts-ease),
+                  box-shadow var(--ts-dur-base, 200ms) var(--ts-ease);
     }
 
     /* Left Zone */
@@ -193,7 +206,7 @@ export interface SectionNavLink {
     }
 
     .ts-mobile-menu-btn:hover {
-      background: var(--surface-hover);
+      background: var(--ts-row-hover, rgba(15, 23, 42, 0.035));
     }
 
     .ts-brand-link {
@@ -325,12 +338,12 @@ export interface SectionNavLink {
 
     .ts-nav-link-btn:hover:not(.active) {
       color: var(--text, #18181B);
-      background: var(--surface-hover, rgba(0, 0, 0, 0.04));
+      background: var(--ts-row-hover, rgba(15, 23, 42, 0.035));
     }
 
     [data-theme="dark"] .ts-nav-link-btn:hover:not(.active) {
       color: var(--text, #FCFCFC);
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--ts-row-hover, rgba(255, 255, 255, 0.04));
     }
 
     .ts-nav-link-btn.active {
@@ -379,12 +392,12 @@ export interface SectionNavLink {
     }
 
     .ts-nav-action-btn:hover {
-      background: var(--surface-hover, #F4F4F5);
+      background: var(--ts-row-hover, rgba(15, 23, 42, 0.035));
       color: var(--text, #18181B);
     }
 
     :host-context([data-theme="dark"]) .ts-nav-action-btn:hover {
-      background: var(--surface-hover, #1E1E22);
+      background: var(--ts-row-hover, rgba(255, 255, 255, 0.04));
       color: var(--text, #FCFCFC);
     }
 
