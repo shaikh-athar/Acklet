@@ -42,6 +42,8 @@ export * from './components/primitive/ts-faq.component';
 export * from './components/primitive/ts-tooltip.directive';
 export * from './components/primitive/ts-spotlight.directive';
 export * from './components/primitive/ts-tool-content.component';
+export * from './directives/ts-reveal.directive';
+export * from './directives/ts-pointer-glow.directive';
 export * from './components/header/ts-tool-header.component';
 export * from './components/rail/ts-tool-details.component';
 export * from './components/rail/ts-tool-related.component';

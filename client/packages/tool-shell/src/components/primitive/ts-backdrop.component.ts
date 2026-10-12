@@ -1,18 +1,25 @@
 // packages/tool-shell/src/components/primitive/ts-backdrop.component.ts
 import { Component, input, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directive';
 
 @Component({
   selector: 'ts-backdrop',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TsPointerGlowDirective],
   template: `
-    <div 
-      class="ts-bg ts-bg-page" 
+    <div
+      class="ts-bg"
+      tsPointerGlow
       aria-hidden="true"
       [style.--ts-tool-hue]="accentHueStyle()"
     >
+      <!-- Static decorative grid -->
       <div class="ts-bg-grid"></div>
+
+      <!-- Pointer-following glow (opacity managed by TsPointerGlowDirective) -->
+      <div class="ts-bg-spot-glow" aria-hidden="true"></div>
+      <div class="ts-bg-spot-grid" aria-hidden="true"></div>
     </div>
   `,
   styles: [`
@@ -23,59 +30,164 @@ import { CommonModule } from '@angular/common';
       pointer-events: none;
       z-index: 0;
       overflow: hidden;
+      background-color: var(--ts-page-bg, var(--page-bg, #F7F8F8));
     }
 
+    :host-context([data-theme="dark"]),
+    [data-theme="dark"] :host {
+      background-color: var(--ts-page-bg, var(--page-bg, #0F1011));
+    }
+
+    /* ── Main .ts-bg: corner glows stacked as gradients (Top-Left emphasized) ─── */
     .ts-bg {
       position: absolute;
       inset: 0;
       z-index: 0;
       pointer-events: none;
       overflow: hidden;
+      transform: translateZ(0);
+      /* Dark mode: Top-left rich ambient glow, subtle tints on all other corners */
       background:
-        radial-gradient(ellipse 62% 52% at 0% 0%, var(--fx-glow-1) 0%, transparent 70%),
-        radial-gradient(ellipse 40% 36% at 100% 0%, var(--fx-glow-2) 0%, transparent 70%);
+        radial-gradient(ellipse 70% 60% at 0% 0%,
+          color-mix(in oklab, var(--accent, #2DD4BF) 32%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #2DD4BF) 16%, transparent) 40%,
+          transparent 75%),
+        radial-gradient(ellipse 46% 40% at 100% 0%,
+          color-mix(in oklab, var(--accent, #2DD4BF) 12%, transparent) 0%,
+          transparent 70%),
+        radial-gradient(ellipse 48% 42% at 0% 100%,
+          color-mix(in oklab, var(--accent, #2DD4BF) 11%, transparent) 0%,
+          transparent 70%),
+        radial-gradient(ellipse 46% 40% at 100% 100%,
+          color-mix(in oklab, var(--accent, #2DD4BF)  9%, transparent) 0%,
+          transparent 70%);
     }
 
+    /* Light mode: Top-left vibrant radiant glow, elegant visible tints on other corners */
+    :host-context([data-theme="light"]) .ts-bg,
+    [data-theme="light"] .ts-bg {
+      background:
+        radial-gradient(ellipse 72% 62% at 0% 0%,
+          color-mix(in oklab, var(--accent, #0D9488) 45%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #0D9488) 22%, transparent) 42%,
+          transparent 75%),
+        radial-gradient(ellipse 46% 40% at 100% 0%,
+          color-mix(in oklab, var(--accent, #0D9488) 16%, transparent) 0%,
+          transparent 70%),
+        radial-gradient(ellipse 48% 42% at 0% 100%,
+          color-mix(in oklab, var(--accent, #0D9488) 15%, transparent) 0%,
+          transparent 70%),
+        radial-gradient(ellipse 46% 40% at 100% 100%,
+          color-mix(in oklab, var(--accent, #0D9488) 12%, transparent) 0%,
+          transparent 70%);
+    }
+
+    /* ── Grid overlay ─────────────────────────────────────────── */
     .ts-bg-grid {
       position: absolute;
       inset: 0;
       pointer-events: none;
       background-image:
-        linear-gradient(to right,  var(--fx-grid) 1px, transparent 1px),
-        linear-gradient(to bottom, var(--fx-grid) 1px, transparent 1px);
-      background-size: var(--fx-grid-size, 32px) var(--fx-grid-size, 32px);
+        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #5EEAD4)) 10%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #5EEAD4)) 10%, transparent) 1px, transparent 1px);
+      background-size: 32px 32px;
       background-position: 0 0;
-      -webkit-mask-image: radial-gradient(ellipse 120% 100% at 0% 0%, #000 0%, rgba(0, 0, 0, 0.5) 50%, transparent 100%);
-              mask-image: radial-gradient(ellipse 120% 100% at 0% 0%, #000 0%, rgba(0, 0, 0, 0.5) 50%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 120% 100% at 0% 0%, #000 0%, rgba(0,0,0,0.5) 50%, transparent 100%);
+              mask-image: radial-gradient(ellipse 120% 100% at 0% 0%, #000 0%, rgba(0,0,0,0.5) 50%, transparent 100%);
     }
 
-    /* Responsive: under 768px grid 24px */
+    :host-context([data-theme="light"]) .ts-bg-grid,
+    [data-theme="light"] .ts-bg-grid {
+      background-image:
+        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #0F766E)) 8%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #0F766E)) 8%, transparent) 1px, transparent 1px);
+    }
+
+    /* ── Pointer glow spot (blurred radial) ───────────────────── */
+    .ts-bg-spot-glow {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 320px;
+      height: 320px;
+      pointer-events: none;
+      opacity: 0;
+      will-change: transform;
+      transition: opacity 300ms ease;
+      background: radial-gradient(circle closest-side,
+        color-mix(in oklab, var(--ts-lift, var(--accent, #5EEAD4)) 22%, transparent),
+        transparent 100%);
+    }
+
+    :host-context([data-theme="light"]) .ts-bg-spot-glow,
+    [data-theme="light"] .ts-bg-spot-glow {
+      background: radial-gradient(circle closest-side,
+        color-mix(in oklab, var(--ts-lift, var(--accent, #0F766E)) 40%, transparent),
+        transparent 100%);
+    }
+
+    /* ── Pointer glow grid (aligned to page grid) ─────────────── */
+    .ts-bg-spot-grid {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 320px;
+      height: 320px;
+      pointer-events: none;
+      opacity: 0;
+      will-change: transform;
+      transition: opacity 300ms ease;
+      background-image:
+        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #5EEAD4)) 30%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #5EEAD4)) 30%, transparent) 1px, transparent 1px);
+      background-size: 32px 32px;
+      -webkit-mask-image: radial-gradient(circle closest-side, #000, transparent 100%);
+              mask-image: radial-gradient(circle closest-side, #000, transparent 100%);
+    }
+
+    :host-context([data-theme="light"]) .ts-bg-spot-grid,
+    [data-theme="light"] .ts-bg-spot-grid {
+      background-image:
+        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #0F766E)) 26%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #0F766E)) 26%, transparent) 1px, transparent 1px);
+    }
+
+    /* ── Responsive: under 768px, 24px grid ──────────────────── */
     @media (max-width: 767px) {
-      .ts-bg-grid {
+      .ts-bg-grid,
+      .ts-bg-spot-grid {
         background-size: 24px 24px;
       }
-      .ts-bg {
-        background:
-          radial-gradient(ellipse 62% 52% at 0% 0%,   var(--fx-glow-1) 0%, transparent 70%),
-          radial-gradient(ellipse 40% 36% at 100% 0%, var(--fx-glow-2) 0%, transparent 70%);
+    }
+
+    /* ── Print / forced-colors: hide entirely ─────────────────── */
+    @media print, (forced-colors: active) {
+      :host,
+      .ts-bg,
+      .ts-bg-grid,
+      .ts-bg-spot-glow,
+      .ts-bg-spot-grid {
+        display: none !important;
       }
     }
 
-    /* High contrast: remove glows, keep fainter grid */
+    /* ── High contrast: drop glows, keep faint grid ───────────── */
     @media (prefers-contrast: more) {
       .ts-bg {
         background: none !important;
       }
+      .ts-bg-spot-glow {
+        display: none !important;
+      }
       .ts-bg-grid {
-        opacity: 0.6;
+        opacity: 0.4;
       }
     }
 
-    /* Forced colors and print: hide decorative layers entirely */
-    @media (forced-colors: active), print {
-      :host,
-      .ts-bg,
-      .ts-bg-grid {
+    /* ── prefers-contrast: more / forced-colors: drop corner glows ── */
+    @media (forced-colors: active), (prefers-contrast: more) {
+      .ts-bg-spot-glow,
+      .ts-bg-spot-grid {
         display: none !important;
       }
     }

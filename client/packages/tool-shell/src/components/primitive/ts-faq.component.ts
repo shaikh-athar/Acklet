@@ -3,18 +3,20 @@ import { Component, input, signal, output, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolFaq } from '@acklet/tool-registry';
 import { TsIconComponent } from '../icon/ts-icon.component';
+import { TsRevealDirective } from '../../directives/ts-reveal.directive';
 
 @Component({
   selector: 'ts-faq',
   standalone: true,
-  imports: [CommonModule, TsIconComponent],
+  imports: [CommonModule, TsIconComponent, TsRevealDirective],
   template: `
     <div class="ts-faq-root">
-      <h3 class="ts-faq-heading">{{ title() }}</h3>
+      <h3 class="ts-faq-heading" tsReveal [revealIndex]="0">{{ title() }}</h3>
 
       <div class="ts-faq-list" role="region" aria-label="Frequently Asked Questions">
         @for (item of visibleFaqs(); track item.id; let i = $index) {
           <div 
+            tsReveal [revealIndex]="(i % 4) + 1"
             class="ts-faq-item" 
             [class.is-open]="isOpen(item.id)"
             [id]="'faq-' + item.id"
