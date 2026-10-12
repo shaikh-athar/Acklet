@@ -2,14 +2,55 @@
 @import "./tokens.css";
 @import "./motion.css";
 
-/* ══ GLASS SURFACE UTILITY ═══════════════════════════════════════ */
-.ts-glass {
-  background: var(--ts-nav-bg) !important;
-  -webkit-backdrop-filter: var(--ts-nav-filter, blur(4px) saturate(140%)) !important;
-  backdrop-filter: var(--ts-nav-filter, blur(4px) saturate(140%)) !important;
-  border: 1px solid var(--ts-nav-border) !important;
-  box-shadow: var(--ts-nav-shadow) !important;
+/* ══ 30px SLIDE-FADE-UP REVEAL (Part 6) ══════════════════════════ */
+/*
+  Hidden state: applied only after ts-reveal-ready is set on container.
+  The directive adds .ts-reveal-hidden via host binding when containerReady=true.
+  .ts-reveal-item.is-revealed → show immediately.
+*/
+.ts-reveal-item.ts-reveal-hidden {
+  opacity: 0;
+  transform: translateY(var(--ts-reveal-distance, 24px));
+  pointer-events: none;
 }
+
+.ts-reveal-item {
+  transition:
+    opacity var(--ts-reveal-duration, 480ms) var(--ts-reveal-ease, cubic-bezier(0.16, 1, 0.3, 1)),
+    transform var(--ts-reveal-duration, 480ms) var(--ts-reveal-ease, cubic-bezier(0.16, 1, 0.3, 1));
+  will-change: opacity, transform;
+}
+
+.ts-reveal-item.is-revealed,
+.ts-reveal-item:not(.ts-reveal-hidden) {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ts-reveal-item,
+  .ts-reveal-item.ts-reveal-hidden {
+    transform: none !important;
+    transition: opacity 150ms ease !important;
+  }
+}
+
+@media print {
+  .ts-reveal-item.ts-reveal-hidden {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ══ GLASS SURFACE UTILITY (kept for overlay/drawer use) ══════════ */
+.ts-glass {
+  background: var(--ts-glass-bg);
+  -webkit-backdrop-filter: var(--ts-glass-filter);
+  backdrop-filter: var(--ts-glass-filter);
+  box-shadow: var(--ts-edge), var(--ts-shadow);
+}
+
 
 /* ══ ROOT RESET & FULL VIEWPORT LOCK ═════════════════════════════ */
 .ts-root {
@@ -18,7 +59,8 @@
   font-family: var(--ts-font-sans);
   font-size: var(--ts-text-base);
   color: var(--ts-text);
-  background-color: var(--ts-bg);
+  /* Background is transparent — page color comes from ts-backdrop (:host position:fixed) */
+  background-color: transparent;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -64,7 +106,7 @@
 .ts-root .ts-btn:hover,
 .ts-root .ts-icon-btn:hover,
 .ts-root .ts-action-btn:hover {
-  background: var(--surface-hover, var(--ts-raised));
+  background: var(--ts-row-hover, rgba(15, 23, 42, 0.035));
   outline: none !important;
 }
 

@@ -7,6 +7,7 @@ import { HlmBadgeImports } from '../../helm/badge';
 import { HlmItemImports } from '../../helm/item';
 import { TsIconComponent } from '../icon/ts-icon.component';
 import { TsFaqComponent } from './ts-faq.component';
+import { TsRevealDirective } from '../../directives/ts-reveal.directive';
 
 @Component({
   selector: 'ts-tool-content',
@@ -16,7 +17,8 @@ import { TsFaqComponent } from './ts-faq.component';
     HlmBadgeImports,
     HlmItemImports,
     TsIconComponent,
-    TsFaqComponent
+    TsFaqComponent,
+    TsRevealDirective
   ],
   template: `
     @if (tool(); as currentTool) {
@@ -32,12 +34,12 @@ import { TsFaqComponent } from './ts-faq.component';
             class="ts-content-section" 
             [attr.aria-label]="'About ' + currentTool.name"
           >
-            <div class="ts-section-header">
+            <div class="ts-section-header" tsReveal [revealIndex]="0">
               <h2 class="ts-section-title">About {{ currentTool.name }}</h2>
             </div>
 
             @if (aboutParagraphs().length > 0) {
-              <div class="ts-about-text-body">
+              <div class="ts-about-text-body" tsReveal [revealIndex]="1">
                 @for (paragraph of aboutParagraphs(); track paragraph) {
                   <p class="ts-about-paragraph">{{ paragraph }}</p>
                 }
@@ -45,7 +47,7 @@ import { TsFaqComponent } from './ts-faq.component';
             }
 
             @if (currentTool.features && currentTool.features.length > 0) {
-              <div class="ts-feature-chips-wrap" aria-label="Key features">
+              <div class="ts-feature-chips-wrap" tsReveal [revealIndex]="2" aria-label="Key features">
                 @for (feature of currentTool.features; track feature) {
                   <span hlmBadge variant="secondary" class="ts-feature-chip">
                     <ts-icon name="check" [size]="12" class="ts-chip-icon" />
@@ -67,14 +69,19 @@ import { TsFaqComponent } from './ts-faq.component';
             class="ts-content-section" 
             aria-label="How to use this tool"
           >
-            <div class="ts-section-header">
+            <div class="ts-section-header" tsReveal [revealIndex]="0">
               <h2 class="ts-section-title">How to use</h2>
               <span class="ts-section-subtitle">Follow these quick steps to get started immediately.</span>
             </div>
 
             <div class="ts-steps-list" role="list">
               @for (step of howToSteps(); track step; let idx = $index) {
-                <hlm-item variant="outline" class="ts-step-item-card" role="listitem">
+                <hlm-item 
+                  tsReveal [revealIndex]="(idx % 4) + 1"
+                  variant="outline" 
+                  class="ts-step-item-card" 
+                  role="listitem"
+                >
                   <hlm-item-media>
                     <div class="ts-step-number-tile" aria-hidden="true">
                       <span>{{ formatStepIndex(idx + 1) }}</span>
@@ -139,26 +146,16 @@ import { TsFaqComponent } from './ts-faq.component';
       background: var(--border, #27272A);
     }
 
-    /* ── Content Section Layout with Fade/Slide-8px Reveal ───────── */
+    /* ── Content Section Layout: uses ts-reveal system ─────────── */
     .ts-content-section {
       display: flex;
       flex-direction: column;
       gap: 16px;
       width: 100%;
       scroll-margin-top: 24px;
-      opacity: 0;
-      transform: translateY(8px);
-      transition: opacity var(--ts-dur-enter, 420ms) var(--ts-ease-out),
-                  transform var(--ts-dur-enter, 420ms) var(--ts-ease-out),
-                  background-color 600ms ease;
       border-radius: var(--ts-radius-inner, 16px);
       padding: 4px 8px;
       margin: -4px -8px;
-    }
-
-    .ts-content-section.is-revealed {
-      opacity: 1;
-      transform: translateY(0);
     }
 
     /* Target Section Flash Highlight (600ms quick accent-soft flash) */
