@@ -1,10 +1,11 @@
-import { Component, inject, OnInit, OnDestroy, signal, computed, ElementRef, ViewChild, HostListener } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed, ElementRef, ViewChild, HostListener, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ClipboardApiService, ClipboardConfigDto, ClipboardItem, ClipboardShare, CreateShareOptions } from './services/clipboard-api.service';
 import { ClipboardSyncService } from './services/clipboard-sync.service';
 import { ClipboardCrypto } from './services/clipboard-crypto';
 import { ClipboardHistoryService, LocalClipboardRecord } from './services/clipboard-history.service';
+import { FormatBytesPipe } from './pipes/format-bytes.pipe';
 import { 
   TsIconComponent, 
   HlmButton, 
@@ -37,6 +38,7 @@ interface UploadingFileState {
 @Component({
   selector: 'app-clipboard-tool',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule, 
     FormsModule, 
@@ -47,7 +49,8 @@ interface UploadingFileState {
     HlmAlertImports,
     HlmEmptyImports,
     HlmTabsImports,
-    HlmTooltipImports
+    HlmTooltipImports,
+    FormatBytesPipe
   ],
   templateUrl: './clipboard.component.html',
   styleUrls: ['./clipboard.component.css']

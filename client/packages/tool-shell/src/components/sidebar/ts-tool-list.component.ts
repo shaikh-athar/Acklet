@@ -1,5 +1,4 @@
-// packages/tool-shell/src/components/sidebar/ts-tool-list.component.ts
-import { Component, input, computed, signal, OnInit, isDevMode } from '@angular/core';
+import { Component, input, computed, signal, OnInit, isDevMode, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolRegistryItem } from '@acklet/tool-registry';
 import { getToolUrl, getToolsHubUrl } from '@acklet/shared';
@@ -10,6 +9,7 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
 @Component({
   selector: 'ts-tool-list',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, TsIconComponent, TsToolTileComponent, TsTooltipDirective],
   template: `
     <nav class="ts-tool-list-container" [class.is-rail]="isRail()" aria-label="Tools navigation">
@@ -82,7 +82,7 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
               
               @if (isRail()) {
                 <ul class="ts-tools-group-items" role="list">
-                  @for (tool of group.tools.slice(0, 5); track tool.slug) {
+                  @for (tool of group.railTools; track tool.slug) {
                     <li role="listitem">
                       <a 
                         [href]="getToolUrl(tool.slug)" 
@@ -546,7 +546,7 @@ export class TsToolListComponent implements OnInit {
         if (marker === 'dot' || marker === 'icon') {
           this.treeMarker.set(marker);
         }
-      } catch {}
+      } catch { }
     }
 
     const currentTool = this.tools().find(t => t.slug === this.currentSlug());
@@ -579,8 +579,8 @@ export class TsToolListComponent implements OnInit {
   readonly filteredTools = computed(() => {
     const q = this.searchQuery().toLowerCase().trim();
     if (!q) return this.tools();
-    return this.tools().filter(t => 
-      t.name.toLowerCase().includes(q) || 
+    return this.tools().filter(t =>
+      t.name.toLowerCase().includes(q) ||
       t.category.toLowerCase().includes(q) ||
       (t.shortDescription && t.shortDescription.toLowerCase().includes(q))
     );
@@ -589,7 +589,7 @@ export class TsToolListComponent implements OnInit {
   readonly groupedCategories = computed(() => {
     const tools = this.filteredTools();
     const order = ['Utilities', 'Developer', 'Formatters', 'Security', 'Media', 'Calculators', 'AI'];
-    
+
     const map = new Map<string, ToolRegistryItem[]>();
     for (const tool of tools) {
       const cat = tool.category || 'Utilities';
@@ -599,17 +599,18 @@ export class TsToolListComponent implements OnInit {
       map.get(cat)!.push(tool);
     }
 
-    const categories: { category: string; tools: ToolRegistryItem[] }[] = [];
+    const categories: { category: string; tools: ToolRegistryItem[]; railTools: ToolRegistryItem[] }[] = [];
     for (const cat of order) {
       if (map.has(cat) && map.get(cat)!.length > 0) {
-        categories.push({ category: cat, tools: map.get(cat)! });
+        const items = map.get(cat)!;
+        categories.push({ category: cat, tools: items, railTools: items.slice(0, 5) });
         map.delete(cat);
       }
     }
 
     for (const [cat, items] of map.entries()) {
       if (items.length > 0) {
-        categories.push({ category: cat, tools: items });
+        categories.push({ category: cat, tools: items, railTools: items.slice(0, 5) });
       }
     }
 

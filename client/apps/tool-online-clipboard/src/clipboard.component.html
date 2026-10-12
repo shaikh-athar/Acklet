@@ -132,7 +132,7 @@
       <div class="history-drawer-header">
         <div class="flex items-center gap-2">
           <ts-icon name="history" class="size-4 text-current" />
-          <span class="font-semibold text-sm">Recent Clipboards (IndexedDB)</span>
+          <span class="font-semibold text-sm">Recent Clipboards</span>
         </div>
         <div class="flex items-center gap-2">
           <button 
@@ -269,12 +269,24 @@
     </div>
   }
 
-  <!-- Receiver Input Mode Header -->
+  <!-- Receiver Input Mode Header: Dedicated Elevated Card Box -->
   @if (mode() === 'receive') {
     <div class="receiver-input-section">
+      <div class="receiver-card-header">
+        <div class="receiver-icon-tile">
+          <ts-icon name="download" [size]="18" class="size-4.5" />
+        </div>
+        <div class="receiver-header-texts">
+          <label class="code-input-label" for="receive-code-input">Enter 5-Digit Code or Word Code</label>
+          <span class="receiver-subtitle">Pair with any device to open the live clipboard stream</span>
+        </div>
+      </div>
+
       <div class="code-input-wrapper">
-        <label class="code-input-label" for="receive-code-input">Enter 5-Digit Code or Word Code</label>
         <div class="code-input-box">
+          <div class="code-input-prefix">
+            <ts-icon name="key-round" [size]="18" class="size-4.5" />
+          </div>
           <input 
             #codeBox
             hlmInput
@@ -292,8 +304,12 @@
             <div class="input-spinner" aria-label="Loading clipboard"></div>
           }
         </div>
+
         <div class="code-status-row">
-          <p class="code-hint">Instant sync: Enter code to open the clipboard stream live.</p>
+          <div class="code-status-left">
+            <span class="sync-dot-pulse"></span>
+            <p class="code-hint">Instant sync: Enter code to open the clipboard stream live.</p>
+          </div>
           @if (activeShare()) {
             <span class="valid-code-badge" role="status">
               <ts-icon name="check-circle" class="size-3.5 inline mr-1 text-[var(--accent)]" />
@@ -333,13 +349,6 @@
 
   <!-- Level 2: Underline Tab Group (Text & Links | Images | Files) -->
   <div class="clipboard-underline-tabs-bar" role="tablist" aria-label="Content type">
-    <div 
-      class="underline-tab-indicator"
-      [class.pos-text]="activeTab() === 'text'"
-      [class.pos-images]="activeTab() === 'images'"
-      [class.pos-files]="activeTab() === 'files'"
-      aria-hidden="true"
-    ></div>
     <button 
       type="button"
       role="tab"
@@ -348,8 +357,8 @@
       [attr.aria-selected]="activeTab() === 'text'"
       (click)="setActiveTab('text')"
     >
-      <ts-icon name="file-text" [size]="20" class="size-5" />
-      <span>Text & Links</span>
+      <ts-icon name="file-text" [size]="18" class="tab-icon" />
+      <span class="tab-label">Text & Links</span>
       <span hlmBadge variant="secondary" class="tab-count-badge" [class.badge-bump]="activeTab() === 'text'">{{ textItems().length }}</span>
     </button>
 
@@ -361,8 +370,8 @@
       [attr.aria-selected]="activeTab() === 'images'"
       (click)="setActiveTab('images')"
     >
-      <ts-icon name="image" [size]="20" class="size-5" />
-      <span>Images</span>
+      <ts-icon name="image" [size]="18" class="tab-icon" />
+      <span class="tab-label">Images</span>
       <span hlmBadge variant="secondary" class="tab-count-badge" [class.badge-bump]="activeTab() === 'images'">{{ imageItems().length }}</span>
     </button>
 
@@ -374,8 +383,8 @@
       [attr.aria-selected]="activeTab() === 'files'"
       (click)="setActiveTab('files')"
     >
-      <ts-icon name="folder" [size]="20" class="size-5" />
-      <span>Files</span>
+      <ts-icon name="folder" [size]="18" class="tab-icon" />
+      <span class="tab-label">Files</span>
       <span hlmBadge variant="secondary" class="tab-count-badge" [class.badge-bump]="activeTab() === 'files'">{{ fileItems().length }}</span>
     </button>
   </div>
@@ -484,7 +493,7 @@
                   </div>
 
                   <div class="snippet-footer">
-                    <span class="byte-size">{{ formatBytes(item.sizeBytes) }}</span>
+                    <span class="byte-size">{{ item.sizeBytes | formatBytes }}</span>
                     <button 
                       type="button" 
                       class="btn-copy-snippet" 
@@ -524,15 +533,17 @@
               accept="image/jpeg,image/png,image/webp,image/gif" 
               multiple 
               class="hidden" 
+              style="display: none;"
               (change)="onImageSelected($event)" 
             />
             <div class="drop-icon-tile">
-              <ts-icon name="image-plus" class="size-6 text-[var(--accent)]" />
+              <ts-icon name="image-plus" [size]="24" class="size-6 text-[var(--accent)]" />
             </div>
             <p class="drop-title">Drop images here</p>
             <p class="drop-hint">Supports JPG, PNG, WebP, GIF up to {{ formattedMaxFileSize() }}</p>
-            <button hlmBtn variant="secondary" size="sm" type="button" class="mt-2 pointer-events-none">
-              Browse images
+            <button hlmBtn variant="secondary" size="sm" type="button" class="mt-2.5 pointer-events-none drop-browse-btn">
+              <ts-icon name="image" [size]="15" class="size-4 mr-1.5 inline" />
+              <span>Browse images</span>
             </button>
           </div>
         }
@@ -568,29 +579,17 @@
         <!-- Images Gallery Grid -->
         <div class="items-stream-section">
           @if (imageItems().length === 0) {
-            <div hlmEmpty class="empty-spartan-card">
-              <div hlmEmptyIcon>
-                <ts-icon name="image" class="size-6 text-current" />
-              </div>
-              <h4 hlmEmptyTitle>No images uploaded yet</h4>
-              <p hlmEmptyDescription>
-                {{ mode() === 'send' ? 'Upload photos or screenshots above to generate your clipboard code.' : 'Images uploaded by the sender will appear here in real time.' }}
-              </p>
-              @if (mode() === 'send') {
-                <div hlmEmptyActions>
-                  <button 
-                    hlmBtn 
-                    variant="default" 
-                    size="default"
-                    type="button"
-                    (click)="openImagePicker()"
-                  >
-                    <ts-icon name="upload" class="size-4 mr-1.5" />
-                    <span>Upload image</span>
-                  </button>
+            @if (mode() === 'receive' && !activeShare()?.liveMode) {
+              <div hlmEmpty class="empty-spartan-card">
+                <div hlmEmptyIcon>
+                  <ts-icon name="image" class="size-6 text-current" />
                 </div>
-              }
-            </div>
+                <h4 hlmEmptyTitle>No images shared yet</h4>
+                <p hlmEmptyDescription>
+                  Images uploaded by the sender will appear here in real time.
+                </p>
+              </div>
+            }
           } @else {
             <div class="images-gallery-grid">
               @for (item of imageItems(); track item.id) {
@@ -605,7 +604,7 @@
                   <div class="image-card-footer">
                     <div class="truncate text-xs font-medium" [title]="item.originalName">{{ item.originalName }}</div>
                     <div class="flex items-center justify-between mt-1 text-[11px] text-muted">
-                      <span>{{ formatBytes(item.sizeBytes) }}</span>
+                      <span>{{ item.sizeBytes | formatBytes }}</span>
                       <div class="flex items-center gap-2">
                         <span class="item-receipt-tick" title="Downloads"><ts-icon name="download" class="size-3 mr-0.5 inline" />{{ item.downloadCount || 0 }}</span>
                         <a [href]="getDownloadUrl(item)" class="action-icon-btn" title="Download">
@@ -646,15 +645,17 @@
               type="file" 
               multiple 
               class="hidden" 
+              style="display: none;"
               (change)="onFileSelected($event)" 
             />
             <div class="drop-icon-tile">
-              <ts-icon name="upload-cloud" class="size-6 text-[var(--accent)]" />
+              <ts-icon name="upload-cloud" [size]="24" class="size-6 text-[var(--accent)]" />
             </div>
             <p class="drop-title">Drop files or archives here</p>
             <p class="drop-hint">PDFs, ZIPs, documents, media up to {{ formattedMaxFileSize() }}</p>
-            <button hlmBtn variant="secondary" size="sm" type="button" class="mt-2 pointer-events-none">
-              Browse files
+            <button hlmBtn variant="secondary" size="sm" type="button" class="mt-2.5 pointer-events-none drop-browse-btn">
+              <ts-icon name="folder-open" [size]="15" class="size-4 mr-1.5 inline" />
+              <span>Browse files</span>
             </button>
           </div>
         }
@@ -687,29 +688,17 @@
         <!-- Files List -->
         <div class="items-stream-section">
           @if (fileItems().length === 0) {
-            <div hlmEmpty class="empty-spartan-card">
-              <div hlmEmptyIcon>
-                <ts-icon name="folder-open" class="size-6 text-current" />
-              </div>
-              <h4 hlmEmptyTitle>No files shared yet</h4>
-              <p hlmEmptyDescription>
-                {{ mode() === 'send' ? 'Upload files above to generate your clipboard code.' : 'Files uploaded by the sender will appear here in real time.' }}
-              </p>
-              @if (mode() === 'send') {
-                <div hlmEmptyActions>
-                  <button 
-                    hlmBtn 
-                    variant="default" 
-                    size="default" 
-                    type="button"
-                    (click)="openDocPicker()"
-                  >
-                    <ts-icon name="upload-cloud" class="size-4 mr-1.5" />
-                    <span>Upload file</span>
-                  </button>
+            @if (mode() === 'receive' && !activeShare()?.liveMode) {
+              <div hlmEmpty class="empty-spartan-card">
+                <div hlmEmptyIcon>
+                  <ts-icon name="folder-open" class="size-6 text-current" />
                 </div>
-              }
-            </div>
+                <h4 hlmEmptyTitle>No files shared yet</h4>
+                <p hlmEmptyDescription>
+                  Files uploaded by the sender will appear here in real time.
+                </p>
+              </div>
+            }
           } @else {
             <div class="files-list-stack">
               @for (item of fileItems(); track item.id) {
@@ -721,7 +710,7 @@
                     <div class="file-meta-texts">
                       <span class="file-row-name" [title]="item.originalName">{{ item.originalName }}</span>
                       <div class="flex items-center gap-2 text-[11px] text-muted">
-                        <span>{{ formatBytes(item.sizeBytes) }}</span>
+                        <span>{{ item.sizeBytes | formatBytes }}</span>
                         <span>•</span>
                         <span>{{ item.detectedMime }}</span>
                         <span>•</span>

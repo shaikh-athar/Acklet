@@ -318,10 +318,10 @@ export class ExploreDrawerComponent implements AfterViewInit {
 
   readonly filteredGroupedCategories = computed(() => {
     const q = this.searchQuery.toLowerCase().trim();
-    const tools = this.allToolsList().filter(t => 
-      !q || 
-      t.name.toLowerCase().includes(q) || 
-      t.category.toLowerCase().includes(q) || 
+    const tools = this.allToolsList().filter(t =>
+      !q ||
+      t.name.toLowerCase().includes(q) ||
+      t.category.toLowerCase().includes(q) ||
       t.shortDescription.toLowerCase().includes(q)
     );
 

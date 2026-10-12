@@ -1,28 +1,16 @@
 // src/app/shared/components/toast/toast.ts
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { trigger, transition, style, animate } from '@angular/animations';
 import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-toast',
   standalone: true,
   imports: [CommonModule],
-  animations: [
-    trigger('toastAnim', [
-      transition(':enter', [
-        style({ opacity: 0, transform: 'translateX(100%) scale(0.95)' }),
-        animate('300ms cubic-bezier(0.16, 1, 0.3, 1)', style({ opacity: 1, transform: 'translateX(0) scale(1)' })),
-      ]),
-      transition(':leave', [
-        animate('200ms ease-in', style({ opacity: 0, transform: 'translateX(100%) scale(0.95)' })),
-      ]),
-    ]),
-  ],
   template: `
     <div class="toast-container">
       @for (toast of toastSvc.toasts(); track toast.id) {
-        <div class="toast-item" [@toastAnim] [class]="'toast-' + toast.type">
+        <div class="toast-item" [class]="'toast-' + toast.type">
           <div class="toast-status-bar"></div>
           <div class="toast-icon-wrap">
             <span class="toast-icon">{{ getIcon(toast.type) }}</span>
@@ -37,6 +25,17 @@ import { ToastService } from '../../../core/services/toast.service';
     </div>
   `,
   styles: [`
+    @keyframes toastEnter {
+      from {
+        opacity: 0;
+        transform: translateX(100%) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+      }
+    }
+
     .toast-container { 
       position: fixed; 
       bottom: 1.5rem; 
@@ -61,7 +60,8 @@ import { ToastService } from '../../../core/services/toast.service';
       border: 1px solid var(--border-soft, rgba(0, 0, 0, 0.1));
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
       overflow: hidden;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      animation: toastEnter 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .toast-status-bar {

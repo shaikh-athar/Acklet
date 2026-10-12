@@ -1,14 +1,14 @@
 // packages/tool-shell/src/hub/hub-home.component.ts
-import { 
-  Component, 
-  signal, 
-  computed, 
-  OnInit, 
-  OnDestroy, 
-  HostListener, 
-  ElementRef, 
-  viewChild, 
-  inject, 
+import {
+  Component,
+  signal,
+  computed,
+  OnInit,
+  OnDestroy,
+  HostListener,
+  ElementRef,
+  viewChild,
+  inject,
   effect,
   NgZone
 } from '@angular/core';
@@ -68,7 +68,7 @@ const RECENT_KEY = 'acklet.tools.recent';
             <div class="hub-titles">
               <h1 class="hub-heading">Tools</h1>
               <p class="hub-subheading">
-                Simple, private tools for everyday work. No ads. No sign-up.
+                Simple, private tools for everyday work. No sign-up.
               </p>
             </div>
             <div class="hub-header-actions">
@@ -938,7 +938,7 @@ export class HubHomeComponent implements OnInit, OnDestroy {
   private failsafeTimer?: any;
   private previousPositions = new Map<string, DOMRect>();
 
-  // Raw Tools from registry
+  // All tools from registry (excluding hidden and upcoming)
   readonly allLiveTools = computed<ToolRegistryItem[]>(() => {
     return getAllTools().filter(t => t.status === 'live' || t.status === 'beta');
   });
@@ -1134,7 +1134,7 @@ export class HubHomeComponent implements OnInit, OnDestroy {
     }
 
     event.preventDefault();
-    // 6. Save tool in Recent before navigating
+    // Save tool in Recent before navigating
     this.recordRecent(tool.slug);
 
     this.isNavigating.set(true);
@@ -1162,7 +1162,8 @@ export class HubHomeComponent implements OnInit, OnDestroy {
     event.preventDefault();
 
     const current = this.favoriteSlugs();
-    const updated = current.includes(slug)
+    const isFav = current.includes(slug);
+    const updated = isFav
       ? current.filter(s => s !== slug)
       : [...current, slug];
 

@@ -14,41 +14,149 @@
 /* ============================================================
    TAILWIND UTILITY ENGINE OVERRIDES & CSS FALLBACKS
    ============================================================ */
-.flex { display: flex !important; }
-.flex-col { flex-direction: column !important; }
-.flex-1 { flex: 1 1 0% !important; }
-.flex-shrink-0 { flex-shrink: 0 !important; }
-.items-center { align-items: center !important; }
-.justify-between { justify-content: space-between !important; }
-.justify-center { justify-content: center !important; }
-.w-screen { width: 100vw !important; }
-.h-screen { height: 100vh !important; }
-.w-full { width: 100% !important; }
-.h-full { height: 100% !important; }
-.overflow-hidden { overflow: hidden !important; }
-.overflow-y-auto { overflow-y: auto !important; }
-.grid { display: grid !important; }
-.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
-.gap-2 { gap: 0.5rem !important; }
-.gap-3 { gap: 0.75rem !important; }
-.gap-4 { gap: 1rem !important; }
-.gap-6 { gap: 1.5rem !important; }
-.p-2 { padding: 0.5rem !important; }
-.p-3 { padding: 0.75rem !important; }
-.p-4 { padding: 1rem !important; }
-.p-5 { padding: 1.25rem !important; }
-.p-6 { padding: 1.5rem !important; }
-.p-8 { padding: 2rem !important; }
-.px-3 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
-.px-6 { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
-.py-1\.5 { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; }
-.h-14 { height: 3.5rem !important; }
-.w-60 { width: 15rem !important; }
-.w-14 { width: 3.5rem !important; }
-.max-w-7xl { max-width: 80rem !important; }
-.max-w-md { max-width: 28rem !important; }
-.max-w-lg { max-width: 32rem !important; }
-.mx-auto { margin-left: auto !important; margin-right: auto !important; }
+.flex {
+  display: flex !important;
+}
+
+.flex-col {
+  flex-direction: column !important;
+}
+
+.flex-1 {
+  flex: 1 1 0% !important;
+}
+
+.flex-shrink-0 {
+  flex-shrink: 0 !important;
+}
+
+.items-center {
+  align-items: center !important;
+}
+
+.justify-between {
+  justify-content: space-between !important;
+}
+
+.justify-center {
+  justify-content: center !important;
+}
+
+.w-screen {
+  width: 100vw !important;
+}
+
+.h-screen {
+  height: 100vh !important;
+}
+
+.w-full {
+  width: 100% !important;
+}
+
+.h-full {
+  height: 100% !important;
+}
+
+.overflow-hidden {
+  overflow: hidden !important;
+}
+
+.overflow-y-auto {
+  overflow-y: auto !important;
+}
+
+.grid {
+  display: grid !important;
+}
+
+.grid-cols-1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+}
+
+.gap-2 {
+  gap: 0.5rem !important;
+}
+
+.gap-3 {
+  gap: 0.75rem !important;
+}
+
+.gap-4 {
+  gap: 1rem !important;
+}
+
+.gap-6 {
+  gap: 1.5rem !important;
+}
+
+.p-2 {
+  padding: 0.5rem !important;
+}
+
+.p-3 {
+  padding: 0.75rem !important;
+}
+
+.p-4 {
+  padding: 1rem !important;
+}
+
+.p-5 {
+  padding: 1.25rem !important;
+}
+
+.p-6 {
+  padding: 1.5rem !important;
+}
+
+.p-8 {
+  padding: 2rem !important;
+}
+
+.px-3 {
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
+}
+
+.px-6 {
+  padding-left: 1.5rem !important;
+  padding-right: 1.5rem !important;
+}
+
+.py-1\.5 {
+  padding-top: 0.375rem !important;
+  padding-bottom: 0.375rem !important;
+}
+
+.h-14 {
+  height: 3.5rem !important;
+}
+
+.w-60 {
+  width: 15rem !important;
+}
+
+.w-14 {
+  width: 3.5rem !important;
+}
+
+.max-w-7xl {
+  max-width: 80rem !important;
+}
+
+.max-w-md {
+  max-width: 28rem !important;
+}
+
+.max-w-lg {
+  max-width: 32rem !important;
+}
+
+.mx-auto {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
 
 /* ============================================================
    NATIVE CSS VARIABLES (Guarantees runtime resolution in all browsers)
@@ -122,24 +230,40 @@
   --font-mono: 'JetBrains Mono', monospace;
 
   /* --- Spacing Scale (4px Base) --- */
-  --space-xs: 0.25rem;    /* 4px */
-  --space-sm: 0.5rem;     /* 8px */
-  --space-md: 0.75rem;    /* 12px */
-  --space-lg: 1rem;       /* 16px */
-  --space-xl: 1.5rem;     /* 24px */
-  --space-2xl: 2.0rem;    /* 32px */
-  --space-3xl: 3.0rem;    /* 48px */
-  --space-4xl: 4.0rem;    /* 64px */
-  --space-5xl: 6.0rem;    /* 96px */
+  --space-xs: 0.25rem;
+  /* 4px */
+  --space-sm: 0.5rem;
+  /* 8px */
+  --space-md: 0.75rem;
+  /* 12px */
+  --space-lg: 1rem;
+  /* 16px */
+  --space-xl: 1.5rem;
+  /* 24px */
+  --space-2xl: 2.0rem;
+  /* 32px */
+  --space-3xl: 3.0rem;
+  /* 48px */
+  --space-4xl: 4.0rem;
+  /* 64px */
+  --space-5xl: 6.0rem;
+  /* 96px */
 
   /* --- Border Radius (Soft & Pill) --- */
-  --radius-xs: 0.25rem;   /* 4px */
-  --radius-sm: 0.375rem;  /* 6px */
-  --radius-md: 0.5rem;    /* 8px */
-  --radius-lg: 1rem;      /* 16px */
-  --radius-xl: 1.5rem;    /* 24px */
-  --radius-2xl: 2rem;     /* 32px */
-  --radius-3xl: 2.5rem;   /* 40px */
+  --radius-xs: 0.25rem;
+  /* 4px */
+  --radius-sm: 0.375rem;
+  /* 6px */
+  --radius-md: 0.5rem;
+  /* 8px */
+  --radius-lg: 1rem;
+  /* 16px */
+  --radius-xl: 1.5rem;
+  /* 24px */
+  --radius-2xl: 2rem;
+  /* 32px */
+  --radius-3xl: 2.5rem;
+  /* 40px */
   --radius-full: 9999px;
 
   /* --- Shadows & Glows (Soft) --- */
@@ -350,7 +474,8 @@ html[data-theme="dark"] {
 }
 
 /* Monospaced badge & Keyboard shortcuts */
-kbd, .kbd {
+kbd,
+.kbd {
   font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 600;
@@ -369,10 +494,25 @@ kbd, .kbd {
   border-radius: 50%;
   display: inline-block;
 }
-.status-dot-active { background-color: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
-.status-dot-warning { background-color: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
-.status-dot-error { background-color: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
-.status-dot-idle { background-color: #6b7280; }
+
+.status-dot-active {
+  background-color: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+.status-dot-warning {
+  background-color: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+
+.status-dot-error {
+  background-color: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+}
+
+.status-dot-idle {
+  background-color: #6b7280;
+}
 
 /* Keyboard Navigation Focus Rings — Theme Harmonious */
 *:focus-visible {
@@ -422,6 +562,7 @@ body {
 body:has(.ts-root) {
   background-color: var(--ts-page-bg, var(--page-bg, #F7F8F8));
 }
+
 html[data-theme="dark"] body:has(.ts-root) {
   background-color: var(--ts-page-bg, var(--page-bg, #0F1011));
 }
@@ -512,18 +653,25 @@ html[data-theme="dark"] .glass {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.07);
 }
+
 html[data-theme="dark"] .glass-strong {
   background: rgba(24, 22, 28, 0.94);
   border-color: rgba(255, 255, 255, 0.09);
 }
+
 html[data-theme="dark"] .premium-glass {
   background: rgba(18, 18, 22, 0.88);
   border-color: rgba(255, 255, 255, 0.06);
 }
 
 @keyframes shimmer-sweep {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .shimmer-border {
@@ -534,7 +682,10 @@ html[data-theme="dark"] .premium-glass {
 .shimmer-border::after {
   content: '';
   position: absolute;
-  top: 0; left: 0; width: 100%; height: 1.5px;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 1.5px;
   background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.4), transparent);
   animation: shimmer-sweep 2.5s infinite linear;
 }
@@ -552,11 +703,9 @@ html[data-theme="dark"] .premium-glass {
   position: absolute;
   inset: -1px;
   border-radius: inherit;
-  background: radial-gradient(
-    180px circle at var(--mouse-x, 0px) var(--mouse-y, 0px),
-    rgba(6, 182, 212, 0.12),
-    transparent 80%
-  );
+  background: radial-gradient(180px circle at var(--mouse-x, 0px) var(--mouse-y, 0px),
+      rgba(6, 182, 212, 0.12),
+      transparent 80%);
   z-index: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;
@@ -666,6 +815,7 @@ html[data-theme="dark"] .premium-glass {
   color: #6366f1;
   border: 1px solid rgba(99, 102, 241, 0.15);
 }
+
 html[data-theme="dark"] .badge-brand {
   color: #818cf8;
   background: rgba(129, 140, 248, 0.12);
@@ -700,6 +850,7 @@ html[data-theme="dark"] .badge-brand {
   opacity: 0.12;
   mix-blend-mode: multiply;
 }
+
 html[data-theme="dark"] .orb {
   mix-blend-mode: screen;
   opacity: 0.18;
@@ -911,10 +1062,13 @@ a {
    AUTH LINK — theme-aware, readable in both dark & light
    ============================================================ */
 :root {
-  --color-auth-link: #4f46e5;        /* indigo-600 — visible on light bg */
+  --color-auth-link: #4f46e5;
+  /* indigo-600 — visible on light bg */
 }
+
 html[data-theme="dark"] {
-  --color-auth-link: #818cf8;        /* indigo-400 — visible on dark bg */
+  --color-auth-link: #818cf8;
+  /* indigo-400 — visible on dark bg */
 }
 
 /* Global override wins over component-scoped .auth-link via !important
@@ -926,6 +1080,7 @@ html[data-theme="dark"] {
   text-decoration: none;
   transition: color 0.2s ease;
 }
+
 .auth-link:hover {
   color: var(--color-violet-500) !important;
   text-decoration: underline;
@@ -949,27 +1104,87 @@ html[data-theme="dark"] {
    ============================================================ */
 
 
+
+
 /* ============================================================
-   LENIS SMOOTH SCROLLING SUPPORT
+   PERF SWITCHES (?perf=noblur,nobg,noshadow,noanim,noicons)
    ============================================================ */
-html.lenis, html.lenis body {
-  height: auto;
+.perf-noblur * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
-.lenis-smooth {
-  scroll-behavior: auto !important;
+.perf-nobg .page-bg,
+.perf-nobg .page-bg::before,
+.perf-nobg .page-bg::after,
+.perf-nobg ts-backdrop,
+.perf-nobg .ts-bg {
+  display: none !important;
 }
 
-.lenis-smooth [data-lenis-prevent] {
-  overscroll-behavior: contain;
+.perf-noshadow * {
+  box-shadow: none !important;
+  filter: none !important;
 }
 
-.lenis-stopped {
-  overflow: hidden;
+.perf-noanim * {
+  animation: none !important;
+  transition: none !important;
 }
 
-.lenis-scrolling iframe {
-  pointer-events: none;
+.perf-noicons lord-icon,
+.perf-noicons [class*="lottie"],
+.perf-noicons .ts-lord-icon {
+  display: none !important;
 }
 
-/* Grayscale theme on load removed to allow color display */
+/* ============================================================
+   Scroll Reveal (CSS Only, GPU Accelerated)
+   ============================================================ */
+.reveal {
+  opacity: 0;
+  transition: opacity 0.65s cubic-bezier(.22, .61, .36, 1), transform 0.65s cubic-bezier(.22, .61, .36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+/* 1. Subtle Text / Section Fade-Up */
+.reveal-up {
+  transform: translate3d(0, 24px, 0);
+}
+
+/* 2. Step Cards: Smooth horizontal glide from left */
+.reveal-left {
+  transform: translate3d(-32px, 0, 0);
+}
+
+/* 3. FAQ Boxes: Depth & gentle scale-up */
+.reveal-scale {
+  transform: translate3d(0, 20px, 0) scale(0.975);
+}
+
+/* 4. Chips / Badges: Micro tactile pop */
+.reveal-pop {
+  transform: translate3d(0, 10px, 0) scale(0.88);
+}
+
+.is-visible,
+.ts-reveal-item.is-revealed {
+  opacity: 1 !important;
+  transform: none;
+  will-change: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .reveal,
+  .reveal-up,
+  .reveal-left,
+  .reveal-scale,
+  .reveal-pop,
+  .ts-reveal-item {
+    transform: none !important;
+    opacity: 1 !important;
+    transition: none !important;
+  }
+}

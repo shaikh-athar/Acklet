@@ -1,5 +1,6 @@
 // packages/tool-shell/src/directives/ts-spotlight.directive.ts
-import { Directive, ElementRef, HostListener, inject, input, NgZone, OnDestroy, booleanAttribute } from '@angular/core';
+import { Directive, ElementRef, inject, input, NgZone, OnInit, OnDestroy, booleanAttribute, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 
 @Directive({
   selector: '[tsSpotlight], [appSpotlight]',
@@ -9,41 +10,53 @@ import { Directive, ElementRef, HostListener, inject, input, NgZone, OnDestroy, 
     '[class.is-disabled-spotlight]': 'disabled()'
   }
 })
-export class TsSpotlightDirective implements OnDestroy {
+export class TsSpotlightDirective implements OnInit, OnDestroy {
   private readonly el = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly ngZone = inject(NgZone);
+  private readonly platformId = inject(PLATFORM_ID);
   private rafId: number | null = null;
   private pendingX: number | null = null;
   private pendingY: number | null = null;
+  private cleanupFns: Array<() => void> = [];
 
   readonly disabled = input<boolean, unknown>(false, { transform: booleanAttribute });
 
-  @HostListener('pointermove', ['$event'])
-  onPointerMove(event: PointerEvent): void {
-    if (this.disabled()) return;
-    if (typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches) return;
+  ngOnInit(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
 
-    const rect = this.el.nativeElement.getBoundingClientRect();
-    this.pendingX = event.clientX - rect.left;
-    this.pendingY = event.clientY - rect.top;
+    this.ngZone.runOutsideAngular(() => {
+      const target = this.el.nativeElement;
+      const onMove = (event: PointerEvent): void => {
+        if (this.disabled()) return;
+        if (typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches) return;
 
-    if (this.rafId === null) {
-      this.ngZone.runOutsideAngular(() => {
-        this.rafId = requestAnimationFrame(() => this.applySpotlight());
-      });
-    }
-  }
+        const rect = target.getBoundingClientRect();
+        this.pendingX = event.clientX - rect.left;
+        this.pendingY = event.clientY - rect.top;
 
-  @HostListener('pointerleave')
-  onPointerLeave(): void {
-    if (this.rafId !== null) {
-      cancelAnimationFrame(this.rafId);
-      this.rafId = null;
-    }
-    const target = this.el.nativeElement;
-    target.style.removeProperty('--mx');
-    target.style.removeProperty('--my');
-    target.style.removeProperty('--spotlight-active');
+        if (this.rafId === null) {
+          this.rafId = requestAnimationFrame(() => this.applySpotlight());
+        }
+      };
+
+      const onLeave = (): void => {
+        if (this.rafId !== null) {
+          cancelAnimationFrame(this.rafId);
+          this.rafId = null;
+        }
+        target.style.removeProperty('--mx');
+        target.style.removeProperty('--my');
+        target.style.removeProperty('--spotlight-active');
+      };
+
+      target.addEventListener('pointermove', onMove, { passive: true });
+      target.addEventListener('pointerleave', onLeave, { passive: true });
+
+      this.cleanupFns.push(
+        () => target.removeEventListener('pointermove', onMove),
+        () => target.removeEventListener('pointerleave', onLeave)
+      );
+    });
   }
 
   private applySpotlight(): void {
@@ -61,5 +74,9 @@ export class TsSpotlightDirective implements OnDestroy {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
     }
+    for (const fn of this.cleanupFns) {
+      fn();
+    }
+    this.cleanupFns = [];
   }
 }

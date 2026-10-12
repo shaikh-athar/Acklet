@@ -1,12 +1,15 @@
-// packages/tool-shell/src/components/primitive/ts-backdrop.component.ts
-import { Component, input, computed } from '@angular/core';
+import { Component, input, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directive';
 
 @Component({
   selector: 'ts-backdrop',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, TsPointerGlowDirective],
+  host: {
+    'class': 'page-bg'
+  },
   template: `
     <div
       class="ts-bg"
@@ -28,7 +31,8 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
       position: fixed;
       inset: 0;
       pointer-events: none;
-      z-index: 0;
+      z-index: -1;
+      contain: strict;
       overflow: hidden;
       background-color: var(--ts-page-bg, var(--page-bg, #F7F8F8));
     }
@@ -46,39 +50,39 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
       pointer-events: none;
       overflow: hidden;
       transform: translateZ(0);
-      /* Dark mode: Top-left rich ambient glow, subtle tints on all other corners */
+      /* Dark mode: Top-left subtle ambient glow, gentle tints on all other corners */
       background:
-        radial-gradient(ellipse 70% 60% at 0% 0%,
-          color-mix(in oklab, var(--accent, #2DD4BF) 32%, transparent) 0%,
-          color-mix(in oklab, var(--accent, #2DD4BF) 16%, transparent) 40%,
-          transparent 75%),
+        radial-gradient(ellipse 52% 46% at 0% 0%,
+          color-mix(in oklab, var(--accent, #2DD4BF) 16%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #2DD4BF)  8%, transparent) 40%,
+          transparent 70%),
         radial-gradient(ellipse 46% 40% at 100% 0%,
-          color-mix(in oklab, var(--accent, #2DD4BF) 12%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #2DD4BF) 10%, transparent) 0%,
           transparent 70%),
         radial-gradient(ellipse 48% 42% at 0% 100%,
-          color-mix(in oklab, var(--accent, #2DD4BF) 11%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #2DD4BF)  9%, transparent) 0%,
           transparent 70%),
         radial-gradient(ellipse 46% 40% at 100% 100%,
-          color-mix(in oklab, var(--accent, #2DD4BF)  9%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #2DD4BF)  8%, transparent) 0%,
           transparent 70%);
     }
 
-    /* Light mode: Top-left vibrant radiant glow, elegant visible tints on other corners */
+    /* Light mode: Top-left soft radiant glow, elegant visible tints on other corners */
     :host-context([data-theme="light"]) .ts-bg,
     [data-theme="light"] .ts-bg {
       background:
-        radial-gradient(ellipse 72% 62% at 0% 0%,
-          color-mix(in oklab, var(--accent, #0D9488) 45%, transparent) 0%,
-          color-mix(in oklab, var(--accent, #0D9488) 22%, transparent) 42%,
-          transparent 75%),
+        radial-gradient(ellipse 52% 46% at 0% 0%,
+          color-mix(in oklab, var(--accent, #0D9488) 20%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #0D9488) 10%, transparent) 40%,
+          transparent 70%),
         radial-gradient(ellipse 46% 40% at 100% 0%,
-          color-mix(in oklab, var(--accent, #0D9488) 16%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #0D9488) 14%, transparent) 0%,
           transparent 70%),
         radial-gradient(ellipse 48% 42% at 0% 100%,
-          color-mix(in oklab, var(--accent, #0D9488) 15%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #0D9488) 12%, transparent) 0%,
           transparent 70%),
         radial-gradient(ellipse 46% 40% at 100% 100%,
-          color-mix(in oklab, var(--accent, #0D9488) 12%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #0D9488) 10%, transparent) 0%,
           transparent 70%);
     }
 
@@ -88,9 +92,9 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
       inset: 0;
       pointer-events: none;
       background-image:
-        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #5EEAD4)) 10%, transparent) 1px, transparent 1px),
-        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #5EEAD4)) 10%, transparent) 1px, transparent 1px);
-      background-size: 32px 32px;
+        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #5EEAD4)) 7%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #5EEAD4)) 7%, transparent) 1px, transparent 1px);
+      background-size: 24px 24px;
       background-position: 0 0;
       -webkit-mask-image: radial-gradient(ellipse 120% 100% at 0% 0%, #000 0%, rgba(0,0,0,0.5) 50%, transparent 100%);
               mask-image: radial-gradient(ellipse 120% 100% at 0% 0%, #000 0%, rgba(0,0,0,0.5) 50%, transparent 100%);
@@ -99,8 +103,8 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
     :host-context([data-theme="light"]) .ts-bg-grid,
     [data-theme="light"] .ts-bg-grid {
       background-image:
-        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #0F766E)) 8%, transparent) 1px, transparent 1px),
-        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #0F766E)) 8%, transparent) 1px, transparent 1px);
+        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #0F766E)) 6%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #0F766E)) 6%, transparent) 1px, transparent 1px);
     }
 
     /* ── Pointer glow spot (blurred radial) ───────────────────── */
@@ -131,8 +135,8 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
       position: absolute;
       left: 0;
       top: 0;
-      width: 320px;
-      height: 320px;
+      width: 420px;
+      height: 420px;
       pointer-events: none;
       opacity: 0;
       will-change: transform;
