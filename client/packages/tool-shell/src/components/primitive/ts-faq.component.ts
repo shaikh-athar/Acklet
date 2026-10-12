@@ -1,5 +1,4 @@
-// packages/tool-shell/src/components/primitive/ts-faq.component.ts
-import { Component, input, signal, output, computed } from '@angular/core';
+import { Component, input, signal, output, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolFaq } from '@acklet/tool-registry';
 import { TsIconComponent } from '../icon/ts-icon.component';
@@ -8,15 +7,19 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
 @Component({
   selector: 'ts-faq',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, TsIconComponent, TsRevealDirective],
   template: `
     <div class="ts-faq-root">
-      <h3 class="ts-faq-heading" tsReveal [revealIndex]="0">{{ title() }}</h3>
+      <h3 class="ts-faq-heading" appReveal [revealDelay]="0">{{ title() }}</h3>
 
       <div class="ts-faq-list" role="region" aria-label="Frequently Asked Questions">
-        @for (item of visibleFaqs(); track item.id; let i = $index) {
+        <!-- Primary FAQ Items -->
+        @for (item of primaryFaqs(); track item.id; let i = $index) {
           <div 
-            tsReveal [revealIndex]="(i % 4) + 1"
+            appReveal 
+            [revealVariant]="'scale'"
+            [revealDelay]="i * 75"
             class="ts-faq-item" 
             [class.is-open]="isOpen(item.id)"
             [id]="'faq-' + item.id"
@@ -47,6 +50,51 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
             </div>
           </div>
         }
+
+        <!-- Additional FAQ Items with Smooth Accordion Drawer Animation -->
+        @if (extraFaqs().length > 0) {
+          <div 
+            class="ts-faq-extra-drawer" 
+            [class.is-expanded]="isDiscoverExpanded()"
+            role="region"
+            aria-label="Additional Questions"
+          >
+            <div class="ts-faq-extra-content">
+              @for (item of extraFaqs(); track item.id; let i = $index) {
+                <div 
+                  class="ts-faq-item" 
+                  [class.is-open]="isOpen(item.id)"
+                  [id]="'faq-' + item.id"
+                >
+                  <button
+                    type="button"
+                    class="ts-faq-trigger"
+                    [attr.aria-expanded]="isOpen(item.id)"
+                    [attr.aria-controls]="'faq-panel-' + item.id"
+                    (click)="toggleFaq(item.id)"
+                    (keydown)="onKeydown($event, i + 4)"
+                  >
+                    <span class="ts-faq-question">{{ item.question }}</span>
+                    <span class="ts-faq-icon-wrap" aria-hidden="true">
+                      <ts-icon [name]="isOpen(item.id) ? 'minus' : 'plus'" [size]="15" />
+                    </span>
+                  </button>
+
+                  <div 
+                    class="ts-faq-panel-grid" 
+                    [id]="'faq-panel-' + item.id"
+                    role="region"
+                    [attr.aria-labelledby]="'faq-' + item.id"
+                  >
+                    <div class="ts-faq-panel-content">
+                      <p class="ts-faq-answer">{{ item.answer }}</p>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
       </div>
 
       @if (hasMoreFaqs()) {
@@ -58,7 +106,12 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
             [attr.aria-expanded]="isDiscoverExpanded()"
           >
             <span>{{ isDiscoverExpanded() ? 'Show less' : 'Discover more questions' }}</span>
-            <ts-icon [name]="isDiscoverExpanded() ? 'chevron-up' : 'chevron-down'" [size]="14" />
+            <ts-icon 
+              name="chevron-down" 
+              [size]="14" 
+              class="ts-faq-chevron-icon"
+              [class.is-expanded]="isDiscoverExpanded()"
+            />
           </button>
         </div>
       }
@@ -97,8 +150,36 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
       border: 1px solid var(--ts-surface-raised-border, rgba(15, 23, 42, 0.06));
       border-radius: var(--ts-radius-inner, 16px);
       box-shadow: var(--ts-surface-raised-shadow);
-      padding: 0 16px;
-      transition: background-color 150ms ease, border-color 150ms ease;
+      padding: 0;
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: opacity 0.65s cubic-bezier(.22, .61, .36, 1),
+                  transform 0.65s cubic-bezier(.22, .61, .36, 1),
+                  background-color 150ms ease,
+                  border-color 200ms ease,
+                  box-shadow 200ms ease;
+      transition-delay: var(--reveal-delay, 0ms);
+    }
+
+    :host-context([data-theme="dark"]) .ts-faq-item {
+      background: var(--ts-surface-raised, #18181B);
+      border-color: var(--ts-surface-raised-border, #27272A);
+    }
+
+    .ts-faq-item:hover {
+      border-color: var(--accent-border, rgba(45, 212, 191, 0.35));
+      box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.06);
+    }
+
+    .ts-faq-item.is-open {
+      border-color: var(--accent-border, rgba(45, 212, 191, 0.45));
+    }
+
+    /* Card-level focus ring instead of inner button rectangle */
+    .ts-faq-item:focus-within {
+      outline: 2px solid var(--accent, #0F766E) !important;
+      outline-offset: 2px;
     }
 
     .ts-faq-trigger {
@@ -107,7 +188,7 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
       justify-content: space-between;
       width: 100%;
       min-height: 52px;
-      padding: 12px 0;
+      padding: 16px 20px;
       background: transparent;
       border: none;
       color: var(--text, #18181B);
@@ -126,9 +207,7 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
     }
 
     .ts-faq-trigger:focus-visible {
-      outline: 2px solid var(--accent, #0F766E) !important;
-      outline-offset: 2px;
-      border-radius: 8px;
+      outline: none !important;
     }
 
     .ts-faq-question {
@@ -148,9 +227,11 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
       border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
       color: var(--text-muted, #71717A);
       flex-shrink: 0;
-      transition: background-color var(--ts-dur-hover, 220ms) var(--ts-ease-out),
-                  color var(--ts-dur-hover, 220ms) var(--ts-ease-out),
-                  transform var(--ts-dur-hover, 220ms) var(--ts-ease-out);
+      transform: rotate(0deg);
+      transition: background-color 0.3s ease,
+                  color 0.3s ease,
+                  border-color 0.3s ease,
+                  transform 0.7s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1));
     }
 
     :host-context([data-theme="dark"]) .ts-faq-icon-wrap {
@@ -159,11 +240,12 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
       color: var(--text, #FCFCFC);
     }
 
+    /* 180deg rotation keeps minus completely horizontal instead of vertical '|' */
     .ts-faq-item.is-open .ts-faq-icon-wrap {
       background: var(--accent, #0F766E);
       color: var(--accent-ink, #FFFFFF);
       border-color: transparent;
-      transform: rotate(90deg);
+      transform: rotate(180deg);
     }
 
     :host-context([data-theme="dark"]) .ts-faq-item.is-open .ts-faq-icon-wrap {
@@ -171,11 +253,11 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
       color: var(--accent-ink, #042F2B);
     }
 
-    /* Zero-CLS CSS Grid Row Transition (220ms) */
+    /* Smooth 0.7s Accordion Grid Transition */
     .ts-faq-panel-grid {
       display: grid;
       grid-template-rows: 0fr;
-      transition: grid-template-rows var(--ts-dur-hover, 220ms) var(--ts-ease-out);
+      transition: grid-template-rows 0.7s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1));
       overflow: hidden;
     }
 
@@ -186,21 +268,51 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
     .ts-faq-panel-content {
       min-height: 0;
       overflow: hidden;
+      padding: 0 20px 18px 20px;
     }
 
     .ts-faq-answer {
-      font-size: var(--ts-text-base, 14px);
+      font-size: var(--ts-type-body-size, 14.5px);
       color: var(--ts-text-muted);
       line-height: 1.6;
       max-width: 70ch;
-      padding-bottom: var(--ts-space-4, 16px);
+      margin: 0;
       opacity: 0;
-      transform: translateY(-4px);
-      transition: opacity var(--ts-dur-base) var(--ts-ease) 100ms,
-                  transform var(--ts-dur-base) var(--ts-ease) 100ms;
+      transform: translateY(-6px);
+      transition: opacity 0.55s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1)) 0.15s,
+                  transform 0.55s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1)) 0.15s;
     }
 
     .ts-faq-item.is-open .ts-faq-answer {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Discover More Extra Drawer Smooth Expansion */
+    .ts-faq-extra-drawer {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.7s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1));
+      overflow: hidden;
+    }
+
+    .ts-faq-extra-drawer.is-expanded {
+      grid-template-rows: 1fr;
+    }
+
+    .ts-faq-extra-content {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-top: 10px;
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.5s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1)) 0.15s,
+                  transform 0.5s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1)) 0.15s;
+    }
+
+    .ts-faq-extra-drawer.is-expanded .ts-faq-extra-content {
       opacity: 1;
       transform: translateY(0);
     }
@@ -223,7 +335,9 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
       border: 1px solid var(--ts-border);
       border-radius: var(--ts-radius-full);
       cursor: pointer;
-      transition: var(--ts-transition-all);
+      transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
+                  color var(--ts-dur-fast, 150ms) var(--ts-ease),
+                  border-color var(--ts-dur-fast, 150ms) var(--ts-ease);
     }
 
     .ts-faq-discover-btn:hover {
@@ -232,10 +346,21 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
       border-color: var(--ts-border-hover);
     }
 
+    .ts-faq-chevron-icon {
+      transition: transform 0.4s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1));
+    }
+
+    .ts-faq-chevron-icon.is-expanded {
+      transform: rotate(180deg);
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .ts-faq-panel-grid,
+      .ts-faq-extra-drawer,
+      .ts-faq-extra-content,
       .ts-faq-icon-wrap,
-      .ts-faq-answer {
+      .ts-faq-answer,
+      .ts-faq-chevron-icon {
         transition: none !important;
       }
     }
@@ -261,12 +386,12 @@ export class TsFaqComponent {
     }, 0);
   }
 
-  readonly visibleFaqs = computed(() => {
-    const list = this.faqs() || [];
-    if (this.isDiscoverExpanded() || list.length <= 4) {
-      return list;
-    }
-    return list.slice(0, 4);
+  readonly primaryFaqs = computed(() => {
+    return (this.faqs() || []).slice(0, 4);
+  });
+
+  readonly extraFaqs = computed(() => {
+    return (this.faqs() || []).slice(4);
   });
 
   readonly hasMoreFaqs = computed(() => {
@@ -295,21 +420,21 @@ export class TsFaqComponent {
   }
 
   onKeydown(event: KeyboardEvent, index: number): void {
-    const visible = this.visibleFaqs();
+    const all = this.faqs() || [];
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      const next = (index + 1) % visible.length;
-      document.getElementById(`faq-${visible[next].id}`)?.querySelector('button')?.focus();
+      const next = (index + 1) % all.length;
+      document.getElementById(`faq-${all[next].id}`)?.querySelector('button')?.focus();
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      const prev = (index - 1 + visible.length) % visible.length;
-      document.getElementById(`faq-${visible[prev].id}`)?.querySelector('button')?.focus();
+      const prev = (index - 1 + all.length) % all.length;
+      document.getElementById(`faq-${all[prev].id}`)?.querySelector('button')?.focus();
     } else if (event.key === 'Home') {
       event.preventDefault();
-      document.getElementById(`faq-${visible[0].id}`)?.querySelector('button')?.focus();
+      document.getElementById(`faq-${all[0].id}`)?.querySelector('button')?.focus();
     } else if (event.key === 'End') {
       event.preventDefault();
-      document.getElementById(`faq-${visible[visible.length - 1].id}`)?.querySelector('button')?.focus();
+      document.getElementById(`faq-${all[all.length - 1].id}`)?.querySelector('button')?.focus();
     }
   }
 }

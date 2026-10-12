@@ -1,5 +1,5 @@
 // packages/tool-shell/src/components/primitive/ts-tool-content.component.ts
-import { Component, input, computed, ElementRef, inject, OnInit, OnDestroy, effect, NgZone } from '@angular/core';
+import { Component, input, computed, ElementRef, inject, OnInit, OnDestroy, effect, NgZone, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, DOCUMENT } from '@angular/common';
 import { ToolRegistryItem, getAllTools, ToolFaq } from '@acklet/tool-registry';
 import { getToolUrl } from '@acklet/shared';
@@ -12,10 +12,10 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
 @Component({
   selector: 'ts-tool-content',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     HlmBadgeImports,
-    HlmItemImports,
     TsIconComponent,
     TsFaqComponent,
     TsRevealDirective
@@ -34,12 +34,12 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
             class="ts-content-section" 
             [attr.aria-label]="'About ' + currentTool.name"
           >
-            <div class="ts-section-header" tsReveal [revealIndex]="0">
+            <div class="ts-section-header" appReveal [revealDelay]="0">
               <h2 class="ts-section-title">About {{ currentTool.name }}</h2>
             </div>
 
             @if (aboutParagraphs().length > 0) {
-              <div class="ts-about-text-body" tsReveal [revealIndex]="1">
+              <div class="ts-about-text-body" appReveal [revealDelay]="60">
                 @for (paragraph of aboutParagraphs(); track paragraph) {
                   <p class="ts-about-paragraph">{{ paragraph }}</p>
                 }
@@ -47,9 +47,16 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
             }
 
             @if (currentTool.features && currentTool.features.length > 0) {
-              <div class="ts-feature-chips-wrap" tsReveal [revealIndex]="2" aria-label="Key features">
-                @for (feature of currentTool.features; track feature) {
-                  <span hlmBadge variant="secondary" class="ts-feature-chip">
+              <div class="ts-feature-chips-wrap" aria-label="Key features">
+                @for (feature of currentTool.features; track feature; let fIdx = $index) {
+                  <span 
+                    hlmBadge 
+                    appReveal 
+                    [revealVariant]="'pop'"
+                    [revealDelay]="fIdx * 45"
+                    variant="secondary" 
+                    class="ts-feature-chip"
+                  >
                     <ts-icon name="check" [size]="12" class="ts-chip-icon" />
                     <span>{{ feature }}</span>
                   </span>
@@ -69,28 +76,29 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
             class="ts-content-section" 
             aria-label="How to use this tool"
           >
-            <div class="ts-section-header" tsReveal [revealIndex]="0">
+            <div class="ts-section-header" appReveal [revealDelay]="0">
               <h2 class="ts-section-title">How to use</h2>
               <span class="ts-section-subtitle">Follow these quick steps to get started immediately.</span>
             </div>
 
             <div class="ts-steps-list" role="list">
               @for (step of howToSteps(); track step; let idx = $index) {
-                <hlm-item 
-                  tsReveal [revealIndex]="(idx % 4) + 1"
-                  variant="outline" 
+                <div 
+                  appReveal 
+                  [revealVariant]="'slide-left'"
+                  [revealDelay]="idx * 85"
                   class="ts-step-item-card" 
                   role="listitem"
                 >
-                  <hlm-item-media>
+                  <div class="ts-step-media">
                     <div class="ts-step-number-tile" aria-hidden="true">
                       <span>{{ formatStepIndex(idx + 1) }}</span>
                     </div>
-                  </hlm-item-media>
-                  <hlm-item-content>
+                  </div>
+                  <div class="ts-step-content">
                     <p class="ts-step-text">{{ step }}</p>
-                  </hlm-item-content>
-                </hlm-item>
+                  </div>
+                </div>
               }
             </div>
           </section>
@@ -158,12 +166,6 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
       margin: -4px -8px;
     }
 
-    /* Target Section Flash Highlight (600ms quick accent-soft flash) */
-    .ts-content-section.section-flash-active {
-      background-color: var(--accent-soft) !important;
-      transition: background-color 600ms ease;
-    }
-
     .ts-section-header {
       display: flex;
       flex-direction: column;
@@ -220,7 +222,22 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
       border: 1px solid var(--ts-surface-inset-border, rgba(15, 23, 42, 0.05));
       color: var(--text, #09090B);
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-      transition: background-color 150ms ease, border-color 150ms ease;
+      transition: opacity 0.5s ease,
+                  transform 0.5s cubic-bezier(0.34, 1.4, 0.64, 1),
+                  background-color 150ms ease,
+                  border-color 150ms ease;
+      transition-delay: var(--reveal-delay, 0ms);
+    }
+
+    :host-context([data-theme="dark"]) .ts-feature-chip {
+      background: var(--ts-surface-inset, #27272A);
+      border-color: var(--ts-surface-inset-border, #3F3F46);
+      color: var(--text, #FCFCFC);
+    }
+
+    .ts-feature-chip:hover {
+      border-color: var(--accent-border, rgba(45, 212, 191, 0.4));
+      background: var(--accent-soft, rgba(45, 212, 191, 0.08));
     }
 
     .ts-chip-icon {
@@ -237,12 +254,37 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
     }
 
     .ts-step-item-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
       background: var(--ts-surface-raised, #FFFFFF);
       border: 1px solid var(--ts-surface-raised-border, rgba(15, 23, 42, 0.06));
       border-radius: var(--ts-radius-inner, 16px);
       box-shadow: var(--ts-surface-raised-shadow);
-      padding: 14px 16px;
-      transition: background-color 150ms ease, border-color 150ms ease;
+      padding: 14px 18px;
+      transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+                  background-color 150ms ease,
+                  border-color 150ms ease,
+                  box-shadow 200ms ease;
+      transition-delay: var(--reveal-delay, 0ms);
+    }
+
+    :host-context([data-theme="dark"]) .ts-step-item-card {
+      background: var(--ts-surface-raised, #18181B);
+      border-color: var(--ts-surface-raised-border, #27272A);
+    }
+
+    .ts-step-media {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .ts-step-content {
+      flex: 1;
+      min-width: 0;
     }
 
     .ts-step-number-tile {
@@ -259,6 +301,40 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
       font-size: 13px;
       font-weight: 800;
       flex-shrink: 0;
+      transform: scale(0.8);
+      opacity: 0.8;
+      transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  opacity 0.4s ease,
+                  background-color 150ms ease,
+                  border-color 150ms ease,
+                  color 150ms ease;
+    }
+
+    :host-context([data-theme="dark"]) .ts-step-number-tile {
+      background: var(--ts-surface-inset, #27272A);
+      border-color: var(--ts-surface-inset-border, #3F3F46);
+      color: var(--text, #FCFCFC);
+    }
+
+    .ts-step-item-card.is-visible .ts-step-number-tile {
+      transform: scale(1);
+      opacity: 1;
+      transition-delay: calc(var(--reveal-delay, 0ms) + 120ms);
+    }
+
+    .ts-step-item-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent-border, rgba(45, 212, 191, 0.4));
+      box-shadow: 0 10px 24px -4px rgba(0, 0, 0, 0.08);
+      transition-delay: 0ms;
+    }
+
+    .ts-step-item-card:hover .ts-step-number-tile {
+      background: var(--accent-soft, rgba(45, 212, 191, 0.12));
+      border-color: var(--accent, #0F766E);
+      color: var(--accent-strong, #0F766E);
+      transform: scale(1.05);
+      transition-delay: 0ms;
     }
 
     .ts-step-text {
@@ -471,15 +547,9 @@ export class TsToolContentComponent implements OnInit, OnDestroy {
     return [...sameCat, ...otherCat].slice(0, 4);
   });
 
-  ngOnInit(): void {
-    if (typeof window !== 'undefined') {
-      setTimeout(() => this.setupSectionReveal(), 100);
-    }
-  }
+  ngOnInit(): void {}
 
   ngOnDestroy(): void {
-    this.observer?.disconnect();
-    this.observer = null;
     this.removeFaqSchema();
   }
 
@@ -489,54 +559,6 @@ export class TsToolContentComponent implements OnInit, OnDestroy {
 
   getToolSubdomainUrl(slug: string): string {
     return getToolUrl(slug);
-  }
-
-  private setupSectionReveal(): void {
-    if (typeof window === 'undefined') return;
-
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      const sections = this.el.nativeElement.querySelectorAll('.ts-content-section');
-      sections.forEach((s: Element) => s.classList.add('is-revealed'));
-      return;
-    }
-
-    if (!('IntersectionObserver' in window)) {
-      const sections = this.el.nativeElement.querySelectorAll('.ts-content-section');
-      sections.forEach((s: Element) => s.classList.add('is-revealed'));
-      return;
-    }
-
-    const mainCard = this.document.getElementById('main-content');
-
-    this.observer = new IntersectionObserver((entries) => {
-      this.zone.run(() => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-revealed');
-            this.observer?.unobserve(entry.target);
-          }
-        });
-      });
-    }, {
-      root: mainCard,
-      rootMargin: '0px 0px -20px 0px',
-      threshold: 0.15
-    });
-
-    const sections = this.el.nativeElement.querySelectorAll('.ts-content-section');
-    sections.forEach((s: Element) => this.observer?.observe(s));
-
-    // Safety failsafe: If observer fails or JS is slow, make sure everything is visible after 1s
-    setTimeout(() => {
-      sections.forEach((s: Element) => s.classList.add('is-revealed'));
-    }, 1000);
-
-    // bfcache listener
-    window.addEventListener('pageshow', (event) => {
-      if (event.persisted) {
-        sections.forEach((s: Element) => s.classList.add('is-revealed'));
-      }
-    });
   }
 
   private updateFaqSchema(faqs?: ToolFaq[]): void {

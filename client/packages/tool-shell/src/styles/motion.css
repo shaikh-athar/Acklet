@@ -19,9 +19,9 @@
 
   /* Standard transitions */
   --ts-transition-colors: color var(--ts-dur-base) var(--ts-ease),
-                          background-color var(--ts-dur-base) var(--ts-ease),
-                          border-color var(--ts-dur-base) var(--ts-ease),
-                          box-shadow var(--ts-dur-base) var(--ts-ease);
+    background-color var(--ts-dur-base) var(--ts-ease),
+    border-color var(--ts-dur-base) var(--ts-ease),
+    box-shadow var(--ts-dur-base) var(--ts-ease);
 
   --ts-transition-transform: transform var(--ts-dur-base) var(--ts-ease);
   --ts-transition-opacity: opacity var(--ts-dur-base) var(--ts-ease);
@@ -34,6 +34,7 @@
     opacity: 0;
     transform: translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -56,6 +57,7 @@
     opacity: 0;
     transform: translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -67,9 +69,9 @@
   position: relative;
   isolation: isolate;
   transition: transform var(--ts-dur-hover) var(--ts-ease-out),
-              box-shadow var(--ts-dur-hover) var(--ts-ease-out),
-              border-color var(--ts-dur-hover) var(--ts-ease-out),
-              background-color var(--ts-dur-hover) var(--ts-ease-out);
+    box-shadow var(--ts-dur-hover) var(--ts-ease-out),
+    border-color var(--ts-dur-hover) var(--ts-ease-out),
+    background-color var(--ts-dur-hover) var(--ts-ease-out);
 }
 
 /* Subtle radial glow following cursor */
@@ -78,11 +80,9 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(
-    220px circle at var(--mx, -9999px) var(--my, -9999px),
-    var(--spotlight, rgba(252, 252, 252, 0.12)),
-    transparent 80%
-  );
+  background: radial-gradient(220px circle at var(--mx, -9999px) var(--my, -9999px),
+      var(--spotlight, rgba(252, 252, 252, 0.12)),
+      transparent 80%);
   opacity: 0;
   pointer-events: none;
   z-index: 1;
@@ -104,6 +104,7 @@
 
 /* Accessibility: Respect Reduced Motion Preferences */
 @media (prefers-reduced-motion: reduce) {
+
   :root,
   .ts-root,
   .ts-root * {
@@ -117,10 +118,12 @@
     scroll-behavior: auto !important;
     transform: none !important;
   }
+
   .ts-reveal-item {
     opacity: 1 !important;
     transform: none !important;
   }
+
   .ts-spotlight-host:hover {
     transform: none !important;
   }

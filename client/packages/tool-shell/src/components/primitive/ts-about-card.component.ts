@@ -1,16 +1,17 @@
-// packages/tool-shell/src/components/primitive/ts-about-card.component.ts
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolRegistryItem } from '@acklet/tool-registry';
 import { TsIconComponent } from '../icon/ts-icon.component';
+import { RevealDirective } from '../../directives/reveal.directive';
 
 @Component({
   selector: 'ts-about-card',
   standalone: true,
-  imports: [CommonModule, TsIconComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CommonModule, TsIconComponent, RevealDirective],
   template: `
     @if (tool()) {
-      <div class="ts-about-card-root">
+      <div class="ts-about-card-root" appReveal [revealDelay]="0">
         <div class="ts-about-card-header">
           <div class="ts-about-card-title-group">
             <span class="ts-about-card-title">About {{ tool()?.name }}</span>
@@ -39,8 +40,11 @@ import { TsIconComponent } from '../icon/ts-icon.component';
       border-radius: var(--ts-radius-card, 20px);
       padding: 20px 24px;
       box-shadow: var(--ts-surface-raised-shadow);
-      transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
+      transition: opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+                  transform 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+                  background-color var(--ts-dur-base, 200ms) var(--ts-ease),
                   border-color var(--ts-dur-base, 200ms) var(--ts-ease);
+      transition-delay: var(--reveal-delay, 0ms);
       user-select: text;
     }
 

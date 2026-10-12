@@ -10,6 +10,7 @@ export * from './services/tool-context.service';
 export * from './services/tool-permissions.service';
 export * from './services/tool-ad.service';
 export * from './services/tool-capsule.service';
+export * from './services/perf-flags.service';
 
 // Icons & Primitives
 export * from './components/icon/tool-icon.component';
@@ -42,6 +43,7 @@ export * from './components/primitive/ts-faq.component';
 export * from './components/primitive/ts-tooltip.directive';
 export * from './components/primitive/ts-spotlight.directive';
 export * from './components/primitive/ts-tool-content.component';
+export * from './directives/reveal.directive';
 export * from './directives/ts-reveal.directive';
 export * from './directives/ts-pointer-glow.directive';
 export * from './components/header/ts-tool-header.component';

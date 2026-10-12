@@ -1,33 +1,49 @@
 // packages/tool-shell/src/components/primitive/ts-spotlight.directive.ts
-import { Directive, ElementRef, HostListener, inject, OnDestroy } from '@angular/core';
+import { Directive, ElementRef, inject, NgZone, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 
 @Directive({
   selector: '[tsSpotlight]',
   standalone: true
 })
-export class TsSpotlightDirective implements OnDestroy {
-  private readonly el = inject(ElementRef<HTMLElement>);
+export class TsSpotlightDirective implements OnInit, OnDestroy {
+  private readonly el = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly ngZone = inject(NgZone);
+  private readonly platformId = inject(PLATFORM_ID);
   private rafId: number | null = null;
   private latestEvent: MouseEvent | null = null;
+  private cleanupFns: Array<() => void> = [];
 
-  @HostListener('mousemove', ['$event'])
-  onMouseMove(event: MouseEvent): void {
-    this.latestEvent = event;
-    if (this.rafId === null) {
-      this.rafId = requestAnimationFrame(() => this.updateSpotlight());
-    }
-  }
+  ngOnInit(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
 
-  @HostListener('mouseleave')
-  onMouseLeave(): void {
-    if (this.rafId !== null) {
-      cancelAnimationFrame(this.rafId);
-      this.rafId = null;
-    }
-    this.latestEvent = null;
-    const native = this.el.nativeElement;
-    native.style.removeProperty('--mx');
-    native.style.removeProperty('--my');
+    this.ngZone.runOutsideAngular(() => {
+      const target = this.el.nativeElement;
+      const onMouseMove = (event: MouseEvent): void => {
+        this.latestEvent = event;
+        if (this.rafId === null) {
+          this.rafId = requestAnimationFrame(() => this.updateSpotlight());
+        }
+      };
+
+      const onMouseLeave = (): void => {
+        if (this.rafId !== null) {
+          cancelAnimationFrame(this.rafId);
+          this.rafId = null;
+        }
+        this.latestEvent = null;
+        target.style.removeProperty('--mx');
+        target.style.removeProperty('--my');
+      };
+
+      target.addEventListener('mousemove', onMouseMove, { passive: true });
+      target.addEventListener('mouseleave', onMouseLeave, { passive: true });
+
+      this.cleanupFns.push(
+        () => target.removeEventListener('mousemove', onMouseMove),
+        () => target.removeEventListener('mouseleave', onMouseLeave)
+      );
+    });
   }
 
   private updateSpotlight(): void {
@@ -47,5 +63,9 @@ export class TsSpotlightDirective implements OnDestroy {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
     }
+    for (const fn of this.cleanupFns) {
+      fn();
+    }
+    this.cleanupFns = [];
   }
 }

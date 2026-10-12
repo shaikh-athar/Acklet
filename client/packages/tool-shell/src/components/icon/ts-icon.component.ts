@@ -1,4 +1,3 @@
-// packages/tool-shell/src/components/icon/ts-icon.component.ts
 import {
   Component,
   input,
@@ -11,13 +10,25 @@ import {
   NgZone,
   PLATFORM_ID,
   CUSTOM_ELEMENTS_SCHEMA,
-  ViewChild
+  ViewChild,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { LucideDynamicIcon, LucideFile } from '@lucide/angular';
 import { TS_ICON_MAP, IconDefinition, LUCIDE_MOTION_MAP } from './ts-icon-map';
 
 let lordiconInitialized = false;
+let sharedCanvasCtx: CanvasRenderingContext2D | null = null;
+
+function getSharedCanvasContext(): CanvasRenderingContext2D | null {
+  if (sharedCanvasCtx) return sharedCanvasCtx;
+  if (typeof document === 'undefined') return null;
+  try {
+    const canvas = document.createElement('canvas');
+    sharedCanvasCtx = canvas.getContext('2d');
+  } catch {}
+  return sharedCanvasCtx;
+}
 
 /**
  * Lazy loads and defines the <lord-icon> custom element with lottie-web.
@@ -45,6 +56,7 @@ const loggedFallbacks = new Set<string>();
   standalone: true,
   imports: [CommonModule, LucideDynamicIcon],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <span
       #wrapper
@@ -322,34 +334,41 @@ export class TsIconComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) return;
 
+    const mode = this.activeMode();
+    // Fast path: Lucide icons are purely SVG styled via CSS tokens, skip all JS observers
+    if (mode === 'lucide') {
+      return;
+    }
+
     // Check prefers-reduced-motion
     const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
     this.isReducedMotion.set(mql.matches);
     mql.addEventListener('change', (e) => this.isReducedMotion.set(e.matches));
 
-    // IntersectionObserver to lazy-initialize players only when visible
     this.ngZone.runOutsideAngular(() => {
-      this.intersectionObserver = new IntersectionObserver((entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            this.isIntersecting.set(true);
-            if (this.activeMode() === 'lordicon') {
+      if (mode === 'lordicon') {
+        this.intersectionObserver = new IntersectionObserver((entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              this.isIntersecting.set(true);
               initLordiconCustomElement();
+              this.intersectionObserver?.disconnect();
+              break;
             }
-            this.intersectionObserver?.disconnect();
-            break;
           }
-        }
-      }, { threshold: 0.05 });
+        }, { threshold: 0.05 });
 
-      this.intersectionObserver.observe(this.el.nativeElement);
+        this.intersectionObserver.observe(this.el.nativeElement);
 
-      // Resolve theme colors
-      this.resolveThemeColors();
-      this.observeRootThemeChanges();
+        // Resolve theme colors
+        this.resolveThemeColors();
+        this.observeRootThemeChanges();
+      }
 
       // Listen to parent button/link/tab hover to drive ng-animated-icons
-      this.attachParentHoverListeners();
+      if (mode === 'animated') {
+        this.attachParentHoverListeners();
+      }
     });
   }
 
@@ -450,9 +469,9 @@ export class TsIconComponent implements OnInit, OnDestroy {
   private normalizeColorToHex(val: string, fallback: string): string {
     if (!val) return fallback;
     if (val.startsWith('#')) return val;
-    // Canvas helper to convert rgb/hsl to hex
+    // Shared canvas helper to convert rgb/hsl to hex
     try {
-      const ctx = document.createElement('canvas').getContext('2d');
+      const ctx = getSharedCanvasContext();
       if (!ctx) return fallback;
       ctx.fillStyle = val;
       return ctx.fillStyle;

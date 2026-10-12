@@ -1,5 +1,5 @@
 // packages/tool-shell/src/components/shell/ts-shell.component.ts
-import { Component, input, output, signal, computed, inject, OnInit, AfterViewInit, ElementRef, viewChild, isDevMode } from '@angular/core';
+import { Component, input, output, signal, computed, inject, OnInit, AfterViewInit, ElementRef, viewChild, isDevMode, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolRegistryItem, getAllTools } from '@acklet/tool-registry';
 import { ToolShellConfig, ToolTab } from '../../models/tool-shell.models';
@@ -16,11 +16,13 @@ import { TsToolContentComponent } from '../primitive/ts-tool-content.component';
 import { TsToolHeaderComponent } from '../header/ts-tool-header.component';
 import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
 import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
-import { TsRevealDirective } from '../../directives/ts-reveal.directive';
+import { RevealDirective, TsRevealDirective } from '../../directives/reveal.directive';
+import { PerfFlagsService } from '../../services/perf-flags.service';
 
 @Component({
   selector: 'ts-shell, lib-tool-layout',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     TsTopbarComponent,
@@ -32,7 +34,7 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
     TsToolContentComponent,
     TsToolDetailsComponent,
     TsToolRelatedComponent,
-    TsRevealDirective
+    RevealDirective
   ],
   template: `
     <div 
@@ -125,7 +127,7 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
               <!-- About & Documentation Card Below Tool -->
               @if (showDescriptionCard() && tool()) {
                 <section 
-                  tsReveal [revealIndex]="1"
+                  appReveal [revealDelay]="70"
                   class="ts-tool-description-section" 
                   aria-label="About this tool"
                 >
@@ -382,15 +384,13 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
         color-mix(in srgb, var(--ts-glass, #F0F3FF) var(--ts-b1-pct, calc(var(--ts-b1, .46) * 100%)), transparent),
         color-mix(in srgb, var(--ts-glass, #F0F3FF) var(--ts-b2-pct, calc(var(--ts-b2, .30) * 100%)), transparent)
       );
-      -webkit-backdrop-filter: var(--ts-blur-main, none);
-      backdrop-filter: var(--ts-blur-main, none);
       border-radius: var(--shell-radius, 20px);
       box-shadow: var(--ts-edge), var(--ts-shadow);
-      border: none;
+      border: 1px solid var(--border);
       box-sizing: border-box;
       outline: none;
-      transition: background var(--ts-dur-base, 200ms) var(--ts-ease),
-                  box-shadow var(--ts-dur-base, 200ms) var(--ts-ease);
+      transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
+                  border-color var(--ts-dur-base, 200ms) var(--ts-ease);
     }
 
     .ts-main-scroll-container {
@@ -684,6 +684,7 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit {
   readonly sidebarService = inject(ToolSidebarService);
   readonly themeService = inject(ToolThemeService);
   private readonly capsuleService = inject(ToolCapsuleService);
+  private readonly perfFlags = inject(PerfFlagsService);
 
   readonly internalActiveTab = signal<string>('');
   private readonly devSurfaceOverride = signal<'clear' | 'frost' | 'tinted' | 'solid' | null>(null);

@@ -1,5 +1,4 @@
-// packages/tool-shell/src/components/rail/ts-tool-related.component.ts
-import { Component, input, computed } from '@angular/core';
+import { Component, input, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolRegistryItem, getAllTools } from '@acklet/tool-registry';
 import { getToolUrl } from '@acklet/shared';
@@ -10,6 +9,7 @@ import { TsIconComponent } from '../icon/ts-icon.component';
 @Component({
   selector: 'ts-tool-related',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, HlmItemImports, TsToolTileComponent, TsIconComponent],
   template: `
     @if (relatedTools().length > 0) {
@@ -17,7 +17,7 @@ import { TsIconComponent } from '../icon/ts-icon.component';
         <h3 class="ts-related-title">Related tools</h3>
 
         <div class="ts-related-items-list" role="list">
-          @for (relTool of relatedTools(); track relTool.slug) {
+          @for (relTool of relatedTools(); track relTool.slug; let idx = $index) {
             <a 
               [href]="getToolSubdomainUrl(relTool.slug)" 
               class="ts-related-item-link"

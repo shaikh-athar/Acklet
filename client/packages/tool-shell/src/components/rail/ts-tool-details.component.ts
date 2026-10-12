@@ -1,5 +1,4 @@
-// packages/tool-shell/src/components/rail/ts-tool-details.component.ts
-import { Component, input, computed } from '@angular/core';
+import { Component, input, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolRegistryItem } from '@acklet/tool-registry';
 
@@ -11,6 +10,7 @@ interface DetailRow {
 @Component({
   selector: 'ts-tool-details',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule],
   template: `
     @if (tool(); as currentTool) {
@@ -18,7 +18,7 @@ interface DetailRow {
         <h3 class="ts-details-title">Details</h3>
 
         <div class="ts-details-table" role="table">
-          @for (row of detailRows(); track row.label) {
+          @for (row of detailRows(); track row.label; let idx = $index) {
             <div class="ts-details-row" role="row">
               <span class="ts-details-label" role="rowheader">{{ row.label }}</span>
               <span class="ts-details-value" role="cell">{{ row.value }}</span>
