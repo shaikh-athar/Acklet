@@ -34,11 +34,11 @@ import { TsIconComponent } from '../icon/ts-icon.component';
   `,
   styles: [`
     .ts-about-card-root {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--ts-radius-2xl, 24px);
+      background: var(--ts-surface-raised, #FFFFFF);
+      border: 1px solid var(--ts-surface-raised-border, rgba(15, 23, 42, 0.06));
+      border-radius: var(--ts-radius-card, 20px);
       padding: 20px 24px;
-      box-shadow: var(--ts-shadow-surface);
+      box-shadow: var(--ts-surface-raised-shadow);
       transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
                   border-color var(--ts-dur-base, 200ms) var(--ts-ease);
       user-select: text;

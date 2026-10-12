@@ -91,16 +91,12 @@ import { TsIconComponent } from '../icon/ts-icon.component';
     }
 
     .ts-faq-item {
-      background: var(--surface-hover, #F4F4F5);
-      border: 1px solid var(--border, rgba(0, 0, 0, 0.06));
-      border-radius: var(--ts-radius-control, 12px);
+      background: var(--ts-surface-raised, #FFFFFF);
+      border: 1px solid var(--ts-surface-raised-border, rgba(15, 23, 42, 0.06));
+      border-radius: var(--ts-radius-inner, 16px);
+      box-shadow: var(--ts-surface-raised-shadow);
       padding: 0 16px;
       transition: background-color 150ms ease, border-color 150ms ease;
-    }
-
-    :host-context([data-theme="dark"]) .ts-faq-item {
-      background: #18181B;
-      border-color: var(--border, #27272A);
     }
 
     .ts-faq-trigger {

@@ -31,71 +31,43 @@ import { CommonModule } from '@angular/common';
       z-index: 0;
       pointer-events: none;
       overflow: hidden;
-      background: radial-gradient(ellipse 70% 40% at 50% 0%, var(--fx-highlight), transparent);
+      background:
+        radial-gradient(ellipse 62% 52% at 0% 0%, var(--fx-glow-1) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 36% at 100% 0%, var(--fx-glow-2) 0%, transparent 70%);
     }
 
     .ts-bg-grid {
       position: absolute;
       inset: 0;
       pointer-events: none;
-      background:
-        linear-gradient(to right,  var(--fx-grid) 1px, transparent 1px) 0 0 / var(--fx-grid-size) var(--fx-grid-size),
-        linear-gradient(to bottom, var(--fx-grid) 1px, transparent 1px) 0 0 / var(--fx-grid-size) var(--fx-grid-size);
-      -webkit-mask-image: radial-gradient(ellipse 90% 75% at 50% 0%, #000 35%, transparent 100%);
-      mask-image: radial-gradient(ellipse 90% 75% at 50% 0%, #000 35%, transparent 100%);
+      background-image:
+        linear-gradient(to right,  var(--fx-grid) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--fx-grid) 1px, transparent 1px);
+      background-size: var(--fx-grid-size, 32px) var(--fx-grid-size, 32px);
+      background-position: 0 0;
+      -webkit-mask-image: radial-gradient(ellipse 120% 100% at 0% 0%, #000 0%, rgba(0, 0, 0, 0.5) 50%, transparent 100%);
+              mask-image: radial-gradient(ellipse 120% 100% at 0% 0%, #000 0%, rgba(0, 0, 0, 0.5) 50%, transparent 100%);
     }
 
-    .ts-bg::before,
-    .ts-bg::after {
-      content: "";
-      position: absolute;
-      border-radius: 50%;
-      pointer-events: none;
-    }
-
-    /* glow 1: accent, top left */
-    .ts-bg::before {
-      width: 60%;
-      aspect-ratio: 1;
-      left: -8%;
-      top: -28%;
-      background: radial-gradient(closest-side, var(--fx-glow-1), transparent 100%);
-    }
-
-    /* glow 2: second tone, top right */
-    .ts-bg::after {
-      width: 52%;
-      aspect-ratio: 1;
-      right: -10%;
-      top: -22%;
-      background: radial-gradient(closest-side, var(--fx-glow-2), transparent 100%);
-    }
-
-    /* Responsive: under 768px reduce grid size to 32px and glow sizes by 25% */
-    @media (max-width: 768px) {
+    /* Responsive: under 768px grid 24px */
+    @media (max-width: 767px) {
       .ts-bg-grid {
-        background-size: 32px 32px;
-      }
-      .ts-bg::before {
-        width: 45%;
-        left: -5%;
-        top: -20%;
-      }
-      .ts-bg::after {
-        width: 39%;
-        right: -6%;
-        top: -16%;
-      }
-    }
-
-    /* High contrast: remove glows, keep faint grid */
-    @media (prefers-contrast: more) {
-      .ts-bg::before,
-      .ts-bg::after {
-        display: none !important;
+        background-size: 24px 24px;
       }
       .ts-bg {
-        background: transparent !important;
+        background:
+          radial-gradient(ellipse 62% 52% at 0% 0%,   var(--fx-glow-1) 0%, transparent 70%),
+          radial-gradient(ellipse 40% 36% at 100% 0%, var(--fx-glow-2) 0%, transparent 70%);
+      }
+    }
+
+    /* High contrast: remove glows, keep fainter grid */
+    @media (prefers-contrast: more) {
+      .ts-bg {
+        background: none !important;
+      }
+      .ts-bg-grid {
+        opacity: 0.6;
       }
     }
 
