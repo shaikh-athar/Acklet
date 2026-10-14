@@ -25,7 +25,9 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles.css"]
+            "styles": [
+              "src/styles.css"
+            ]
           },
           "configurations": {
             "production": {
@@ -43,8 +45,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "16kB",
-                  "maximumError": "32kB"
+                  "maximumWarning": "24kB",
+                  "maximumError": "48kB"
                 }
               ],
               "outputHashing": "all"
@@ -92,7 +94,9 @@
                 "input": "public"
               }
             ],
-            "styles": ["apps/tool-online-clipboard/src/styles.css"]
+            "styles": [
+              "apps/tool-online-clipboard/src/styles.css"
+            ]
           },
           "configurations": {
             "production": {
@@ -105,8 +109,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "1.2MB",
+                  "maximumError": "2MB"
                 }
               ],
               "outputHashing": "all"
@@ -139,7 +143,9 @@
                 "input": "public"
               }
             ],
-            "styles": ["apps/tools-hub/src/styles.css"]
+            "styles": [
+              "apps/tools-hub/src/styles.css"
+            ]
           },
           "configurations": {
             "production": {

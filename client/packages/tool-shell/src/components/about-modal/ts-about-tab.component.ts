@@ -158,7 +158,6 @@ import { TsIconComponent } from '../icon/ts-icon.component';
     .ts-faq-card {
       padding: 12px 16px;
       background: var(--ts-raised);
-      border: 1px solid var(--ts-border);
       border-radius: var(--ts-radius-md, 12px);
       display: flex;
       flex-direction: column;

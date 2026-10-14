@@ -96,6 +96,7 @@
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/feedback/service/FeedbackService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/github/controller/GitHubConnectController.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/github/controller/GitHubIntegrationController.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/github/controller/GitHubWebhookController.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/github/controller/RepositoryImportPipelineController.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/github/dto/GitHubAccountResponse.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/github/dto/GitHubImportJobStatusDto.java
@@ -191,6 +192,7 @@
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/shared/security/TurnstileVerificationService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/controller/PublicToolKnowledgeController.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/controller/ToolController.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/controller/ToolExecutionController.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/controller/ToolReviewController.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/dto/CategoryResponse.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/dto/CreateToolRequest.java
@@ -219,8 +221,16 @@
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/repository/knowledge/ToolVersionHistoryRepository.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/service/ToolKnowledgeService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/service/ToolPublishingService.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/service/ToolRegistryService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/service/ToolReviewService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/service/ToolService.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/clipboard/controller/ClipboardController.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/clipboard/dto/AddTextRequest.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/clipboard/dto/ClipboardConfigDto.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/clipboard/dto/ClipboardItemDto.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/clipboard/dto/ClipboardShareDto.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/clipboard/dto/CreateShareRequest.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/clipboard/service/ClipboardService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/jsonlens/controller/JsonLensController.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/jsonlens/dto/JsonLensRequest.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/jsonlens/dto/JsonLensResponse.java

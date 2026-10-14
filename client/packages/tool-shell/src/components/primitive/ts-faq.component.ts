@@ -34,7 +34,16 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
             >
               <span class="ts-faq-question">{{ item.question }}</span>
               <span class="ts-faq-icon-wrap" aria-hidden="true">
-                <ts-icon [name]="isOpen(item.id) ? 'minus' : 'plus'" [size]="15" />
+                @if (isOpen(item.id)) {
+                  <svg class="ts-faq-sign-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                } @else {
+                  <svg class="ts-faq-sign-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                }
               </span>
             </button>
 
@@ -76,7 +85,16 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
                   >
                     <span class="ts-faq-question">{{ item.question }}</span>
                     <span class="ts-faq-icon-wrap" aria-hidden="true">
-                      <ts-icon [name]="isOpen(item.id) ? 'minus' : 'plus'" [size]="15" />
+                      @if (isOpen(item.id)) {
+                        <svg class="ts-faq-sign-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                          <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                      } @else {
+                        <svg class="ts-faq-sign-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                          <line x1="12" y1="5" x2="12" y2="19"></line>
+                          <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                      }
                     </span>
                   </button>
 
@@ -227,11 +245,10 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
       border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
       color: var(--text-muted, #71717A);
       flex-shrink: 0;
-      transform: rotate(0deg);
-      transition: background-color 0.3s ease,
-                  color 0.3s ease,
-                  border-color 0.3s ease,
-                  transform 0.7s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1));
+      transition: background-color 0.25s ease,
+                  color 0.25s ease,
+                  border-color 0.25s ease,
+                  transform 0.25s cubic-bezier(.22, .61, .36, 1);
     }
 
     :host-context([data-theme="dark"]) .ts-faq-icon-wrap {
@@ -240,12 +257,12 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
       color: var(--text, #FCFCFC);
     }
 
-    /* 180deg rotation keeps minus completely horizontal instead of vertical '|' */
+    /* Active open pill: scale pop without rotation so minus remains perfectly horizontal */
     .ts-faq-item.is-open .ts-faq-icon-wrap {
       background: var(--accent, #0F766E);
       color: var(--accent-ink, #FFFFFF);
       border-color: transparent;
-      transform: rotate(180deg);
+      transform: scale(1.04);
     }
 
     :host-context([data-theme="dark"]) .ts-faq-item.is-open .ts-faq-icon-wrap {
@@ -253,22 +270,40 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
       color: var(--accent-ink, #042F2B);
     }
 
-    /* Smooth 0.7s Accordion Grid Transition */
+    .ts-faq-sign-svg {
+      width: 14px;
+      height: 14px;
+      display: block;
+    }
+
+    /* Smooth 0.4s Accordion Grid Transition */
     .ts-faq-panel-grid {
       display: grid;
       grid-template-rows: 0fr;
-      transition: grid-template-rows 0.7s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1));
       overflow: hidden;
+      visibility: hidden;
+      opacity: 0;
+      transition: grid-template-rows 0.4s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1)),
+                  visibility 0.4s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1)),
+                  opacity 0.4s ease;
     }
 
     .ts-faq-item.is-open .ts-faq-panel-grid {
       grid-template-rows: 1fr;
+      visibility: visible;
+      opacity: 1;
     }
 
+    /* Zero vertical padding when closed to completely eliminate unnecessary space */
     .ts-faq-panel-content {
       min-height: 0;
       overflow: hidden;
-      padding: 0 20px 18px 20px;
+      padding: 0 20px 0 20px;
+      transition: padding-bottom 0.6s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1));
+    }
+
+    .ts-faq-item.is-open .ts-faq-panel-content {
+      padding-bottom: 18px;
     }
 
     .ts-faq-answer {
@@ -278,9 +313,9 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
       max-width: 70ch;
       margin: 0;
       opacity: 0;
-      transform: translateY(-6px);
-      transition: opacity 0.55s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1)) 0.15s,
-                  transform 0.55s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1)) 0.15s;
+      transform: translateY(-4px);
+      transition: opacity 0.5s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1)) 0.1s,
+                  transform 0.5s var(--ts-ease-premium, cubic-bezier(.22,.61,.36,1)) 0.1s;
     }
 
     .ts-faq-item.is-open .ts-faq-answer {
@@ -370,17 +405,17 @@ export class TsFaqComponent {
   readonly faqs = input<ToolFaq[]>([]);
   readonly title = input<string>('Common questions');
   readonly multiple = input<boolean>(false);
-  readonly initialOpenIndex = input<number | null>(0);
+  readonly initialOpenIndex = input<number | null>(null);
 
   readonly openIds = signal<Set<string>>(new Set());
   readonly isDiscoverExpanded = signal<boolean>(false);
 
   constructor() {
-    // Open initial FAQ item if configured
+    // Open initial FAQ item if explicitly configured
     setTimeout(() => {
       const list = this.faqs();
       const initIdx = this.initialOpenIndex();
-      if (initIdx !== null && list && list[initIdx]) {
+      if (initIdx !== null && initIdx !== undefined && list && list[initIdx]) {
         this.openIds.set(new Set([list[initIdx].id]));
       }
     }, 0);
