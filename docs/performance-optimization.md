@@ -138,6 +138,46 @@ Implemented synchronized, smooth sidebar collapse and expansion tokens:
   - Permanently hidden native browser `<input type="file">` elements (`style="display: none"` + `.hidden` utility class), eliminating default "Choose files No file chosen" text.
   - Combined drag-and-drop and upload browse target into a single unified hero component in Send mode.
   - Suppressed redundant duplicate empty-state upload cards beneath the drop zone when in Send mode.
+- **Tool Area Borderless Refinements**:
+  - Removed container borders from `.text-input-box-container`, `.empty-spartan-card`, `.mode-segmented-control`, `.receiver-input-section`, `.file-drop-zone`, and `.ts-tool-card-surface`.
+  - Replaced border-dependent containment with clean surface fills (`var(--surface-hover)`), subtle elevated shadows, and accessible focus outlines.
 
+---
 
+## 10. FAQ Accordion & Navigation Polish (`packages/tool-shell`)
 
+- **Zero Unnecessary Space When FAQ Is Closed**:
+  - Removed `[initialOpenIndex]="0"` so that FAQ items are not unexpectedly expanded on initial load.
+  - Set default `initialOpenIndex` to `null` in `ts-faq.component.ts`.
+  - Eliminated bottom padding from `.ts-faq-panel-content` when collapsed (`padding: 0 20px 0 20px`), applying `18px` padding-bottom only when `.is-open`.
+  - Added `visibility: hidden; opacity: 0;` on collapsed grid rows to prevent any sub-pixel layout leaks.
+- **Dedicated Horizontal Minus Icon & 0.6s Smooth Accordion**:
+  - Replaced rotated dynamic icon with dedicated SVG line primitives (`<line x1="5" y1="12" x2="19" y2="12"></line>`).
+  - Removed all wrapper rotation transforms (`rotate(180deg)`), ensuring the close icon remains perfectly horizontal (`-`) and never resembles an "or" pipe (`|`).
+  - Tuned accordion expand/collapse timing to `0.6s` with `cubic-bezier(0.22, 0.61, 0.36, 1)`.
+- **Light Theme Navbar Focus & Active State**:
+  - Corrected Angular component encapsulation targeting using `:host-context([data-theme="light"])` and `:host-context(:not([data-theme="dark"]))`.
+  - Styled center capsule track with soft recessed background `rgba(15, 23, 42, 0.05)` and subtle hairline border.
+  - Active pill renders crisp solid white `#FFFFFF` with soft drop shadow and subtle accent border.
+  - Active navigation label utilizes bold `700` weight with high-contrast accent `#0F766E` for effortless visual identification without funky styling.
+
+---
+
+## 12. Online Clipboard Responsive Restructure & Layout System
+
+- **Three-Zone Architecture (Desktop 100dvh First-Screen Rule & Zero Outer Scroll)**:
+  - `.clipboard-container` forms a flex column (`flex: 1 1 auto; height: 100%; min-height: 0; overflow: hidden;`).
+  - **Zone 1 (Fixed Top)**: Fixed-height mode switcher (`Send | Receive`) and right-aligned action cluster (`Settings`, `History`, `ZIP`, `Report`). Tab strip reserves exactly 44px with 0px jumping between tabs.
+  - **Zone 2 (Flexible Middle)**: The sole scrolling area with `overflow-y: auto`, `scrollbar-gutter: stable`, and `overscroll-behavior: contain`. Textarea grows dynamically to fill the viewport (min-height 160px). Empty drop zones stretch to fill available height (min-height 220px).
+  - **Zone 3 (Fixed Bottom)**: Sticky primary action button with `padding-bottom: env(safe-area-inset-bottom)`.
+- **Drawer History & Settings Placement**:
+  - Removed permanently visible recent clipboards panel from the top of the tool area. History is accessible via the top-bar button (desktop right-side drawer, mobile bottom sheet).
+  - Moved Private Mode toggle into Settings modal; a subtle `Private` badge chip appears beside the mode switch only while enabled.
+- **Copy Tokens & Config Single-Source-of-Truth**:
+  - Centralized all user-facing strings into [`clipboard.copy.ts`](file:///Users/ayaz/Acklet/client/apps/tool-online-clipboard/src/clipboard.copy.ts).
+  - Centralized limits (1 MB text, 200 MB files, 1 GB total, 7-day retention) into [`clipboard.config.ts`](file:///Users/ayaz/Acklet/client/apps/tool-online-clipboard/src/clipboard.config.ts).
+- **Responsive Breakpoint Verification**:
+  - `< 640px`: Full width segmented control; tabs collapse to 3-column segmented button grid with icon above label; 44x44px minimum tap targets; toolbar buttons icon-only; history drawer transforms into bottom sheet.
+  - `640px - 1024px`: Tablet layout with single-row toolbar and proportional spacing.
+  - `> 1024px`: Full desktop expansion with centered readable content stream.
+  - `Landscape phones` (`orientation: landscape` & `max-height: 520px`): Compressed vertical spacing, middle zone still scrolls, bottom button stays reachable.

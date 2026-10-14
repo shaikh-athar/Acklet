@@ -74,7 +74,24 @@ import {
   LucideGrid,
   LucideWrench,
   LucideClock,
-  LucideMaximize2
+  LucideMaximize2,
+  LucideLogIn,
+  LucideRefreshCw,
+  LucideSave,
+  LucideFilter,
+  LucideLayoutGrid,
+  LucideList,
+  LucideSlidersHorizontal,
+  LucideScanQrCode,
+  LucideFolderUp,
+  LucideCheckCheck,
+  LucideTable,
+  LucideVideo,
+  LucideMusic,
+  LucidePencil,
+  LucidePresentation,
+  LucideClipboardPaste,
+  LucideSearchX
 } from '@lucide/angular';
 
 import {
@@ -459,5 +476,62 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   },
   'maximize-2': {
     lucide: LucideMaximize2
+  },
+  'log-in': {
+    lucide: LucideLogIn
+  },
+  login: {
+    lucide: LucideLogIn
+  },
+  'refresh-cw': {
+    lucide: LucideRefreshCw
+  },
+  refresh: {
+    lucide: LucideRefreshCw
+  },
+  save: {
+    lucide: LucideSave
+  },
+  filter: {
+    lucide: LucideFilter
+  },
+  'layout-grid': {
+    lucide: LucideLayoutGrid
+  },
+  list: {
+    lucide: LucideList
+  },
+  'sliders-horizontal': {
+    lucide: LucideSlidersHorizontal
+  },
+  'scan-qr-code': {
+    lucide: LucideScanQrCode
+  },
+  'folder-up': {
+    lucide: LucideFolderUp
+  },
+  'check-check': {
+    lucide: LucideCheckCheck
+  },
+  table: {
+    lucide: LucideTable
+  },
+  video: {
+    lucide: LucideVideo
+  },
+  music: {
+    lucide: LucideMusic
+  },
+  pencil: {
+    lucide: LucidePencil
+  },
+  presentation: {
+    lucide: LucidePresentation
+  },
+  'clipboard-paste': {
+    lucide: LucideClipboardPaste
+  },
+  'search-x': {
+    lucide: LucideSearchX
   }
 };

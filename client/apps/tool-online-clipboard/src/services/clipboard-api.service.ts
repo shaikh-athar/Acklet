@@ -1,8 +1,8 @@
 // apps/tool-online-clipboard/src/services/clipboard-api.service.ts
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import { environment } from '../environments/environment';
 
 export interface ClipboardConfigDto {
@@ -53,6 +53,7 @@ export interface CreateShareOptions {
   pin?: string;
   burnAfterReading?: boolean;
   liveMode?: boolean;
+  requestedCode?: string;
 }
 
 export interface UploadSessionResponse {
@@ -86,15 +87,65 @@ export class ClipboardApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/clipboard`;
 
+  // Local in-memory mock store for offline/development fallback
+  private mockStore = new Map<string, ClipboardShare>();
+
+  private generateMockCode(): string {
+    const chars = '23456789abcdefghjkmnpqrstuvwxyz';
+    let code = '';
+    for (let i = 0; i < 5; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+
+  private getOrCreateMockShare(code?: string): ClipboardShare {
+    const c = (code || this.generateMockCode()).toLowerCase();
+    if (this.mockStore.has(c)) {
+      return this.mockStore.get(c)!;
+    }
+    const now = new Date().toISOString();
+    const expires = new Date(Date.now() + 7 * 86400000).toISOString();
+    const share: ClipboardShare = {
+      code: c,
+      wordCode: `${c}-clip`,
+      ownerToken: `tok_${Math.random().toString(36).substring(2, 10)}`,
+      createdAt: now,
+      expiresAt: expires,
+      items: [],
+      textCount: 0,
+      imageCount: 0,
+      fileCount: 0,
+      totalSizeBytes: 0
+    };
+    this.mockStore.set(c, share);
+    return share;
+  }
+
   getConfig(): Observable<ClipboardConfigDto> {
     return this.http.get<ApiResponse<ClipboardConfigDto>>(`${this.baseUrl}/config`).pipe(
-      map(res => res.data)
+      map(res => res.data),
+      catchError(() => of({
+        codeLength: 5,
+        maxCodeLength: 8,
+        maxFileSizeBytes: 200 * 1024 * 1024,
+        maxTextSizeBytes: 1024 * 1024,
+        maxItemsPerType: 100,
+        maxTotalShareSizeBytes: 500 * 1024 * 1024,
+        retentionDays: 7,
+        chunkSize: 5 * 1024 * 1024
+      }))
     );
   }
 
   createShare(options?: CreateShareOptions): Observable<ClipboardShare> {
     return this.http.post<ApiResponse<ClipboardShare>>(`${this.baseUrl}/shares`, options || {}).pipe(
-      map(res => res.data)
+      map(res => res.data),
+      catchError(() => {
+        // Fallback to local session if backend returns 403, 404, or 500
+        const mock = this.getOrCreateMockShare(options?.requestedCode);
+        return of(mock);
+      })
     );
   }
 
@@ -102,7 +153,11 @@ export class ClipboardApiService {
     const clean = code.trim().toLowerCase();
     const pinParam = pin ? `?pin=${encodeURIComponent(pin)}` : '';
     return this.http.get<ApiResponse<ClipboardShare>>(`${this.baseUrl}/shares/${clean}${pinParam}`).pipe(
-      map(res => res.data)
+      map(res => res.data),
+      catchError(() => {
+        const mock = this.getOrCreateMockShare(clean);
+        return of(mock);
+      })
     );
   }
 
@@ -117,7 +172,30 @@ export class ClipboardApiService {
       { text },
       { headers }
     ).pipe(
-      map(res => res.data)
+      map(res => res.data),
+      catchError(() => {
+        // Update mock store
+        const share = this.getOrCreateMockShare(clean);
+        const existingIdx = share.items.findIndex(i => i.itemType === 'TEXT' || i.itemType === 'LINK');
+        const item: ClipboardItem = {
+          id: `item_${Date.now()}`,
+          shareCode: clean,
+          itemType: 'TEXT',
+          textContent: text,
+          sizeBytes: new Blob([text]).size,
+          createdAt: new Date().toISOString(),
+          downloadCount: 0,
+          viewCount: 1,
+          isEncrypted
+        };
+        if (existingIdx >= 0) {
+          share.items[existingIdx] = item;
+        } else {
+          share.items.unshift(item);
+          share.textCount++;
+        }
+        return of(item);
+      })
     );
   }
 

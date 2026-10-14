@@ -284,13 +284,6 @@ export class TsIconComponent implements OnInit, OnDestroy {
       return 'animated';
     }
 
-    if (typeof ngDevMode === 'undefined' || ngDevMode) {
-      if (!loggedFallbacks.has(raw)) {
-        console.warn(`[ts-icon] Semantic key "${raw}" fell back to Lucide.`);
-        loggedFallbacks.add(raw);
-      }
-    }
-
     return 'lucide';
   });
 

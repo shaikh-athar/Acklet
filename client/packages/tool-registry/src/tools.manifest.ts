@@ -39,9 +39,8 @@ export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
       { label: 'Encryption', value: 'AES-GCM', tooltip: 'Optional client-side zero-knowledge encryption' }
     ],
     tabs: [
-      { id: 'send', label: 'Send', icon: 'upload' },
-      { id: 'receive', label: 'Receive', icon: 'download' },
-      { id: 'history', label: 'History', icon: 'history' }
+      { id: 'text', label: 'Text & Links', icon: 'file-text' },
+      { id: 'files', label: 'Files', icon: 'folder' }
     ],
     features: [
       'Runs in your browser',

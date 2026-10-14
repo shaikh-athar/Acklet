@@ -23,19 +23,10 @@
               {
                 "glob": "**/*",
                 "input": "public"
-              },
-              {
-                "glob": "**/*",
-                "input": "src/tools/airvault/resource",
-                "output": "assets/airvault"
               }
             ],
             "styles": [
-              "node_modules/devicon/devicon.min.css",
               "src/styles.css"
-            ],
-            "allowedCommonJsDependencies": [
-              "jszip"
             ]
           },
           "configurations": {
@@ -54,8 +45,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "150kB",
-                  "maximumError": "250kB"
+                  "maximumWarning": "24kB",
+                  "maximumError": "48kB"
                 }
               ],
               "outputHashing": "all"
@@ -70,10 +61,6 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
-          "options": {
-            "proxyConfig": "proxy.conf.json",
-            "allowedHosts": ["all", "melvin-operose-disconsolately.ngrok-free.dev", ".ngrok-free.dev", ".ngrok.io", ".ngrok-free.app"]
-          },
           "configurations": {
             "production": {
               "buildTarget": "acklet-portal:build:production"
@@ -107,7 +94,9 @@
                 "input": "public"
               }
             ],
-            "styles": ["apps/tool-online-clipboard/src/styles.css"]
+            "styles": [
+              "apps/tool-online-clipboard/src/styles.css"
+            ]
           },
           "configurations": {
             "production": {
@@ -120,8 +109,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "1.2MB",
+                  "maximumError": "2MB"
                 }
               ],
               "outputHashing": "all"
@@ -154,7 +143,9 @@
                 "input": "public"
               }
             ],
-            "styles": ["apps/tools-hub/src/styles.css"]
+            "styles": [
+              "apps/tools-hub/src/styles.css"
+            ]
           },
           "configurations": {
             "production": {

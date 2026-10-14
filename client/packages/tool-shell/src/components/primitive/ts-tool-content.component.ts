@@ -16,6 +16,7 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
   imports: [
     CommonModule,
     HlmBadgeImports,
+    HlmItemImports,
     TsIconComponent,
     TsFaqComponent,
     TsRevealDirective
@@ -118,8 +119,53 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
               [faqs]="currentTool.faqs" 
               title="Frequently Asked Questions" 
               [multiple]="false"
-              [initialOpenIndex]="0"
             />
+          </section>
+        }
+
+        <!-- ══════════════════════════════════════════════════════ -->
+        <!-- 4. Related Tools Section                              -->
+        <!-- ══════════════════════════════════════════════════════ -->
+        @if (relatedTools().length > 0) {
+          <div class="ts-section-divider" role="separator"></div>
+          <section 
+            id="related" 
+            class="ts-content-section" 
+            aria-label="Related tools"
+          >
+            <div class="ts-section-header" appReveal [revealDelay]="0">
+              <h2 class="ts-section-title">Related tools</h2>
+              <span class="ts-section-subtitle">Discover more utilities in the Acklet ecosystem.</span>
+            </div>
+
+            <div class="ts-related-grid" role="list">
+              @for (relTool of relatedTools(); track relTool.slug; let idx = $index) {
+                <a 
+                  [href]="getToolSubdomainUrl(relTool.slug)" 
+                  class="ts-related-link-wrapper"
+                  role="listitem"
+                  [attr.aria-label]="relTool.name"
+                  appReveal
+                  [revealVariant]="'fade-up'"
+                  [revealDelay]="idx * 45"
+                >
+                  <hlm-item variant="outline" class="ts-related-item-card">
+                    <hlm-item-media>
+                      <ts-icon [name]="relTool.icon" [size]="24" class="ts-related-icon" />
+                    </hlm-item-media>
+                    <hlm-item-content>
+                      <span class="ts-related-title">{{ relTool.name }}</span>
+                      <p class="ts-related-desc">{{ relTool.shortDescription }}</p>
+                    </hlm-item-content>
+                    <hlm-item-actions>
+                      <div class="ts-related-arrow-btn" aria-hidden="true">
+                        <ts-icon name="arrow-up-right" [size]="16" />
+                      </div>
+                    </hlm-item-actions>
+                  </hlm-item>
+                </a>
+              }
+            </div>
           </section>
         }
 

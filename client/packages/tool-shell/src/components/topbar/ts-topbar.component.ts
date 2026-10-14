@@ -433,36 +433,65 @@ export interface SectionNavLink {
     }
 
     /* Enhanced Light Theme Navbar Focus & Capsule Track */
-    :root[data-theme="light"] .ts-nav-links-track,
-    html[data-theme="light"] .ts-nav-links-track {
-      background: rgba(15, 23, 42, 0.045);
-      border: 1px solid rgba(15, 23, 42, 0.06);
+    :host-context([data-theme="light"]) .ts-nav-links-track,
+    :host-context(:not([data-theme="dark"])) .ts-nav-links-track {
+      background: rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
       box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
     }
 
-    :root[data-theme="light"] .ts-nav-active-pill,
-    html[data-theme="light"] .ts-nav-active-pill {
+    :host-context([data-theme="light"]) .ts-nav-active-pill,
+    :host-context(:not([data-theme="dark"])) .ts-nav-active-pill {
       background: #FFFFFF;
-      border: 1px solid var(--accent-border, rgba(15, 118, 110, 0.25));
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(15, 118, 110, 0.1);
+      border: 1px solid var(--accent-border, rgba(15, 118, 110, 0.22));
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.09), 0 0 0 1px rgba(15, 118, 110, 0.08);
     }
 
-    :root[data-theme="light"] .ts-nav-link-btn,
-    html[data-theme="light"] .ts-nav-link-btn {
+    :host-context([data-theme="light"]) .ts-nav-link-btn,
+    :host-context(:not([data-theme="dark"])) .ts-nav-link-btn {
       color: #64748B;
       font-weight: 500;
     }
 
-    :root[data-theme="light"] .ts-nav-link-btn:hover:not(.active),
-    html[data-theme="light"] .ts-nav-link-btn:hover:not(.active) {
+    :host-context([data-theme="light"]) .ts-nav-link-btn:hover:not(.active),
+    :host-context(:not([data-theme="dark"])) .ts-nav-link-btn:hover:not(.active) {
       color: #0F172A;
       background: rgba(15, 23, 42, 0.04);
     }
 
-    :root[data-theme="light"] .ts-nav-link-btn.active,
-    html[data-theme="light"] .ts-nav-link-btn.active {
+    :host-context([data-theme="light"]) .ts-nav-link-btn.active,
+    :host-context(:not([data-theme="dark"])) .ts-nav-link-btn.active {
       color: var(--accent, #0F766E);
       font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    /* Enhanced Dark Theme Navbar Calm & High-Legibility Focus Links */
+    :host-context([data-theme="dark"]) .ts-nav-links-track {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-active-pill {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--accent-border, rgba(45, 212, 191, 0.3));
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 8px -2px var(--accent-glow, rgba(45, 212, 191, 0.2));
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-link-btn {
+      color: #94A3B8;
+      font-weight: 500;
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-link-btn:hover:not(.active) {
+      color: #F8FAFC;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-link-btn.active {
+      color: #2DD4BF;
+      font-weight: 600;
       letter-spacing: -0.01em;
     }
 

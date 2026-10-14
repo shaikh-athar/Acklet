@@ -7,6 +7,7 @@ import { TsIconComponent } from '../icon/ts-icon.component';
 import { TsToolListComponent } from './ts-tool-list.component';
 import { TsSearchComponent } from '../search/ts-search.component';
 import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
+import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
 
 @Component({
   selector: 'ts-sidebar',
@@ -17,7 +18,8 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
     TsIconComponent,
     TsToolListComponent,
     TsSearchComponent,
-    TsTooltipDirective
+    TsTooltipDirective,
+    TsToolDetailsComponent
   ],
   template: `
     <!-- Desktop Left Sidebar (Floating Card) -->
@@ -93,6 +95,13 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
             [isRail]="sidebarService.isCollapsed()"
             [searchQuery]="searchQuery()"
           />
+
+          <!-- Embedded Tool Details inside Aside Sidebar -->
+          @if (!sidebarService.isCollapsed() && tool()) {
+            <div class="ts-sidebar-details-container">
+              <ts-tool-details [tool]="tool()" />
+            </div>
+          }
         </div>
 
         <!-- 3. Pinned Bottom Bar: Help (left) + Collapse/Expand (right) -->
@@ -227,6 +236,13 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
               [isRail]="false"
               [searchQuery]="searchQuery()"
             />
+
+            <!-- Embedded Tool Details inside Mobile Drawer -->
+            @if (tool()) {
+              <div class="ts-sidebar-details-container">
+                <ts-tool-details [tool]="tool()" />
+              </div>
+            }
           </div>
 
           <div class="ts-sidebar-pinned-footer">
@@ -426,6 +442,28 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       background: transparent;
       scrollbar-width: thin;
       scrollbar-color: var(--ts-scrollbar-thumb, #E4E4E7) transparent;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .ts-sidebar-details-container {
+      margin-top: 16px;
+      padding: 0 4px 12px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .ts-sidebar-details-container ::ng-deep .ts-details-panel {
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.035);
+      border: 1px solid var(--border, rgba(15, 23, 42, 0.06));
+      box-shadow: none;
+    }
+
+    :host-context([data-theme="dark"]) .ts-sidebar-details-container ::ng-deep .ts-details-panel {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.08);
     }
 
     .ts-sidebar-pinned-footer {

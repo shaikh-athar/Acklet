@@ -1,27 +1,48 @@
-import { Component, inject, OnInit, OnDestroy, signal, computed, ElementRef, ViewChild, HostListener, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  inject,
+  OnInit,
+  OnDestroy,
+  signal,
+  computed,
+  ElementRef,
+  ViewChild,
+  HostListener,
+  ChangeDetectionStrategy
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ClipboardApiService, ClipboardConfigDto, ClipboardItem, ClipboardShare, CreateShareOptions } from './services/clipboard-api.service';
-import { ClipboardSyncService } from './services/clipboard-sync.service';
-import { ClipboardCrypto } from './services/clipboard-crypto';
-import { ClipboardHistoryService, LocalClipboardRecord } from './services/clipboard-history.service';
-import { FormatBytesPipe } from './pipes/format-bytes.pipe';
-import { 
-  TsIconComponent, 
-  HlmButton, 
-  HlmBadge, 
-  HlmInput, 
-  HlmAlertImports, 
-  HlmEmptyImports, 
-  HlmTabsImports, 
-  HlmTooltipImports 
-} from '@acklet/tool-shell';
 import { Subscription } from 'rxjs';
 
-type ToolMode = 'send' | 'receive';
-type ActiveTab = 'text' | 'images' | 'files';
+import {
+  ClipboardApiService,
+  ClipboardConfigDto,
+  ClipboardItem,
+  ClipboardShare,
+  CreateShareOptions
+} from './services/clipboard-api.service';
+import { ClipboardSyncService, ClipboardSyncEvent } from './services/clipboard-sync.service';
+import { ClipboardCrypto } from './services/clipboard-crypto';
+import { ClipboardHistoryService, LocalClipboardRecord } from './services/clipboard-history.service';
+import { QrLoaderService } from './services/qr-loader.service';
+import { FormatBytesPipe } from './pipes/format-bytes.pipe';
+import { CLIPBOARD_CONFIG, FileCategory, FileTypeMetadata, resolveFileMetadata } from './clipboard.config';
+import { CLIPBOARD_COPY } from './clipboard.copy';
 
-interface UploadingFileState {
+import {
+  TsIconComponent,
+  HlmButton,
+  HlmBadge,
+  HlmInput,
+  HlmTooltipImports
+} from '@acklet/tool-shell';
+
+export type MainTab = 'text' | 'files';
+export type FileSubFilter = 'all' | 'images' | 'files';
+export type ViewMode = 'grid' | 'list';
+export type SortOption = 'newest' | 'oldest' | 'name' | 'largest';
+
+export interface UploadingFileState {
   id: string;
   name: string;
   size: number;
@@ -35,22 +56,22 @@ interface UploadingFileState {
   isPaused?: boolean;
 }
 
+export interface ToastMessage {
+  id: string;
+  text: string;
+  actionText?: string;
+  onAction?: () => void;
+}
+
 @Component({
   selector: 'app-clipboard-tool',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule, 
-    FormsModule, 
+    CommonModule,
+    FormsModule,
     TsIconComponent,
-    HlmButton,
-    HlmBadge,
-    HlmInput,
-    HlmAlertImports,
-    HlmEmptyImports,
-    HlmTabsImports,
-    HlmTooltipImports,
-    FormatBytesPipe
+    HlmTooltipImports
   ],
   templateUrl: './clipboard.component.html',
   styleUrls: ['./clipboard.component.css']
@@ -59,124 +80,237 @@ export class ClipboardComponent implements OnInit, OnDestroy {
   private readonly api = inject(ClipboardApiService);
   private readonly syncService = inject(ClipboardSyncService);
   private readonly historyService = inject(ClipboardHistoryService);
+  private readonly qrLoader = inject(QrLoaderService);
+
+  readonly copy = CLIPBOARD_COPY;
+  readonly configConstants = CLIPBOARD_CONFIG;
 
   private syncSub?: Subscription;
   private pollInterval?: any;
+  private autoSaveTimeout?: any;
+  private toastTimeout?: any;
 
-  // Configuration
-  readonly config = signal<ClipboardConfigDto>({
-    codeLength: 5,
-    maxCodeLength: 6,
-    maxFileSizeBytes: 200 * 1024 * 1024,
-    maxTextSizeBytes: 1024 * 1024,
-    maxItemsPerType: 20,
-    maxTotalShareSizeBytes: 1024 * 1024 * 1024,
-    retentionDays: 7,
-    chunkSize: 5 * 1024 * 1024
-  });
+  // Active Main Tab: Text & Links vs Files
+  readonly activeTab = signal<MainTab>('text');
+  readonly tabDirection = signal<'left' | 'right'>('right');
 
-  // State
-  readonly mode = signal<ToolMode>('send');
-  readonly activeTab = signal<ActiveTab>('text');
+  setTab(tab: MainTab): void {
+    if (tab === this.activeTab()) return;
+    this.tabDirection.set(tab === 'files' ? 'right' : 'left');
+    this.activeTab.set(tab);
+  }
 
-  // Share Options (Advanced Differentiators)
-  readonly expiryHours = signal<number>(168); // 1, 24, 168 (7 days)
-  readonly pinProtection = signal<string>('');
-  readonly burnAfterReading = signal<boolean>(false);
-  readonly liveRoomMode = signal<boolean>(false);
-  readonly e2eeEnabled = signal<boolean>(false);
-  readonly encryptionKey = signal<string>('');
-
-  // Sender State
+  // Clipboard Identity & Shared Room State
   readonly shareCode = signal<string | null>(null);
   readonly wordCode = signal<string | null>(null);
   readonly ownerToken = signal<string | null>(null);
-  readonly isCreatingShare = signal<boolean>(false);
-  readonly newTextSnippet = signal<string>('');
-  readonly isSubmittingText = signal<boolean>(false);
-  readonly uploadingFiles = signal<UploadingFileState[]>([]);
-  readonly showShareSettings = signal<boolean>(false);
-
-  // Receiver State
-  receiveCode = '';
-  receivePin = '';
-  readonly pinRequired = signal<boolean>(false);
-  readonly isLoadingShare = signal<boolean>(false);
   readonly activeShare = signal<ClipboardShare | null>(null);
-  readonly receiveError = signal<string | null>(null);
-  readonly hasErrorShake = signal<boolean>(false);
+  readonly isCreatingShare = signal<boolean>(false);
+  readonly isSyncConnected = signal<boolean>(false);
 
-  // Retention & History
-  readonly showHistoryDrawer = signal<boolean>(false);
-  readonly isPrivateMode = signal<boolean>(false);
-  readonly recentClipboards = signal<LocalClipboardRecord[]>([]);
-
-  // Preview Modal
-  readonly previewItem = signal<ClipboardItem | null>(null);
-
-  // QR Code Modal
+  // QR Code Image Data URL
+  readonly qrDataUrl = signal<string>('');
   readonly showQrModal = signal<boolean>(false);
 
-  // Abuse Report State
-  readonly isReportingAbuse = signal<boolean>(false);
-  readonly reportSubmitted = signal<boolean>(false);
-  readonly showReportModal = signal<boolean>(false);
-  reportReason = '';
+  // Join Code Input (Header Strip)
+  joinCodeInput = '';
+  readonly joinError = signal<string | null>(null);
+  readonly isJoining = signal<boolean>(false);
+  readonly showMobileJoinPopover = signal<boolean>(false);
 
-  // Copied feedback states
-  readonly copiedItemId = signal<string | null>(null);
+  // Editable Clipboard ID
+  readonly isEditingCode = signal<boolean>(false);
+  editingCodeInput = '';
+  readonly isSavingCustomCode = signal<boolean>(false);
+
+  // Settings & History Overlays
+  readonly showSettingsModal = signal<boolean>(false);
+  readonly showHistoryDrawer = signal<boolean>(false);
+  readonly isPrivateMode = signal<boolean>(false);
+  readonly e2eeEnabled = signal<boolean>(false);
+  readonly encryptionKey = signal<string>('');
+  readonly recentClipboards = signal<LocalClipboardRecord[]>([]);
+
+  // Feedback states
   readonly copiedCode = signal<boolean>(false);
   readonly copiedLink = signal<boolean>(false);
+  readonly activeToast = signal<ToastMessage | null>(null);
 
-  // Drag overlay states
-  readonly isDragOver = signal<boolean>(false);
+  // -------------------------------------------------------------
+  // TAB 1: TEXT & LINKS (Shared Single Textarea, Klipit Style)
+  // -------------------------------------------------------------
+  readonly sharedText = signal<string>('');
+  readonly remoteTextSnapshot = signal<string>('');
+  readonly isTextDirty = signal<boolean>(false);
+  readonly isSavingText = signal<boolean>(false);
+  readonly lastSavedTime = signal<number | null>(null);
+  readonly hasRemoteTextConflict = signal<boolean>(false);
+  readonly remoteTextHighlight = signal<boolean>(false);
+  private textUndoSnapshot: string | null = null;
 
-  // Counts & Filtered lists
-  readonly currentItems = computed(() => this.activeShare()?.items || []);
-
-  readonly textItems = computed(() => 
-    this.currentItems().filter(i => i.itemType === 'TEXT' || i.itemType === 'LINK')
-  );
-
-  readonly imageItems = computed(() => 
-    this.currentItems().filter(i => i.itemType === 'IMAGE')
-  );
-
-  readonly fileItems = computed(() => 
-    this.currentItems().filter(i => i.itemType === 'FILE')
-  );
-
-  readonly formattedMaxFileSize = computed(() => {
-    const bytes = this.config().maxFileSizeBytes;
-    return `${Math.round(bytes / (1024 * 1024))} MB`;
+  readonly isTextOver80Percent = computed(() => {
+    const len = new Blob([this.sharedText()]).size;
+    return len >= CLIPBOARD_CONFIG.maxTextSizeBytes * CLIPBOARD_CONFIG.textWarningThreshold;
   });
 
-  @ViewChild('imageFileInput') imageFileInput!: ElementRef<HTMLInputElement>;
-  @ViewChild('docFileInput') docFileInput!: ElementRef<HTMLInputElement>;
-  @ViewChild('codeBox') codeBoxInput?: ElementRef<HTMLInputElement>;
+  readonly textByteLength = computed(() => {
+    return new Blob([this.sharedText()]).size;
+  });
 
+  readonly singleDetectedUrl = computed<string | null>(() => {
+    const trimmed = this.sharedText().trim();
+    if (/^https?:\/\/[^\s]+$/i.test(trimmed)) {
+      return trimmed;
+    }
+    return null;
+  });
+
+  // -------------------------------------------------------------
+  // TAB 2: FILES (Combined Library Style)
+  // -------------------------------------------------------------
+  readonly fileSubFilter = signal<FileSubFilter>('all');
+  readonly viewMode = signal<ViewMode>('grid');
+  readonly searchQuery = signal<string>('');
+  readonly sortOption = signal<SortOption>('newest');
+
+  // Filter Popover
+  readonly showFilterPopover = signal<boolean>(false);
+  readonly showSortPopover = signal<boolean>(false);
+  readonly showAddMenu = signal<boolean>(false);
+  readonly selectedTypeFilters = signal<Set<FileCategory>>(new Set());
+  readonly selectedSourceFilters = signal<Set<'uploaded' | 'pasted'>>(new Set());
+
+  readonly hasActiveFilters = computed(() => {
+    return this.selectedTypeFilters().size > 0 || this.selectedSourceFilters().size > 0;
+  });
+
+  // Card Selection & Multi-select Floating Bar
+  readonly selectedItemIds = signal<Set<string>>(new Set());
+  private lastSelectedItemId: string | null = null;
+  private deletedItemsUndoStack: ClipboardItem[] = [];
+
+  // Drag Overlay
+  readonly isDragOver = signal<boolean>(false);
+
+  // Uploading Files Queue
+  readonly uploadingFiles = signal<UploadingFileState[]>([]);
+
+  // Previews
+  readonly lightboxImage = signal<ClipboardItem | null>(null);
+  readonly detailsSheetItem = signal<ClipboardItem | null>(null);
+
+  // References
+  @ViewChild('fileInputGeneral') fileInputGeneral!: ElementRef<HTMLInputElement>;
+  @ViewChild('fileSearchInput') fileSearchInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('sharedTextarea') sharedTextarea?: ElementRef<HTMLTextAreaElement>;
+
+  // Filtered & Sorted File Items
+  readonly allFileItems = computed<ClipboardItem[]>(() => {
+    const items = this.activeShare()?.items || [];
+    return items.filter(i => i.itemType === 'IMAGE' || i.itemType === 'FILE');
+  });
+
+  readonly displayFileItems = computed<ClipboardItem[]>(() => {
+    let list = [...this.allFileItems()];
+
+    // 1. Sub-filter: all / images / files
+    if (this.fileSubFilter() === 'images') {
+      list = list.filter(i => i.itemType === 'IMAGE');
+    } else if (this.fileSubFilter() === 'files') {
+      list = list.filter(i => i.itemType === 'FILE');
+    }
+
+    // 2. Type Categories from Filter Popover
+    const typeFilters = this.selectedTypeFilters();
+    if (typeFilters.size > 0) {
+      list = list.filter(i => {
+        const meta = resolveFileMetadata(i.originalName || '', i.detectedMime);
+        return typeFilters.has(meta.category);
+      });
+    }
+
+    // 3. Source Filters (Uploaded vs Pasted)
+    const sourceFilters = this.selectedSourceFilters();
+    if (sourceFilters.size > 0) {
+      list = list.filter(i => {
+        const isPasted = (i.originalName || '').toLowerCase().includes('pasted');
+        if (sourceFilters.has('pasted') && isPasted) return true;
+        if (sourceFilters.has('uploaded') && !isPasted) return true;
+        return false;
+      });
+    }
+
+    // 4. Search Filter
+    const query = this.searchQuery().trim().toLowerCase();
+    if (query) {
+      list = list.filter(i => (i.originalName || '').toLowerCase().includes(query));
+    }
+
+    // 5. Sorting
+    const sort = this.sortOption();
+    if (sort === 'newest') {
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (sort === 'oldest') {
+      list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    } else if (sort === 'name') {
+      list.sort((a, b) => (a.originalName || '').localeCompare(b.originalName || ''));
+    } else if (sort === 'largest') {
+      list.sort((a, b) => (b.sizeBytes || 0) - (a.sizeBytes || 0));
+    }
+
+    return list;
+  });
+
+  readonly imagesCount = computed(() => {
+    return this.allFileItems().filter(i => i.itemType === 'IMAGE').length;
+  });
+
+  readonly filesCount = computed(() => {
+    return this.allFileItems().filter(i => i.itemType === 'FILE').length;
+  });
+
+  // -------------------------------------------------------------
+  // LIFECYCLE
+  // -------------------------------------------------------------
   ngOnInit(): void {
-    this.loadConfig();
+    // Restore persistent user choices
+    if (typeof localStorage !== 'undefined') {
+      const savedView = localStorage.getItem('acklet_clipboard_view_mode') as ViewMode;
+      if (savedView === 'grid' || savedView === 'list') {
+        this.viewMode.set(savedView);
+      }
+      const savedSort = localStorage.getItem('acklet_clipboard_sort_option') as SortOption;
+      if (savedSort) {
+        this.sortOption.set(savedSort);
+      }
+    }
+
     this.isPrivateMode.set(this.historyService.isPrivateMode());
     this.loadHistory();
 
-    // Check URL search parameters (?code=12345&key=...) OR hash fragments (/#12345&key=...)
+    // Parse incoming code from URL path, query (?code=...), hash, or device storage
+    let incomingCode = '';
+    let incomingKey = '';
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      let incomingCode = urlParams.get('code') || '';
-      let incomingKey = urlParams.get('key') || '';
+      incomingCode = urlParams.get('code') || '';
+      incomingKey = urlParams.get('key') || '';
 
+      // Support clean path-based IDs (/29ypw or /custom-id)
+      const pathname = window.location.pathname.replace(/^\/+/, '').split('/')[0]?.trim();
+      if (!incomingCode && pathname && pathname.length >= 3) {
+        incomingCode = pathname;
+      }
+
+      // Legacy fallback: Support hash fragment (#29ypw) and cleanup
       if (!incomingCode && window.location.hash) {
         const hashContent = window.location.hash.replace('#', '');
         const parts = hashContent.split('&');
         const candidate = parts[0]?.trim() || '';
-        // Only accept if candidate is a genuine share code (not a capsule hash or key parameter)
-        if (candidate && !candidate.startsWith('acklet-cap=') && !candidate.startsWith('cap=') && !candidate.includes('=')) {
+        if (candidate && !candidate.includes('=')) {
           incomingCode = candidate;
           const keyParam = parts.find(p => p.startsWith('key='));
-          if (keyParam) {
-            incomingKey = keyParam.replace('key=', '');
-          }
+          if (keyParam) incomingKey = keyParam.replace('key=', '');
         }
       }
 
@@ -184,27 +318,24 @@ export class ClipboardComponent implements OnInit, OnDestroy {
         this.encryptionKey.set(incomingKey);
         this.e2eeEnabled.set(true);
       }
+    }
 
-      if (incomingCode.length >= 4) {
-        this.mode.set('receive');
-        this.receiveCode = incomingCode;
-        this.fetchReceiverShare(incomingCode);
-      }
-
-      // Handle PWA Web Share Target payload (?title=...&text=...&url=...)
-      const sharedTitle = urlParams.get('title') || '';
-      const sharedText = urlParams.get('text') || '';
-      const sharedUrl = urlParams.get('url') || '';
-      const combinedShared = [sharedTitle, sharedText, sharedUrl].filter(Boolean).join('\n');
-      if (combinedShared && !incomingCode) {
-        this.mode.set('send');
-        this.activeTab.set('text');
-        this.newTextSnippet.set(combinedShared);
-        this.generateCode();
+    // Check device persistent session (like Google Drive session) if no code in URL
+    if (!incomingCode && typeof localStorage !== 'undefined') {
+      const storedDeviceSession = localStorage.getItem('acklet_clipboard_active_code')?.trim();
+      if (storedDeviceSession && storedDeviceSession.length >= 3) {
+        incomingCode = storedDeviceSession;
       }
     }
 
-    // Subscribe to real-time sync events
+    if (incomingCode) {
+      this.joinClipboard(incomingCode);
+    } else {
+      // Auto-create initial active clipboard session so user has an ID right away
+      this.initSharedClipboard();
+    }
+
+    // Real-time synchronization stream
     this.syncSub = this.syncService.events.subscribe(event => {
       this.handleSyncEvent(event);
     });
@@ -213,125 +344,125 @@ export class ClipboardComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.syncSub?.unsubscribe();
     this.syncService.disconnect();
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
+    if (this.pollInterval) clearInterval(this.pollInterval);
+    if (this.autoSaveTimeout) clearTimeout(this.autoSaveTimeout);
+    if (this.toastTimeout) clearTimeout(this.toastTimeout);
+  }
+
+  // -------------------------------------------------------------
+  // KEYBOARD SHORTCUTS & GLOBAL LISTENERS
+  // -------------------------------------------------------------
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent): void {
+    // Focus search on '/' when on files tab
+    if (event.key === '/' && this.activeTab() === 'files') {
+      const target = event.target as HTMLElement;
+      if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+        event.preventDefault();
+        this.fileSearchInput?.nativeElement?.focus();
+        return;
+      }
+    }
+
+    // Esc: Close popovers, lightbox, or clear multi-selection
+    if (event.key === 'Escape') {
+      if (this.lightboxImage()) {
+        this.lightboxImage.set(null);
+        return;
+      }
+      if (this.detailsSheetItem()) {
+        this.detailsSheetItem.set(null);
+        return;
+      }
+      if (this.showQrModal()) {
+        this.showQrModal.set(false);
+        return;
+      }
+      if (this.showFilterPopover()) {
+        this.showFilterPopover.set(false);
+        return;
+      }
+      if (this.showSortPopover()) {
+        this.showSortPopover.set(false);
+        return;
+      }
+      if (this.selectedItemIds().size > 0) {
+        this.clearSelection();
+        return;
+      }
+    }
+
+    // Ctrl+A / Cmd+A when on files tab and not inside input
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a' && this.activeTab() === 'files') {
+      const target = event.target as HTMLElement;
+      if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+        event.preventDefault();
+        this.selectAllFiles();
+        return;
+      }
+    }
+
+    // Lightbox Arrow navigation
+    if (this.lightboxImage()) {
+      if (event.key === 'ArrowLeft') {
+        this.navigateLightbox(-1);
+      } else if (event.key === 'ArrowRight') {
+        this.navigateLightbox(1);
+      }
     }
   }
 
-  // --- Fast Input Listeners (Ctrl+V anywhere & Drag-Drop) ---
+  // Ctrl+V Paste anywhere on page
   @HostListener('window:paste', ['$event'])
   async onWindowPaste(event: ClipboardEvent): Promise<void> {
     const items = event.clipboardData?.items;
     if (!items || items.length === 0) return;
 
-    // Check for images first
+    // Check for images
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf('image') !== -1) {
         const file = items[i].getAsFile();
         if (file) {
           event.preventDefault();
-          this.activeTab.set('images');
-          this.processFilesUpload([file], true);
+          this.setTab('files');
+          // Rename pasted file clearly
+          const ext = file.type.split('/')[1] || 'png';
+          const pastedFile = new File([file], `Pasted image ${new Date().toLocaleTimeString()}.${ext}`, {
+            type: file.type
+          });
+          this.processFilesUpload([pastedFile]);
           return;
         }
       }
     }
 
-    // Plain text paste fallback if not inside an input box
+    // Fallback: If pasted text on Files tab, switch to Text tab or append
     const target = event.target as HTMLElement;
     const isInsideInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
-    if (!isInsideInput) {
-      const pastedText = event.clipboardData?.getData('text');
-      if (pastedText && pastedText.trim()) {
+    if (!isInsideInput && this.activeTab() === 'files') {
+      const text = event.clipboardData?.getData('text');
+      if (text && text.trim()) {
         event.preventDefault();
-        this.activeTab.set('text');
-        this.newTextSnippet.set(pastedText.trim());
-        this.submitTextSnippet();
+        this.setTab('text');
+        this.onTextChanged(this.sharedText() + (this.sharedText() ? '\n' : '') + text.trim());
       }
     }
   }
 
-  loadConfig(): void {
-    this.api.getConfig().subscribe({
-      next: cfg => this.config.set(cfg),
-      error: () => {}
-    });
-  }
-
-  async loadHistory(): Promise<void> {
-    const records = await this.historyService.getRecentRecords();
-    this.recentClipboards.set(records);
-  }
-
-  togglePrivateMode(): void {
-    const next = !this.isPrivateMode();
-    this.isPrivateMode.set(next);
-    this.historyService.setPrivateMode(next);
-    if (next) {
-      this.recentClipboards.set([]);
-    } else {
-      this.loadHistory();
-    }
-  }
-
-  setMode(m: ToolMode): void {
-    this.mode.set(m);
-    if (m === 'receive' && this.receiveCode.length >= 4 && !this.activeShare()) {
-      this.fetchReceiverShare(this.receiveCode);
-    }
-  }
-
-  setActiveTab(tab: ActiveTab): void {
-    this.activeTab.set(tab);
-  }
-
-  // --- Sender Logic ---
-  async generateCode(): Promise<void> {
-    if (this.shareCode()) return;
-
+  // -------------------------------------------------------------
+  // CLIPBOARD IDENTITY & CREATION
+  // -------------------------------------------------------------
+  async initSharedClipboard(): Promise<void> {
     this.isCreatingShare.set(true);
-
-    if (this.e2eeEnabled() && !this.encryptionKey()) {
-      const generatedKey = await ClipboardCrypto.generateKey();
-      this.encryptionKey.set(generatedKey);
-    }
-
     const options: CreateShareOptions = {
-      expiryHours: this.expiryHours(),
-      pin: this.pinProtection() ? this.pinProtection() : undefined,
-      burnAfterReading: this.burnAfterReading(),
-      liveMode: this.liveRoomMode()
+      expiryHours: CLIPBOARD_CONFIG.defaultExpiryHours,
+      liveMode: true
     };
 
     this.api.createShare(options).subscribe({
-      next: share => {
-        this.shareCode.set(share.code);
-        this.wordCode.set(share.wordCode || null);
-        this.ownerToken.set(share.ownerToken || null);
-        this.activeShare.set(share);
+      next: async share => {
+        this.applyShareSession(share);
         this.isCreatingShare.set(false);
-
-        // Connect real-time WebSocket channel
-        this.syncService.connect(share.code);
-        this.startReactivePollingFallback(share.code);
-
-        // Record to local IndexedDB history
-        this.historyService.saveRecord({
-          code: share.code,
-          wordCode: share.wordCode,
-          ownerToken: share.ownerToken,
-          isSender: true,
-          createdAt: Date.now(),
-          itemCount: 0,
-          isEncrypted: this.e2eeEnabled(),
-          encryptionKey: this.encryptionKey()
-        });
-        this.loadHistory();
-
-        // If there is pending text snippet, add it automatically
-        if (this.newTextSnippet().trim()) {
-          this.submitTextSnippet();
-        }
       },
       error: () => {
         this.isCreatingShare.set(false);
@@ -339,17 +470,263 @@ export class ClipboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  async submitTextSnippet(): Promise<void> {
-    const text = this.newTextSnippet().trim();
-    if (!text) return;
+  private async applyShareSession(share: ClipboardShare): Promise<void> {
+    this.shareCode.set(share.code);
+    this.wordCode.set(share.wordCode || null);
+    this.ownerToken.set(share.ownerToken || null);
+    this.activeShare.set(share);
 
-    if (!this.shareCode()) {
-      await this.generateCode();
+    // Update Browser URL seamlessly without page reload using clean path variable (no #)
+    if (typeof window !== 'undefined' && window.history) {
+      const newUrl = `${window.location.origin}/${share.code}`;
+      window.history.replaceState({}, '', newUrl);
+    }
+
+    // Persist active session in device (like Google Drive sessions)
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('acklet_clipboard_active_code', share.code);
+      } catch (e) {
+        console.warn('Could not persist clipboard session to localStorage', e);
+      }
+    }
+
+    // Connect WebSocket
+    this.syncService.connect(share.code);
+    this.isSyncConnected.set(true);
+    this.startReactivePollingFallback(share.code);
+
+    // Generate QR Code data URL
+    this.refreshQrCode();
+
+    // Extract text item from share items if one exists
+    const textItem = share.items.find(i => i.itemType === 'TEXT' || i.itemType === 'LINK');
+    if (textItem && textItem.textContent) {
+      let content = textItem.textContent;
+      if (textItem.isEncrypted && this.encryptionKey()) {
+        content = await ClipboardCrypto.decryptText(content, this.encryptionKey());
+      }
+      this.sharedText.set(content);
+      this.remoteTextSnapshot.set(content);
+      this.isTextDirty.set(false);
+      this.lastSavedTime.set(Date.now());
+    }
+
+    // Save to history
+    this.historyService.saveRecord({
+      code: share.code,
+      wordCode: share.wordCode,
+      ownerToken: share.ownerToken,
+      isSender: true,
+      createdAt: Date.now(),
+      itemCount: share.items.length,
+      isEncrypted: this.e2eeEnabled(),
+      encryptionKey: this.encryptionKey()
+    });
+    this.loadHistory();
+  }
+
+  async refreshQrCode(): Promise<void> {
+    const directUrl = this.getDirectLinkUrl();
+    if (!directUrl) return;
+    try {
+      const dataUrl = await this.qrLoader.generateDataUrl(directUrl, 260);
+      this.qrDataUrl.set(dataUrl);
+    } catch (e) {
+      console.warn('QR generation fallback', e);
+    }
+  }
+
+  getDirectLinkUrl(): string {
+    const code = this.shareCode();
+    if (!code || typeof window === 'undefined') return '';
+    let url = `${window.location.origin}/${code}`;
+    if (this.e2eeEnabled() && this.encryptionKey()) {
+      url += `?key=${this.encryptionKey()}`;
+    }
+    return url;
+  }
+
+  copyShareId(): void {
+    const code = this.shareCode();
+    if (!code) return;
+    navigator.clipboard.writeText(code);
+    this.copiedCode.set(true);
+    this.showToast(this.copy.identity.copied);
+    setTimeout(() => this.copiedCode.set(false), 2000);
+  }
+
+  startEditCode(): void {
+    const current = this.shareCode() || '';
+    this.editingCodeInput = current;
+    this.isEditingCode.set(true);
+  }
+
+  cancelEditCode(): void {
+    this.isEditingCode.set(false);
+    this.editingCodeInput = '';
+  }
+
+  saveCustomCode(): void {
+    const desired = this.editingCodeInput.trim().toLowerCase();
+    const current = (this.shareCode() || '').trim().toLowerCase();
+
+    if (!desired || desired === current) {
+      this.cancelEditCode();
       return;
     }
 
-    const code = this.shareCode()!;
-    this.isSubmittingText.set(true);
+    // Format validation: 3-16 alphanumeric or dash characters
+    if (!/^[a-z0-9_-]{3,16}$/.test(desired)) {
+      this.showToast('ID must be 3-16 letters, numbers, or dashes');
+      return;
+    }
+
+    this.isSavingCustomCode.set(true);
+
+    // Check if target custom ID already exists
+    this.api.getShare(desired).subscribe({
+      next: (existing) => {
+        // If an existing room exists with items/activity not ours, warn user
+        const isCurrentOurs = existing.code === current;
+        const hasExistingItems = (existing.items && existing.items.length > 0) || existing.textCount > 0;
+        
+        if (!isCurrentOurs && hasExistingItems) {
+          this.isSavingCustomCode.set(false);
+          this.showToast('This Clipboard ID is already in use by another session. Choose a unique one.');
+          return;
+        }
+
+        // Migrate current text and files into new code session if we had content
+        const currentText = this.sharedText();
+        const token = this.ownerToken() || undefined;
+
+        this.api.createShare({ requestedCode: desired, liveMode: true }).subscribe({
+          next: (newShare) => {
+            this.isSavingCustomCode.set(false);
+            this.isEditingCode.set(false);
+            this.applyShareSession(newShare);
+
+            // Re-save existing text if present
+            if (currentText.trim()) {
+              this.api.addTextItem(desired, currentText, newShare.ownerToken || token).subscribe();
+            }
+
+            this.showToast(`Clipboard ID updated to "${desired}"`);
+          },
+          error: () => {
+            this.isSavingCustomCode.set(false);
+            this.cancelEditCode();
+            this.showToast('Failed to update clipboard ID');
+          }
+        });
+      },
+      error: () => {
+        // Code does not exist -> create new share with desired code
+        this.api.createShare({ requestedCode: desired, liveMode: true }).subscribe({
+          next: (newShare) => {
+            this.isSavingCustomCode.set(false);
+            this.isEditingCode.set(false);
+            const currentText = this.sharedText();
+            this.applyShareSession(newShare);
+
+            if (currentText.trim()) {
+              this.api.addTextItem(desired, currentText, newShare.ownerToken).subscribe();
+            }
+
+            this.showToast(`Clipboard ID set to "${desired}"`);
+          },
+          error: () => {
+            this.isSavingCustomCode.set(false);
+            this.cancelEditCode();
+            this.showToast('Failed to update clipboard ID');
+          }
+        });
+      }
+    });
+  }
+
+  copyDirectLink(): void {
+    const url = this.getDirectLinkUrl();
+    if (!url) return;
+    navigator.clipboard.writeText(url);
+    this.copiedLink.set(true);
+    this.showToast(this.copy.identity.copied);
+    setTimeout(() => this.copiedLink.set(false), 2000);
+  }
+
+  confirmCreateNewClipboard(): void {
+    if (this.isTextDirty() || this.sharedText().trim() || this.allFileItems().length > 0) {
+      if (!confirm(this.copy.identity.confirmNew)) {
+        return;
+      }
+    }
+    this.sharedText.set('');
+    this.remoteTextSnapshot.set('');
+    this.isTextDirty.set(false);
+    this.selectedItemIds.set(new Set());
+    this.initSharedClipboard();
+  }
+
+  joinClipboard(codeToJoin?: string): void {
+    const code = (codeToJoin || this.joinCodeInput).trim().toLowerCase();
+    if (!code) return;
+
+    this.isJoining.set(true);
+    this.joinError.set(null);
+
+    this.api.getShare(code).subscribe({
+      next: async share => {
+        this.isJoining.set(false);
+        this.joinCodeInput = '';
+        this.showMobileJoinPopover.set(false);
+        this.applyShareSession(share);
+      },
+      error: err => {
+        this.isJoining.set(false);
+        if (codeToJoin && (err.status === 404 || err.error?.message?.includes('not found'))) {
+          // If accessing a new path code (e.g. /test1 or /project-x), initialize it as a fresh room!
+          this.api.createShare({ requestedCode: codeToJoin, liveMode: true }).subscribe({
+            next: (newShare) => {
+              this.applyShareSession(newShare);
+            },
+            error: () => {
+              this.initSharedClipboard();
+            }
+          });
+          return;
+        }
+
+        if (err.status === 404 || err.error?.message?.includes('not found')) {
+          this.joinError.set(this.copy.identity.errorInvalidCode);
+        } else if (err.error?.message?.includes('expired')) {
+          this.joinError.set(this.copy.identity.errorExpiredCode);
+        } else {
+          this.joinError.set(this.copy.identity.errorInvalidCode);
+        }
+      }
+    });
+  }
+
+  // -------------------------------------------------------------
+  // TAB 1: TEXT & LINKS LOGIC
+  // -------------------------------------------------------------
+  onTextChanged(val: string): void {
+    this.sharedText.set(val);
+    this.isTextDirty.set(val !== this.remoteTextSnapshot());
+
+    // Clear conflict banner once user edits or aligns
+    if (this.hasRemoteTextConflict()) {
+      this.hasRemoteTextConflict.set(false);
+    }
+  }
+
+  async saveTextContent(): Promise<void> {
+    const code = this.shareCode();
+    if (!code) return;
+
+    const text = this.sharedText();
+    this.isSavingText.set(true);
 
     let textToSend = text;
     if (this.e2eeEnabled() && this.encryptionKey()) {
@@ -358,43 +735,83 @@ export class ClipboardComponent implements OnInit, OnDestroy {
 
     this.api.addTextItem(code, textToSend, this.ownerToken() || undefined, this.e2eeEnabled()).subscribe({
       next: item => {
-        this.isSubmittingText.set(false);
-        this.newTextSnippet.set('');
+        this.isSavingText.set(false);
+        this.remoteTextSnapshot.set(text);
+        this.isTextDirty.set(false);
+        this.lastSavedTime.set(Date.now());
+        this.showToast(this.copy.textTab.toastSaved);
         this.appendItemLocally(item);
       },
       error: () => {
-        this.isSubmittingText.set(false);
+        this.isSavingText.set(false);
       }
     });
   }
 
-  openImagePicker(): void {
-    this.imageFileInput?.nativeElement?.click();
+  refreshTextContent(): void {
+    const code = this.shareCode();
+    if (!code) return;
+
+    this.api.getShare(code).subscribe({
+      next: async share => {
+        this.activeShare.set(share);
+        this.hasRemoteTextConflict.set(false);
+        const textItem = share.items.find(i => i.itemType === 'TEXT' || i.itemType === 'LINK');
+        let content = textItem?.textContent || '';
+        if (textItem?.isEncrypted && this.encryptionKey()) {
+          content = await ClipboardCrypto.decryptText(content, this.encryptionKey());
+        }
+        this.sharedText.set(content);
+        this.remoteTextSnapshot.set(content);
+        this.isTextDirty.set(false);
+        this.lastSavedTime.set(Date.now());
+        this.triggerTextHighlight();
+      }
+    });
   }
 
-  openDocPicker(): void {
-    this.docFileInput?.nativeElement?.click();
+  clearTextContent(): void {
+    const current = this.sharedText();
+    if (!current) return;
+
+    this.textUndoSnapshot = current;
+    this.sharedText.set('');
+    this.isTextDirty.set(true);
+
+    this.showToast(this.copy.textTab.toastClearedUndo, 'Undo', () => {
+      if (this.textUndoSnapshot !== null) {
+        this.sharedText.set(this.textUndoSnapshot);
+        this.isTextDirty.set(this.textUndoSnapshot !== this.remoteTextSnapshot());
+        this.textUndoSnapshot = null;
+      }
+    });
   }
 
-  submitSampleText(): void {
-    if (!this.newTextSnippet().trim()) {
-      this.newTextSnippet.set('Quick note shared from Online Clipboard');
-    }
-    this.submitTextSnippet();
+  copyEntireText(): void {
+    const val = this.sharedText();
+    if (!val) return;
+    navigator.clipboard.writeText(val);
+    this.showToast(this.copy.textTab.toastCopied);
   }
 
-  onImageSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      this.processFilesUpload(Array.from(input.files), true);
-      input.value = '';
-    }
+  private triggerTextHighlight(): void {
+    this.remoteTextHighlight.set(true);
+    setTimeout(() => {
+      this.remoteTextHighlight.set(false);
+    }, CLIPBOARD_CONFIG.syncHighlightDurationMs);
+  }
+
+  // -------------------------------------------------------------
+  // TAB 2: FILES UPLOAD & SELECTION LOGIC
+  // -------------------------------------------------------------
+  openFilePicker(): void {
+    this.fileInputGeneral?.nativeElement?.click();
   }
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      this.processFilesUpload(Array.from(input.files), false);
+      this.processFilesUpload(Array.from(input.files));
       input.value = '';
     }
   }
@@ -403,38 +820,24 @@ export class ClipboardComponent implements OnInit, OnDestroy {
     event.preventDefault();
     this.isDragOver.set(false);
     if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
-      const files = Array.from(event.dataTransfer.files);
-      const isImg = this.activeTab() === 'images';
-      this.processFilesUpload(files, isImg);
+      this.processFilesUpload(Array.from(event.dataTransfer.files));
     }
   }
 
-  onDragOver(event: DragEvent): void {
-    event.preventDefault();
-    this.isDragOver.set(true);
-  }
+  async processFilesUpload(files: File[]): Promise<void> {
+    const code = this.shareCode();
+    if (!code) return;
 
-  onDragLeave(event: DragEvent): void {
-    event.preventDefault();
-    this.isDragOver.set(false);
-  }
-
-  async processFilesUpload(files: File[], isImageTab: boolean): Promise<void> {
-    if (!this.shareCode()) {
-      await this.generateCode();
-    }
-
-    const code = this.shareCode()!;
-    const chunkSize = this.config().chunkSize || 5 * 1024 * 1024;
+    const chunkSize = CLIPBOARD_CONFIG.chunkSize;
 
     for (const file of files) {
-      // Validate file size cap (200 MB)
-      if (file.size > this.config().maxFileSizeBytes) {
-        alert(`File "${file.name}" exceeds the maximum allowed size of 200 MB.`);
+      if (file.size > CLIPBOARD_CONFIG.maxFileSizeBytes) {
+        this.showToast(this.copy.identity.errorTooLarge);
         continue;
       }
 
-      const uploadId = 'upload-' + Math.random().toString(36).substring(2, 9);
+      const isImg = file.type.startsWith('image/');
+      const uploadId = 'up-' + Math.random().toString(36).substring(2, 9);
       const totalChunks = Math.ceil(file.size / chunkSize);
 
       const state: UploadingFileState = {
@@ -442,7 +845,7 @@ export class ClipboardComponent implements OnInit, OnDestroy {
         name: file.name,
         size: file.size,
         progress: 0,
-        isImage: isImageTab,
+        isImage: isImg,
         status: 'uploading',
         totalChunks,
         uploadedChunks: 0
@@ -451,13 +854,12 @@ export class ClipboardComponent implements OnInit, OnDestroy {
       this.uploadingFiles.update(list => [...list, state]);
 
       if (file.size <= chunkSize) {
-        // Direct single-flight upload for smaller files
-        this.api.uploadFileDirect(code, file, isImageTab, this.ownerToken() || undefined, this.e2eeEnabled()).subscribe({
+        this.api.uploadFileDirect(code, file, isImg, this.ownerToken() || undefined, this.e2eeEnabled()).subscribe({
           next: item => {
             this.uploadingFiles.update(list => list.filter(u => u.id !== uploadId));
             this.appendItemLocally(item);
           },
-          error: (err) => {
+          error: err => {
             this.uploadingFiles.update(list => list.map(u => u.id === uploadId ? {
               ...u,
               status: 'error',
@@ -466,33 +868,27 @@ export class ClipboardComponent implements OnInit, OnDestroy {
           }
         });
       } else {
-        // Resumable Chunked Upload (5MB slices)
-        this.executeChunkedUpload(code, file, uploadId, chunkSize, totalChunks, isImageTab);
+        this.executeChunkedUpload(code, file, uploadId, chunkSize, totalChunks, isImg);
       }
     }
   }
 
-  private executeChunkedUpload(code: string, file: File, uploadId: string, chunkSize: number, totalChunks: number, isImageTab: boolean): void {
-    this.api.initChunkedUpload(code, file.name, file.size, chunkSize, totalChunks, isImageTab, this.e2eeEnabled(), this.ownerToken() || undefined).subscribe({
+  private executeChunkedUpload(code: string, file: File, uploadId: string, chunkSize: number, totalChunks: number, isImg: boolean): void {
+    this.api.initChunkedUpload(code, file.name, file.size, chunkSize, totalChunks, isImg, this.e2eeEnabled(), this.ownerToken() || undefined).subscribe({
       next: session => {
         this.uploadNextChunk(code, file, uploadId, session.uploadId, 0, chunkSize, totalChunks);
       },
-      error: (err) => {
+      error: err => {
         this.uploadingFiles.update(list => list.map(u => u.id === uploadId ? {
           ...u,
           status: 'error',
-          errorMessage: err.error?.message || 'Failed to initialize chunked upload'
+          errorMessage: err.error?.message || 'Chunk init failed'
         } : u));
       }
     });
   }
 
   private uploadNextChunk(code: string, file: File, clientUploadId: string, serverUploadId: string, chunkNumber: number, chunkSize: number, totalChunks: number): void {
-    const current = this.uploadingFiles().find(u => u.id === clientUploadId);
-    if (current && current.isPaused) {
-      return; // Paused
-    }
-
     const start = chunkNumber * chunkSize;
     const end = Math.min(start + chunkSize, file.size);
     const chunkBlob = file.slice(start, end);
@@ -507,175 +903,241 @@ export class ClipboardComponent implements OnInit, OnDestroy {
         } : u));
 
         if (res.isComplete || chunkNumber + 1 >= totalChunks) {
-          // Final assembly step
           this.api.completeChunkedUpload(code, serverUploadId).subscribe({
             next: item => {
               this.uploadingFiles.update(list => list.filter(u => u.id !== clientUploadId));
               this.appendItemLocally(item);
             },
-            error: err => {
-              this.uploadingFiles.update(list => list.map(u => u.id === clientUploadId ? {
-                ...u,
-                status: 'error',
-                errorMessage: err.error?.message || 'Failed to assemble chunks'
-              } : u));
+            error: () => {
+              this.uploadingFiles.update(list => list.map(u => u.id === clientUploadId ? { ...u, status: 'error' } : u));
             }
           });
         } else {
-          // Upload next chunk
           this.uploadNextChunk(code, file, clientUploadId, serverUploadId, chunkNumber + 1, chunkSize, totalChunks);
         }
       },
-      error: err => {
-        this.uploadingFiles.update(list => list.map(u => u.id === clientUploadId ? {
-          ...u,
-          status: 'error',
-          errorMessage: err.error?.message || `Chunk ${chunkNumber + 1} upload failed`
-        } : u));
+      error: () => {
+        this.uploadingFiles.update(list => list.map(u => u.id === clientUploadId ? { ...u, status: 'error' } : u));
       }
     });
   }
 
-  pauseUpload(uploadId: string): void {
-    this.uploadingFiles.update(list => list.map(u => u.id === uploadId ? { ...u, isPaused: true, status: 'paused' } : u));
+  cancelUpload(id: string): void {
+    this.uploadingFiles.update(list => list.filter(u => u.id !== id));
   }
 
-  resumeUpload(uploadId: string): void {
-    this.uploadingFiles.update(list => list.map(u => u.id === uploadId ? { ...u, isPaused: false, status: 'uploading' } : u));
+  // Card Clicks & Selection Mechanics
+  onCardClick(item: ClipboardItem, event: MouseEvent): void {
+    const isSelectionActive = this.selectedItemIds().size > 0;
+
+    if (event.shiftKey && this.lastSelectedItemId) {
+      this.selectRange(this.lastSelectedItemId, item.id);
+      return;
+    }
+
+    if (isSelectionActive) {
+      this.toggleItemSelection(item.id);
+      return;
+    }
+
+    // Default: Open Preview
+    if (item.itemType === 'IMAGE') {
+      this.lightboxImage.set(item);
+    } else {
+      this.detailsSheetItem.set(item);
+    }
+    this.lastSelectedItemId = item.id;
   }
 
-  cancelUpload(uploadId: string): void {
-    this.uploadingFiles.update(list => list.filter(u => u.id !== uploadId));
+  toggleItemSelection(itemId: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    const current = new Set(this.selectedItemIds());
+    if (current.has(itemId)) {
+      current.delete(itemId);
+    } else {
+      current.add(itemId);
+    }
+    this.selectedItemIds.set(current);
+    this.lastSelectedItemId = itemId;
   }
 
-  deleteItem(item: ClipboardItem): void {
-    const code = this.shareCode() || this.activeShare()?.code;
+  private selectRange(fromId: string, toId: string): void {
+    const items = this.displayFileItems();
+    const fromIdx = items.findIndex(i => i.id === fromId);
+    const toIdx = items.findIndex(i => i.id === toId);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    const start = Math.min(fromIdx, toIdx);
+    const end = Math.max(fromIdx, toIdx);
+    const set = new Set(this.selectedItemIds());
+    for (let i = start; i <= end; i++) {
+      set.add(items[i].id);
+    }
+    this.selectedItemIds.set(set);
+  }
+
+  selectAllFiles(): void {
+    const allIds = this.displayFileItems().map(i => i.id);
+    this.selectedItemIds.set(new Set(allIds));
+  }
+
+  clearSelection(): void {
+    this.selectedItemIds.set(new Set());
+  }
+
+  // Multi-Selection Actions (Bottom Floating Dark Pill Bar)
+  downloadSelectedItems(): void {
+    const ids = Array.from(this.selectedItemIds());
+    const items = this.allFileItems().filter(i => ids.includes(i.id));
+    if (items.length === 0) return;
+
+    if (items.length === 1) {
+      this.triggerDirectDownload(items[0]);
+    } else {
+      // Use existing backend zip endpoint if available
+      const code = this.shareCode();
+      if (code) {
+        const zipUrl = this.api.getZipDownloadUrl(code);
+        window.open(zipUrl, '_blank');
+      } else {
+        items.forEach(i => this.triggerDirectDownload(i));
+      }
+    }
+    this.clearSelection();
+  }
+
+  deleteSelectedItems(): void {
+    const code = this.shareCode();
     if (!code) return;
 
-    this.api.deleteItem(code, item.id, this.ownerToken() || undefined).subscribe({
-      next: () => {
-        this.removeItemLocally(item.id);
-      },
-      error: () => {}
+    const ids = Array.from(this.selectedItemIds());
+    const itemsToDelete = this.allFileItems().filter(i => ids.includes(i.id));
+    if (itemsToDelete.length === 0) return;
+
+    this.deletedItemsUndoStack = [...itemsToDelete];
+
+    // Optimistically remove
+    ids.forEach(id => this.removeItemLocally(id));
+    this.clearSelection();
+
+    this.showToast(this.copy.filesTab.toastDeletedUndo, 'Undo', () => {
+      // Undo restoration
+      this.deletedItemsUndoStack.forEach(item => this.appendItemLocally(item));
+      this.deletedItemsUndoStack = [];
     });
-  }
 
-  // --- Receiver Logic ---
-  onReceiveCodeInput(val: string): void {
-    this.receiveCode = val.trim();
-    this.receiveError.set(null);
-    this.pinRequired.set(false);
-
-    if (this.receiveCode.length >= 4) {
-      this.fetchReceiverShare(this.receiveCode);
-    } else {
-      this.activeShare.set(null);
-    }
-  }
-
-  onPinSubmit(): void {
-    if (this.receiveCode && this.receivePin) {
-      this.fetchReceiverShare(this.receiveCode, this.receivePin);
-    }
-  }
-
-  fetchReceiverShare(code: string, pin?: string): void {
-    this.isLoadingShare.set(true);
-    this.receiveError.set(null);
-
-    this.api.getShare(code, pin).subscribe({
-      next: async share => {
-        // If items are encrypted, attempt decryption
-        if (this.encryptionKey()) {
-          for (const item of share.items) {
-            if (item.textContent && item.isEncrypted) {
-              item.textContent = await ClipboardCrypto.decryptText(item.textContent, this.encryptionKey());
-            }
-          }
-        }
-
-        this.activeShare.set(share);
-        this.isLoadingShare.set(false);
-        this.pinRequired.set(false);
-
-        // Connect WebSocket and polling for receiver live updates
-        this.syncService.connect(share.code);
-        this.startReactivePollingFallback(share.code);
-
-        // Record to IndexedDB
-        this.historyService.saveRecord({
-          code: share.code,
-          wordCode: share.wordCode,
-          isSender: false,
-          createdAt: Date.now(),
-          itemCount: share.items.length,
-          isEncrypted: this.e2eeEnabled(),
-          encryptionKey: this.encryptionKey()
+    // Permanently trigger delete on backend after toast timeout
+    setTimeout(() => {
+      if (this.deletedItemsUndoStack.length > 0) {
+        itemsToDelete.forEach(item => {
+          this.api.deleteItem(code, item.id, this.ownerToken() || undefined).subscribe();
         });
-        this.loadHistory();
-      },
-      error: err => {
-        this.isLoadingShare.set(false);
-        if (err.error?.message === 'PIN_REQUIRED' || err.error?.message === 'INVALID_PIN') {
-          this.pinRequired.set(true);
-          this.receiveError.set(err.error?.message === 'INVALID_PIN' ? 'Incorrect PIN entered.' : 'This clipboard is protected with a PIN.');
-        } else {
-          this.activeShare.set(null);
-          this.receiveError.set(err.error?.message || 'Invalid or expired code. Please verify the 5-digit code or word code.');
-          // One-time soft shake on failed lookup (300ms)
-          this.hasErrorShake.set(true);
-          setTimeout(() => this.hasErrorShake.set(false), 300);
-        }
+        this.deletedItemsUndoStack = [];
       }
-    });
+    }, CLIPBOARD_CONFIG.toastDurationMs);
   }
 
-  openFromHistory(record: LocalClipboardRecord): void {
-    this.showHistoryDrawer.set(false);
-    if (record.isSender && record.ownerToken) {
-      this.mode.set('send');
-      this.shareCode.set(record.code);
-      this.wordCode.set(record.wordCode || null);
-      this.ownerToken.set(record.ownerToken);
-      if (record.encryptionKey) {
-        this.encryptionKey.set(record.encryptionKey);
-        this.e2eeEnabled.set(true);
-      }
-      this.fetchReceiverShare(record.code);
-    } else {
-      this.mode.set('receive');
-      this.receiveCode = record.code;
-      if (record.encryptionKey) {
-        this.encryptionKey.set(record.encryptionKey);
-        this.e2eeEnabled.set(true);
-      }
-      this.fetchReceiverShare(record.code);
+  triggerDirectDownload(item: ClipboardItem): void {
+    const code = this.shareCode();
+    if (!code) return;
+    const url = this.api.getDownloadUrl(code, item.id);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = item.originalName || 'file';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // Lightbox Navigation
+  navigateLightbox(offset: number): void {
+    const images = this.allFileItems().filter(i => i.itemType === 'IMAGE');
+    const current = this.lightboxImage();
+    if (!current || images.length === 0) return;
+
+    const idx = images.findIndex(i => i.id === current.id);
+    const nextIdx = (idx + offset + images.length) % images.length;
+    this.lightboxImage.set(images[nextIdx]);
+  }
+
+  // Filter & Sort Controls
+  setViewMode(mode: ViewMode): void {
+    this.viewMode.set(mode);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('acklet_clipboard_view_mode', mode);
     }
   }
 
-  // --- Real-time Sync Handlers ---
-  private handleSyncEvent(event: any): void {
+  setSortOption(opt: SortOption): void {
+    this.sortOption.set(opt);
+    this.showSortPopover.set(false);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('acklet_clipboard_sort_option', opt);
+    }
+  }
+
+  toggleTypeFilter(cat: FileCategory): void {
+    const current = new Set(this.selectedTypeFilters());
+    if (current.has(cat)) current.delete(cat);
+    else current.add(cat);
+    this.selectedTypeFilters.set(current);
+  }
+
+  toggleSourceFilter(source: 'uploaded' | 'pasted'): void {
+    const current = new Set(this.selectedSourceFilters());
+    if (current.has(source)) current.delete(source);
+    else current.add(source);
+    this.selectedSourceFilters.set(current);
+  }
+
+  clearAllFilters(): void {
+    this.selectedTypeFilters.set(new Set());
+    this.selectedSourceFilters.set(new Set());
+    this.searchQuery.set('');
+    this.fileSubFilter.set('all');
+    this.showFilterPopover.set(false);
+  }
+
+  // Metadata Resolver Helper for Template
+  resolveItemMeta(item: ClipboardItem): FileTypeMetadata {
+    return resolveFileMetadata(item.originalName || '', item.detectedMime);
+  }
+
+  getItemThumbnailUrl(item: ClipboardItem): string {
+    const code = this.shareCode();
+    if (!code) return '';
+    return this.api.getPreviewUrl(code, item.id);
+  }
+
+  // -------------------------------------------------------------
+  // REAL-TIME SYNC EVENT HANDLER
+  // -------------------------------------------------------------
+  private async handleSyncEvent(event: ClipboardSyncEvent): Promise<void> {
     if (!event || !this.activeShare()) return;
 
     if (event.eventType === 'ITEM_ADDED' && event.item) {
-      this.appendItemLocally(event.item);
-      this.triggerTabNotification(event.item);
+      const item = event.item;
+      if (item.itemType === 'TEXT' || item.itemType === 'LINK') {
+        let content = item.textContent || '';
+        if (item.isEncrypted && this.encryptionKey()) {
+          content = await ClipboardCrypto.decryptText(content, this.encryptionKey());
+        }
+
+        if (this.isTextDirty()) {
+          // Unsaved edits safety: do NOT overwrite. Show Slim Banner
+          this.hasRemoteTextConflict.set(true);
+        } else {
+          // Silently update with soft highlight
+          this.sharedText.set(content);
+          this.remoteTextSnapshot.set(content);
+          this.lastSavedTime.set(Date.now());
+          this.triggerTextHighlight();
+        }
+      } else {
+        this.appendItemLocally(item);
+      }
     } else if (event.eventType === 'ITEM_DELETED' && event.item?.id) {
       this.removeItemLocally(event.item.id);
-    } else if (event.eventType === 'RECEIPT_UPDATED' && event.item) {
-      this.updateItemReceiptsLocally(event.item);
-    }
-  }
-
-  private triggerTabNotification(item: ClipboardItem): void {
-    if (typeof document !== 'undefined' && document.hidden) {
-      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        const title = 'New Clipboard Item';
-        const body = item.originalName || (item.itemType === 'LINK' ? 'New Link shared' : 'New text snippet shared');
-        new Notification(title, { body, icon: '/favicon.ico' });
-      } else if (typeof Notification !== 'undefined' && Notification.permission !== 'denied') {
-        Notification.requestPermission();
-      }
     }
   }
 
@@ -683,14 +1145,26 @@ export class ClipboardComponent implements OnInit, OnDestroy {
     if (this.pollInterval) clearInterval(this.pollInterval);
     this.pollInterval = setInterval(() => {
       if (this.activeShare() && this.activeShare()?.code === code) {
-        this.api.getShare(code, this.receivePin || undefined).subscribe({
-          next: share => {
+        this.api.getShare(code).subscribe({
+          next: async share => {
+            const textItem = share.items.find(i => i.itemType === 'TEXT' || i.itemType === 'LINK');
+            if (textItem && textItem.textContent && !this.isTextDirty()) {
+              let content = textItem.textContent;
+              if (textItem.isEncrypted && this.encryptionKey()) {
+                content = await ClipboardCrypto.decryptText(content, this.encryptionKey());
+              }
+              if (content !== this.remoteTextSnapshot()) {
+                this.sharedText.set(content);
+                this.remoteTextSnapshot.set(content);
+                this.triggerTextHighlight();
+              }
+            }
             this.activeShare.set(share);
           },
-          error: () => {}
+          error: () => { }
         });
       }
-    }, 4000);
+    }, 4500);
   }
 
   private appendItemLocally(item: ClipboardItem): void {
@@ -698,136 +1172,91 @@ export class ClipboardComponent implements OnInit, OnDestroy {
     if (!current) return;
     if (current.items.some(i => i.id === item.id)) return;
 
-    const updated = {
+    this.activeShare.set({
       ...current,
-      items: [...current.items, item],
+      items: [item, ...current.items],
       totalSizeBytes: current.totalSizeBytes + (item.sizeBytes || 0)
-    };
-    this.activeShare.set(updated);
+    });
   }
 
   private removeItemLocally(itemId: string): void {
     const current = this.activeShare();
     if (!current) return;
 
-    const filtered = current.items.filter(i => i.id !== itemId);
-    const updated = {
-      ...current,
-      items: filtered,
-      totalSizeBytes: filtered.reduce((acc, i) => acc + (i.sizeBytes || 0), 0)
-    };
-    this.activeShare.set(updated);
-  }
-
-  private updateItemReceiptsLocally(item: ClipboardItem): void {
-    const current = this.activeShare();
-    if (!current) return;
-
-    const updatedItems = current.items.map(i => i.id === item.id ? {
-      ...i,
-      downloadCount: item.downloadCount,
-      viewCount: item.viewCount
-    } : i);
-
     this.activeShare.set({
       ...current,
-      items: updatedItems
+      items: current.items.filter(i => i.id !== itemId)
     });
   }
 
-  // --- Copy, QR & Direct Links ---
-  copyShareCode(): void {
-    const code = this.shareCode() || this.wordCode();
-    if (!code) return;
-    navigator.clipboard.writeText(code);
-    this.copiedCode.set(true);
-    setTimeout(() => this.copiedCode.set(false), 2000);
-  }
-
-  copyDirectLink(): void {
-    const code = this.shareCode();
-    if (!code || typeof window === 'undefined') return;
-    let url = `${window.location.origin}/#${code}`;
-    if (this.e2eeEnabled() && this.encryptionKey()) {
-      url += `&key=${this.encryptionKey()}`;
-    }
-    navigator.clipboard.writeText(url);
-    this.copiedLink.set(true);
-    setTimeout(() => this.copiedLink.set(false), 2000);
-  }
-
-  getDirectLinkUrl(): string {
-    const code = this.shareCode() || this.activeShare()?.code;
-    if (!code || typeof window === 'undefined') return '';
-    let url = `${window.location.origin}/#${code}`;
-    if (this.e2eeEnabled() && this.encryptionKey()) {
-      url += `&key=${this.encryptionKey()}`;
-    }
-    return url;
-  }
-
-  getQrCodeImageUrl(): string {
-    const link = encodeURIComponent(this.getDirectLinkUrl());
-    return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${link}`;
-  }
-
-  copySnippetText(item: ClipboardItem): void {
-    if (!item.textContent) return;
-    navigator.clipboard.writeText(item.textContent);
-    this.copiedItemId.set(item.id);
-    setTimeout(() => this.copiedItemId.set(null), 2000);
-  }
-
-  openPreview(item: ClipboardItem): void {
-    this.previewItem.set(item);
-  }
-
-  closePreview(): void {
-    this.previewItem.set(null);
-  }
-
-  getDownloadUrl(item: ClipboardItem): string {
-    const code = this.activeShare()?.code || this.shareCode()!;
-    return this.api.getDownloadUrl(code, item.id, this.receivePin || undefined);
-  }
-
-  getPreviewUrl(item: ClipboardItem): string {
-    const code = this.activeShare()?.code || this.shareCode()!;
-    return this.api.getPreviewUrl(code, item.id, this.receivePin || undefined);
-  }
-
-  downloadZipAll(): void {
-    const code = this.activeShare()?.code || this.shareCode()!;
-    const url = this.api.getZipDownloadUrl(code, this.receivePin || undefined);
-    window.open(url, '_blank');
-  }
-
-  submitAbuseReport(): void {
-    const code = this.activeShare()?.code || this.receiveCode;
-    if (!code || !this.reportReason.trim()) return;
-
-    this.isReportingAbuse.set(true);
-    this.api.reportShare(code, this.reportReason.trim()).subscribe({
-      next: () => {
-        this.isReportingAbuse.set(false);
-        this.reportSubmitted.set(true);
-        setTimeout(() => {
-          this.showReportModal.set(false);
-          this.reportSubmitted.set(false);
-          this.reportReason = '';
-        }, 2000);
-      },
-      error: () => {
-        this.isReportingAbuse.set(false);
-      }
+  // -------------------------------------------------------------
+  // TOAST & FEEDBACK UTILITIES
+  // -------------------------------------------------------------
+  showToast(text: string, actionText?: string, onAction?: () => void): void {
+    if (this.toastTimeout) clearTimeout(this.toastTimeout);
+    this.activeToast.set({
+      id: Math.random().toString(),
+      text,
+      actionText,
+      onAction
     });
+
+    this.toastTimeout = setTimeout(() => {
+      this.activeToast.set(null);
+    }, CLIPBOARD_CONFIG.toastDurationMs);
   }
 
-  formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
+  dismissToast(): void {
+    if (this.toastTimeout) clearTimeout(this.toastTimeout);
+    this.activeToast.set(null);
+  }
+
+  // -------------------------------------------------------------
+  // SETTINGS & HISTORY
+  // -------------------------------------------------------------
+  togglePrivateMode(): void {
+    const next = !this.isPrivateMode();
+    this.isPrivateMode.set(next);
+    this.historyService.setPrivateMode(next);
+    if (next) {
+      this.recentClipboards.set([]);
+    } else {
+      this.loadHistory();
+    }
+  }
+
+  async loadHistory(): Promise<void> {
+    const records = await this.historyService.getRecentRecords();
+    this.recentClipboards.set(records);
+  }
+
+  openFromHistory(record: LocalClipboardRecord): void {
+    this.showHistoryDrawer.set(false);
+    this.joinClipboard(record.code);
+  }
+
+  clearHistory(): void {
+    this.historyService.clearAllHistory();
+    this.recentClipboards.set([]);
+  }
+
+  getRelativeTimeString(timestamp: number | string): string {
+    const time = typeof timestamp === 'string' ? new Date(timestamp).getTime() : timestamp;
+    const diffSec = Math.floor((Date.now() - time) / 1000);
+    if (diffSec < 60) return 'just now';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} min ago`;
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `${diffHours} hr ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} d ago`;
+  }
+
+  formatBytes(bytes: number | null | undefined): string {
+    if (!bytes || bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + (sizes[i] || 'B');
   }
 }

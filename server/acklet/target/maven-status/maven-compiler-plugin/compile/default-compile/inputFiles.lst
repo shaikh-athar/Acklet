@@ -312,6 +312,13 @@
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/service/ToolRegistryService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/service/ToolReviewService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/service/ToolService.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/clipboard/controller/ClipboardController.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/clipboard/dto/AddTextRequest.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/clipboard/dto/ClipboardConfigDto.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/clipboard/dto/ClipboardItemDto.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/clipboard/dto/ClipboardShareDto.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/clipboard/dto/CreateShareRequest.java
+/Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/clipboard/service/ClipboardService.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/jsonlens/controller/JsonLensController.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/jsonlens/dto/JsonLensRequest.java
 /Users/ayaz/Acklet/server/acklet/src/main/java/com/code/acklet/tool/tools/jsonlens/dto/JsonLensResponse.java
