@@ -1,832 +1,1218 @@
-<div class="clipboard-container">
+<div class="clipboard-container" (dragover)="isDragOver.set(true)" (dragleave)="isDragOver.set(false)" (drop)="onFileDrop($event)">
 
-  <!-- 1. Page Title & Explainer -->
-  <header class="tool-header-block">
-    <h1 class="tool-page-title">Online Clipboard</h1>
-    <p class="tool-page-subtitle">Send text or files to another device with a 5-digit code.</p>
-  </header>
-
-  <!-- 2. Trust Information Chips Row -->
-  <div class="trust-chips-row" aria-label="Tool specifications and privacy">
-    <div class="trust-chip" title="Maximum file upload limit">
-      <ts-icon name="upload-cloud" class="size-4 text-current" />
-      <span class="trust-chip-label">Max File Size:</span>
-      <span class="trust-chip-value">200 MB</span>
-    </div>
-    <div class="trust-chip" title="Automatic storage retention">
-      <ts-icon name="clock" class="size-4 text-current" />
-      <span class="trust-chip-label">Auto Delete:</span>
-      <span class="trust-chip-value">7 Days</span>
-    </div>
-    <div class="trust-chip" title="Instant usage with no registration">
-      <ts-icon name="check-circle" class="size-4 text-current" />
-      <span class="trust-chip-label">Sign-up:</span>
-      <span class="trust-chip-value">Not required</span>
-    </div>
-    <div class="trust-chip" title="End-to-End Encryption with AES-GCM">
-      <ts-icon name="shield-check" class="size-4 text-current" />
-      <span class="trust-chip-label">Encryption:</span>
-      <span class="trust-chip-value">AES-GCM</span>
-    </div>
-  </div>
-
-  <!-- 3. Top Level: Mode Segmented Control + Actions -->
-  <div class="clipboard-top-bar">
-    <div class="mode-segmented-control" role="tablist" aria-label="Operation Mode">
-      <div 
-        class="segmented-thumb" 
-        [class.is-receive]="mode() === 'receive'"
-        aria-hidden="true"
-      ></div>
-      <button 
-        type="button"
-        role="tab"
-        class="segmented-btn" 
-        [class.active]="mode() === 'send'"
-        [attr.aria-selected]="mode() === 'send'"
-        (click)="setMode('send')"
-      >
-        <ts-icon name="upload" [size]="20" class="size-5 segmented-icon" />
-        <span class="segmented-label">Send</span>
-      </button>
-      <button 
-        type="button"
-        role="tab"
-        class="segmented-btn" 
-        [class.active]="mode() === 'receive'"
-        [attr.aria-selected]="mode() === 'receive'"
-        (click)="setMode('receive')"
-      >
-        <ts-icon name="download" [size]="20" class="size-5 segmented-icon" />
-        <span class="segmented-label">Receive</span>
-      </button>
-    </div>
-
-    <!-- Actions: Settings, ZIP, Report, and History aligned to right -->
-    <div class="top-actions-cluster">
-      @if (mode() === 'send') {
-        <button 
-          hlmBtn
-          variant="ghost"
-          size="default"
-          class="top-action-btn" 
-          [class.active]="showShareSettings()" 
-          (click)="showShareSettings.set(!showShareSettings())" 
-          title="Clipboard & Security Settings"
-          aria-label="Clipboard Settings"
-        >
-          <ts-icon name="settings-2" [size]="20" class="size-5" />
-          <span>Settings</span>
-        </button>
-      }
-
-      @if (activeShare() && currentItems().length > 1) {
-        <button 
-          hlmBtn 
-          variant="outline" 
-          size="sm"
-          class="top-action-btn" 
-          (click)="downloadZipAll()" 
-          title="Download All as ZIP" 
-          aria-label="Download all as ZIP"
-        >
-          <ts-icon name="archive" [size]="20" class="size-5" />
-          <span>ZIP All</span>
-        </button>
-      }
-
-      @if (activeShare() && mode() === 'receive') {
-        <button 
-          hlmBtn 
-          variant="outline" 
-          size="sm"
-          class="top-action-btn btn-report" 
-          (click)="showReportModal.set(true)" 
-          title="Report Abuse or Illegal Content" 
-          aria-label="Report Abuse"
-        >
-          <ts-icon name="flag" [size]="20" class="size-5" />
-          <span>Report</span>
-        </button>
-      }
-
-      <button 
-        hlmBtn
-        variant="ghost"
-        size="default"
-        class="top-action-btn ghost-history-btn" 
-        [class.active]="showHistoryDrawer()"
-        (click)="showHistoryDrawer.set(!showHistoryDrawer())" 
-        title="Recent Clipboard History"
-        aria-label="Recent Clipboard History"
-      >
-        <ts-icon name="history" [size]="20" class="size-5" />
-        <span>History</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- History Drawer / Overlay -->
-  @if (showHistoryDrawer()) {
-    <div class="history-card-drawer">
-      <div class="history-drawer-header">
-        <div class="flex items-center gap-2">
-          <ts-icon name="history" class="size-4 text-current" />
-          <span class="font-semibold text-sm">Recent Clipboards</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <button 
-            type="button"
-            class="private-toggle-btn" 
-            [class.private-on]="isPrivateMode()" 
-            (click)="togglePrivateMode()"
-            title="Private Mode: Never store clipboard history locally"
-          >
-            <ts-icon [name]="isPrivateMode() ? 'eye-off' : 'eye'" class="size-3.5" />
-            <span>{{ isPrivateMode() ? 'Private ON' : 'Private Mode' }}</span>
-          </button>
-          <button type="button" class="close-btn-xs" (click)="showHistoryDrawer.set(false)" aria-label="Close history">
-            <ts-icon name="x" class="size-4" />
-          </button>
-        </div>
-      </div>
-
-      <div class="history-drawer-body">
-        @if (recentClipboards().length === 0) {
-          <p class="empty-history-hint">
-            {{ isPrivateMode() ? 'Private mode is enabled. No history is stored.' : 'No recent clipboards found on this device.' }}
-          </p>
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- ZONE 1: CLIPBOARD IDENTITY STRIP (Klipit Top Strip)         -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <header class="clipboard-identity-strip" role="banner" aria-label="Shared clipboard identity">
+    <div class="identity-main-row">
+      <!-- Left: ID Monospace Highlight Box & Live Status -->
+      <div class="identity-left-cluster">
+        <span class="identity-label-text">{{ copy.identity.codeLabel }}:</span>
+        
+        @if (isEditingCode()) {
+          <div class="identity-code-edit-container">
+            <input 
+              type="text" 
+              class="identity-code-edit-input" 
+              [(ngModel)]="editingCodeInput" 
+              (keyup.enter)="saveCustomCode()" 
+              (keyup.escape)="cancelEditCode()"
+              placeholder="e.g. project-x"
+              maxlength="16"
+              autofocus
+            />
+            <button 
+              type="button" 
+              class="code-edit-confirm-btn" 
+              (click)="saveCustomCode()" 
+              [disabled]="isSavingCustomCode()"
+              title="Save custom ID"
+              aria-label="Save custom ID"
+            >
+              @if (isSavingCustomCode()) {
+                <span class="spinner-circle-xs" aria-hidden="true"></span>
+              } @else {
+                <ts-icon name="check" [size]="14" />
+              }
+            </button>
+            <button 
+              type="button" 
+              class="code-edit-cancel-btn" 
+              (click)="cancelEditCode()" 
+              title="Cancel"
+              aria-label="Cancel"
+            >
+              <ts-icon name="x" [size]="14" />
+            </button>
+          </div>
         } @else {
-          <div class="history-items-grid">
-            @for (rec of recentClipboards(); track rec.code) {
-              <div class="history-item-pill" (click)="openFromHistory(rec)">
-                <span class="history-code">{{ rec.code }}</span>
-                @if (rec.wordCode) {
-                  <span class="history-word">({{ rec.wordCode }})</span>
-                }
-                <span class="history-tag">{{ rec.isSender ? 'Sent' : 'Received' }}</span>
-              </div>
+          <div 
+            class="identity-code-box" 
+            [class.is-copied]="copiedCode()"
+            role="group" 
+            [attr.aria-label]="'Clipboard ID: ' + (shareCode() || 'generating')"
+          >
+            <span 
+              class="identity-code-mono" 
+              (click)="copyShareId()" 
+              title="Click to copy ID"
+              tabindex="0"
+              role="button"
+            >
+              {{ shareCode() || '•••••' }}
+            </span>
+            <button 
+              type="button" 
+              class="code-box-action-icon" 
+              (click)="copyShareId()" 
+              title="Copy ID"
+              aria-label="Copy ID"
+            >
+              <ts-icon [name]="copiedCode() ? 'check' : 'copy'" [size]="15" />
+            </button>
+            <button 
+              type="button" 
+              class="code-box-action-icon code-edit-trigger" 
+              (click)="startEditCode()" 
+              title="Edit Clipboard ID (Customize)"
+              aria-label="Edit Clipboard ID"
+            >
+              <ts-icon name="pencil" [size]="13" />
+            </button>
+            @if (copiedCode()) {
+              <span class="code-copied-pop">{{ copy.identity.copied }}</span>
             }
           </div>
         }
-      </div>
-    </div>
-  }
 
-  <!-- Sender Share Options Config Panel (Collapsible) -->
-  @if (mode() === 'send' && showShareSettings()) {
-    <div class="settings-drawer-panel">
-      <div class="settings-grid">
-        <div class="setting-col">
-          <label class="setting-label">Retention Expiry</label>
-          <select [(ngModel)]="expiryHours" class="setting-select">
-            <option [ngValue]="1">1 Hour</option>
-            <option [ngValue]="24">24 Hours (1 Day)</option>
-            <option [ngValue]="168">7 Days (Default)</option>
-          </select>
+        <!-- Live Status Pill -->
+        <div class="identity-status-pill" [class.is-live]="isSyncConnected()">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span class="status-label">{{ isSyncConnected() ? copy.identity.statusLive : copy.identity.statusReconnecting }}</span>
         </div>
 
-        <div class="setting-col">
-          <label class="setting-label">Access PIN (Optional)</label>
-          <input 
-            type="password" 
-            maxlength="6" 
-            placeholder="4-6 digits" 
-            [(ngModel)]="pinProtection" 
-            class="setting-input" 
-          />
-        </div>
-
-        <div class="setting-col flex-row-toggle">
-          <label class="toggle-checkbox-label">
-            <input type="checkbox" [(ngModel)]="burnAfterReading" class="toggle-checkbox" />
-            <span>Burn after reading</span>
-          </label>
-          <span class="setting-hint">Deletes file after download</span>
-        </div>
-
-        <div class="setting-col flex-row-toggle">
-          <label class="toggle-checkbox-label">
-            <input type="checkbox" [(ngModel)]="liveRoomMode" class="toggle-checkbox" />
-            <span>Live Room (2-way)</span>
-          </label>
-          <span class="setting-hint">Both sides can add items</span>
-        </div>
-
-        <div class="setting-col flex-row-toggle">
-          <label class="toggle-checkbox-label">
-            <input type="checkbox" [(ngModel)]="e2eeEnabled" class="toggle-checkbox" />
-            <span>End-to-End Encryption</span>
-          </label>
-          <span class="setting-hint">AES-GCM Web Crypto (#key)</span>
-        </div>
-      </div>
-    </div>
-  }
-
-  <!-- Active Sender Code Bar if generated -->
-  @if (mode() === 'send' && shareCode()) {
-    <div class="code-pill-active-bar">
-      <div class="code-pill-details">
-        <div class="flex items-center gap-2">
-          <span class="code-label">5-Digit Code:</span>
-          <span class="code-number">{{ shareCode() }}</span>
-        </div>
-        @if (wordCode()) {
-          <div class="word-code-pill hidden md:flex items-center gap-1.5" title="Memorable word code for room dictation">
-            <span class="word-label">Word Code:</span>
-            <span class="word-value">{{ wordCode() }}</span>
-          </div>
+        @if (isPrivateMode()) {
+          <span class="private-mode-chip" title="Private mode active: Not saved in device history">
+            <ts-icon name="lock" [size]="12" />
+            <span>{{ copy.identity.privateChip }}</span>
+          </span>
         }
       </div>
 
-      <div class="code-pill-actions">
+      <!-- Center: Action Links (Copy link, New clipboard) -->
+      <div class="identity-actions-cluster">
         <button 
           type="button" 
-          class="pill-btn" 
-          [class.btn-success-pop]="copiedCode()"
-          (click)="copyShareCode()" 
-          title="Copy Code"
+          class="identity-action-link-btn" 
+          (click)="copyDirectLink()"
+          title="Copy full link with ID"
         >
-          <ts-icon [name]="copiedCode() ? 'check' : 'copy'" [size]="20" class="size-5" [class.icon-pop]="copiedCode()" />
-          <span>{{ copiedCode() ? 'Copied' : 'Copy' }}</span>
+          <ts-icon [name]="copiedLink() ? 'check' : 'link'" [size]="16" />
+          <span>{{ copiedLink() ? copy.identity.copied : copy.identity.copyLink }}</span>
         </button>
+
         <button 
           type="button" 
-          class="pill-btn" 
-          [class.btn-success-pop]="copiedLink()"
-          (click)="copyDirectLink()" 
-          title="Copy Direct Receiver Link"
+          class="identity-action-link-btn" 
+          (click)="confirmCreateNewClipboard()"
+          title="Start a fresh clipboard session"
         >
-          <ts-icon [name]="copiedLink() ? 'check' : 'link'" [size]="20" class="size-5" [class.icon-pop]="copiedLink()" />
-          <span>{{ copiedLink() ? 'Copied' : 'Link' }}</span>
+          <ts-icon name="plus" [size]="16" />
+          <span>{{ copy.identity.newClipboard }}</span>
         </button>
-        <button type="button" class="pill-btn" (click)="showQrModal.set(true)" title="Show QR Code for Mobile">
-          <ts-icon name="qr-code" [size]="20" class="size-5" />
-          <span>QR</span>
+      </div>
+
+      <!-- Right: Desktop QR Tile + Join Field + Settings / History -->
+      <div class="identity-right-cluster">
+        <!-- Desktop QR Code Preview Tile (88px) -->
+        @if (qrDataUrl()) {
+          <div 
+            class="desktop-qr-tile hide-below-640" 
+            (click)="showQrModal.set(true)" 
+            role="button" 
+            tabindex="0"
+            title="Scan this QR code with mobile camera"
+            aria-label="Scan QR code"
+          >
+            <img [src]="qrDataUrl()" alt="QR Code" class="qr-thumbnail-img" />
+            <div class="qr-zoom-hint" aria-hidden="true">
+              <ts-icon name="scan-qr-code" [size]="14" />
+            </div>
+          </div>
+        }
+
+        <!-- Mobile QR Button (<640px) -->
+        <button 
+          type="button" 
+          class="icon-action-btn show-below-640" 
+          (click)="showQrModal.set(true)" 
+          title="Scan QR Code"
+          aria-label="Show QR Code"
+        >
+          <ts-icon name="qr-code" [size]="20" />
+        </button>
+
+        <!-- Desktop Join Box ("Have a code? [Open]") -->
+        <div class="join-code-container hide-below-640">
+          <div class="join-input-group" [class.has-error]="!!joinError()">
+            <input 
+              type="text" 
+              class="join-code-input" 
+              [placeholder]="copy.identity.joinPlaceholder" 
+              [(ngModel)]="joinCodeInput"
+              (keyup.enter)="joinClipboard()"
+              maxlength="24"
+              autocomplete="off"
+            />
+            <button 
+              type="button" 
+              class="join-open-btn" 
+              [disabled]="!joinCodeInput.trim() || isJoining()" 
+              (click)="joinClipboard()"
+            >
+              {{ copy.identity.joinButton }}
+            </button>
+          </div>
+          @if (joinError()) {
+            <span class="inline-join-error" role="alert">{{ joinError() }}</span>
+          }
+        </div>
+
+        <!-- Mobile Open Another Button (<640px) -->
+        <div class="mobile-join-wrapper show-below-640">
+          <button 
+            type="button" 
+            class="icon-action-btn" 
+            (click)="showMobileJoinPopover.set(!showMobileJoinPopover())" 
+            title="Open another clipboard"
+            aria-label="Open another clipboard"
+          >
+            <ts-icon name="log-in" [size]="20" />
+          </button>
+        </div>
+
+        <!-- Settings & History Buttons -->
+        <button 
+          type="button" 
+          class="icon-action-btn" 
+          (click)="showSettingsModal.set(true)" 
+          title="Settings"
+          aria-label="Settings"
+        >
+          <ts-icon name="settings-2" [size]="20" />
+        </button>
+
+        <button 
+          type="button" 
+          class="icon-action-btn" 
+          (click)="showHistoryDrawer.set(true)" 
+          title="Recent clipboards"
+          aria-label="Recent clipboards"
+        >
+          <ts-icon name="history" [size]="20" />
         </button>
       </div>
     </div>
-  }
 
-  <!-- Receiver Input Mode Header: Dedicated Elevated Card Box -->
-  @if (mode() === 'receive') {
-    <div class="receiver-input-section">
-      <div class="receiver-card-header">
-        <div class="receiver-icon-tile">
-          <ts-icon name="download" [size]="18" class="size-4.5" />
-        </div>
-        <div class="receiver-header-texts">
-          <label class="code-input-label" for="receive-code-input">Enter 5-Digit Code or Word Code</label>
-          <span class="receiver-subtitle">Pair with any device to open the live clipboard stream</span>
-        </div>
-      </div>
-
-      <div class="code-input-wrapper">
-        <div class="code-input-box">
-          <div class="code-input-prefix">
-            <ts-icon name="key-round" [size]="18" class="size-4.5" />
-          </div>
+    <!-- Mobile Join Code Dropdown Popover (<640px) -->
+    @if (showMobileJoinPopover()) {
+      <div class="mobile-join-popover">
+        <div class="join-input-group" [class.has-error]="!!joinError()">
           <input 
-            #codeBox
-            hlmInput
-            id="receive-code-input"
             type="text" 
-            placeholder="12345 or swift-tiger-42"
-            [ngModel]="receiveCode"
-            (ngModelChange)="onReceiveCodeInput($event)"
-            class="digits-input"
-            [class.input-soft-shake]="hasErrorShake()"
+            class="join-code-input" 
+            [placeholder]="copy.identity.joinPlaceholder" 
+            [(ngModel)]="joinCodeInput"
+            (keyup.enter)="joinClipboard()"
+            maxlength="24"
             autocomplete="off"
             autofocus
           />
-          @if (isLoadingShare()) {
-            <div class="input-spinner" aria-label="Loading clipboard"></div>
-          }
+          <button 
+            type="button" 
+            class="join-open-btn" 
+            [disabled]="!joinCodeInput.trim() || isJoining()" 
+            (click)="joinClipboard()"
+          >
+            {{ copy.identity.joinButton }}
+          </button>
         </div>
-
-        <div class="code-status-row">
-          <div class="code-status-left">
-            <span class="sync-dot-pulse"></span>
-            <p class="code-hint">Instant sync: Enter code to open the clipboard stream live.</p>
-          </div>
-          @if (activeShare()) {
-            <span class="valid-code-badge" role="status">
-              <ts-icon name="check-circle" class="size-3.5 inline mr-1 text-[var(--accent)]" />
-              Connected to {{ activeShare()?.code }}
-            </span>
-          }
-        </div>
+        @if (joinError()) {
+          <span class="inline-join-error" role="alert">{{ joinError() }}</span>
+        }
       </div>
+    }
+  </header>
 
-      @if (pinRequired()) {
-        <div class="pin-entry-card">
-          <ts-icon name="lock" class="size-4 text-amber-400 flex-shrink-0" />
-          <div class="pin-form flex items-center gap-2 flex-grow">
-            <input 
-              hlmInput
-              type="password" 
-              maxlength="6" 
-              placeholder="Enter PIN" 
-              [(ngModel)]="receivePin" 
-              class="pin-input"
-            />
-            <button hlmBtn variant="default" size="sm" type="button" class="btn-unlock" (click)="onPinSubmit()">Unlock</button>
-          </div>
-        </div>
-      }
-
-      @if (receiveError()) {
-        <div hlmAlert variant="destructive" class="receive-alert-card">
-          <ts-icon name="circle-alert" class="size-4 flex-shrink-0" />
-          <div class="alert-content">
-            <strong class="font-semibold">Notice:</strong> {{ receiveError() }}
-          </div>
-        </div>
-      }
-    </div>
-  }
-
-  <!-- Level 2: Underline Tab Group (Text & Links | Images | Files) -->
-  <div class="clipboard-underline-tabs-bar" role="tablist" aria-label="Content type">
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- ZONE 2: FIXED TAB BAR (Text & Links | Files)               -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <nav class="clipboard-main-tab-bar" role="tablist" aria-label="Clipboard sections">
     <button 
-      type="button"
-      role="tab"
-      class="underline-tab" 
+      type="button" 
+      role="tab" 
+      class="main-tab-btn" 
       [class.active]="activeTab() === 'text'"
-      [attr.aria-selected]="activeTab() === 'text'"
-      (click)="setActiveTab('text')"
+      [attr.aria-selected]="activeTab() === 'text'" 
+      (click)="setTab('text')"
     >
-      <ts-icon name="file-text" [size]="18" class="tab-icon" />
-      <span class="tab-label">Text & Links</span>
-      <span hlmBadge variant="secondary" class="tab-count-badge" [class.badge-bump]="activeTab() === 'text'">{{ textItems().length }}</span>
+      <ts-icon name="file-text" [size]="16" />
+      <span>{{ copy.tabs.text }}</span>
     </button>
 
     <button 
-      type="button"
-      role="tab"
-      class="underline-tab" 
-      [class.active]="activeTab() === 'images'"
-      [attr.aria-selected]="activeTab() === 'images'"
-      (click)="setActiveTab('images')"
-    >
-      <ts-icon name="image" [size]="18" class="tab-icon" />
-      <span class="tab-label">Images</span>
-      <span hlmBadge variant="secondary" class="tab-count-badge" [class.badge-bump]="activeTab() === 'images'">{{ imageItems().length }}</span>
-    </button>
-
-    <button 
-      type="button"
-      role="tab"
-      class="underline-tab" 
+      type="button" 
+      role="tab" 
+      class="main-tab-btn" 
       [class.active]="activeTab() === 'files'"
-      [attr.aria-selected]="activeTab() === 'files'"
-      (click)="setActiveTab('files')"
+      [attr.aria-selected]="activeTab() === 'files'" 
+      (click)="setTab('files')"
     >
-      <ts-icon name="folder" [size]="18" class="tab-icon" />
-      <span class="tab-label">Files</span>
-      <span hlmBadge variant="secondary" class="tab-count-badge" [class.badge-bump]="activeTab() === 'files'">{{ fileItems().length }}</span>
+      <ts-icon name="folder" [size]="16" />
+      <span>{{ copy.tabs.files }}</span>
+      @if (allFileItems().length > 0) {
+        <span class="tab-badge-pill">{{ allFileItems().length }}</span>
+      }
     </button>
-  </div>
+  </nav>
 
-  <!-- TAB CONTENT -->
-  <div class="clipboard-tab-body">
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- ZONE 3: SCROLLING CONTENT AREA                             -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <main class="clipboard-content-scroller" [class.has-selection]="selectedItemIds().size > 0">
 
-    <!-- ==================== TAB 1: TEXT & LINKS ==================== -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- TAB 1: TEXT & LINKS (Klipit-style One Big Shared Textarea) -->
+    <!-- ─────────────────────────────────────────────────────────── -->
     @if (activeTab() === 'text') {
-      <div class="tab-panel">
+      <section 
+        class="tab-content-pane text-pane-layout" 
+        [class.slide-from-left]="tabDirection() === 'left'"
+        [class.slide-from-right]="tabDirection() === 'right'"
+        aria-label="Text & Links Editor"
+      >
         
-        <!-- Input Form (Sender or Live Room) -->
-        @if (mode() === 'send' || activeShare()?.liveMode) {
-          <div class="text-input-box-container">
-            <textarea 
-              rows="3" 
-              placeholder="Paste or type text, notes, JSON, code, or URL links here... (Ctrl+V works anywhere)"
-              [ngModel]="newTextSnippet()"
-              (ngModelChange)="newTextSnippet.set($event)"
-              class="text-input-field"
-            ></textarea>
-
-            <div class="text-input-actions-bar">
-              <span class="text-size-caption">Max 1 MB</span>
-              <button 
-                hlmBtn
-                variant="default"
-                size="default"
-                type="button"
-                class="btn-add-snippet"
-                [class.is-loading]="isSubmittingText() || isCreatingShare()"
-                [disabled]="!newTextSnippet().trim() || isSubmittingText() || isCreatingShare()"
-                (click)="submitTextSnippet()"
-              >
-                @if (isSubmittingText() || isCreatingShare()) {
-                  <span class="btn-spinner-icon" aria-hidden="true"></span>
-                  <span>Adding...</span>
-                } @else {
-                  <ts-icon name="plus" class="size-4 mr-1.5" />
-                  <span>Add Snippet</span>
-                }
-              </button>
+        <!-- Remote Update Banner (Unsaved conflict safety) -->
+        @if (hasRemoteTextConflict()) {
+          <div class="remote-update-banner" role="alert">
+            <div class="banner-text-row">
+              <ts-icon name="refresh-cw" [size]="16" class="animate-spin text-[var(--accent)]" />
+              <span>{{ copy.textTab.remoteUpdateBanner }} {{ copy.textTab.refreshToSee }}</span>
             </div>
+            <button type="button" class="banner-refresh-btn" (click)="refreshTextContent()">
+              {{ copy.textTab.refresh }}
+            </button>
           </div>
         }
 
-        <!-- Text/Links List -->
-        <div class="items-stream-section">
-          @if (textItems().length === 0) {
-            <div hlmEmpty class="empty-spartan-card">
-              <div hlmEmptyIcon>
-                <ts-icon name="file-text" class="size-6 text-current" />
-              </div>
-              <h4 hlmEmptyTitle>No text or links shared yet</h4>
-              <p hlmEmptyDescription>
-                {{ mode() === 'send' ? 'Type or paste content above to generate your clipboard code.' : 'Items added by the sender will appear here in real time.' }}
-              </p>
-              @if (mode() === 'send') {
-                <div hlmEmptyActions>
-                  <button 
-                    hlmBtn 
-                    variant="default"
-                    size="default" 
-                    type="button"
-                    (click)="submitSampleText()"
-                  >
-                    <ts-icon name="plus" class="size-4 mr-1.5" />
-                    <span>Add quick note</span>
-                  </button>
-                </div>
+        <!-- Single URL Direct Action Link Chip -->
+        @if (singleDetectedUrl()) {
+          <div class="detected-url-bar">
+            <span class="detected-url-label">{{ copy.textTab.openLink }}:</span>
+            <a [href]="singleDetectedUrl()" target="_blank" rel="noopener noreferrer" class="detected-url-link">
+              <span>{{ singleDetectedUrl() }}</span>
+              <ts-icon name="arrow-up-right" [size]="14" />
+            </a>
+          </div>
+        }
+
+        <!-- Big Shared Textarea -->
+        <div class="shared-textarea-container" [class.is-highlighted]="remoteTextHighlight()">
+          <textarea 
+            #sharedTextarea
+            class="shared-textarea" 
+            [placeholder]="copy.textTab.placeholder"
+            [ngModel]="sharedText()"
+            (ngModelChange)="onTextChanged($event)"
+            spellcheck="false"
+          ></textarea>
+
+          <!-- Corner limit & capacity indicator -->
+          <div class="textarea-corner-indicator">
+            @if (isTextOver80Percent()) {
+              <span class="size-counter-warn">
+                {{ formatBytes(textByteLength()) }} / {{ copy.textTab.limitHint }}
+              </span>
+            } @else {
+              <span class="size-hint-quiet">{{ copy.textTab.limitHint }}</span>
+            }
+          </div>
+        </div>
+
+        <!-- Action Row: Copy, Refresh, Save, Clear & Status Text -->
+        <div class="text-actions-bottom-row">
+          <div class="text-actions-left-group">
+            <button 
+              type="button" 
+              class="text-btn btn-secondary" 
+              (click)="copyEntireText()"
+              [disabled]="!sharedText()"
+              title="Copy text to clipboard"
+            >
+              <ts-icon name="clipboard" [size]="18" />
+              <span>{{ copy.textTab.copy }}</span>
+            </button>
+
+            <button 
+              type="button" 
+              class="text-btn btn-secondary" 
+              (click)="refreshTextContent()"
+              title="Refresh from server"
+            >
+              <ts-icon name="refresh-cw" [size]="20" />
+              <span>{{ copy.textTab.refresh }}</span>
+            </button>
+
+            <!-- Save Primary Accent Button -->
+            <button 
+              type="button" 
+              class="text-btn btn-primary-accent" 
+              [class.is-saving]="isSavingText()"
+              (click)="saveTextContent()"
+              [disabled]="!isTextDirty() || isSavingText()"
+              title="Save changes"
+            >
+              @if (isSavingText()) {
+                <span class="spinner-circle-sm" aria-hidden="true"></span>
+              } @else {
+                <ts-icon name="save" [size]="20" />
               }
-            </div>
-          } @else {
-            <div class="text-items-grid">
-              @for (item of textItems(); track item.id) {
-                <div class="snippet-card">
-                  <div class="snippet-card-header">
-                    <div class="flex items-center gap-2">
-                      <ts-icon [name]="item.itemType === 'LINK' ? 'link' : 'file-code'" class="size-4 text-current" />
-                      <span class="snippet-type-label">{{ item.itemType === 'LINK' ? 'URL Link' : 'Text Snippet' }}</span>
-                      @if (item.isEncrypted) {
-                        <span class="encrypted-badge" title="End-to-End Encrypted with AES-GCM">E2EE</span>
-                      }
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="item-receipt-tick" title="Live Views">
-                        <ts-icon name="eye" class="size-3 mr-0.5 inline" />{{ item.viewCount || 0 }}
-                      </span>
-                      <span class="snippet-time">{{ item.createdAt | date:'shortTime' }}</span>
-                      @if (mode() === 'send' || activeShare()?.liveMode) {
-                        <button type="button" class="item-delete-btn" (click)="deleteItem(item)" title="Delete" aria-label="Delete snippet">
-                          <ts-icon name="trash-2" class="size-3.5" />
-                        </button>
-                      }
-                    </div>
-                  </div>
+              <span>{{ copy.textTab.save }}</span>
+            </button>
 
-                  <div class="snippet-content-body">
-                    @if (item.itemType === 'LINK') {
-                      <a [href]="item.textContent" target="_blank" rel="noopener noreferrer" class="link-display">
-                        {{ item.textContent }}
-                      </a>
-                    } @else {
-                      <pre class="plain-snippet-text">{{ item.textContent }}</pre>
-                    }
-                  </div>
+            <!-- Clear (Quietest) -->
+            <button 
+              type="button" 
+              class="text-btn btn-quiet-clear" 
+              (click)="clearTextContent()"
+              [disabled]="!sharedText()"
+              title="Clear text (with undo)"
+            >
+              <ts-icon name="trash-2" [size]="20" />
+              <span>{{ copy.textTab.clear }}</span>
+            </button>
+          </div>
 
-                  <div class="snippet-footer">
-                    <span class="byte-size">{{ item.sizeBytes | formatBytes }}</span>
-                    <button 
-                      type="button" 
-                      class="btn-copy-snippet" 
-                      [class.btn-success-pop]="copiedItemId() === item.id"
-                      (click)="copySnippetText(item)" 
-                      aria-label="Copy snippet"
-                    >
-                      <ts-icon [name]="copiedItemId() === item.id ? 'check' : 'copy'" class="size-3.5" [class.icon-pop]="copiedItemId() === item.id" />
-                      <span>{{ copiedItemId() === item.id ? 'Copied' : 'Copy' }}</span>
+          <!-- Status Indicator Text -->
+          <div class="text-status-caption">
+            @if (isSavingText()) {
+              <span>Saving...</span>
+            } @else if (isTextDirty()) {
+              <span class="status-unsaved-dot">•</span>
+              <span>{{ copy.textTab.unsaved }}</span>
+            } @else if (lastSavedTime()) {
+              <span>{{ copy.textTab.savedRelative(getRelativeTimeString(lastSavedTime()!)) }}</span>
+            } @else {
+              <span>{{ copy.textTab.allSaved }}</span>
+            }
+          </div>
+        </div>
+
+      </section>
+    }
+
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- TAB 2: FILES (Library-style Header + Masonry Cards Grid)   -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    @if (activeTab() === 'files') {
+      <section 
+        class="tab-content-pane files-pane-layout" 
+        [class.slide-from-left]="tabDirection() === 'left'"
+        [class.slide-from-right]="tabDirection() === 'right'"
+        aria-label="Shared Files Library"
+      >
+        
+        <!-- Hidden file picker -->
+        <input 
+          #fileInputGeneral 
+          type="file" 
+          multiple 
+          class="hidden" 
+          (change)="onFileSelected($event)" 
+        />
+
+        <!-- 1. Toolbar Row (Filter button, Grid/List toggle, Search pill, Add pill, Sort icon) -->
+        <div class="files-toolbar-row">
+          
+          <!-- Filter Button with Active Dot -->
+          <button 
+            type="button" 
+            class="toolbar-filter-btn" 
+            [class.is-active]="hasActiveFilters()"
+            (click)="showFilterPopover.set(!showFilterPopover())" 
+            title="Filter files"
+            aria-label="Filter files"
+          >
+            <ts-icon name="filter" [size]="20" />
+            @if (hasActiveFilters()) {
+              <span class="filter-active-dot" aria-label="Filters active"></span>
+            }
+          </button>
+
+          <!-- Grid / List Toggle (Active gets soft circle background, Image 3 style) -->
+          <div class="view-mode-toggle-group" role="group" aria-label="View layout">
+            <button 
+              type="button" 
+              class="view-toggle-btn" 
+              [class.active]="viewMode() === 'grid'"
+              (click)="setViewMode('grid')"
+              title="Grid view"
+              aria-label="Grid view"
+            >
+              <ts-icon name="layout-grid" [size]="18" />
+            </button>
+            <button 
+              type="button" 
+              class="view-toggle-btn" 
+              [class.active]="viewMode() === 'list'"
+              (click)="setViewMode('list')"
+              title="List view"
+              aria-label="List view"
+            >
+              <ts-icon name="list" [size]="18" />
+            </button>
+          </div>
+
+          <!-- Rounded Search Pill with "/" shortcut -->
+          <div class="search-pill-container">
+            <ts-icon name="search" [size]="16" class="search-icon" />
+            <input 
+              #fileSearchInput
+              type="text" 
+              class="search-pill-input" 
+              [placeholder]="copy.filesTab.searchPlaceholder"
+              [(ngModel)]="searchQuery"
+            />
+            @if (!searchQuery()) {
+              <kbd class="search-shortcut-kbd hide-below-640">/</kbd>
+            } @else {
+              <button type="button" class="search-clear-btn" (click)="searchQuery.set('')" aria-label="Clear search">
+                <ts-icon name="x" [size]="14" />
+              </button>
+            }
+          </div>
+
+          <!-- Dark Pill "Add v" Button -->
+          <div class="add-button-wrapper">
+            <button 
+              type="button" 
+              class="dark-pill-add-btn" 
+              (click)="showAddMenu.set(!showAddMenu())"
+              title="Add files"
+            >
+              <ts-icon name="plus" [size]="16" />
+              <span>{{ copy.filesTab.addButton }}</span>
+              <ts-icon name="chevron-down" [size]="14" class="chevron-icon" />
+            </button>
+
+            @if (showAddMenu()) {
+              <div class="add-dropdown-menu" (mouseleave)="showAddMenu.set(false)">
+                <button type="button" class="add-menu-item" (click)="openFilePicker(); showAddMenu.set(false)">
+                  <ts-icon name="hard-drive" [size]="16" />
+                  <span>{{ copy.filesTab.addFromDevice }}</span>
+                </button>
+                <button type="button" class="add-menu-item" (click)="showAddMenu.set(false)">
+                  <ts-icon name="clipboard-paste" [size]="16" />
+                  <span>{{ copy.filesTab.addPasteClipboard }}</span>
+                </button>
+              </div>
+            }
+          </div>
+
+          <!-- Sliders Icon for Sort Popover -->
+          <button 
+            type="button" 
+            class="toolbar-sort-btn" 
+            (click)="showSortPopover.set(!showSortPopover())"
+            title="Sort options"
+            aria-label="Sort options"
+          >
+            <ts-icon name="sliders-horizontal" [size]="20" />
+          </button>
+
+        </div>
+
+        <!-- 2. Sub-Category Pill Chips (All / Images / Files) -->
+        <div class="sub-filter-chips-bar" role="tablist" aria-label="Category sub-filter">
+          <button 
+            type="button" 
+            class="sub-pill-chip" 
+            [class.active]="fileSubFilter() === 'all'"
+            (click)="fileSubFilter.set('all')"
+          >
+            <span>{{ copy.tabs.allChip }}</span>
+            @if (allFileItems().length > 0) {
+              <span class="chip-count">{{ allFileItems().length }}</span>
+            }
+          </button>
+
+          <button 
+            type="button" 
+            class="sub-pill-chip" 
+            [class.active]="fileSubFilter() === 'images'"
+            (click)="fileSubFilter.set('images')"
+          >
+            <span>{{ copy.tabs.imagesChip }}</span>
+            @if (imagesCount() > 0) {
+              <span class="chip-count">{{ imagesCount() }}</span>
+            }
+          </button>
+
+          <button 
+            type="button" 
+            class="sub-pill-chip" 
+            [class.active]="fileSubFilter() === 'files'"
+            (click)="fileSubFilter.set('files')"
+          >
+            <span>{{ copy.tabs.filesChip }}</span>
+            @if (filesCount() > 0) {
+              <span class="chip-count">{{ filesCount() }}</span>
+            }
+          </button>
+        </div>
+
+        <!-- Upload Progress Items Bar -->
+        @if (uploadingFiles().length > 0) {
+          <div class="uploading-queue-list">
+            @for (up of uploadingFiles(); track up.id) {
+              <div class="upload-progress-card">
+                <div class="upload-info-row">
+                  <span class="upload-filename">{{ up.name }}</span>
+                  <div class="upload-meta-right">
+                    <span>{{ up.progress }}%</span>
+                    <button type="button" class="upload-cancel-btn" (click)="cancelUpload(up.id)">
+                      <ts-icon name="x" [size]="14" />
                     </button>
                   </div>
                 </div>
-              }
-            </div>
-          }
-        </div>
-      </div>
-    }
-
-    <!-- ==================== TAB 2: IMAGES ==================== -->
-    @if (activeTab() === 'images') {
-      <div class="tab-panel">
-        
-        <!-- Upload Drop Zone (Sender or Live Room) -->
-        @if (mode() === 'send' || activeShare()?.liveMode) {
-          <div 
-            class="file-drop-zone"
-            [class.drag-over]="isDragOver()"
-            (dragover)="onDragOver($event)"
-            (dragleave)="onDragLeave($event)"
-            (drop)="onFileDrop($event)"
-            (click)="imageFileInput.click()"
-          >
-            <input 
-              #imageFileInput 
-              type="file" 
-              accept="image/jpeg,image/png,image/webp,image/gif" 
-              multiple 
-              class="hidden" 
-              style="display: none;"
-              (change)="onImageSelected($event)" 
-            />
-            <div class="drop-icon-tile">
-              <ts-icon name="image-plus" [size]="24" class="size-6 text-[var(--accent)]" />
-            </div>
-            <p class="drop-title">Drop images here</p>
-            <p class="drop-hint">Supports JPG, PNG, WebP, GIF up to {{ formattedMaxFileSize() }}</p>
-            <button hlmBtn variant="secondary" size="sm" type="button" class="mt-2.5 pointer-events-none drop-browse-btn">
-              <ts-icon name="image" [size]="15" class="size-4 mr-1.5 inline" />
-              <span>Browse images</span>
-            </button>
-          </div>
-        }
-
-        <!-- Uploading Progress Cards -->
-        @if (uploadingFiles().length > 0) {
-          <div class="uploading-stack">
-            @for (up of uploadingFiles(); track up.id) {
-              <div class="upload-progress-row">
-                <div class="flex items-center justify-between text-xs mb-1">
-                  <span class="truncate font-medium max-w-[200px]">{{ up.name }}</span>
-                  <div class="flex items-center gap-2">
-                    <span>{{ up.progress }}%</span>
-                    @if (up.status === 'paused') {
-                      <button class="btn-action-xs" (click)="resumeUpload(up.id)">Resume</button>
-                    } @else if (up.status === 'uploading') {
-                      <button class="btn-action-xs" (click)="pauseUpload(up.id)">Pause</button>
-                    }
-                    <button class="btn-action-xs text-rose-400" (click)="cancelUpload(up.id)">Cancel</button>
-                  </div>
-                </div>
-                <div class="progress-track">
-                  <div class="progress-fill" [style.width.%]="up.progress"></div>
-                </div>
-                @if (up.status === 'error') {
-                  <span class="text-xs text-rose-400 mt-1">{{ up.errorMessage }}</span>
-                }
-              </div>
-            }
-          </div>
-        }
-
-        <!-- Images Gallery Grid -->
-        <div class="items-stream-section">
-          @if (imageItems().length === 0) {
-            @if (mode() === 'receive' && !activeShare()?.liveMode) {
-              <div hlmEmpty class="empty-spartan-card">
-                <div hlmEmptyIcon>
-                  <ts-icon name="image" class="size-6 text-current" />
-                </div>
-                <h4 hlmEmptyTitle>No images shared yet</h4>
-                <p hlmEmptyDescription>
-                  Images uploaded by the sender will appear here in real time.
-                </p>
-              </div>
-            }
-          } @else {
-            <div class="images-gallery-grid">
-              @for (item of imageItems(); track item.id) {
-                <div class="image-card">
-                  <div class="image-thumbnail-box" (click)="openPreview(item)">
-                    <img [src]="getPreviewUrl(item)" [alt]="item.originalName || 'Image'" class="thumb-img" loading="lazy" />
-                    <div class="image-overlay-hover">
-                      <ts-icon name="maximize-2" class="size-6 text-white" />
-                    </div>
-                  </div>
-
-                  <div class="image-card-footer">
-                    <div class="truncate text-xs font-medium" [title]="item.originalName">{{ item.originalName }}</div>
-                    <div class="flex items-center justify-between mt-1 text-[11px] text-muted">
-                      <span>{{ item.sizeBytes | formatBytes }}</span>
-                      <div class="flex items-center gap-2">
-                        <span class="item-receipt-tick" title="Downloads"><ts-icon name="download" class="size-3 mr-0.5 inline" />{{ item.downloadCount || 0 }}</span>
-                        <a [href]="getDownloadUrl(item)" class="action-icon-btn" title="Download">
-                          <ts-icon name="download" class="size-3.5" />
-                        </a>
-                        @if (mode() === 'send' || activeShare()?.liveMode) {
-                          <button class="action-icon-btn text-rose-400" (click)="deleteItem(item)" title="Delete">
-                            <ts-icon name="trash-2" class="size-3.5" />
-                          </button>
-                        }
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
-          }
-        </div>
-      </div>
-    }
-
-    <!-- ==================== TAB 3: FILES ==================== -->
-    @if (activeTab() === 'files') {
-      <div class="tab-panel">
-        
-        <!-- Upload Drop Zone (Sender or Live Room) -->
-        @if (mode() === 'send' || activeShare()?.liveMode) {
-          <div 
-            class="file-drop-zone"
-            [class.drag-over]="isDragOver()"
-            (dragover)="onDragOver($event)"
-            (dragleave)="onDragLeave($event)"
-            (drop)="onFileDrop($event)"
-            (click)="openDocPicker()"
-          >
-            <input 
-              #docFileInput 
-              type="file" 
-              multiple 
-              class="hidden" 
-              style="display: none;"
-              (change)="onFileSelected($event)" 
-            />
-            <div class="drop-icon-tile">
-              <ts-icon name="upload-cloud" [size]="24" class="size-6 text-[var(--accent)]" />
-            </div>
-            <p class="drop-title">Drop files or archives here</p>
-            <p class="drop-hint">PDFs, ZIPs, documents, media up to {{ formattedMaxFileSize() }}</p>
-            <button hlmBtn variant="secondary" size="sm" type="button" class="mt-2.5 pointer-events-none drop-browse-btn">
-              <ts-icon name="folder-open" [size]="15" class="size-4 mr-1.5 inline" />
-              <span>Browse files</span>
-            </button>
-          </div>
-        }
-
-        <!-- Uploading Progress Cards -->
-        @if (uploadingFiles().length > 0) {
-          <div class="uploading-stack">
-            @for (up of uploadingFiles(); track up.id) {
-              <div class="upload-progress-row">
-                <div class="flex items-center justify-between text-xs mb-1">
-                  <span class="truncate font-medium max-w-[200px]">{{ up.name }}</span>
-                  <div class="flex items-center gap-2">
-                    <span>{{ up.progress }}%</span>
-                    @if (up.status === 'paused') {
-                      <button class="btn-action-xs" (click)="resumeUpload(up.id)">Resume</button>
-                    } @else if (up.status === 'uploading') {
-                      <button class="btn-action-xs" (click)="pauseUpload(up.id)">Pause</button>
-                    }
-                    <button class="btn-action-xs text-rose-400" (click)="cancelUpload(up.id)">Cancel</button>
-                  </div>
-                </div>
-                <div class="progress-track">
-                  <div class="progress-fill" [style.width.%]="up.progress"></div>
+                <div class="progress-bar-track">
+                  <div class="progress-bar-fill" [style.width.%]="up.progress"></div>
                 </div>
               </div>
             }
           </div>
         }
 
-        <!-- Files List -->
-        <div class="items-stream-section">
-          @if (fileItems().length === 0) {
-            @if (mode() === 'receive' && !activeShare()?.liveMode) {
-              <div hlmEmpty class="empty-spartan-card">
-                <div hlmEmptyIcon>
-                  <ts-icon name="folder-open" class="size-6 text-current" />
-                </div>
-                <h4 hlmEmptyTitle>No files shared yet</h4>
-                <p hlmEmptyDescription>
-                  Files uploaded by the sender will appear here in real time.
-                </p>
+        <!-- 3. Empty State (Dropzone fills area) -->
+        @if (displayFileItems().length === 0 && uploadingFiles().length === 0) {
+          <div class="files-empty-stage">
+            @if (hasActiveFilters() || searchQuery()) {
+              <!-- No Search / Filter Matches -->
+              <div class="empty-tile-graphic">
+                <ts-icon name="search-x" [size]="28" />
               </div>
-            }
-          } @else {
-            <div class="files-list-stack">
-              @for (item of fileItems(); track item.id) {
-                <div class="file-item-row">
-                  <div class="file-info-col">
-                    <div class="file-icon-box">
-                      <ts-icon name="file" class="size-5 text-current" />
-                    </div>
-                    <div class="file-meta-texts">
-                      <span class="file-row-name" [title]="item.originalName">{{ item.originalName }}</span>
-                      <div class="flex items-center gap-2 text-[11px] text-muted">
-                        <span>{{ item.sizeBytes | formatBytes }}</span>
-                        <span>•</span>
-                        <span>{{ item.detectedMime }}</span>
-                        <span>•</span>
-                        <span class="item-receipt-tick" title="Downloads">
-                          <ts-icon name="download" class="size-3 mr-0.5 inline" />{{ item.downloadCount || 0 }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="file-actions-col">
-                    <a [href]="getDownloadUrl(item)" class="btn-download-file" target="_blank">
-                      <ts-icon name="download" class="size-3.5 mr-1" />
-                      <span>Download</span>
-                    </a>
-                    @if (mode() === 'send' || activeShare()?.liveMode) {
-                      <button class="action-icon-btn text-rose-400" (click)="deleteItem(item)" title="Delete">
-                        <ts-icon name="trash-2" class="size-3.5" />
-                      </button>
-                    }
-                  </div>
-                </div>
-              }
-            </div>
-          }
-        </div>
-      </div>
-    }
-
-  </div>
-
-  <!-- QR Code Modal -->
-  @if (showQrModal()) {
-    <div class="modal-backdrop" (click)="showQrModal.set(false)">
-      <div class="modal-dialog-qr" (click)="$event.stopPropagation()">
-        <div class="modal-qr-header">
-          <div class="flex items-center gap-2">
-            <ts-icon name="qr-code" class="size-5 text-current" />
-            <h3 class="text-sm font-semibold">Scan to Open Clipboard</h3>
-          </div>
-          <button class="close-btn-xs" (click)="showQrModal.set(false)">
-            <ts-icon name="x" class="size-4" />
-          </button>
-        </div>
-
-        <div class="modal-qr-body">
-          <img [src]="getQrCodeImageUrl()" alt="Receiver QR Code" class="qr-code-img" />
-          <p class="qr-code-desc">Scan with your phone camera to instantly connect to code <strong>{{ shareCode() }}</strong>.</p>
-        </div>
-      </div>
-    </div>
-  }
-
-  <!-- Image Lightbox Modal -->
-  @if (previewItem()) {
-    <div class="modal-backdrop" (click)="closePreview()">
-      <div class="lightbox-dialog" (click)="$event.stopPropagation()">
-        <div class="lightbox-header">
-          <span class="truncate font-medium text-sm">{{ previewItem()?.originalName }}</span>
-          <div class="flex items-center gap-2">
-            <a [href]="getDownloadUrl(previewItem()!)" class="action-icon-btn" title="Download">
-              <ts-icon name="download" class="size-4" />
-            </a>
-            <button class="close-btn-xs" (click)="closePreview()">
-              <ts-icon name="x" class="size-4" />
-            </button>
-          </div>
-        </div>
-        <div class="lightbox-body">
-          <img [src]="getPreviewUrl(previewItem()!)" [alt]="previewItem()?.originalName" class="lightbox-img" />
-        </div>
-      </div>
-    </div>
-  }
-
-  <!-- Abuse Report Modal -->
-  @if (showReportModal()) {
-    <div class="modal-backdrop" (click)="showReportModal.set(false)">
-      <div class="modal-dialog-qr" (click)="$event.stopPropagation()">
-        <div class="modal-qr-header">
-          <div class="flex items-center gap-2">
-            <ts-icon name="flag" class="size-5 text-rose-400" />
-            <h3 class="text-sm font-semibold">Report Clipboard Content</h3>
-          </div>
-          <button class="close-btn-xs" (click)="showReportModal.set(false)">
-            <ts-icon name="x" class="size-4" />
-          </button>
-        </div>
-
-        <div class="modal-qr-body text-left">
-          @if (reportSubmitted()) {
-            <div class="p-4 text-center">
-              <ts-icon name="check-circle" class="size-8 text-current mx-auto mb-2" />
-              <p class="text-sm font-medium">Thank you for reporting.</p>
-              <p class="text-xs text-muted mt-1">This report has been logged and the content is flagged for review.</p>
-            </div>
-          } @else {
-            <p class="text-xs text-muted mb-3">Please specify why you are reporting this clipboard share (e.g. copyright violation, illegal content, malware):</p>
-            <textarea 
-              [(ngModel)]="reportReason" 
-              placeholder="Describe the issue with this content..." 
-              rows="3" 
-              class="w-full bg-[var(--color-bg-subtle,#18181b)] border border-[var(--color-border,#27272a)] rounded-lg p-2.5 text-xs text-[var(--color-text,#f4f4f5)] focus:outline-none focus:border-rose-500 mb-3"
-            ></textarea>
-            <div class="flex justify-end gap-2">
-              <button class="btn-action-xs" (click)="showReportModal.set(false)">Cancel</button>
-              <button 
-                class="btn-action-xs bg-rose-600 hover:bg-rose-500 text-white font-medium disabled:opacity-50" 
-                [disabled]="!reportReason.trim() || isReportingAbuse()"
-                (click)="submitAbuseReport()"
-              >
-                {{ isReportingAbuse() ? 'Submitting...' : 'Submit Report' }}
+              <h3 class="empty-title">{{ copy.filesTab.noMatchesTitle }}</h3>
+              <p class="empty-subtitle">{{ copy.filesTab.noMatchesSubtitle }}</p>
+              <button type="button" class="empty-action-btn" (click)="clearAllFilters()">
+                {{ copy.filesTab.clearFilters }}
               </button>
+            } @else {
+              <!-- Default Empty State -->
+              <div class="empty-tile-graphic" (click)="openFilePicker()">
+                <ts-icon name="folder-up" [size]="32" />
+              </div>
+              <h3 class="empty-title">{{ copy.filesTab.emptyTitle }}</h3>
+              <p class="empty-subtitle">{{ copy.filesTab.emptySubtitle }}</p>
+              <button type="button" class="empty-action-btn" (click)="openFilePicker()">
+                <ts-icon name="plus" [size]="16" />
+                <span>{{ copy.filesTab.emptyAddButton }}</span>
+              </button>
+            }
+          </div>
+        }
+
+        <!-- 4. Files Card Display: Grid Mode (Image 3 Style) -->
+        @if (displayFileItems().length > 0 && viewMode() === 'grid') {
+          <div class="library-cards-grid">
+            @for (item of displayFileItems(); track item.id) {
+              <div 
+                class="library-file-card" 
+                [class.is-image-card]="item.itemType === 'IMAGE'"
+                [class.is-selected]="selectedItemIds().has(item.id)"
+                (click)="onCardClick(item, $event)"
+              >
+                <!-- Card Header Row: Small type icon + truncated filename -->
+                <div class="card-header-row">
+                  <ts-icon 
+                    [name]="resolveItemMeta(item).icon" 
+                    [size]="20" 
+                    class="card-header-icon"
+                    [style.color]="resolveItemMeta(item).color"
+                  />
+                  <span class="card-header-filename" [title]="item.originalName || 'file'">
+                    {{ item.originalName || 'file' }}
+                  </span>
+                </div>
+
+                <div class="card-thin-divider"></div>
+
+                <!-- Preview Area -->
+                <div class="card-preview-area" [style.background]="item.itemType === 'IMAGE' ? '#f1f5f9' : resolveItemMeta(item).bgTint">
+                  @if (item.itemType === 'IMAGE') {
+                    <img 
+                      [src]="getItemThumbnailUrl(item)" 
+                      [alt]="item.originalName || 'image'" 
+                      class="card-thumbnail-cover" 
+                      loading="lazy" 
+                      decoding="async" 
+                    />
+                  } @else {
+                    <ts-icon 
+                      [name]="resolveItemMeta(item).icon" 
+                      [size]="56" 
+                      class="card-large-type-icon"
+                      [style.color]="resolveItemMeta(item).color"
+                    />
+                  }
+
+                  <!-- Bottom-Right Checkbox Badge -->
+                  <div 
+                    class="card-check-badge" 
+                    [class.checked]="selectedItemIds().has(item.id)"
+                    (click)="toggleItemSelection(item.id, $event)"
+                    title="Select item"
+                    role="checkbox"
+                    [attr.aria-checked]="selectedItemIds().has(item.id)"
+                  >
+                    <ts-icon name="check" [size]="14" />
+                  </div>
+                </div>
+
+                <!-- Card Footer Line: Size & relative time -->
+                <div class="card-footer-row">
+                  <span class="card-footer-meta">
+                    {{ formatBytes(item.sizeBytes) }} • {{ getRelativeTimeString(item.createdAt) }}
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- 5. Files Card Display: List Mode -->
+        @if (displayFileItems().length > 0 && viewMode() === 'list') {
+          <div class="library-rows-list">
+            @for (item of displayFileItems(); track item.id) {
+              <div 
+                class="library-row-item" 
+                [class.is-selected]="selectedItemIds().has(item.id)"
+                (click)="onCardClick(item, $event)"
+              >
+                <div 
+                  class="row-checkbox" 
+                  [class.checked]="selectedItemIds().has(item.id)"
+                  (click)="toggleItemSelection(item.id, $event)"
+                  role="checkbox"
+                  [attr.aria-checked]="selectedItemIds().has(item.id)"
+                >
+                  <ts-icon name="check" [size]="14" />
+                </div>
+
+                <div class="row-thumb-box" [style.background]="resolveItemMeta(item).bgTint">
+                  @if (item.itemType === 'IMAGE') {
+                    <img [src]="getItemThumbnailUrl(item)" alt="" class="row-thumb-img" loading="lazy" />
+                  } @else {
+                    <ts-icon [name]="resolveItemMeta(item).icon" [size]="20" [style.color]="resolveItemMeta(item).color" />
+                  }
+                </div>
+
+                <span class="row-name-text" [title]="item.originalName || 'file'">
+                  {{ item.originalName || 'file' }}
+                </span>
+
+                <span class="row-type-label hide-below-640">
+                  {{ resolveItemMeta(item).label }}
+                </span>
+
+                <span class="row-size-label">
+                  {{ formatBytes(item.sizeBytes) }}
+                </span>
+
+                <span class="row-time-label hide-below-640">
+                  {{ getRelativeTimeString(item.createdAt) }}
+                </span>
+              </div>
+            }
+          </div>
+        }
+
+      </section>
+    }
+
+  </main>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- FLOATING SELECTION ACTION BAR (Image 3 Dark Pill at Bottom) -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  @if (selectedItemIds().size > 0) {
+    <div class="floating-selection-bar" role="toolbar" aria-label="Selection actions">
+      <span class="selection-count-text">
+        {{ copy.filesTab.selectionBar.selectedCount(selectedItemIds().size) }}
+      </span>
+
+      <!-- Primary White Pill Download Button -->
+      <button 
+        type="button" 
+        class="selection-white-pill-btn" 
+        (click)="downloadSelectedItems()"
+      >
+        <ts-icon name="download" [size]="16" />
+        <span>{{ copy.filesTab.selectionBar.primaryDownload }}</span>
+      </button>
+
+      <!-- Red Pill Delete Button -->
+      <button 
+        type="button" 
+        class="selection-red-pill-btn" 
+        (click)="deleteSelectedItems()"
+      >
+        <ts-icon name="trash-2" [size]="16" />
+        <span>{{ copy.filesTab.selectionBar.delete }}</span>
+      </button>
+
+      <!-- Select All Quick Button -->
+      <button 
+        type="button" 
+        class="selection-icon-pill-btn" 
+        (click)="selectAllFiles()"
+        title="Select all"
+      >
+        <ts-icon name="check-check" [size]="16" />
+      </button>
+
+      <!-- Close Selection X -->
+      <button 
+        type="button" 
+        class="selection-close-btn" 
+        (click)="clearSelection()"
+        title="Clear selection"
+      >
+        <ts-icon name="x" [size]="16" />
+      </button>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- DRAG-AND-DROP FULL OVERLAY                                 -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  @if (isDragOver()) {
+    <div class="drag-drop-full-overlay" (dragover)="$event.preventDefault()" (dragleave)="isDragOver.set(false)" (drop)="onFileDrop($event)">
+      <div class="drop-pulse-tile">
+        <ts-icon name="upload-cloud" [size]="48" />
+        <span class="drop-pulse-text">{{ copy.filesTab.dropOverlay }}</span>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- FILTER POPOVER (Image 4 Style, 16px radius, soft shadow)   -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  @if (showFilterPopover()) {
+    <div class="filter-popover-backdrop" (click)="showFilterPopover.set(false)"></div>
+    <div class="filter-popover-card" role="dialog" aria-label="Filter files">
+      <div class="popover-section-label">{{ copy.filesTab.filterSections.fileType }}</div>
+      
+      <div class="filter-rows-list">
+        <button 
+          type="button" 
+          class="filter-menu-row" 
+          [class.active]="selectedTypeFilters().has('images')"
+          (click)="toggleTypeFilter('images')"
+        >
+          <div class="row-icon-title">
+            <ts-icon name="image" [size]="16" />
+            <span>{{ copy.filesTab.filterCategories.images }}</span>
+          </div>
+          @if (selectedTypeFilters().has('images')) {
+            <ts-icon name="check" [size]="16" class="row-check" />
+          }
+        </button>
+
+        <button 
+          type="button" 
+          class="filter-menu-row" 
+          [class.active]="selectedTypeFilters().has('documents')"
+          (click)="toggleTypeFilter('documents')"
+        >
+          <div class="row-icon-title">
+            <ts-icon name="file-text" [size]="16" />
+            <span>{{ copy.filesTab.filterCategories.documents }}</span>
+          </div>
+          @if (selectedTypeFilters().has('documents')) {
+            <ts-icon name="check" [size]="16" class="row-check" />
+          }
+        </button>
+
+        <button 
+          type="button" 
+          class="filter-menu-row" 
+          [class.active]="selectedTypeFilters().has('spreadsheets')"
+          (click)="toggleTypeFilter('spreadsheets')"
+        >
+          <div class="row-icon-title">
+            <ts-icon name="table" [size]="16" />
+            <span>{{ copy.filesTab.filterCategories.spreadsheets }}</span>
+          </div>
+          @if (selectedTypeFilters().has('spreadsheets')) {
+            <ts-icon name="check" [size]="16" class="row-check" />
+          }
+        </button>
+
+        <button 
+          type="button" 
+          class="filter-menu-row" 
+          [class.active]="selectedTypeFilters().has('presentations')"
+          (click)="toggleTypeFilter('presentations')"
+        >
+          <div class="row-icon-title">
+            <ts-icon name="presentation" [size]="16" />
+            <span>{{ copy.filesTab.filterCategories.presentations }}</span>
+          </div>
+          @if (selectedTypeFilters().has('presentations')) {
+            <ts-icon name="check" [size]="16" class="row-check" />
+          }
+        </button>
+
+        <button 
+          type="button" 
+          class="filter-menu-row" 
+          [class.active]="selectedTypeFilters().has('pdfs')"
+          (click)="toggleTypeFilter('pdfs')"
+        >
+          <div class="row-icon-title">
+            <ts-icon name="file-text" [size]="16" />
+            <span>{{ copy.filesTab.filterCategories.pdfs }}</span>
+          </div>
+          @if (selectedTypeFilters().has('pdfs')) {
+            <ts-icon name="check" [size]="16" class="row-check" />
+          }
+        </button>
+
+        <button 
+          type="button" 
+          class="filter-menu-row" 
+          [class.active]="selectedTypeFilters().has('videos')"
+          (click)="toggleTypeFilter('videos')"
+        >
+          <div class="row-icon-title">
+            <ts-icon name="video" [size]="16" />
+            <span>{{ copy.filesTab.filterCategories.videos }}</span>
+          </div>
+          @if (selectedTypeFilters().has('videos')) {
+            <ts-icon name="check" [size]="16" class="row-check" />
+          }
+        </button>
+
+        <button 
+          type="button" 
+          class="filter-menu-row" 
+          [class.active]="selectedTypeFilters().has('archives')"
+          (click)="toggleTypeFilter('archives')"
+        >
+          <div class="row-icon-title">
+            <ts-icon name="archive" [size]="16" />
+            <span>{{ copy.filesTab.filterCategories.archives }}</span>
+          </div>
+          @if (selectedTypeFilters().has('archives')) {
+            <ts-icon name="check" [size]="16" class="row-check" />
+          }
+        </button>
+
+        <button 
+          type="button" 
+          class="filter-menu-row" 
+          [class.active]="selectedTypeFilters().has('code')"
+          (click)="toggleTypeFilter('code')"
+        >
+          <div class="row-icon-title">
+            <ts-icon name="file-code" [size]="16" />
+            <span>{{ copy.filesTab.filterCategories.code }}</span>
+          </div>
+          @if (selectedTypeFilters().has('code')) {
+            <ts-icon name="check" [size]="16" class="row-check" />
+          }
+        </button>
+      </div>
+
+      <div class="popover-section-label mt-3">{{ copy.filesTab.filterSections.addedBy }}</div>
+      <div class="filter-rows-list">
+        <button 
+          type="button" 
+          class="filter-menu-row" 
+          [class.active]="selectedSourceFilters().has('uploaded')"
+          (click)="toggleSourceFilter('uploaded')"
+        >
+          <div class="row-icon-title">
+            <ts-icon name="upload" [size]="16" />
+            <span>{{ copy.filesTab.filterSources.uploaded }}</span>
+          </div>
+          @if (selectedSourceFilters().has('uploaded')) {
+            <ts-icon name="check" [size]="16" class="row-check" />
+          }
+        </button>
+
+        <button 
+          type="button" 
+          class="filter-menu-row" 
+          [class.active]="selectedSourceFilters().has('pasted')"
+          (click)="toggleSourceFilter('pasted')"
+        >
+          <div class="row-icon-title">
+            <ts-icon name="clipboard-paste" [size]="16" />
+            <span>{{ copy.filesTab.filterSources.pasted }}</span>
+          </div>
+          @if (selectedSourceFilters().has('pasted')) {
+            <ts-icon name="check" [size]="16" class="row-check" />
+          }
+        </button>
+      </div>
+
+      @if (hasActiveFilters()) {
+        <div class="popover-bottom-clear">
+          <button type="button" class="clear-all-filters-btn" (click)="clearAllFilters()">
+            {{ copy.filesTab.clearFilters }}
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- SORT POPOVER                                               -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  @if (showSortPopover()) {
+    <div class="filter-popover-backdrop" (click)="showSortPopover.set(false)"></div>
+    <div class="sort-popover-card" role="menu">
+      <button type="button" class="sort-menu-item" [class.active]="sortOption() === 'newest'" (click)="setSortOption('newest')">
+        <span>{{ copy.filesTab.sortNewest }}</span>
+        @if (sortOption() === 'newest') { <ts-icon name="check" [size]="16" /> }
+      </button>
+      <button type="button" class="sort-menu-item" [class.active]="sortOption() === 'oldest'" (click)="setSortOption('oldest')">
+        <span>{{ copy.filesTab.sortOldest }}</span>
+        @if (sortOption() === 'oldest') { <ts-icon name="check" [size]="16" /> }
+      </button>
+      <button type="button" class="sort-menu-item" [class.active]="sortOption() === 'name'" (click)="setSortOption('name')">
+        <span>{{ copy.filesTab.sortNameAZ }}</span>
+        @if (sortOption() === 'name') { <ts-icon name="check" [size]="16" /> }
+      </button>
+      <button type="button" class="sort-menu-item" [class.active]="sortOption() === 'largest'" (click)="setSortOption('largest')">
+        <span>{{ copy.filesTab.sortLargest }}</span>
+        @if (sortOption() === 'largest') { <ts-icon name="check" [size]="16" /> }
+      </button>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- QR CODE POPOVER MODAL                                      -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  @if (showQrModal()) {
+    <div class="modal-backdrop-blur" (click)="showQrModal.set(false)">
+      <div class="qr-modal-dialog" (click)="$event.stopPropagation()" role="dialog" aria-label="QR Code">
+        <h3 class="qr-modal-heading">{{ copy.identity.qrTitle }}</h3>
+        <p class="qr-modal-hint">{{ copy.identity.qrScanHint }}</p>
+
+        @if (qrDataUrl()) {
+          <div class="qr-large-frame">
+            <img [src]="qrDataUrl()" alt="Clipboard QR code" class="qr-large-img" />
+          </div>
+        }
+
+        <div class="qr-modal-id-row">
+          <span class="qr-code-display">{{ shareCode() }}</span>
+        </div>
+
+        <div class="qr-modal-actions-row">
+          <button type="button" class="qr-copy-link-btn" (click)="copyDirectLink()">
+            <ts-icon [name]="copiedLink() ? 'check' : 'link'" [size]="16" />
+            <span>{{ copiedLink() ? copy.identity.copied : copy.identity.copyLink }}</span>
+          </button>
+          <button type="button" class="qr-close-btn" (click)="showQrModal.set(false)">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- LIGHTBOX IMAGE PREVIEW                                     -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  @if (lightboxImage(); as imgItem) {
+    <div class="lightbox-backdrop" (click)="lightboxImage.set(null)">
+      <div class="lightbox-stage" (click)="$event.stopPropagation()">
+        <img [src]="getItemThumbnailUrl(imgItem)" [alt]="imgItem.originalName || 'image'" class="lightbox-full-img" />
+
+        <button type="button" class="lightbox-nav-btn prev" (click)="navigateLightbox(-1)" title="Previous image">
+          <ts-icon name="chevron-left" [size]="24" />
+        </button>
+
+        <button type="button" class="lightbox-nav-btn next" (click)="navigateLightbox(1)" title="Next image">
+          <ts-icon name="chevron-right" [size]="24" />
+        </button>
+
+        <div class="lightbox-header-bar">
+          <span class="lightbox-title">{{ imgItem.originalName }}</span>
+          <div class="lightbox-header-actions">
+            <button type="button" class="lightbox-action-btn" (click)="triggerDirectDownload(imgItem)">
+              <ts-icon name="download" [size]="18" />
+              <span>{{ copy.filesTab.lightbox.download }}</span>
+            </button>
+            <button type="button" class="lightbox-close-icon" (click)="lightboxImage.set(null)">
+              <ts-icon name="x" [size]="20" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- FILE DETAILS BOTTOM SHEET                                  -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  @if (detailsSheetItem(); as fileItem) {
+    <div class="modal-backdrop-blur" (click)="detailsSheetItem.set(null)">
+      <div class="details-sheet-card" (click)="$event.stopPropagation()">
+        <div class="details-sheet-header">
+          <div class="details-sheet-icon-tile" [style.background]="resolveItemMeta(fileItem).bgTint">
+            <ts-icon [name]="resolveItemMeta(fileItem).icon" [size]="32" [style.color]="resolveItemMeta(fileItem).color" />
+          </div>
+          <div class="details-sheet-title-col">
+            <h4 class="details-filename">{{ fileItem.originalName }}</h4>
+            <span class="details-file-meta">{{ formatBytes(fileItem.sizeBytes) }} • {{ resolveItemMeta(fileItem).label }}</span>
+          </div>
+          <button type="button" class="details-close-btn" (click)="detailsSheetItem.set(null)">
+            <ts-icon name="x" [size]="18" />
+          </button>
+        </div>
+
+        <div class="details-properties-grid">
+          <div class="details-prop-cell">
+            <span class="prop-label">{{ copy.filesTab.detailsSheet.typeLabel }}</span>
+            <span class="prop-val">{{ resolveItemMeta(fileItem).label }}</span>
+          </div>
+          <div class="details-prop-cell">
+            <span class="prop-label">{{ copy.filesTab.detailsSheet.sizeLabel }}</span>
+            <span class="prop-val">{{ formatBytes(fileItem.sizeBytes) }}</span>
+          </div>
+          <div class="details-prop-cell">
+            <span class="prop-label">{{ copy.filesTab.detailsSheet.addedLabel }}</span>
+            <span class="prop-val">{{ getRelativeTimeString(fileItem.createdAt) }}</span>
+          </div>
+        </div>
+
+        <div class="details-sheet-actions">
+          <button type="button" class="details-download-primary" (click)="triggerDirectDownload(fileItem)">
+            <ts-icon name="download" [size]="16" />
+            <span>{{ copy.filesTab.detailsSheet.download }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- SETTINGS MODAL                                             -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  @if (showSettingsModal()) {
+    <div class="modal-backdrop-blur" (click)="showSettingsModal.set(false)">
+      <div class="settings-modal-dialog" (click)="$event.stopPropagation()" role="dialog" aria-label="Settings">
+        <div class="settings-header-row">
+          <h3 class="settings-title">{{ copy.settingsModal.title }}</h3>
+          <button type="button" class="settings-close-btn" (click)="showSettingsModal.set(false)">
+            <ts-icon name="x" [size]="18" />
+          </button>
+        </div>
+
+        <div class="settings-options-list">
+          <div class="settings-option-item">
+            <div class="option-text-col">
+              <span class="option-name">{{ copy.settingsModal.privateModeTitle }}</span>
+              <span class="option-desc">{{ copy.settingsModal.privateModeDesc }}</span>
+            </div>
+            <label class="toggle-switch-label">
+              <input type="checkbox" [checked]="isPrivateMode()" (change)="togglePrivateMode()" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="settings-option-item">
+            <div class="option-text-col">
+              <span class="option-name">{{ copy.settingsModal.e2eeTitle }}</span>
+              <span class="option-desc">{{ copy.settingsModal.e2eeDesc }}</span>
+            </div>
+            <label class="toggle-switch-label">
+              <input type="checkbox" [checked]="e2eeEnabled()" (change)="e2eeEnabled.set(!e2eeEnabled())" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="settings-footer">
+          <button type="button" class="settings-done-btn" (click)="showSettingsModal.set(false)">
+            {{ copy.settingsModal.done }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- HISTORY DRAWER (Right on desktop, Bottom on mobile)        -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  @if (showHistoryDrawer()) {
+    <div class="drawer-backdrop" (click)="showHistoryDrawer.set(false)"></div>
+    <aside class="history-drawer-panel" role="dialog" aria-label="Recent clipboards">
+      <div class="drawer-header-row">
+        <h3 class="drawer-title">{{ copy.historyDrawer.title }}</h3>
+        <button type="button" class="drawer-close-btn" (click)="showHistoryDrawer.set(false)">
+          <ts-icon name="x" [size]="18" />
+        </button>
+      </div>
+
+      <div class="drawer-body-list">
+        @if (recentClipboards().length === 0) {
+          <div class="drawer-empty-state">
+            <ts-icon name="clock" [size]="28" class="text-muted" />
+            <p>{{ copy.historyDrawer.empty }}</p>
+          </div>
+        } @else {
+          @for (rec of recentClipboards(); track rec.code) {
+            <div class="history-item-row" (click)="openFromHistory(rec)">
+              <div class="history-item-info">
+                <span class="history-code-mono">{{ rec.code }}</span>
+                <span class="history-time-meta">{{ getRelativeTimeString(rec.createdAt) }}</span>
+              </div>
+              <ts-icon name="arrow-up-right" [size]="16" class="history-arrow" />
             </div>
           }
+        }
+      </div>
+
+      @if (recentClipboards().length > 0) {
+        <div class="drawer-footer-row">
+          <button type="button" class="clear-history-btn" (click)="clearHistory()">
+            {{ copy.historyDrawer.clearAll }}
+          </button>
         </div>
+      }
+    </aside>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- TOAST NOTIFICATION                                         -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  @if (activeToast(); as toast) {
+    <div class="toast-floating-container" role="status" aria-live="polite">
+      <div class="toast-pill-body">
+        <span class="toast-message-text">{{ toast.text }}</span>
+        @if (toast.actionText && toast.onAction) {
+          <button type="button" class="toast-undo-action-btn" (click)="toast.onAction(); dismissToast()">
+            {{ toast.actionText }}
+          </button>
+        }
+        <button type="button" class="toast-dismiss-btn" (click)="dismissToast()">
+          <ts-icon name="x" [size]="14" />
+        </button>
       </div>
     </div>
   }

@@ -5,19 +5,23 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8cc24f72-cf76-4714-94a5-20cada12dd6d" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../../client/angular.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/angular.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard.component.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard.component.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/about-modal/ts-about-panel.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/about-modal/ts-about-panel.component.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/primitive/ts-backdrop.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/primitive/ts-backdrop.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard.component.html" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard.component.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-registry/src/tools.manifest.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-registry/src/tools.manifest.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/about-modal/ts-about-tab.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/about-modal/ts-about-tab.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/icon/ts-icon.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/icon/ts-icon.component.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/primitive/ts-faq.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/primitive/ts-faq.component.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/primitive/ts-tool-content.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/primitive/ts-tool-content.component.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/primitive/ts-tool-tile.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/primitive/ts-tool-tile.component.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/shell/ts-shell.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/shell/ts-shell.component.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/sidebar/ts-sidebar.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/sidebar/ts-sidebar.component.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/sidebar/ts-tool-list.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/sidebar/ts-tool-list.component.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/topbar/ts-topbar.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/topbar/ts-topbar.component.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/styles/base.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/styles/base.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/styles/tokens.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/styles/tokens.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/performance-optimization.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/performance-optimization.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/security/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/security/SecurityConfig.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

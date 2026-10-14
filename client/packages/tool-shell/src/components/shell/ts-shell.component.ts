@@ -32,8 +32,6 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
     TsAboutPanelComponent,
     TsBackdropComponent,
     TsToolContentComponent,
-    TsToolDetailsComponent,
-    TsToolRelatedComponent,
     RevealDirective
   ],
   template: `
@@ -102,22 +100,14 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
               <!-- WORKSPACE SECTION (Desktop One-Screen Workspace) -->
               <div id="tool" class="ts-workspace-section" [class.full-bleed]="isFullBleed()">
                 <div class="ts-workspace-grid" [class.full-bleed]="isFullBleed()">
-                  <!-- Left: the tool as ONE raised card on the base -->
+                  <!-- Left/Center: the tool as ONE raised card on the base, full width -->
                   <div class="ts-tool-card-surface ts-entry-panel" [class.full-bleed]="isFullBleed()">
                     <ng-content />
                   </div>
-
-                  <!-- Right: sticky info rail -->
-                  @if (!isFullBleed()) {
-                    <aside class="ts-info-rail ts-entry-rail" aria-label="Tool specifications and related tools">
-                      <ts-tool-details [tool]="tool()" />
-                      <ts-tool-related [tool]="tool()" />
-                    </aside>
-                  }
                 </div>
               </div>
 
-              <!-- 4. BELOW the grid, full width: About, How to use, FAQ -->
+              <!-- 4. BELOW the grid, full width: About, How to use, FAQ, Related -->
               @if (!isFullBleed()) {
                 <div class="ts-content-below-grid ts-entry-content">
                   <ts-tool-content [tool]="tool()" />
@@ -386,7 +376,7 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
       );
       border-radius: var(--shell-radius, 20px);
       box-shadow: var(--ts-edge), var(--ts-shadow);
-      border: 1px solid var(--border);
+      border: none;
       box-sizing: border-box;
       outline: none;
       transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
@@ -437,8 +427,8 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
     @media (min-width: 1024px) and (min-height: 600px) {
       .ts-workspace-section:not(.full-bleed) {
         --ts-workspace-h: calc(100dvh - 2 * var(--shell-padding, 12px) - var(--header-height, 64px) - var(--shell-gap, 12px) - 2 * var(--ts-main-pad, 24px));
-        height: var(--ts-workspace-h);
-        min-height: 520px;
+        min-height: min(var(--ts-workspace-h), 680px);
+        height: auto;
         flex-shrink: 0;
       }
       .ts-workspace-grid:not(.full-bleed) {
@@ -446,23 +436,21 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
         min-height: 0;
       }
       .ts-tool-card-surface:not(.full-bleed) {
-        height: 100%;
-        min-height: 0;
+        height: auto;
+        min-height: min(var(--ts-workspace-h), 680px);
         display: flex;
         flex-direction: column;
       }
       .ts-info-rail {
-        height: 100%;
+        height: auto;
         min-height: 0;
         overflow: hidden;
       }
     }
 
-    /* ══ 2. WORKSPACE GRID: Tool (left) + Info Rail (right) ════════ */
+    /* ══ 2. WORKSPACE GRID: Tool Card Surface (Full Available Width) ════════ */
     .ts-workspace-grid {
-      display: grid;
-      grid-template-columns: 100%;
-      gap: 24px;
+      display: block;
       width: 100%;
       min-width: 0;
       box-sizing: border-box;
@@ -473,54 +461,7 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
       gap: 0;
     }
 
-    /* Container query on the main card */
-    /* 1. container >= 960px: tool + info rail side by side */
-    @container main-card (min-width: 960px) {
-      .ts-workspace-grid:not(.full-bleed) {
-        grid-template-columns: minmax(0, 1fr) 320px;
-        align-items: stretch;
-        gap: 24px;
-      }
-      .ts-info-rail {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-        align-self: stretch;
-      }
-    }
-
-    @container main-card (min-width: 960px) and (max-width: 1099px) {
-      .ts-workspace-grid:not(.full-bleed) {
-        gap: 16px;
-      }
-    }
-
-    /* 2. container 600-959px: one column, the info rail goes below the tool as a 2-column grid */
-    @container main-card (min-width: 600px) and (max-width: 959px) {
-      .ts-workspace-grid:not(.full-bleed) {
-        grid-template-columns: 100%;
-        gap: 20px;
-      }
-      .ts-info-rail {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-        align-self: stretch;
-      }
-    }
-
-    /* 3. container < 600px: single column, smaller paddings */
     @container main-card (max-width: 599px) {
-      .ts-workspace-grid:not(.full-bleed) {
-        grid-template-columns: 100%;
-        gap: 16px;
-      }
-      .ts-info-rail {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        align-self: stretch;
-      }
       .ts-main-scroll-container {
         padding: 16px;
         gap: 16px;
@@ -530,7 +471,7 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
     /* Tool raised card on the base (always solid raised surface) */
     .ts-tool-card-surface {
       background: var(--ts-surface-raised, #FFFFFF);
-      border: 1px solid var(--ts-surface-raised-border, rgba(15, 23, 42, 0.06));
+      border: none;
       border-radius: var(--ts-radius-card, 20px);
       padding: 24px;
       box-shadow: var(--ts-surface-raised-shadow);
