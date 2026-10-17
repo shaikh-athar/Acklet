@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiResponse, PageResponse } from './tools.service';
+import { environment } from '../../../environments/environment';
 
 export interface ArticleResponse {
   id: string;
@@ -32,7 +33,7 @@ export interface ArticleRequest {
 @Injectable({ providedIn: 'root' })
 export class BlogService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://localhost:8080/api/v1/blog';
+  private readonly baseUrl = `${environment.apiBaseUrl}/blog`;
 
   getArticles(page = 0, size = 10): Observable<PageResponse<ArticleResponse>> {
     const params = new HttpParams().set('page', page.toString()).set('size', size.toString());

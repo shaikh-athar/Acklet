@@ -34,3 +34,8 @@ The single root [docker-compose.yml](file:///Users/ayaz/Acklet/docker-compose.ym
 ```bash
 docker compose up -d
 ```
+
+## Verification Pipeline
+
+For local automated verification (Levels A, B, and C), see [verification-guide.md](./verification-guide.md).
+

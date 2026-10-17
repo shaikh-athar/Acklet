@@ -10,6 +10,8 @@ import { MOCK_TOOLS } from '../mock-data/tools.data';
 import { MOCK_CATEGORIES } from '../mock-data/categories.data';
 import { TOOL_REGISTRY } from '../tool-registry';
 
+import { environment } from '../../../environments/environment';
+
 export interface ApiResponse<T> {
   success: boolean;
   message: string;
@@ -27,7 +29,7 @@ export interface PageResponse<T> {
 @Injectable({ providedIn: 'root' })
 export class ToolsService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://localhost:8080/api/v1';
+  private readonly baseUrl = environment.apiBaseUrl;
 
   private readonly _tools = signal<Tool[]>(
     MOCK_TOOLS.map(t => {

@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { ApiResponse, PageResponse } from './tools.service';
+import { environment } from '../../../environments/environment';
 
 export interface NotificationItem {
   id: string;
@@ -17,7 +18,7 @@ export interface NotificationItem {
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://localhost:8080/api/v1/notifications';
+  private readonly baseUrl = `${environment.apiBaseUrl}/notifications`;
 
   private readonly _unreadCount = signal<number>(0);
   readonly unreadCount = this._unreadCount.asReadonly();

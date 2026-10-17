@@ -64,6 +64,19 @@ export class ClipboardHistoryService {
     });
   }
 
+  async deleteRecord(code: string): Promise<void> {
+    const db = await this.openDb();
+    if (!db) return;
+
+    return new Promise((resolve) => {
+      const tx = db.transaction(this.STORE_NAME, 'readwrite');
+      const store = tx.objectStore(this.STORE_NAME);
+      store.delete(code);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  }
+
   async clearAllHistory(): Promise<void> {
     const db = await this.openDb();
     if (!db) return;

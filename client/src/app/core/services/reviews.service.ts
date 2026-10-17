@@ -5,6 +5,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiResponse, PageResponse } from './tools.service';
+import { environment } from '../../../environments/environment';
 
 export interface ToolReviewRequest {
   rating: number;
@@ -35,7 +36,7 @@ export interface ToolReviewResponse {
 @Injectable({ providedIn: 'root' })
 export class ReviewsService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://localhost:8080/api/v1';
+  private readonly baseUrl = environment.apiBaseUrl;
 
   getReviews(toolSlug: string, page = 0, size = 10): Observable<PageResponse<ToolReviewResponse>> {
     const params = new HttpParams().set('page', page.toString()).set('size', size.toString());

@@ -30,6 +30,7 @@ export interface ClipboardItem {
   downloadCount: number;
   viewCount: number;
   isEncrypted?: boolean;
+  contentHash?: string;
 }
 
 export interface ClipboardShare {

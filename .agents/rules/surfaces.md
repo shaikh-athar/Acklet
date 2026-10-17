@@ -4,7 +4,7 @@ This monorepo has independent UI surfaces. Each owns its layout, theme, fonts, c
 
 | Surface | Owns (paths) | Look |
 |---|---|---|
-| Tools | client/apps/tools-hub/**, client/apps/tool-*/**, client/packages/tool-shell/** | ts-* shell, GOTH grayscale, one font, tool-shell Spartan helm |
+| Tools | client/apps/tools-hub/**, client/apps/tool-*/**, client/packages/tool-shell/** | ts-* shell, dual-theme tokens, Nunito font, tool-shell Spartan helm |
 | Acklet (portal + workspace) | client/src/** | Existing look. FROZEN unless the task names it |
 | Shared (non-UI) | client/packages/shared/**, client/packages/tool-registry/** | URL utils + tool metadata only. No styles, no components |
 | Backend | server/** | Never touched by UI tasks |

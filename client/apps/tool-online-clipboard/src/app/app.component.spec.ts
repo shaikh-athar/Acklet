@@ -18,7 +18,7 @@ describe('Online Clipboard Tool Shell & Canvas Guard', () => {
     // Default functional tab must not be 'about'
     const nonAboutTabs = manifest.tabs!.filter(t => t.id !== 'about');
     expect(nonAboutTabs.length).toBeGreaterThan(0);
-    expect(nonAboutTabs[0].id).toBe('send');
+    expect(nonAboutTabs[0].id).toBe('text');
   });
 
   it('should guarantee that live tools in registry have a valid functional tab configuration', () => {

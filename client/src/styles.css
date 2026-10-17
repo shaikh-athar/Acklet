@@ -559,14 +559,6 @@ body {
   position: relative;
 }
 
-body:has(.ts-root) {
-  background-color: var(--ts-page-bg, var(--page-bg, #F7F8F8));
-}
-
-html[data-theme="dark"] body:has(.ts-root) {
-  background-color: var(--ts-page-bg, var(--page-bg, #0F1011));
-}
-
 h1,
 h2,
 h3,

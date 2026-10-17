@@ -9,12 +9,14 @@
 3. Tools stay separate apps (apps/tool-<slug>) on their own subdomains. Do not change the hostname dispatch.
 
 ## Visual source of truth
-- Reference images live in .agents/reference/tools-ui/ (see INDEX.md). Before any UI task: view the relevant image, build to match it, then compare your screenshot against it side by side. "Same as the image" means same layout, spacing, radius, sizes and hover. Do not reinterpret.
-- If the reference and these rules disagree, stop and ask.
+- Source of Truth: Canonical design tokens in `client/packages/tool-shell/src/styles/tokens.css`, Spartan UI Helm primitives in `client/packages/tool-shell/src/helm/`, and tool metadata in `client/packages/tool-registry/`. When explicit visual mockups or references are provided in the task, match them accurately.
+- If task requirements and these rules disagree, the task requirements take precedence.
 
-## Look (tokens only, defined once in packages/tool-shell tokens.css)
-- Grayscale GOTH only: page #f4f4f4, cards #FFFFFF, hairline border rgba(0,0,0,0.06), text #0D0D0D, muted #6B6B6B (WCAG AA), primary = solid black. Dark mode: bg #0B0B0B, cards #141414, border #27272A, text #FCFCFC.
-- No other hues anywhere in tool chrome (no blue/green/purple tiles or badges).
+## Look (tokens only, defined in packages/tool-shell tokens.css)
+- Canonical Dual-Theme Design Tokens: Always use the surface semantic CSS tokens defined in `client/packages/tool-shell/src/styles/tokens.css` for page backgrounds, card surfaces, borders, and text.
+  - Light mode: Clean elevated surfaces (`--bg-card`, `--bg-page`), subtle hairline borders (`--border-subtle`), dark text (`--text-main`), high contrast.
+  - Dark mode: Matte surfaces, refined borders, bright legible text (`--text-main`), zero muddy unreadable text.
+- Accent Color Integration: Each tool has an accent color registered in `tools.manifest.ts` (e.g. teal, blue, violet). Use token variables (`--accent`, `--accent-ink`, `--accent-soft`, `--accent-border`) for active states, highlights, and primary CTAs. Never hardcode static hex values that break theme switching.
 - Cards: 20px radius. Gaps between shell cards: 12px. Spacing scale 4/8/12/16/24/32/48.
 - ONE font family for the whole Tools surface (Nunito). Hierarchy by size and weight only.
 
@@ -38,7 +40,7 @@
 Animations, spotlight/hover-lift effects, tool-open transitions, responsive polish. Each is its own task.
 
 ## Definition of done
-1. Matches the reference image (screenshot compared, light + dark).
+1. Verified in both Light and Dark modes with high contrast (WCAG AA >= 4.5:1).
 2. Zero changes outside the Tools surface paths (npm run check:scope -- tools).
 3. npm run check:isolation passes; the three apps build with no new warnings.
 4. Workspace (localhost:4200/workspace) looks exactly as before.

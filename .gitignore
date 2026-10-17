@@ -43,6 +43,8 @@ yarn-error.log*
 connect.lock
 coverage/
 __screenshots__/
+*.tsbuildinfo
+out-tsc/
 
 # Java & Backend (Spring Boot Server)
 target/

@@ -1,13 +1,19 @@
 // apps/tool-online-clipboard/src/clipboard.config.ts
 
 export const CLIPBOARD_CONFIG = {
-  maxTextSizeBytes: 1024 * 1024, // 1 MB
-  maxFileSizeBytes: 200 * 1024 * 1024, // 200 MB
-  textWarningThreshold: 0.8, // 80%
+  maxTextSizeBytes: 50 * 1024 * 1024, // 50 MB text payload ceiling
+  maxFileSizeBytes: 200 * 1024 * 1024, // 200 MB per file
+  maxTotalShareSizeBytes: 500 * 1024 * 1024, // 500 MB total clipboard capacity
+  textWarningThreshold: 0.9, // 90%
   chunkSize: 5 * 1024 * 1024, // 5 MB
   toastDurationMs: 6000,
   syncHighlightDurationMs: 1500,
-  defaultExpiryHours: 168 // 7 days (mentioned in description/FAQ)
+  defaultExpiryHours: 168, // 7 days default
+  retentionOptions: [
+    { label: '7 Days', hours: 168 },
+    { label: '15 Days', hours: 360 },
+    { label: '1 Month (30 Days)', hours: 720 }
+  ]
 } as const;
 
 export type FileCategory =

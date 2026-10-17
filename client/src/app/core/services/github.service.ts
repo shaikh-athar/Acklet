@@ -4,6 +4,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiResponse } from './tools.service';
+import { environment } from '../../../environments/environment';
 
 // ── Existing tool-scoped integration ──────────────────────────────────────────
 export interface GitHubIntegrationResponse {
@@ -67,7 +68,7 @@ export interface GitHubImportJob {
 @Injectable({ providedIn: 'root' })
 export class GitHubService {
   private readonly http = inject(HttpClient);
-  private readonly base = 'http://localhost:8080/api/v1/github';
+  private readonly base = `${environment.apiBaseUrl}/github`;
 
   // ── OAuth / Connect ────────────────────────────────────────────────────────
 
@@ -113,12 +114,12 @@ export class GitHubService {
     const params = new HttpParams()
       .set('accountId', accountId)
       .set('repoFullName', repoFullName);
-    return this.http.post<ApiResponse<GitHubImportJob>>('http://localhost:8080/api/v1/projects/import', null, { params })
+    return this.http.post<ApiResponse<GitHubImportJob>>(`${environment.apiBaseUrl}/projects/import`, null, { params })
       .pipe(map(r => r.data));
   }
 
   getImportStatus(jobId: string): Observable<GitHubImportJob> {
-    return this.http.get<ApiResponse<GitHubImportJob>>(`http://localhost:8080/api/v1/projects/${jobId}/status`)
+    return this.http.get<ApiResponse<GitHubImportJob>>(`${environment.apiBaseUrl}/projects/${jobId}/status`)
       .pipe(map(r => r.data));
   }
 

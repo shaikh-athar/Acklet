@@ -4,14 +4,14 @@ description: Tools
 
 # Antigravity Task Execution Loop
 
-Before doing anything else, read `AGENT.md` fully.
+Before doing anything else, read `.agents/AGENTS.md` fully.
 
-Then read `uireference.md` whenever the task involves UI, UX, components, styling, layout, interaction, or a new tool.
+Then read `.agents/rules/uireference.md` whenever the task involves UI, UX, components, styling, layout, interaction, or a new tool.
 
 Also inspect relevant documentation under:
 
 ```text
-A:\Acklet\docs\Acklet Vault\Acklet
+docs/Acklet Vault/Acklet
 ```
 
 These instructions are mandatory.
@@ -102,7 +102,7 @@ Existing component
 Read and follow:
 
 ```text
-UI-REFERENCE.md
+.agents/rules/uireference.md
 ```
 
 Check:
@@ -203,7 +203,7 @@ Explain:
 * Responsive behavior
 * Accessibility considerations
 
-Follow `UI-REFERENCE.md`.
+Follow `.agents/rules/uireference.md`.
 
 ## D. Distinctive Feature Pitch
 
@@ -244,8 +244,8 @@ Implement only what was approved.
 
 Rules:
 
-* Follow `AGENT.md`.
-* Follow `UI-REFERENCE.md`.
+* Follow `.agents/AGENTS.md`.
+* Follow `.agents/rules/uireference.md`.
 * Follow the existing Acklet architecture.
 * Reuse existing components.
 * Follow Acklet's design system.
@@ -315,7 +315,7 @@ Maintain the project documentation after every meaningful task.
 Update the relevant documentation under:
 
 ```text
-A:\Acklet\docs\Acklet Vault\Acklet
+docs/Acklet Vault/Acklet
 ```
 
 Record, where applicable:
@@ -379,8 +379,8 @@ Briefly explain:
 
 Explicitly state:
 
-* AGENT.md followed
-* UI-REFERENCE.md followed
+* .agents/AGENTS.md followed
+* .agents/rules/uireference.md followed
 * Six-step loop followed
 * Existing design system followed
 * Codebase inspected

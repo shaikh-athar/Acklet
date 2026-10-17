@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { SyncService } from './sync.service';
+import { environment } from '../../../environments/environment';
 
 export interface UserProfile {
   id: string;
@@ -60,7 +61,7 @@ export class AuthService {
   private readonly router = inject(Router);
   private readonly syncSvc = inject(SyncService);
 
-  private readonly baseUrl = 'http://localhost:8080/api/v1';
+  private readonly baseUrl = environment.apiBaseUrl;
 
   private readonly _currentUser = signal<UserProfile | null>(DEFAULT_ACKLET_USER);
   private readonly _accessToken = signal<string | null>('demo_dev_access_token');

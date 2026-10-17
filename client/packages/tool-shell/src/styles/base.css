@@ -74,6 +74,15 @@
 
 
 /* ══ ROOT RESET & FULL VIEWPORT LOCK ═════════════════════════════ */
+body:has(.ts-root) {
+  background-color: var(--ts-page-bg, var(--page-bg, #0F1011));
+}
+
+html[data-theme="light"] body:has(.ts-root),
+[data-theme="light"] body:has(.ts-root) {
+  background-color: var(--ts-page-bg, var(--page-bg, #F7F8F8));
+}
+
 .ts-root {
   isolation: isolate;
   box-sizing: border-box;
@@ -139,15 +148,6 @@
   outline: none !important;
 }
 
-/* ══ KEYBOARD FOCUS VISIBLE ONLY (2px offset ring, never on mouse click) ══ */
-.ts-root *:focus-visible {
-  outline: 2px solid var(--ts-focus-ring) !important;
-  outline-offset: 2px !important;
-}
-
-.ts-root *:focus:not(:focus-visible) {
-  outline: none !important;
-}
 
 /* ══ CUSTOM SCROLLBARS ═════════════════════════════════════════ */
 .ts-root ::-webkit-scrollbar {
@@ -441,22 +441,8 @@
   min-height: 0;
 }
 
-/* Keyboard focus-visible on all Spartan buttons */
-.spartan-button:focus-visible,
-.ts-root button:focus-visible,
-.ts-root a:focus-visible,
-.ts-root input:focus-visible,
-.ts-root textarea:focus-visible,
-.ts-root select:focus-visible {
-  outline: 2px solid var(--accent-strong) !important;
-  outline-offset: 2px !important;
-}
 
-.spartan-button:focus:not(:focus-visible),
-.ts-root button:focus:not(:focus-visible),
-.ts-root a:focus:not(:focus-visible) {
-  outline: none !important;
-}
+
 
 /* ══ ICON AND SURFACE HIGHLIGHTS ═════════════════════════════════
    - Icon tile (tool icon, empty-state icon): --accent-soft background, --accent-strong icon.
@@ -505,6 +491,50 @@
   background-color: var(--accent-soft) !important;
   color: var(--accent-strong) !important;
   border: 1px solid var(--accent-border) !important;
+}
+
+.spartan-badge-variant-secondary {
+  background-color: var(--surface-hover) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.spartan-badge-variant-outline {
+  background-color: transparent !important;
+  color: var(--text) !important;
+}
+
+.spartan-badge-variant-destructive {
+  background-color: var(--danger-soft) !important;
+  color: var(--danger) !important;
+}
+
+.spartan-badge-variant-ghost {
+  background-color: transparent !important;
+  color: var(--text-muted) !important;
+}
+
+/* ══ SPARTAN INPUT PRIMITIVE ═════════════════════════════════════ */
+.spartan-input {
+  font-family: var(--ts-font-sans);
+  font-size: var(--ts-type-body-size, 14px);
+  line-height: var(--ts-type-body-lh, 22px);
+  color: var(--text);
+  background-color: transparent;
+  border-radius: var(--ts-radius-control, 12px);
+  transition: border-color var(--ts-dur-fast, 150ms) var(--ts-ease),
+    box-shadow var(--ts-dur-fast, 150ms) var(--ts-ease);
+}
+
+.spartan-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ══ SPARTAN CARD PRIMITIVE ═════════════════════════════════════ */
+.spartan-card {
+  background-color: var(--shell-card);
+  border-radius: var(--ts-radius-card, 20px);
+  color: var(--text);
 }
 
 /* ══ FORM CONTROLS & CHECKED STATES ══════════════════════════════

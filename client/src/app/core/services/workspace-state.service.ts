@@ -1,5 +1,6 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 export interface RepositoryItem {
   id: string;
@@ -53,7 +54,7 @@ export interface StoreItem {
   status?: string;
 }
 
-const API_BASE = 'http://localhost:8080/api/v1';
+const API_BASE = environment.apiBaseUrl;
 
 @Injectable({ providedIn: 'root' })
 export class WorkspaceStateService {
