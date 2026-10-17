@@ -6,6 +6,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiResponse, PageResponse } from './tools.service';
 import { Tool } from '../models/tool.model';
+import { environment } from '../../../environments/environment';
 
 export interface CreateToolRequest {
   name: string;
@@ -28,7 +29,7 @@ export interface PublisherStats {
 @Injectable({ providedIn: 'root' })
 export class PublisherService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://localhost:8080/api/v1/publisher';
+  private readonly baseUrl = `${environment.apiBaseUrl}/publisher`;
 
   becomePublisher(): Observable<ApiResponse<Record<string, string>>> {
     return this.http.post<ApiResponse<Record<string, string>>>(`${this.baseUrl}/become`, {});

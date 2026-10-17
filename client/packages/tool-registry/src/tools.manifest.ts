@@ -40,7 +40,7 @@ export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
     ],
     tabs: [
       { id: 'text', label: 'Text & Links', icon: 'file-text' },
-      { id: 'files', label: 'Files', icon: 'folder' }
+      { id: 'files', label: 'Files & Images', icon: 'folder' }
     ],
     features: [
       'Runs in your browser',

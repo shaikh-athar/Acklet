@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiResponse, PageResponse } from './tools.service';
 import { Tool } from '../models/tool.model';
+import { environment } from '../../../environments/environment';
 
 export interface ProviderHealthResponse {
   [key: string]: any;
@@ -31,7 +32,7 @@ export interface SystemHealthResponse {
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://localhost:8080/api/v1/admin';
+  private readonly baseUrl = `${environment.apiBaseUrl}/admin`;
 
   getPendingTools(page = 0, size = 10): Observable<PageResponse<Tool>> {
     const params = new HttpParams().set('page', page.toString()).set('size', size.toString());

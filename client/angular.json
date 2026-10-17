@@ -27,6 +27,11 @@
             ],
             "styles": [
               "src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "qrcode",
+              "lottie-web",
+              "dijkstrajs"
             ]
           },
           "configurations": {
@@ -96,6 +101,11 @@
             ],
             "styles": [
               "apps/tool-online-clipboard/src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "qrcode",
+              "lottie-web",
+              "dijkstrajs"
             ]
           },
           "configurations": {

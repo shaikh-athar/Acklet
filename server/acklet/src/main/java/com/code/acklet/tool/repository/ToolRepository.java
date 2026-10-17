@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -36,4 +37,8 @@ public interface ToolRepository extends JpaRepository<Tool, UUID>, JpaSpecificat
 
     boolean existsBySlug(String slug);
     Optional<Tool> findByRepositoryId(UUID repositoryId);
+
+    @Modifying
+    @Query("UPDATE Tool t SET t.usageCount = t.usageCount + 1 WHERE t.id = :toolId")
+    void incrementUsageCount(@Param("toolId") UUID toolId);
 }

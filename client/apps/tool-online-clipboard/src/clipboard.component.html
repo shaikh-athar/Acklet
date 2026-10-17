@@ -1,4 +1,4 @@
-<div class="clipboard-container" (dragover)="isDragOver.set(true)" (dragleave)="isDragOver.set(false)" (drop)="onFileDrop($event)">
+<div class="clipboard-container">
 
   <!-- ═══════════════════════════════════════════════════════════ -->
   <!-- ZONE 1: CLIPBOARD IDENTITY STRIP (Klipit Top Strip)         -->
@@ -114,10 +114,15 @@
         <button 
           type="button" 
           class="identity-action-link-btn" 
+          [disabled]="isCreatingShare()"
           (click)="confirmCreateNewClipboard()"
           title="Start a fresh clipboard session"
         >
-          <ts-icon name="plus" [size]="16" />
+          @if (isCreatingShare()) {
+            <span class="spinner-circle-xs" aria-hidden="true"></span>
+          } @else {
+            <ts-icon name="plus" [size]="16" />
+          }
           <span>{{ copy.identity.newClipboard }}</span>
         </button>
       </div>
@@ -151,32 +156,6 @@
         >
           <ts-icon name="qr-code" [size]="20" />
         </button>
-
-        <!-- Desktop Join Box ("Have a code? [Open]") -->
-        <div class="join-code-container hide-below-640">
-          <div class="join-input-group" [class.has-error]="!!joinError()">
-            <input 
-              type="text" 
-              class="join-code-input" 
-              [placeholder]="copy.identity.joinPlaceholder" 
-              [(ngModel)]="joinCodeInput"
-              (keyup.enter)="joinClipboard()"
-              maxlength="24"
-              autocomplete="off"
-            />
-            <button 
-              type="button" 
-              class="join-open-btn" 
-              [disabled]="!joinCodeInput.trim() || isJoining()" 
-              (click)="joinClipboard()"
-            >
-              {{ copy.identity.joinButton }}
-            </button>
-          </div>
-          @if (joinError()) {
-            <span class="inline-join-error" role="alert">{{ joinError() }}</span>
-          }
-        </div>
 
         <!-- Mobile Open Another Button (<640px) -->
         <div class="mobile-join-wrapper show-below-640">
@@ -234,7 +213,11 @@
             [disabled]="!joinCodeInput.trim() || isJoining()" 
             (click)="joinClipboard()"
           >
-            {{ copy.identity.joinButton }}
+            @if (isJoining()) {
+              <span class="spinner-circle-xs" aria-hidden="true"></span>
+            } @else {
+              <span>{{ copy.identity.joinButton }}</span>
+            }
           </button>
         </div>
         @if (joinError()) {
@@ -245,41 +228,109 @@
   </header>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
-  <!-- ZONE 2: FIXED TAB BAR (Text & Links | Files)               -->
+  <!-- ZONE 2: TAB BAR & QUICK JOIN ROW                           -->
   <!-- ═══════════════════════════════════════════════════════════ -->
-  <nav class="clipboard-main-tab-bar" role="tablist" aria-label="Clipboard sections">
-    <button 
-      type="button" 
-      role="tab" 
-      class="main-tab-btn" 
-      [class.active]="activeTab() === 'text'"
-      [attr.aria-selected]="activeTab() === 'text'" 
-      (click)="setTab('text')"
-    >
-      <ts-icon name="file-text" [size]="16" />
-      <span>{{ copy.tabs.text }}</span>
-    </button>
+  <div class="clipboard-tab-row">
+    <nav class="clipboard-main-tab-bar" role="tablist" aria-label="Clipboard sections">
+      <button 
+        type="button" 
+        role="tab" 
+        class="main-tab-btn" 
+        [class.active]="activeTab() === 'text'"
+        [attr.aria-selected]="activeTab() === 'text'" 
+        (click)="setTab('text')"
+      >
+        <ts-icon name="file-text" [size]="16" />
+        <span>{{ copy.tabs.text }}</span>
+      </button>
 
-    <button 
-      type="button" 
-      role="tab" 
-      class="main-tab-btn" 
-      [class.active]="activeTab() === 'files'"
-      [attr.aria-selected]="activeTab() === 'files'" 
-      (click)="setTab('files')"
-    >
-      <ts-icon name="folder" [size]="16" />
-      <span>{{ copy.tabs.files }}</span>
-      @if (allFileItems().length > 0) {
-        <span class="tab-badge-pill">{{ allFileItems().length }}</span>
+      <button 
+        type="button" 
+        role="tab" 
+        class="main-tab-btn" 
+        [class.active]="activeTab() === 'files'"
+        [attr.aria-selected]="activeTab() === 'files'" 
+        (click)="setTab('files')"
+      >
+        <ts-icon name="folder" [size]="16" />
+        <span>{{ copy.tabs.files }}</span>
+        @if (allFileItems().length > 0) {
+          <span class="tab-badge-pill">{{ allFileItems().length }}</span>
+        }
+      </button>
+    </nav>
+
+    <!-- Redesigned High-Quality Join Code Input -->
+    <div class="join-code-container hide-below-640">
+      <div class="join-input-group" [class.has-error]="!!joinError()">
+        <span class="join-input-prefix-icon" aria-hidden="true">
+          <ts-icon name="key-round" [size]="14" />
+        </span>
+        <input 
+          type="text" 
+          class="join-code-input" 
+          [placeholder]="copy.identity.joinPlaceholder" 
+          [(ngModel)]="joinCodeInput"
+          (keyup.enter)="joinClipboard()"
+          maxlength="24"
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Enter clipboard code to join"
+        />
+        @if (joinCodeInput.trim()) {
+          <button 
+            type="button" 
+            class="join-clear-btn" 
+            (click)="joinCodeInput = ''; joinError.set(null)"
+            title="Clear"
+            aria-label="Clear input"
+          >
+            <ts-icon name="x" [size]="12" />
+          </button>
+        }
+        <button 
+          type="button" 
+          class="join-open-btn" 
+          [disabled]="!joinCodeInput.trim() || isJoining()" 
+          (click)="joinClipboard()"
+          title="Open clipboard"
+        >
+          @if (isJoining()) {
+            <span class="spinner-circle-xs" aria-hidden="true"></span>
+          } @else {
+            <span>{{ copy.identity.joinButton }}</span>
+            <ts-icon name="arrow-right" [size]="13" />
+          }
+        </button>
+      </div>
+      @if (joinError()) {
+        <span class="inline-join-error" role="alert">
+          <ts-icon name="alert-circle" [size]="12" />
+          <span>{{ joinError() }}</span>
+        </span>
       }
-    </button>
-  </nav>
+    </div>
+  </div>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
   <!-- ZONE 3: SCROLLING CONTENT AREA                             -->
   <!-- ═══════════════════════════════════════════════════════════ -->
   <main class="clipboard-content-scroller" [class.has-selection]="selectedItemIds().size > 0">
+
+    <!-- Switching / Connecting Stage Overlay -->
+    @if (isSwitching()) {
+      <div class="switching-stage-overlay" role="status" aria-live="polite">
+        <div class="switching-stage-card">
+          <div class="switching-info-box">
+            <div class="switching-title-row">
+              <span class="spinner-circle-xs" aria-hidden="true"></span>
+              <h3 class="switching-title">Connecting to Clipboard</h3>
+            </div>
+            <p class="switching-desc">Opening clipboard <code class="switching-code-badge">{{ switchingCode() }}</code>...</p>
+          </div>
+        </div>
+      </div>
+    }
 
     <!-- ─────────────────────────────────────────────────────────── -->
     <!-- TAB 1: TEXT & LINKS (Klipit-style One Big Shared Textarea) -->
@@ -305,38 +356,55 @@
           </div>
         }
 
-        <!-- Single URL Direct Action Link Chip -->
-        @if (singleDetectedUrl()) {
-          <div class="detected-url-bar">
-            <span class="detected-url-label">{{ copy.textTab.openLink }}:</span>
-            <a [href]="singleDetectedUrl()" target="_blank" rel="noopener noreferrer" class="detected-url-link">
-              <span>{{ singleDetectedUrl() }}</span>
-              <ts-icon name="arrow-up-right" [size]="14" />
-            </a>
+        <!-- Big Shared Textarea with Interactive Link Highlights -->
+        <div 
+          class="shared-textarea-container" 
+          [class.is-highlighted]="remoteTextHighlight()"
+          [class.is-focused]="isEditorFocused()"
+        >
+          <!-- Live Interactive Backdrop Layer with Clickable Links -->
+          <div 
+            #textBackdrop
+            class="textarea-backdrop-layer" 
+            aria-hidden="true"
+          >
+            @for (segment of textSegments(); track $index) {
+              @if (segment.isUrl) {
+                <a 
+                  [href]="segment.url" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  class="editor-inline-link"
+                  [title]="'Open ' + segment.url"
+                  (mousedown)="$event.stopPropagation()"
+                >{{ segment.text }}</a>
+              } @else {
+                <span>{{ segment.text }}</span>
+              }
+            }
           </div>
-        }
 
-        <!-- Big Shared Textarea -->
-        <div class="shared-textarea-container" [class.is-highlighted]="remoteTextHighlight()">
+          <!-- Foreground Transparent Editable Textarea -->
           <textarea 
             #sharedTextarea
             class="shared-textarea" 
             [placeholder]="copy.textTab.placeholder"
             [ngModel]="sharedText()"
             (ngModelChange)="onTextChanged($event)"
+            (scroll)="syncTextareaScroll()"
+            (focus)="isEditorFocused.set(true)"
+            (blur)="isEditorFocused.set(false)"
             spellcheck="false"
           ></textarea>
 
-          <!-- Corner limit & capacity indicator -->
-          <div class="textarea-corner-indicator">
-            @if (isTextOver80Percent()) {
+          <!-- Corner capacity warning indicator (only when payload approaches ceiling) -->
+          @if (isTextOver80Percent()) {
+            <div class="textarea-corner-indicator">
               <span class="size-counter-warn">
                 {{ formatBytes(textByteLength()) }} / {{ copy.textTab.limitHint }}
               </span>
-            } @else {
-              <span class="size-hint-quiet">{{ copy.textTab.limitHint }}</span>
-            }
-          </div>
+            </div>
+          }
         </div>
 
         <!-- Action Row: Copy, Refresh, Save, Clear & Status Text -->
@@ -356,10 +424,22 @@
             <button 
               type="button" 
               class="text-btn btn-secondary" 
+              (click)="pasteTextFromClipboard()"
+              title="Paste text from system clipboard"
+            >
+              <ts-icon name="clipboard-paste" [size]="18" />
+              <span>{{ copy.textTab.paste }}</span>
+            </button>
+
+            <button 
+              type="button" 
+              class="text-btn btn-secondary" 
+              [class.is-refreshing]="isRefreshing()"
               (click)="refreshTextContent()"
+              [disabled]="isRefreshing()"
               title="Refresh from server"
             >
-              <ts-icon name="refresh-cw" [size]="20" />
+              <ts-icon name="refresh-cw" [size]="18" [class.animate-spin]="isRefreshing()" />
               <span>{{ copy.textTab.refresh }}</span>
             </button>
 
@@ -511,7 +591,7 @@
                   <ts-icon name="hard-drive" [size]="16" />
                   <span>{{ copy.filesTab.addFromDevice }}</span>
                 </button>
-                <button type="button" class="add-menu-item" (click)="showAddMenu.set(false)">
+                <button type="button" class="add-menu-item" (click)="pasteFromClipboard(); showAddMenu.set(false)">
                   <ts-icon name="clipboard-paste" [size]="16" />
                   <span>{{ copy.filesTab.addPasteClipboard }}</span>
                 </button>
@@ -577,7 +657,10 @@
             @for (up of uploadingFiles(); track up.id) {
               <div class="upload-progress-card">
                 <div class="upload-info-row">
-                  <span class="upload-filename">{{ up.name }}</span>
+                  <div class="upload-filename-wrap">
+                    <span class="upload-spinner" aria-hidden="true"></span>
+                    <span class="upload-filename">{{ up.name }}</span>
+                  </div>
                   <div class="upload-meta-right">
                     <span>{{ up.progress }}%</span>
                     <button type="button" class="upload-cancel-btn" (click)="cancelUpload(up.id)">
@@ -627,28 +710,14 @@
             @for (item of displayFileItems(); track item.id) {
               <div 
                 class="library-file-card" 
-                [class.is-image-card]="item.itemType === 'IMAGE'"
+                [class.is-image-card]="isImageItem(item)"
                 [class.is-selected]="selectedItemIds().has(item.id)"
+                [class.is-deleting]="deletingItemIds().has(item.id)"
                 (click)="onCardClick(item, $event)"
               >
-                <!-- Card Header Row: Small type icon + truncated filename -->
-                <div class="card-header-row">
-                  <ts-icon 
-                    [name]="resolveItemMeta(item).icon" 
-                    [size]="20" 
-                    class="card-header-icon"
-                    [style.color]="resolveItemMeta(item).color"
-                  />
-                  <span class="card-header-filename" [title]="item.originalName || 'file'">
-                    {{ item.originalName || 'file' }}
-                  </span>
-                </div>
-
-                <div class="card-thin-divider"></div>
-
-                <!-- Preview Area -->
-                <div class="card-preview-area" [style.background]="item.itemType === 'IMAGE' ? '#f1f5f9' : resolveItemMeta(item).bgTint">
-                  @if (item.itemType === 'IMAGE') {
+                <!-- For image items: No header, no footer - clean image preview only with selection check badge -->
+                @if (isImageItem(item)) {
+                  <div class="card-preview-area card-preview-area-full">
                     <img 
                       [src]="getItemThumbnailUrl(item)" 
                       [alt]="item.originalName || 'image'" 
@@ -656,34 +725,54 @@
                       loading="lazy" 
                       decoding="async" 
                     />
-                  } @else {
+                    <!-- Checkbox Badge at bottom-right -->
+                    <div 
+                      class="card-check-badge" 
+                      [class.checked]="selectedItemIds().has(item.id)"
+                      (click)="toggleItemSelection(item.id, $event)"
+                      title="Select item"
+                      role="checkbox"
+                      [attr.aria-checked]="selectedItemIds().has(item.id)"
+                    >
+                      <ts-icon name="check" [size]="14" />
+                    </div>
+                  </div>
+                } @else {
+                  <!-- For other file types: show icon and file name only (no size or time) -->
+                  <div class="card-header-row">
+                    <ts-icon 
+                      [name]="resolveItemMeta(item).icon" 
+                      [size]="20" 
+                      class="card-header-icon"
+                      [style.color]="resolveItemMeta(item).color"
+                    />
+                    <span class="card-header-filename" [title]="item.originalName || 'file'">
+                      {{ item.originalName || 'file' }}
+                    </span>
+                  </div>
+
+                  <!-- Preview Area for Files -->
+                  <div class="card-preview-area" [style.background]="resolveItemMeta(item).bgTint">
                     <ts-icon 
                       [name]="resolveItemMeta(item).icon" 
                       [size]="56" 
                       class="card-large-type-icon"
                       [style.color]="resolveItemMeta(item).color"
                     />
-                  }
 
-                  <!-- Bottom-Right Checkbox Badge -->
-                  <div 
-                    class="card-check-badge" 
-                    [class.checked]="selectedItemIds().has(item.id)"
-                    (click)="toggleItemSelection(item.id, $event)"
-                    title="Select item"
-                    role="checkbox"
-                    [attr.aria-checked]="selectedItemIds().has(item.id)"
-                  >
-                    <ts-icon name="check" [size]="14" />
+                    <!-- Bottom-Right Checkbox Badge -->
+                    <div 
+                      class="card-check-badge" 
+                      [class.checked]="selectedItemIds().has(item.id)"
+                      (click)="toggleItemSelection(item.id, $event)"
+                      title="Select item"
+                      role="checkbox"
+                      [attr.aria-checked]="selectedItemIds().has(item.id)"
+                    >
+                      <ts-icon name="check" [size]="14" />
+                    </div>
                   </div>
-                </div>
-
-                <!-- Card Footer Line: Size & relative time -->
-                <div class="card-footer-row">
-                  <span class="card-footer-meta">
-                    {{ formatBytes(item.sizeBytes) }} • {{ getRelativeTimeString(item.createdAt) }}
-                  </span>
-                </div>
+                }
               </div>
             }
           </div>
@@ -696,6 +785,7 @@
               <div 
                 class="library-row-item" 
                 [class.is-selected]="selectedItemIds().has(item.id)"
+                [class.is-deleting]="deletingItemIds().has(item.id)"
                 (click)="onCardClick(item, $event)"
               >
                 <div 
@@ -709,7 +799,7 @@
                 </div>
 
                 <div class="row-thumb-box" [style.background]="resolveItemMeta(item).bgTint">
-                  @if (item.itemType === 'IMAGE') {
+                  @if (isImageItem(item)) {
                     <img [src]="getItemThumbnailUrl(item)" alt="" class="row-thumb-img" loading="lazy" />
                   } @else {
                     <ts-icon [name]="resolveItemMeta(item).icon" [size]="20" [style.color]="resolveItemMeta(item).color" />
@@ -718,18 +808,6 @@
 
                 <span class="row-name-text" [title]="item.originalName || 'file'">
                   {{ item.originalName || 'file' }}
-                </span>
-
-                <span class="row-type-label hide-below-640">
-                  {{ resolveItemMeta(item).label }}
-                </span>
-
-                <span class="row-size-label">
-                  {{ formatBytes(item.sizeBytes) }}
-                </span>
-
-                <span class="row-time-label hide-below-640">
-                  {{ getRelativeTimeString(item.createdAt) }}
                 </span>
               </div>
             }
@@ -796,10 +874,23 @@
   <!-- DRAG-AND-DROP FULL OVERLAY                                 -->
   <!-- ═══════════════════════════════════════════════════════════ -->
   @if (isDragOver()) {
-    <div class="drag-drop-full-overlay" (dragover)="$event.preventDefault()" (dragleave)="isDragOver.set(false)" (drop)="onFileDrop($event)">
-      <div class="drop-pulse-tile">
-        <ts-icon name="upload-cloud" [size]="48" />
-        <span class="drop-pulse-text">{{ copy.filesTab.dropOverlay }}</span>
+    <div class="drag-drop-full-overlay">
+      <div class="drag-drop-modal-content">
+        <!-- Floating colorful icon badges cluster -->
+        <div class="drop-icon-cluster" aria-hidden="true">
+          <div class="drop-badge drop-badge-left">
+            <ts-icon name="code" [size]="24" class="drop-badge-icon" />
+          </div>
+          <div class="drop-badge drop-badge-right">
+            <ts-icon name="file-text" [size]="24" class="drop-badge-icon" />
+          </div>
+          <div class="drop-badge drop-badge-center">
+            <ts-icon name="image" [size]="28" class="drop-badge-icon" />
+          </div>
+        </div>
+
+        <h3 class="drop-headline">{{ copy.filesTab.dropOverlayTitle }}</h3>
+        <p class="drop-subline">{{ copy.filesTab.dropOverlaySubtitle }}</p>
       </div>
     </div>
   }
@@ -1057,7 +1148,11 @@
               <ts-icon name="download" [size]="18" />
               <span>{{ copy.filesTab.lightbox.download }}</span>
             </button>
-            <button type="button" class="lightbox-close-icon" (click)="lightboxImage.set(null)">
+            <button type="button" class="lightbox-close-preview-btn" (click)="lightboxImage.set(null)" title="Close preview">
+              <ts-icon name="x" [size]="16" />
+              <span>Close Preview</span>
+            </button>
+            <button type="button" class="lightbox-close-icon" (click)="lightboxImage.set(null)" title="Close" aria-label="Close">
               <ts-icon name="x" [size]="20" />
             </button>
           </div>
@@ -1145,6 +1240,22 @@
               <span class="toggle-slider"></span>
             </label>
           </div>
+
+          <div class="settings-option-item">
+            <div class="option-text-col">
+              <span class="option-name">Auto-Delete Retention</span>
+              <span class="option-desc">Automatically purge expired clipboard contents and files.</span>
+            </div>
+            <select 
+              class="settings-select-control"
+              [(ngModel)]="selectedRetentionHours"
+              (ngModelChange)="retentionHours.set($event)"
+            >
+              <option [ngValue]="168">7 Days</option>
+              <option [ngValue]="360">15 Days</option>
+              <option [ngValue]="720">1 Month (30 Days)</option>
+            </select>
+          </div>
         </div>
 
         <div class="settings-footer">
@@ -1177,12 +1288,31 @@
           </div>
         } @else {
           @for (rec of recentClipboards(); track rec.code) {
-            <div class="history-item-row" (click)="openFromHistory(rec)">
+            <div 
+              class="history-item-row" 
+              [class.is-switching]="switchingCode() === rec.code"
+              (click)="switchingCode() === rec.code ? null : openFromHistory(rec)"
+            >
               <div class="history-item-info">
                 <span class="history-code-mono">{{ rec.code }}</span>
                 <span class="history-time-meta">{{ getRelativeTimeString(rec.createdAt) }}</span>
               </div>
-              <ts-icon name="arrow-up-right" [size]="16" class="history-arrow" />
+              <div class="history-item-actions">
+                @if (switchingCode() === rec.code) {
+                  <span class="spinner-circle-xs" aria-hidden="true"></span>
+                } @else {
+                  <button 
+                    type="button" 
+                    class="history-item-remove-btn" 
+                    (click)="removeClipboardFromHistory(rec.code, $event)"
+                    title="Remove from history"
+                    aria-label="Remove from history"
+                  >
+                    <ts-icon name="trash-2" [size]="14" />
+                  </button>
+                  <ts-icon name="arrow-up-right" [size]="16" class="history-arrow" />
+                }
+              </div>
             </div>
           }
         }
@@ -1213,6 +1343,43 @@
         <button type="button" class="toast-dismiss-btn" (click)="dismissToast()">
           <ts-icon name="x" [size]="14" />
         </button>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- CUSTOM ACKLET-DESIGNED CONFIRMATION DIALOG (Non-Browser)    -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  @if (confirmDialog(); as dialog) {
+    <div class="modal-backdrop-blur" (click)="dialog.onCancel ? dialog.onCancel() : null; confirmDialog.set(null)">
+      <div class="custom-confirm-dialog" (click)="$event.stopPropagation()" role="alertdialog" aria-modal="true">
+        <div class="confirm-dialog-header">
+          <div class="confirm-icon-badge" [class.is-danger]="dialog.isDestructive">
+            <ts-icon [name]="dialog.isDestructive ? 'alert-triangle' : 'help-circle'" [size]="20" />
+          </div>
+          <div class="confirm-header-text">
+            <h3 class="confirm-dialog-title">{{ dialog.title }}</h3>
+            <p class="confirm-dialog-message">{{ dialog.message }}</p>
+          </div>
+        </div>
+
+        <div class="confirm-dialog-actions">
+          <button 
+            type="button" 
+            class="confirm-cancel-btn" 
+            (click)="dialog.onCancel ? dialog.onCancel() : null; confirmDialog.set(null)"
+          >
+            {{ dialog.cancelText || 'Cancel' }}
+          </button>
+          <button 
+            type="button" 
+            class="confirm-action-btn"
+            [class.btn-danger]="dialog.isDestructive"
+            (click)="dialog.action(); confirmDialog.set(null)"
+          >
+            {{ dialog.confirmText || 'Confirm' }}
+          </button>
+        </div>
       </div>
     </div>
   }

@@ -26,4 +26,5 @@ public class ClipboardItemDto {
     private int viewCount = 0;
     @Builder.Default
     private Boolean isEncrypted = false;
+    private String contentHash;
 }

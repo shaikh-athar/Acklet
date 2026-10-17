@@ -127,9 +127,29 @@ export class ClipboardComponent implements OnInit, OnDestroy {
   readonly showSettingsModal = signal<boolean>(false);
   readonly showHistoryDrawer = signal<boolean>(false);
   readonly isPrivateMode = signal<boolean>(false);
-  readonly e2eeEnabled = signal<boolean>(false);
+  readonly e2eeEnabled = signal<boolean>(true);
   readonly encryptionKey = signal<string>('');
+  readonly retentionHours = signal<number>(CLIPBOARD_CONFIG.defaultExpiryHours);
+  selectedRetentionHours: number = CLIPBOARD_CONFIG.defaultExpiryHours;
   readonly recentClipboards = signal<LocalClipboardRecord[]>([]);
+
+  // Custom Acklet-designed Confirmation Dialog (replaces browser confirm())
+  readonly confirmDialog = signal<{
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    isDestructive?: boolean;
+    action: () => void;
+    onCancel?: () => void;
+  } | null>(null);
+
+  // Switching clipboard state
+  readonly isSwitching = signal<boolean>(false);
+  readonly switchingCode = signal<string | null>(null);
+
+  // Deleting item IDs for smooth exit animation
+  readonly deletingItemIds = signal<Set<string>>(new Set<string>());
 
   // Feedback states
   readonly copiedCode = signal<boolean>(false);
@@ -143,6 +163,7 @@ export class ClipboardComponent implements OnInit, OnDestroy {
   readonly remoteTextSnapshot = signal<string>('');
   readonly isTextDirty = signal<boolean>(false);
   readonly isSavingText = signal<boolean>(false);
+  readonly isRefreshing = signal<boolean>(false);
   readonly lastSavedTime = signal<number | null>(null);
   readonly hasRemoteTextConflict = signal<boolean>(false);
   readonly remoteTextHighlight = signal<boolean>(false);
@@ -157,12 +178,108 @@ export class ClipboardComponent implements OnInit, OnDestroy {
     return new Blob([this.sharedText()]).size;
   });
 
-  readonly singleDetectedUrl = computed<string | null>(() => {
-    const trimmed = this.sharedText().trim();
-    if (/^https?:\/\/[^\s]+$/i.test(trimmed)) {
-      return trimmed;
+  readonly detectedUrls = computed<string[]>(() => {
+    const text = this.sharedText();
+    if (!text) return [];
+    // Strict URL regex matching valid http/https URLs surrounded by whitespace or string boundaries
+    const urlRegex = /(?:https?:\/\/)[^\s<>"'{}|\\^`[\]]+/gi;
+    const matches = text.match(urlRegex) || [];
+    const validUrls: string[] = [];
+    const seen = new Set<string>();
+
+    for (let url of matches) {
+      // Strip trailing punctuation often typed at end of sentence
+      url = url.replace(/[.,;:!?)]+$/, '');
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+          if (!seen.has(url)) {
+            seen.add(url);
+            validUrls.push(url);
+          }
+        }
+      } catch {
+        // Ignore malformed URLs
+      }
     }
-    return null;
+    return validUrls;
+  });
+
+  readonly singleDetectedUrl = computed<string | null>(() => {
+    const urls = this.detectedUrls();
+    return urls.length === 1 ? urls[0] : null;
+  });
+
+  // Inline URL Segments for Live Clickable Editor
+  readonly isEditorFocused = signal<boolean>(false);
+
+  readonly textSegments = computed<Array<{ text: string; isUrl: boolean; url?: string }>>(() => {
+    const text = this.sharedText();
+    if (!text) return [];
+
+    const urlRegex = /(?:https?:\/\/)[^\s<>"'{}|\\^`[\]]+/gi;
+    const segments: Array<{ text: string; isUrl: boolean; url?: string }> = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = urlRegex.exec(text)) !== null) {
+      const matchIndex = match.index;
+      let matchedUrl = match[0];
+
+      // Add preceding plain text
+      if (matchIndex > lastIndex) {
+        segments.push({
+          text: text.substring(lastIndex, matchIndex),
+          isUrl: false
+        });
+      }
+
+      // Check for trailing punctuation
+      const punctuationMatch = matchedUrl.match(/[.,;:!?)]+$/);
+      let trailingPunctuation = '';
+      if (punctuationMatch) {
+        trailingPunctuation = punctuationMatch[0];
+        matchedUrl = matchedUrl.slice(0, -trailingPunctuation.length);
+      }
+
+      try {
+        const parsed = new URL(matchedUrl);
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+          segments.push({
+            text: matchedUrl,
+            isUrl: true,
+            url: matchedUrl
+          });
+          if (trailingPunctuation) {
+            segments.push({
+              text: trailingPunctuation,
+              isUrl: false
+            });
+          }
+        } else {
+          segments.push({
+            text: match[0],
+            isUrl: false
+          });
+        }
+      } catch {
+        segments.push({
+          text: match[0],
+          isUrl: false
+        });
+      }
+
+      lastIndex = matchIndex + match[0].length;
+    }
+
+    if (lastIndex < text.length) {
+      segments.push({
+        text: text.substring(lastIndex),
+        isUrl: false
+      });
+    }
+
+    return segments;
   });
 
   // -------------------------------------------------------------
@@ -203,6 +320,14 @@ export class ClipboardComponent implements OnInit, OnDestroy {
   @ViewChild('fileInputGeneral') fileInputGeneral!: ElementRef<HTMLInputElement>;
   @ViewChild('fileSearchInput') fileSearchInput?: ElementRef<HTMLInputElement>;
   @ViewChild('sharedTextarea') sharedTextarea?: ElementRef<HTMLTextAreaElement>;
+  @ViewChild('textBackdrop') textBackdrop?: ElementRef<HTMLDivElement>;
+
+  syncTextareaScroll(): void {
+    if (this.sharedTextarea && this.textBackdrop) {
+      this.textBackdrop.nativeElement.scrollTop = this.sharedTextarea.nativeElement.scrollTop;
+      this.textBackdrop.nativeElement.scrollLeft = this.sharedTextarea.nativeElement.scrollLeft;
+    }
+  }
 
   // Filtered & Sorted File Items
   readonly allFileItems = computed<ClipboardItem[]>(() => {
@@ -215,9 +340,17 @@ export class ClipboardComponent implements OnInit, OnDestroy {
 
     // 1. Sub-filter: all / images / files
     if (this.fileSubFilter() === 'images') {
-      list = list.filter(i => i.itemType === 'IMAGE');
+      list = list.filter(i => {
+        if (i.itemType === 'IMAGE') return true;
+        if (i.detectedMime && i.detectedMime.startsWith('image/')) return true;
+        return resolveFileMetadata(i.originalName || '', i.detectedMime).category === 'images';
+      });
     } else if (this.fileSubFilter() === 'files') {
-      list = list.filter(i => i.itemType === 'FILE');
+      list = list.filter(i => {
+        if (i.itemType === 'IMAGE') return false;
+        if (i.detectedMime && i.detectedMime.startsWith('image/')) return false;
+        return resolveFileMetadata(i.originalName || '', i.detectedMime).category !== 'images';
+      });
     }
 
     // 2. Type Categories from Filter Popover
@@ -249,24 +382,44 @@ export class ClipboardComponent implements OnInit, OnDestroy {
     // 5. Sorting
     const sort = this.sortOption();
     if (sort === 'newest') {
-      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      list.sort((a, b) => {
+        const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return diff !== 0 ? diff : (b.id || '').localeCompare(a.id || '');
+      });
     } else if (sort === 'oldest') {
-      list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      list.sort((a, b) => {
+        const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        return diff !== 0 ? diff : (a.id || '').localeCompare(b.id || '');
+      });
     } else if (sort === 'name') {
-      list.sort((a, b) => (a.originalName || '').localeCompare(b.originalName || ''));
+      list.sort((a, b) => {
+        const diff = (a.originalName || '').localeCompare(b.originalName || '', undefined, { sensitivity: 'base' });
+        return diff !== 0 ? diff : (a.id || '').localeCompare(b.id || '');
+      });
     } else if (sort === 'largest') {
-      list.sort((a, b) => (b.sizeBytes || 0) - (a.sizeBytes || 0));
+      list.sort((a, b) => {
+        const diff = (b.sizeBytes || 0) - (a.sizeBytes || 0);
+        return diff !== 0 ? diff : (b.id || '').localeCompare(a.id || '');
+      });
     }
 
     return list;
   });
 
   readonly imagesCount = computed(() => {
-    return this.allFileItems().filter(i => i.itemType === 'IMAGE').length;
+    return this.allFileItems().filter(i => {
+      if (i.itemType === 'IMAGE') return true;
+      if (i.detectedMime && i.detectedMime.startsWith('image/')) return true;
+      return resolveFileMetadata(i.originalName || '', i.detectedMime).category === 'images';
+    }).length;
   });
 
   readonly filesCount = computed(() => {
-    return this.allFileItems().filter(i => i.itemType === 'FILE').length;
+    return this.allFileItems().filter(i => {
+      if (i.itemType === 'IMAGE') return false;
+      if (i.detectedMime && i.detectedMime.startsWith('image/')) return false;
+      return resolveFileMetadata(i.originalName || '', i.detectedMime).category !== 'images';
+    }).length;
   });
 
   // -------------------------------------------------------------
@@ -317,6 +470,16 @@ export class ClipboardComponent implements OnInit, OnDestroy {
       if (incomingKey) {
         this.encryptionKey.set(incomingKey);
         this.e2eeEnabled.set(true);
+        // Clean key parameter from visible URL address bar
+        if (incomingCode && window.history) {
+          window.history.replaceState({}, '', `${window.location.origin}/${incomingCode}`);
+        }
+      } else if (incomingCode && typeof localStorage !== 'undefined') {
+        const storedKey = localStorage.getItem(`acklet_clip_key_${incomingCode}`);
+        if (storedKey) {
+          this.encryptionKey.set(storedKey);
+          this.e2eeEnabled.set(true);
+        }
       }
     }
 
@@ -325,6 +488,11 @@ export class ClipboardComponent implements OnInit, OnDestroy {
       const storedDeviceSession = localStorage.getItem('acklet_clipboard_active_code')?.trim();
       if (storedDeviceSession && storedDeviceSession.length >= 3) {
         incomingCode = storedDeviceSession;
+        const storedKey = localStorage.getItem(`acklet_clip_key_${incomingCode}`);
+        if (storedKey) {
+          this.encryptionKey.set(storedKey);
+          this.e2eeEnabled.set(true);
+        }
       }
     }
 
@@ -412,6 +580,15 @@ export class ClipboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  // Prevent silent data loss if navigating away with unsaved changes
+  @HostListener('window:beforeunload', ['$event'])
+  onBeforeUnload(event: BeforeUnloadEvent): void {
+    if (this.isTextDirty()) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  }
+
   // Ctrl+V Paste anywhere on page
   @HostListener('window:paste', ['$event'])
   async onWindowPaste(event: ClipboardEvent): Promise<void> {
@@ -449,19 +626,83 @@ export class ClipboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  // Global Window Drag & Drop Listeners (Entire Screen Dropzone)
+  private dragCounter = 0;
+
+  @HostListener('window:dragenter', ['$event'])
+  onWindowDragEnter(event: DragEvent): void {
+    if (this.hasFilesBeingDragged(event)) {
+      event.preventDefault();
+      this.dragCounter++;
+      this.isDragOver.set(true);
+    }
+  }
+
+  @HostListener('window:dragover', ['$event'])
+  onWindowDragOver(event: DragEvent): void {
+    if (this.hasFilesBeingDragged(event)) {
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'copy';
+      }
+      if (!this.isDragOver()) {
+        this.isDragOver.set(true);
+      }
+    }
+  }
+
+  @HostListener('window:dragleave', ['$event'])
+  onWindowDragLeave(event: DragEvent): void {
+    if (this.hasFilesBeingDragged(event)) {
+      event.preventDefault();
+      this.dragCounter = Math.max(0, this.dragCounter - 1);
+      if (this.dragCounter === 0) {
+        this.isDragOver.set(false);
+      }
+    }
+  }
+
+  @HostListener('window:drop', ['$event'])
+  onWindowDrop(event: DragEvent): void {
+    if (this.hasFilesBeingDragged(event)) {
+      event.preventDefault();
+      this.dragCounter = 0;
+      this.isDragOver.set(false);
+      if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+        this.setTab('files');
+        this.processFilesUpload(Array.from(event.dataTransfer.files));
+      }
+    }
+  }
+
+  private hasFilesBeingDragged(event: DragEvent): boolean {
+    const types = event.dataTransfer?.types;
+    if (!types) return false;
+    return Array.from(types).includes('Files');
+  }
+
   // -------------------------------------------------------------
   // CLIPBOARD IDENTITY & CREATION
   // -------------------------------------------------------------
   async initSharedClipboard(): Promise<void> {
     this.isCreatingShare.set(true);
+    // Auto-generate fresh AES-GCM 256-bit key for default-on E2EE
+    try {
+      const newKey = await ClipboardCrypto.generateKey();
+      this.encryptionKey.set(newKey);
+      this.e2eeEnabled.set(true);
+    } catch (e) {
+      console.warn('Could not generate crypto key', e);
+    }
+
     const options: CreateShareOptions = {
-      expiryHours: CLIPBOARD_CONFIG.defaultExpiryHours,
+      expiryHours: this.retentionHours(),
       liveMode: true
     };
 
     this.api.createShare(options).subscribe({
       next: async share => {
-        this.applyShareSession(share);
+        await this.applyShareSession(share);
         this.isCreatingShare.set(false);
       },
       error: () => {
@@ -471,24 +712,62 @@ export class ClipboardComponent implements OnInit, OnDestroy {
   }
 
   private async applyShareSession(share: ClipboardShare): Promise<void> {
+    // 1. Reset state from previous room for strict isolation
+    this.selectedItemIds.set(new Set());
+    this.uploadingFiles.set([]);
+    this.hasRemoteTextConflict.set(false);
+
+    // If no encryption key was loaded from URL or existing room, generate one now
+    if (!this.encryptionKey() && this.e2eeEnabled()) {
+      try {
+        const freshKey = await ClipboardCrypto.generateKey();
+        this.encryptionKey.set(freshKey);
+      } catch (e) {
+        console.warn('Could not generate default crypto key', e);
+      }
+    }
+
     this.shareCode.set(share.code);
     this.wordCode.set(share.wordCode || null);
     this.ownerToken.set(share.ownerToken || null);
     this.activeShare.set(share);
 
-    // Update Browser URL seamlessly without page reload using clean path variable (no #)
+    // Keep clean path variable in address bar (/code) without leaking encryption key in URL query
     if (typeof window !== 'undefined' && window.history) {
-      const newUrl = `${window.location.origin}/${share.code}`;
-      window.history.replaceState({}, '', newUrl);
+      const cleanUrl = `${window.location.origin}/${share.code}`;
+      window.history.replaceState({}, '', cleanUrl);
     }
 
-    // Persist active session in device (like Google Drive sessions)
+    // Persist active session and room encryption key in device localStorage
     if (typeof localStorage !== 'undefined') {
       try {
         localStorage.setItem('acklet_clipboard_active_code', share.code);
+        if (this.encryptionKey()) {
+          localStorage.setItem(`acklet_clip_key_${share.code}`, this.encryptionKey());
+        }
       } catch (e) {
         console.warn('Could not persist clipboard session to localStorage', e);
       }
+    }
+
+    // Sync retention option from share expiration if available
+    if (share.expiresAt && share.createdAt) {
+      const created = new Date(share.createdAt).getTime();
+      const expires = new Date(share.expiresAt).getTime();
+      const diffHours = Math.round((expires - created) / (1000 * 60 * 60));
+      if (diffHours >= 600) {
+        this.retentionHours.set(720);
+        this.selectedRetentionHours = 720;
+      } else if (diffHours >= 300) {
+        this.retentionHours.set(360);
+        this.selectedRetentionHours = 360;
+      } else {
+        this.retentionHours.set(168);
+        this.selectedRetentionHours = 168;
+      }
+    } else {
+      this.retentionHours.set(168);
+      this.selectedRetentionHours = 168;
     }
 
     // Connect WebSocket
@@ -510,6 +789,11 @@ export class ClipboardComponent implements OnInit, OnDestroy {
       this.remoteTextSnapshot.set(content);
       this.isTextDirty.set(false);
       this.lastSavedTime.set(Date.now());
+    } else {
+      this.sharedText.set('');
+      this.remoteTextSnapshot.set('');
+      this.isTextDirty.set(false);
+      this.lastSavedTime.set(null);
     }
 
     // Save to history
@@ -657,9 +941,21 @@ export class ClipboardComponent implements OnInit, OnDestroy {
 
   confirmCreateNewClipboard(): void {
     if (this.isTextDirty() || this.sharedText().trim() || this.allFileItems().length > 0) {
-      if (!confirm(this.copy.identity.confirmNew)) {
-        return;
-      }
+      this.confirmDialog.set({
+        title: 'Start New Clipboard',
+        message: 'Are you sure you want to start a fresh clipboard? Any unsaved edits will be saved or cleared.',
+        confirmText: 'New Clipboard',
+        cancelText: 'Cancel',
+        isDestructive: false,
+        action: () => {
+          this.sharedText.set('');
+          this.remoteTextSnapshot.set('');
+          this.isTextDirty.set(false);
+          this.selectedItemIds.set(new Set());
+          this.initSharedClipboard();
+        }
+      });
+      return;
     }
     this.sharedText.set('');
     this.remoteTextSnapshot.set('');
@@ -668,39 +964,62 @@ export class ClipboardComponent implements OnInit, OnDestroy {
     this.initSharedClipboard();
   }
 
-  joinClipboard(codeToJoin?: string): void {
+  joinClipboard(codeToJoin?: string, fromUrlInit = false): void {
     const code = (codeToJoin || this.joinCodeInput).trim().toLowerCase();
     if (!code) return;
 
     this.isJoining.set(true);
+    this.isSwitching.set(true);
+    this.switchingCode.set(code);
     this.joinError.set(null);
 
     this.api.getShare(code).subscribe({
       next: async share => {
         this.isJoining.set(false);
+        this.isSwitching.set(false);
+        this.switchingCode.set(null);
         this.joinCodeInput = '';
         this.showMobileJoinPopover.set(false);
         this.applyShareSession(share);
       },
       error: err => {
         this.isJoining.set(false);
-        if (codeToJoin && (err.status === 404 || err.error?.message?.includes('not found'))) {
-          // If accessing a new path code (e.g. /test1 or /project-x), initialize it as a fresh room!
-          this.api.createShare({ requestedCode: codeToJoin, liveMode: true }).subscribe({
-            next: (newShare) => {
-              this.applyShareSession(newShare);
+        this.isSwitching.set(false);
+        this.switchingCode.set(null);
+        const isNotFound = err.status === 404 || err.error?.message?.includes('not found');
+        const isExpired = err.error?.message?.includes('expired');
+
+        if (isNotFound) {
+          this.joinError.set(`Code "${code}" does not exist`);
+          // Show Acklet alert dialog offering to start a fresh clipboard
+          this.confirmDialog.set({
+            title: 'Clipboard Not Found',
+            message: `Clipboard "${code}" does not exist or may have expired. Would you like to start a new clipboard instead?`,
+            confirmText: 'Start New Clipboard',
+            cancelText: 'Dismiss',
+            isDestructive: false,
+            action: () => {
+              this.sharedText.set('');
+              this.remoteTextSnapshot.set('');
+              this.isTextDirty.set(false);
+              this.initSharedClipboard();
             },
-            error: () => {
+            onCancel: () => {
+              // Dismissed without creating
+            }
+          });
+        } else if (isExpired) {
+          this.joinError.set(this.copy.identity.errorExpiredCode);
+          this.confirmDialog.set({
+            title: 'Clipboard Expired',
+            message: `Clipboard "${code}" has expired. Would you like to start a new clipboard session?`,
+            confirmText: 'Start New Clipboard',
+            cancelText: 'Dismiss',
+            isDestructive: false,
+            action: () => {
               this.initSharedClipboard();
             }
           });
-          return;
-        }
-
-        if (err.status === 404 || err.error?.message?.includes('not found')) {
-          this.joinError.set(this.copy.identity.errorInvalidCode);
-        } else if (err.error?.message?.includes('expired')) {
-          this.joinError.set(this.copy.identity.errorExpiredCode);
         } else {
           this.joinError.set(this.copy.identity.errorInvalidCode);
         }
@@ -713,7 +1032,8 @@ export class ClipboardComponent implements OnInit, OnDestroy {
   // -------------------------------------------------------------
   onTextChanged(val: string): void {
     this.sharedText.set(val);
-    this.isTextDirty.set(val !== this.remoteTextSnapshot());
+    const isDirty = val !== this.remoteTextSnapshot();
+    this.isTextDirty.set(isDirty);
 
     // Clear conflict banner once user edits or aligns
     if (this.hasRemoteTextConflict()) {
@@ -748,14 +1068,36 @@ export class ClipboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  refreshTextContent(): void {
+  refreshTextContent(force = false): void {
     const code = this.shareCode();
     if (!code) return;
 
+    // Prevent duplicate concurrent refresh calls
+    if (this.isRefreshing()) return;
+
+    // Preserve unsaved local edits using custom designed modal dialog
+    if (!force && this.isTextDirty()) {
+      this.confirmDialog.set({
+        title: 'Refresh Clipboard',
+        message: 'You have unsaved edits. Refreshing from the server will discard them. Would you like to save them first or refresh anyway?',
+        confirmText: 'Discard & Refresh',
+        cancelText: 'Cancel',
+        isDestructive: true,
+        action: () => {
+          this.refreshTextContent(true);
+        }
+      });
+      return;
+    }
+
+    this.isRefreshing.set(true);
+
     this.api.getShare(code).subscribe({
       next: async share => {
+        this.isRefreshing.set(false);
         this.activeShare.set(share);
         this.hasRemoteTextConflict.set(false);
+
         const textItem = share.items.find(i => i.itemType === 'TEXT' || i.itemType === 'LINK');
         let content = textItem?.textContent || '';
         if (textItem?.isEncrypted && this.encryptionKey()) {
@@ -766,6 +1108,10 @@ export class ClipboardComponent implements OnInit, OnDestroy {
         this.isTextDirty.set(false);
         this.lastSavedTime.set(Date.now());
         this.triggerTextHighlight();
+      },
+      error: () => {
+        this.isRefreshing.set(false);
+        this.showToast(this.copy.textTab.refreshFailed);
       }
     });
   }
@@ -794,6 +1140,26 @@ export class ClipboardComponent implements OnInit, OnDestroy {
     this.showToast(this.copy.textTab.toastCopied);
   }
 
+  async pasteTextFromClipboard(): Promise<void> {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) {
+      this.showToast('Press Ctrl+V or Cmd+V to paste into this clipboard.');
+      return;
+    }
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && text.trim()) {
+        const current = this.sharedText();
+        const separator = current && !current.endsWith('\n') ? '\n' : '';
+        this.onTextChanged(current + separator + text);
+        this.showToast('Pasted text from clipboard');
+      } else {
+        this.showToast('System clipboard is empty');
+      }
+    } catch {
+      this.showToast('Use Ctrl+V / Cmd+V to paste text directly.');
+    }
+  }
+
   private triggerTextHighlight(): void {
     this.remoteTextHighlight.set(true);
     setTimeout(() => {
@@ -806,6 +1172,71 @@ export class ClipboardComponent implements OnInit, OnDestroy {
   // -------------------------------------------------------------
   openFilePicker(): void {
     this.fileInputGeneral?.nativeElement?.click();
+  }
+
+  /**
+   * Reads the system clipboard using navigator.clipboard API.
+   * Extracts images or text and processes them into the clipboard.
+   */
+  async pasteFromClipboard(): Promise<void> {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) {
+      this.showToast('Clipboard access not supported in this browser. Use Ctrl+V instead.');
+      return;
+    }
+
+    try {
+      // Modern Clipboard Items API (supports images and files)
+      if (typeof navigator.clipboard.read === 'function') {
+        const clipboardItems = await navigator.clipboard.read();
+        let foundMedia = false;
+
+        for (const item of clipboardItems) {
+          const imageType = item.types.find(t => t.startsWith('image/'));
+          if (imageType) {
+            const blob = await item.getType(imageType);
+            const ext = imageType.split('/')[1] || 'png';
+            const pastedFile = new File([blob], `Pasted image ${new Date().toLocaleTimeString().replace(/:/g, '-')}.${ext}`, {
+              type: imageType
+            });
+            this.setTab('files');
+            await this.processFilesUpload([pastedFile]);
+            foundMedia = true;
+            this.showToast('Pasted image added to files');
+            break;
+          }
+        }
+
+        if (foundMedia) return;
+      }
+
+      // Text fallback via readText()
+      const text = await navigator.clipboard.readText();
+      if (text && text.trim()) {
+        if (this.activeTab() === 'text') {
+          const current = this.sharedText();
+          const separator = current && !current.endsWith('\n') ? '\n' : '';
+          this.onTextChanged(current + separator + text);
+          this.showToast('Pasted text into editor');
+        } else {
+          // If on files tab, create a text snippet file
+          const textBlob = new Blob([text], { type: 'text/plain' });
+          const textFile = new File([textBlob], `Pasted snippet ${new Date().toLocaleTimeString().replace(/:/g, '-')}.txt`, {
+            type: 'text/plain'
+          });
+          await this.processFilesUpload([textFile]);
+          this.showToast('Pasted text saved as file');
+        }
+      } else {
+        this.showToast('Clipboard is empty or contains unsupported content');
+      }
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : '';
+      if (errorMsg.includes('denied') || errorMsg.includes('permission')) {
+        this.showToast('Clipboard permission was denied. Use Ctrl+V / Cmd+V to paste directly.');
+      } else {
+        this.showToast('Press Ctrl+V or Cmd+V to paste into this clipboard.');
+      }
+    }
   }
 
   onFileSelected(event: Event): void {
@@ -829,10 +1260,31 @@ export class ClipboardComponent implements OnInit, OnDestroy {
     if (!code) return;
 
     const chunkSize = CLIPBOARD_CONFIG.chunkSize;
+    const existingItems = this.activeShare()?.items || [];
 
     for (const file of files) {
       if (file.size > CLIPBOARD_CONFIG.maxFileSizeBytes) {
         this.showToast(this.copy.identity.errorTooLarge);
+        continue;
+      }
+
+      // SHA-256 Content Hashing Deduplication check
+      let fileHash = '';
+      try {
+        fileHash = await ClipboardCrypto.computeFileHash(file);
+      } catch (e) {
+        console.warn('Could not compute file hash, using size+name fallback', e);
+      }
+
+      const isDuplicate = existingItems.some(i => {
+        if (fileHash && i.contentHash) {
+          return i.contentHash === fileHash;
+        }
+        return (i.originalName === file.name && i.sizeBytes === file.size);
+      });
+
+      if (isDuplicate) {
+        this.showToast(`"${file.name}": ${this.copy.textTab.duplicateFileSkipped}`);
         continue;
       }
 
@@ -856,6 +1308,7 @@ export class ClipboardComponent implements OnInit, OnDestroy {
       if (file.size <= chunkSize) {
         this.api.uploadFileDirect(code, file, isImg, this.ownerToken() || undefined, this.e2eeEnabled()).subscribe({
           next: item => {
+            if (fileHash) item.contentHash = fileHash;
             this.uploadingFiles.update(list => list.filter(u => u.id !== uploadId));
             this.appendItemLocally(item);
           },
@@ -1016,9 +1469,17 @@ export class ClipboardComponent implements OnInit, OnDestroy {
 
     this.deletedItemsUndoStack = [...itemsToDelete];
 
-    // Optimistically remove
-    ids.forEach(id => this.removeItemLocally(id));
+    // Trigger smooth exit animation on items first
+    this.deletingItemIds.set(new Set(ids));
     this.clearSelection();
+
+    setTimeout(() => {
+      // Remove after animation completes
+      ids.forEach(id => this.removeItemLocally(id));
+      const nextDeleting = new Set(this.deletingItemIds());
+      ids.forEach(id => nextDeleting.delete(id));
+      this.deletingItemIds.set(nextDeleting);
+    }, 220);
 
     this.showToast(this.copy.filesTab.toastDeletedUndo, 'Undo', () => {
       // Undo restoration
@@ -1101,6 +1562,12 @@ export class ClipboardComponent implements OnInit, OnDestroy {
   // Metadata Resolver Helper for Template
   resolveItemMeta(item: ClipboardItem): FileTypeMetadata {
     return resolveFileMetadata(item.originalName || '', item.detectedMime);
+  }
+
+  isImageItem(item: ClipboardItem): boolean {
+    if (item.itemType === 'IMAGE') return true;
+    if (item.detectedMime && item.detectedMime.startsWith('image/')) return true;
+    return resolveFileMetadata(item.originalName || '', item.detectedMime).category === 'images';
   }
 
   getItemThumbnailUrl(item: ClipboardItem): string {
@@ -1233,6 +1700,13 @@ export class ClipboardComponent implements OnInit, OnDestroy {
   openFromHistory(record: LocalClipboardRecord): void {
     this.showHistoryDrawer.set(false);
     this.joinClipboard(record.code);
+  }
+
+  async removeClipboardFromHistory(code: string, event: Event): Promise<void> {
+    event.stopPropagation();
+    await this.historyService.deleteRecord(code);
+    await this.loadHistory();
+    this.showToast(`Removed "${code}" from history`);
   }
 
   clearHistory(): void {
