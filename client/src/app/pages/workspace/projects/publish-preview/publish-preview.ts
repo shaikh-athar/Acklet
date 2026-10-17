@@ -6,6 +6,7 @@ import { HttpClient } from '@angular/common/http';
 import { map } from 'rxjs/operators';
 import { IconComponent } from '../../../../shared/components/icon/icon';
 import { ApiResponse } from '../../../../core/services/tools.service';
+import { environment } from '../../../../../environments/environment';
 
 interface DraftTool {
   id: string;
@@ -512,7 +513,7 @@ export class PublishPreviewComponent implements OnInit {
     const toolId = this.route.snapshot.paramMap.get('toolId');
     if (!toolId) { this.loading.set(false); return; }
 
-    this.http.get<ApiResponse<DraftTool>>(`http://localhost:8080/api/v1/publisher/tools/${toolId}`)
+    this.http.get<ApiResponse<DraftTool>>(`${environment.apiBaseUrl}/publisher/tools/${toolId}`)
       .pipe(map(r => r.data))
       .subscribe({
         next: t => {
@@ -567,7 +568,7 @@ export class PublishPreviewComponent implements OnInit {
       ...extra
     };
     return this.http.patch<ApiResponse<DraftTool>>(
-      `http://localhost:8080/api/v1/publisher/tools/${toolId}`, body
+      `${environment.apiBaseUrl}/publisher/tools/${toolId}`, body
     );
   }
 }

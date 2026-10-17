@@ -65,11 +65,7 @@ public class ToolService {
     }
 
     @Transactional
-    @CacheEvict(value = {"tools_detail", "tools_trending", "tools_featured"}, allEntries = true)
     public void incrementUsage(UUID toolId) {
-        Tool tool = toolRepository.findById(toolId)
-                .orElseThrow(() -> new ResourceNotFoundException("Tool not found with id: " + toolId));
-        tool.setUsageCount(tool.getUsageCount() + 1);
-        toolRepository.save(tool);
+        toolRepository.incrementUsageCount(toolId);
     }
 }

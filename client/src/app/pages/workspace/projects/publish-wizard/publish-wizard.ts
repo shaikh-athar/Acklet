@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { IconComponent } from '../../../../shared/components/icon/icon';
+import { environment } from '../../../../../environments/environment';
 
 interface AnalysisStage {
   id: string;
@@ -60,7 +61,7 @@ interface DraftState {
   publishedToolSlug: string;
 }
 
-const API = 'http://localhost:8080/api/v1';
+const API = environment.apiBaseUrl;
 
 const STEPS = [
   { id: 1, label: 'Overview',      icon: 'git-branch' },

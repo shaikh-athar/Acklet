@@ -141,7 +141,7 @@ html[data-theme="dark"],
   --ts-z-base: 0;
   --ts-z-chrome: 10;
   --ts-z-surface: 20;
-  --ts-z-overlay: 40;
+  --ts-z-overlay: 1000;
 
   /* ══ GOTH THEME (Dark Mode - Default) ══════════════════════════ */
   --page-bg: #0F1011;
@@ -190,6 +190,33 @@ html[data-theme="dark"],
   --danger-ink: #FFFFFF;
   --danger-soft: rgba(239, 68, 68, 0.12);
   --danger-border: rgba(239, 68, 68, 0.25);
+  --success: #10B981;
+  --success-ink: #022C22;
+  --success-soft: rgba(16, 185, 129, 0.12);
+  --success-border: rgba(16, 185, 129, 0.25);
+  --warning: #F59E0B;
+  --warning-ink: #451A03;
+  --warning-soft: rgba(245, 158, 11, 0.12);
+  --warning-border: rgba(245, 158, 11, 0.25);
+  --info: #38BDF8;
+  --info-ink: #082F49;
+  --info-soft: rgba(56, 189, 248, 0.12);
+  --info-border: rgba(56, 189, 248, 0.25);
+
+  /* Semantic Core Aliases (Spartan & Tailwind) */
+  --background: var(--page-bg);
+  --foreground: var(--text);
+  --card: var(--shell-card);
+  --card-foreground: var(--text);
+  --muted: var(--ts-surface-inset);
+  --muted-foreground: var(--text-muted);
+  --ring: var(--ts-focus-ring);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--danger-ink);
+  --primary: var(--accent);
+  --primary-foreground: var(--accent-ink);
+  --secondary: var(--surface-hover);
+  --secondary-foreground: var(--text);
 
   /* Legacy & Bridge variables mapped to GOTH */
   --ts-bg: var(--bg);
@@ -305,6 +332,33 @@ html[data-theme="light"],
   --danger-ink: #FFFFFF;
   --danger-soft: #FEF2F2;
   --danger-border: #FCA5A5;
+  --success: #059669;
+  --success-ink: #FFFFFF;
+  --success-soft: #ECFDF5;
+  --success-border: #A7F3D0;
+  --warning: #D97706;
+  --warning-ink: #FFFFFF;
+  --warning-soft: #FFFBEB;
+  --warning-border: #FDE68A;
+  --info: #0284C7;
+  --info-ink: #FFFFFF;
+  --info-soft: #F0F9FF;
+  --info-border: #BAE6FD;
+
+  /* Semantic Core Aliases (Spartan & Tailwind) */
+  --background: var(--page-bg);
+  --foreground: var(--text);
+  --card: var(--shell-card);
+  --card-foreground: var(--text);
+  --muted: var(--ts-surface-inset);
+  --muted-foreground: var(--text-muted);
+  --ring: var(--ts-focus-ring);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--danger-ink);
+  --primary: var(--accent);
+  --primary-foreground: var(--accent-ink);
+  --secondary: var(--surface-hover);
+  --secondary-foreground: var(--text);
 
   /* Legacy & Bridge variables mapped to Light */
   --ts-bg: var(--bg);
@@ -811,4 +865,33 @@ html[data-theme="light"],
     --ts-b1: 1;
     --ts-b2: 1;
   }
+}
+
+/* ============================================================
+   TAILWIND CSS V4 THEME BINDINGS FOR TOOL SHELL & TOOLS
+   ============================================================ */
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-border-accent: var(--border-accent);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-ink);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --font-sans: var(--ts-font-sans);
+  --font-heading: var(--ts-font-heading);
+  --font-mono: var(--ts-font-mono);
 }

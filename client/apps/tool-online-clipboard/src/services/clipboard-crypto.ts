@@ -58,6 +58,20 @@ export class ClipboardCrypto {
     }
   }
 
+  /**
+   * Computes a SHA-256 content hash hex string for file deduplication
+   */
+  static async computeFileHash(file: File | Blob): Promise<string> {
+    const fileName = 'name' in file ? (file as File).name : '';
+    if (typeof window === 'undefined' || !window.crypto || !window.crypto.subtle) {
+      return `${file.size}_${fileName}`;
+    }
+    const buffer = await file.arrayBuffer();
+    const digest = await window.crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(digest));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
   private static async importKey(keyBase64: string): Promise<CryptoKey> {
     const raw = this.base64ToBuffer(keyBase64);
     return await window.crypto.subtle.importKey('raw', raw as unknown as ArrayBuffer, 'AES-GCM', true, ['encrypt', 'decrypt']);

@@ -261,8 +261,8 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
     .ts-root[data-theme="light"][data-accent="teal"] {
       --accent: #0F766E;
       --accent-ink: #FFFFFF;
-      --accent-soft: #E7F5F3;
-      --accent-border: #BFE3DE;
+      --accent-soft: #cbf1ecff;
+      --accent-border: #9dfef1ff;
     }
 
     .ts-root {
@@ -375,8 +375,10 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
         color-mix(in srgb, var(--ts-glass, #F0F3FF) var(--ts-b2-pct, calc(var(--ts-b2, .30) * 100%)), transparent)
       );
       border-radius: var(--shell-radius, 20px);
-      box-shadow: var(--ts-edge), var(--ts-shadow);
+      box-shadow: none;
       border: none;
+      backdrop-filter: blur(var(--ts-glass-blur, 16px));
+      -webkit-backdrop-filter: blur(var(--ts-glass-blur, 16px));
       box-sizing: border-box;
       outline: none;
       transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
@@ -418,6 +420,7 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
+      flex-shrink: 0;
     }
 
     .ts-workspace-section.full-bleed {
@@ -474,12 +477,15 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
       border: none;
       border-radius: var(--ts-radius-card, 20px);
       padding: 24px;
-      box-shadow: var(--ts-surface-raised-shadow);
+      box-shadow: none;
       box-sizing: border-box;
       min-width: 0;
       width: 100%;
       position: relative;
       z-index: var(--ts-z-surface, 20);
+      display: flex;
+      flex-direction: column;
+      min-height: fit-content;
     }
 
     .ts-tool-card-surface.full-bleed {

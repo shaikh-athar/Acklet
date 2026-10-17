@@ -17,12 +17,14 @@ public class ClipboardService {
 
     private final Map<String, ClipboardShareDto> shareStore = new ConcurrentHashMap<>();
 
+    private final Map<String, byte[]> fileByteStore = new ConcurrentHashMap<>();
+
     public ClipboardConfigDto getConfig() {
         return ClipboardConfigDto.builder()
                 .codeLength(5)
                 .maxCodeLength(8)
                 .maxFileSizeBytes(200L * 1024 * 1024)
-                .maxTextSizeBytes(1024L * 1024)
+                .maxTextSizeBytes(50L * 1024 * 1024)
                 .maxItemsPerType(100)
                 .maxTotalShareSizeBytes(500L * 1024 * 1024)
                 .retentionDays(7)
@@ -58,7 +60,21 @@ public class ClipboardService {
         return share;
     }
 
+    public void cleanupExpiredShares() {
+        Instant now = Instant.now();
+        shareStore.entrySet().removeIf(entry -> {
+            try {
+                return Instant.parse(entry.getValue().getExpiresAt()).isBefore(now);
+            } catch (Exception e) {
+                return false;
+            }
+        });
+    }
+
     public Optional<ClipboardShareDto> getShare(String code, String pin) {
+        if (shareStore.size() > 500) {
+            cleanupExpiredShares();
+        }
         String clean = code.trim().toLowerCase();
         ClipboardShareDto share = shareStore.get(clean);
         if (share == null) {
@@ -107,7 +123,13 @@ public class ClipboardService {
         if (share == null) return false;
 
         synchronized (share) {
-            boolean removed = share.getItems().removeIf(i -> i.getId().equals(itemId));
+            boolean removed = share.getItems().removeIf(i -> {
+                if (i.getId().equals(itemId)) {
+                    fileByteStore.remove(itemId);
+                    return true;
+                }
+                return false;
+            });
             if (removed) {
                 share.setTextCount((int) share.getItems().stream().filter(i -> "TEXT".equalsIgnoreCase(i.getItemType())).count());
                 share.setImageCount((int) share.getItems().stream().filter(i -> "IMAGE".equalsIgnoreCase(i.getItemType())).count());
@@ -116,6 +138,68 @@ public class ClipboardService {
             }
             return removed;
         }
+    }
+
+    public ClipboardItemDto addFileItem(String code, String filename, byte[] content, String mimeType, boolean isImage, boolean isEncrypted, String contentHash) {
+        String clean = code.trim().toLowerCase();
+        ClipboardShareDto share = shareStore.computeIfAbsent(clean, this::createShareWithCode);
+
+        String itemId = "file_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+        Instant now = Instant.now();
+        long size = content != null ? content.length : 0;
+
+        if (content != null && content.length > 0) {
+            fileByteStore.put(itemId, content);
+        }
+
+        ClipboardItemDto item = ClipboardItemDto.builder()
+                .id(itemId)
+                .shareCode(clean)
+                .itemType(isImage ? "IMAGE" : "FILE")
+                .originalName(filename)
+                .sizeBytes(size)
+                .detectedMime(mimeType != null && !mimeType.isBlank() ? mimeType : (isImage ? "image/png" : "application/octet-stream"))
+                .createdAt(now.toString())
+                .previewUrl("/api/v1/clipboard/shares/" + clean + "/items/" + itemId + "/download")
+                .downloadUrl("/api/v1/clipboard/shares/" + clean + "/items/" + itemId + "/download")
+                .downloadCount(0)
+                .viewCount(0)
+                .isEncrypted(isEncrypted)
+                .contentHash(contentHash)
+                .build();
+
+        synchronized (share) {
+            // Deduplicate if identical hash or name+size
+            share.getItems().removeIf(existing -> {
+                boolean match = (contentHash != null && !contentHash.isBlank() && contentHash.equals(existing.getContentHash()))
+                        || (filename.equals(existing.getOriginalName()) && size == existing.getSizeBytes());
+                if (match) {
+                    fileByteStore.remove(existing.getId());
+                }
+                return match;
+            });
+
+            share.getItems().add(0, item);
+            if (isImage) {
+                share.setImageCount(share.getImageCount() + 1);
+            } else {
+                share.setFileCount(share.getFileCount() + 1);
+            }
+            share.setTotalSizeBytes(share.getItems().stream().mapToLong(ClipboardItemDto::getSizeBytes).sum());
+        }
+
+        return item;
+    }
+
+    public Optional<byte[]> getFileBytes(String itemId) {
+        return Optional.ofNullable(fileByteStore.get(itemId));
+    }
+
+    public Optional<ClipboardItemDto> getItem(String code, String itemId) {
+        String clean = code.trim().toLowerCase();
+        ClipboardShareDto share = shareStore.get(clean);
+        if (share == null) return Optional.empty();
+        return share.getItems().stream().filter(i -> i.getId().equals(itemId)).findFirst();
     }
 
     private ClipboardShareDto createShareWithCode(String code) {

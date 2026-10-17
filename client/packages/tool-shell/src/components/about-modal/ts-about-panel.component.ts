@@ -120,7 +120,7 @@ import { TsScrollAreaComponent } from '../primitive/ts-scroll-area.component';
       width: 100%;
       max-width: 680px;
       height: 100%;
-      background: var(--ts-overlay-bg, var(--ts-surface));
+      background: var(--ts-surface-raised, #141416);
       -webkit-backdrop-filter: var(--ts-overlay-filter, none);
       backdrop-filter: var(--ts-overlay-filter, none);
       border-left: 1px solid var(--ts-overlay-border, var(--ts-border));
