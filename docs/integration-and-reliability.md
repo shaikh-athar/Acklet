@@ -138,13 +138,12 @@ The following endpoints and capabilities exist on the frontend client interfaces
 
 1. **Clipboard File Upload & Chunking Endpoints**:
    - `POST /api/v1/clipboard/shares/{code}/files` (Direct file upload)
-   - `POST /api/v1/clipboard/shares/{code}/uploads/init` (Chunk upload session init)
+   - `POST /api/v1/clipboard/shares/{code}/uploads/init` (Chunk upload session init & resume)
    - `PUT /api/v1/clipboard/shares/{code}/uploads/{uploadId}/chunks/{chunkNumber}` (Chunk data upload)
-   - `POST /api/v1/clipboard/shares/{code}/uploads/{uploadId}/complete` (Upload completion)
-   - *Status*: The backend `ClipboardController.java` currently handles text items only. File chunking and storage (e.g., S3 or local disk storage) are planned for future backend expansion.
-2. **Clipboard WebSocket Handler**:
-   - `ws://localhost:8080/ws/clipboard/raw`
-   - *Status*: `ClipboardSyncService` attempts WebSocket connection for instant push updates. Since the backend lacks a WebSocket endpoint, `ClipboardComponent` automatically activates its built-in fallback (`startReactivePollingFallback`), querying `GET /api/v1/clipboard/shares/{code}` every 3 seconds to maintain sync without crashes.
+   - `POST /api/v1/clipboard/shares/{code}/uploads/{uploadId}/complete` (Upload reassembly & verification)
+   - *Status*: **Implemented and Live**. Supported by `ClipboardController.java`, `ClipboardFileStorageService.java`, and `V52__clipboard_storage.sql` with CAS deduplication, safe compression, and Range requests.
+2. **Clipboard Real-Time Synchronization**:
+   - *Status*: Handled cleanly via `BroadcastChannel('acklet_clipboard_sync')` for instant zero-latency cross-tab coordination and `startReactivePollingFallback` (3-second intervals) for cross-device synchronization without spurious WebSocket connection errors.
 
 ---
 

@@ -44,6 +44,16 @@ spring:
           max-attempts: 3
           max-interval: 10000ms
         auto-startup: true
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 200MB
+      max-request-size: 500MB
+
+server:
+  tomcat:
+    max-swallow-size: 500MB
+    max-http-form-post-size: 500MB
 
 # Logging configuration for production
 logging:

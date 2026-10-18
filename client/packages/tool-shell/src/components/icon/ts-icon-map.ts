@@ -91,7 +91,24 @@ import {
   LucidePencil,
   LucidePresentation,
   LucideClipboardPaste,
-  LucideSearchX
+  LucideSearchX,
+  LucideBold,
+  LucideItalic,
+  LucideUnderline,
+  LucidePalette,
+  LucideEllipsis,
+  LucideEllipsisVertical,
+  LucideHeading,
+  LucideHeading1,
+  LucideHeading2,
+  LucideHeading3,
+  LucideStrikethrough,
+  LucideRemoveFormatting,
+  LucideListOrdered,
+  LucideQuote,
+  LucideSquareTerminal,
+  LucideImages,
+  LucideTextWrap
 } from '@lucide/angular';
 
 import {
@@ -137,6 +154,17 @@ import {
 } from 'ng-animated-icons';
 
 import copyLordiconJson from '../../assets/icons/lordicon/copy.json';
+
+export const LucideLayoutGridCircles = {
+  name: 'layout-grid-circles',
+  size: 24,
+  node: [
+    ['circle', { cx: '6', cy: '6', r: '3', key: 'lgc1' }],
+    ['circle', { cx: '18', cy: '6', r: '3', key: 'lgc2' }],
+    ['circle', { cx: '6', cy: '18', r: '3', key: 'lgc3' }],
+    ['circle', { cx: '18', cy: '18', r: '3', key: 'lgc4' }],
+  ],
+};
 
 export interface IconDefinition {
   lordicon?: any;             // Local lordicon JSON asset or path
@@ -533,5 +561,82 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   },
   'search-x': {
     lucide: LucideSearchX
+  },
+  bold: {
+    lucide: LucideBold
+  },
+  italic: {
+    lucide: LucideItalic
+  },
+  underline: {
+    lucide: LucideUnderline
+  },
+  palette: {
+    lucide: LucidePalette
+  },
+  'more-horizontal': {
+    lucide: LucideEllipsis
+  },
+  ellipsis: {
+    lucide: LucideEllipsis
+  },
+  'ellipsis-vertical': {
+    lucide: LucideEllipsisVertical
+  },
+  'more-vertical': {
+    lucide: LucideEllipsisVertical
+  },
+  heading: {
+    lucide: LucideHeading
+  },
+  'heading-1': {
+    lucide: LucideHeading1
+  },
+  'heading-2': {
+    lucide: LucideHeading2
+  },
+  'heading-3': {
+    lucide: LucideHeading3
+  },
+  strikethrough: {
+    lucide: LucideStrikethrough
+  },
+  'remove-formatting': {
+    lucide: LucideRemoveFormatting
+  },
+  'clear-formatting': {
+    lucide: LucideRemoveFormatting
+  },
+  'list-ordered': {
+    lucide: LucideListOrdered
+  },
+  quote: {
+    lucide: LucideQuote
+  },
+  'square-terminal': {
+    lucide: LucideSquareTerminal
+  },
+  images: {
+    lucide: LucideImages
+  },
+  'layout-grid-circles': {
+    lucide: LucideLayoutGridCircles
+  },
+  'edit-3': {
+    lucide: LucidePencil
+  },
+  'alert-circle': {
+    animated: CircleAlertIcon,
+    lucide: LucideCircleAlert
+  },
+  'alert-triangle': {
+    animated: CircleAlertIcon,
+    lucide: LucideCircleAlert
+  },
+  'text-wrap': {
+    lucide: LucideTextWrap
+  },
+  'wrap-text': {
+    lucide: LucideTextWrap
   }
 };

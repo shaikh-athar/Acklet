@@ -7,7 +7,10 @@
     <div class="identity-main-row">
       <!-- Left: ID Monospace Highlight Box & Live Status -->
       <div class="identity-left-cluster">
-        <span class="identity-label-text">{{ copy.identity.codeLabel }}:</span>
+        <span class="identity-label-text">
+          <span class="hide-mobile-xs">{{ copy.identity.codeLabel }}:</span>
+          <span class="show-mobile-xs">ID:</span>
+        </span>
         
         @if (isEditingCode()) {
           <div class="identity-code-edit-container">
@@ -85,13 +88,7 @@
           </div>
         }
 
-        <!-- Live Status Pill -->
-        <div class="identity-status-pill" [class.is-live]="isSyncConnected()">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span class="status-label">{{ isSyncConnected() ? copy.identity.statusLive : copy.identity.statusReconnecting }}</span>
-        </div>
-
-        @if (isPrivateMode()) {
+        @if (isProtectedShare() || isPrivateMode()) {
           <span class="private-mode-chip" title="Private mode active: Not saved in device history">
             <ts-icon name="lock" [size]="12" />
             <span>{{ copy.identity.privateChip }}</span>
@@ -99,18 +96,8 @@
         }
       </div>
 
-      <!-- Center: Action Links (Copy link, New clipboard) -->
-      <div class="identity-actions-cluster">
-        <button 
-          type="button" 
-          class="identity-action-link-btn" 
-          (click)="copyDirectLink()"
-          title="Copy full link with ID"
-        >
-          <ts-icon [name]="copiedLink() ? 'check' : 'link'" [size]="16" />
-          <span>{{ copiedLink() ? copy.identity.copied : copy.identity.copyLink }}</span>
-        </button>
-
+      <!-- Center: Action Links (New clipboard) -->
+      <div class="identity-actions-cluster hide-below-640">
         <button 
           type="button" 
           class="identity-action-link-btn" 
@@ -146,6 +133,22 @@
           </div>
         }
 
+        <!-- Mobile New Clipboard Button (<640px) -->
+        <button 
+          type="button" 
+          class="icon-action-btn show-below-640" 
+          [disabled]="isCreatingShare()"
+          (click)="confirmCreateNewClipboard()" 
+          title="New clipboard"
+          aria-label="New clipboard"
+        >
+          @if (isCreatingShare()) {
+            <span class="spinner-circle-xs" aria-hidden="true"></span>
+          } @else {
+            <ts-icon name="plus" [size]="18" />
+          }
+        </button>
+
         <!-- Mobile QR Button (<640px) -->
         <button 
           type="button" 
@@ -154,7 +157,7 @@
           title="Scan QR Code"
           aria-label="Show QR Code"
         >
-          <ts-icon name="qr-code" [size]="20" />
+          <ts-icon name="qr-code" [size]="18" />
         </button>
 
         <!-- Mobile Open Another Button (<640px) -->
@@ -166,7 +169,7 @@
             title="Open another clipboard"
             aria-label="Open another clipboard"
           >
-            <ts-icon name="log-in" [size]="20" />
+            <ts-icon name="log-in" [size]="18" />
           </button>
         </div>
 
@@ -178,17 +181,17 @@
           title="Settings"
           aria-label="Settings"
         >
-          <ts-icon name="settings-2" [size]="20" />
+          <ts-icon name="settings-2" [size]="18" />
         </button>
 
         <button 
           type="button" 
           class="icon-action-btn" 
-          (click)="showHistoryDrawer.set(true)" 
+          (click)="openRecentClipboardsDrawer()" 
           title="Recent clipboards"
           aria-label="Recent clipboards"
         >
-          <ts-icon name="history" [size]="20" />
+          <ts-icon name="clock" [size]="18" />
         </button>
       </div>
     </div>
@@ -202,6 +205,7 @@
             class="join-code-input" 
             [placeholder]="copy.identity.joinPlaceholder" 
             [(ngModel)]="joinCodeInput"
+            (input)="onJoinInputChange()"
             (keyup.enter)="joinClipboard()"
             maxlength="24"
             autocomplete="off"
@@ -210,7 +214,7 @@
           <button 
             type="button" 
             class="join-open-btn" 
-            [disabled]="!joinCodeInput.trim() || isJoining()" 
+            [disabled]="isJoining()" 
             (click)="joinClipboard()"
           >
             @if (isJoining()) {
@@ -252,7 +256,7 @@
         [attr.aria-selected]="activeTab() === 'files'" 
         (click)="setTab('files')"
       >
-        <ts-icon name="folder" [size]="16" />
+        <ts-icon name="images" [size]="16" />
         <span>{{ copy.tabs.files }}</span>
         @if (allFileItems().length > 0) {
           <span class="tab-badge-pill">{{ allFileItems().length }}</span>
@@ -271,6 +275,7 @@
           class="join-code-input" 
           [placeholder]="copy.identity.joinPlaceholder" 
           [(ngModel)]="joinCodeInput"
+          (input)="onJoinInputChange()"
           (keyup.enter)="joinClipboard()"
           maxlength="24"
           autocomplete="off"
@@ -281,7 +286,7 @@
           <button 
             type="button" 
             class="join-clear-btn" 
-            (click)="joinCodeInput = ''; joinError.set(null)"
+            (click)="joinCodeInput = ''; joinError.set(null); pendingJoinNewCode.set(null)"
             title="Clear"
             aria-label="Clear input"
           >
@@ -291,7 +296,7 @@
         <button 
           type="button" 
           class="join-open-btn" 
-          [disabled]="!joinCodeInput.trim() || isJoining()" 
+          [disabled]="isJoining()" 
           (click)="joinClipboard()"
           title="Open clipboard"
         >
@@ -315,7 +320,7 @@
   <!-- ═══════════════════════════════════════════════════════════ -->
   <!-- ZONE 3: SCROLLING CONTENT AREA                             -->
   <!-- ═══════════════════════════════════════════════════════════ -->
-  <main class="clipboard-content-scroller" [class.has-selection]="selectedItemIds().size > 0">
+  <main class="clipboard-content-scroller" [class.has-selection]="selectedItemIds().size > 0" (scroll)="onScrollerScroll($event)">
 
     <!-- Switching / Connecting Stage Overlay -->
     @if (isSwitching()) {
@@ -343,59 +348,240 @@
         aria-label="Text & Links Editor"
       >
         
-        <!-- Remote Update Banner (Unsaved conflict safety) -->
-        @if (hasRemoteTextConflict()) {
-          <div class="remote-update-banner" role="alert">
+        <!-- Local Draft Recovery Banner -->
+        @if (hasDraftRecovery()) {
+          <div class="draft-recovery-banner" role="alert">
             <div class="banner-text-row">
-              <ts-icon name="refresh-cw" [size]="16" class="animate-spin text-[var(--accent)]" />
-              <span>{{ copy.textTab.remoteUpdateBanner }} {{ copy.textTab.refreshToSee }}</span>
+              <ts-icon name="file-text" [size]="16" class="text-[var(--accent)]" />
+              <span>{{ copy.textTab.draftRecoveryBanner }}</span>
             </div>
-            <button type="button" class="banner-refresh-btn" (click)="refreshTextContent()">
-              {{ copy.textTab.refresh }}
-            </button>
+            <div class="banner-actions-row">
+              <button type="button" class="banner-action-btn restore-btn" (click)="restoreDraft()">
+                {{ copy.textTab.restoreDraft }}
+              </button>
+              <button type="button" class="banner-action-btn discard-btn" (click)="discardDraft()">
+                {{ copy.textTab.discardDraft }}
+              </button>
+            </div>
           </div>
         }
 
-        <!-- Big Shared Textarea with Interactive Link Highlights -->
+        <!-- Remote Update / Conflict Banner (Unsaved conflict safety) -->
+        @if (hasRemoteTextConflict()) {
+          <div class="remote-update-banner conflict-banner" role="alert">
+            <div class="banner-text-row">
+              <ts-icon name="alert-triangle" [size]="16" class="text-amber-500" />
+              <span>{{ copy.textTab.conflictTitle }}</span>
+            </div>
+            <div class="banner-actions-row">
+              <button type="button" class="banner-action-btn keep-mine-btn" (click)="resolveConflictKeepMine()">
+                {{ copy.textTab.keepMine }}
+              </button>
+              <button type="button" class="banner-action-btn accept-server-btn" (click)="resolveConflictAcceptServer()">
+                {{ copy.textTab.acceptServer }}
+              </button>
+              @if (conflictServerText()) {
+                <button type="button" class="banner-action-btn compare-btn" (click)="openCompareConflict()">
+                  {{ copy.textTab.compareConflict }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Big Shared Textarea with Interactive Link Highlights & Top-Right Copy Action -->
         <div 
           class="shared-textarea-container" 
           [class.is-highlighted]="remoteTextHighlight()"
           [class.is-focused]="isEditorFocused()"
         >
-          <!-- Live Interactive Backdrop Layer with Clickable Links -->
-          <div 
-            #textBackdrop
-            class="textarea-backdrop-layer" 
-            aria-hidden="true"
-          >
-            @for (segment of textSegments(); track $index) {
-              @if (segment.isUrl) {
-                <a 
-                  [href]="segment.url" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  class="editor-inline-link"
-                  [title]="'Open ' + segment.url"
-                  (mousedown)="$event.stopPropagation()"
-                >{{ segment.text }}</a>
-              } @else {
-                <span>{{ segment.text }}</span>
-              }
-            }
-          </div>
 
-          <!-- Foreground Transparent Editable Textarea -->
-          <textarea 
-            #sharedTextarea
-            class="shared-textarea" 
-            [placeholder]="copy.textTab.placeholder"
-            [ngModel]="sharedText()"
-            (ngModelChange)="onTextChanged($event)"
-            (scroll)="syncTextareaScroll()"
-            (focus)="isEditorFocused.set(true)"
-            (blur)="isEditorFocused.set(false)"
+          <!-- True WYSIWYG Single Visual Editing Surface -->
+          <div 
+            #wysiwygEditor
+            class="wysiwyg-editor" 
+            [class.no-wrap]="!isWordWrap()"
+            contenteditable="true"
+            role="textbox"
+            aria-multiline="true"
             spellcheck="false"
-          ></textarea>
+            [attr.data-placeholder]="copy.textTab.placeholder"
+            (input)="onEditorInput()"
+            (focus)="isEditorFocused.set(true)"
+            (blur)="onEditorBlur()"
+            (paste)="onEditorPaste($event)"
+            (keydown)="onEditorKeyDown($event)"
+            (keyup)="saveEditorSelection()"
+            (mouseup)="saveEditorSelection()"
+            (click)="onEditorClick($event)"
+          ></div>
+
+          <!-- Floating Glassmorphism Formatting Toolbar (Bottom-Right of Editor Canvas) -->
+          @if (!isAnyModalOpen()) {
+            <div class="editor-formatting-toolbar" (mousedown)="$event.preventDefault()" role="toolbar" aria-label="Formatting tools">
+            <!-- 1. Bold -->
+            <button 
+              type="button" 
+              class="toolbar-glass-btn" 
+              (click)="applyFormatting('bold')" 
+              title="Bold (Ctrl+B / Cmd+B)" 
+              aria-label="Bold"
+            >
+              <ts-icon name="bold" [size]="15" />
+            </button>
+
+            <!-- 2. Italic -->
+            <button 
+              type="button" 
+              class="toolbar-glass-btn" 
+              (click)="applyFormatting('italic')" 
+              title="Italic (Ctrl+I / Cmd+I)" 
+              aria-label="Italic"
+            >
+              <ts-icon name="italic" [size]="15" />
+            </button>
+
+            <!-- 2b. Underline -->
+            <button 
+              type="button" 
+              class="toolbar-glass-btn" 
+              (click)="applyFormatting('underline')" 
+              title="Underline (Ctrl+U / Cmd+U)" 
+              aria-label="Underline"
+            >
+              <ts-icon name="underline" [size]="15" />
+            </button>
+
+            <!-- 3. Text Color (with Color Palette Popover) -->
+            <div class="toolbar-color-wrapper">
+              <button 
+                type="button" 
+                class="toolbar-glass-btn" 
+                [class.is-active]="showColorPicker()"
+                (click)="showColorPicker.set(!showColorPicker()); showFormattingMore.set(false)" 
+                title="Text Color & Highlights" 
+                aria-label="Text Color"
+              >
+                <ts-icon name="palette" [size]="15" />
+              </button>
+
+              @if (showColorPicker()) {
+                <div class="toolbar-glass-popover color-picker-popover" (mousedown)="$event.preventDefault(); $event.stopPropagation()">
+                  <div class="color-palette-title">Text Color</div>
+                  <div class="color-swatches-grid">
+                    <button type="button" class="color-swatch-dot" style="background: #0d9488;" (mousedown)="$event.preventDefault()" (click)="applyFormatting('color', '#0d9488')" title="Teal"></button>
+                    <button type="button" class="color-swatch-dot" style="background: #3b82f6;" (mousedown)="$event.preventDefault()" (click)="applyFormatting('color', '#3b82f6')" title="Blue"></button>
+                    <button type="button" class="color-swatch-dot" style="background: #8b5cf6;" (mousedown)="$event.preventDefault()" (click)="applyFormatting('color', '#8b5cf6')" title="Purple"></button>
+                    <button type="button" class="color-swatch-dot" style="background: #ec4899;" (mousedown)="$event.preventDefault()" (click)="applyFormatting('color', '#ec4899')" title="Pink"></button>
+                    <button type="button" class="color-swatch-dot" style="background: #ef4444;" (mousedown)="$event.preventDefault()" (click)="applyFormatting('color', '#ef4444')" title="Red"></button>
+                    <button type="button" class="color-swatch-dot" style="background: #f59e0b;" (mousedown)="$event.preventDefault()" (click)="applyFormatting('color', '#f59e0b')" title="Amber"></button>
+                    <button type="button" class="color-swatch-dot" style="background: #10b981;" (mousedown)="$event.preventDefault()" (click)="applyFormatting('color', '#10b981')" title="Emerald"></button>
+                    <button type="button" class="color-swatch-dot" style="background: #64748b;" (mousedown)="$event.preventDefault()" (click)="applyFormatting('color', '#64748b')" title="Slate"></button>
+                  </div>
+                  <div class="color-palette-title" style="margin-top: 8px;">Highlight</div>
+                  <div class="color-swatches-grid">
+                    <button type="button" class="color-swatch-dot" style="background: #fef08a;" (mousedown)="$event.preventDefault()" (click)="applyFormatting('hiliteColor', '#fef08a')" title="Yellow Highlight"></button>
+                    <button type="button" class="color-swatch-dot" style="background: #bbf7d0;" (mousedown)="$event.preventDefault()" (click)="applyFormatting('hiliteColor', '#bbf7d0')" title="Green Highlight"></button>
+                    <button type="button" class="color-swatch-dot" style="background: #bae6fd;" (mousedown)="$event.preventDefault()" (click)="applyFormatting('hiliteColor', '#bae6fd')" title="Blue Highlight"></button>
+                    <button type="button" class="color-swatch-dot" style="background: #fbcfe8;" (mousedown)="$event.preventDefault()" (click)="applyFormatting('hiliteColor', '#fbcfe8')" title="Pink Highlight"></button>
+                    <button type="button" class="color-swatch-dot" style="background: #fed7aa;" (mousedown)="$event.preventDefault()" (click)="applyFormatting('hiliteColor', '#fed7aa')" title="Orange Highlight"></button>
+                    <button type="button" class="color-swatch-dot" style="background: #e2e8f0;" (mousedown)="$event.preventDefault()" (click)="applyFormatting('hiliteColor', '#e2e8f0')" title="Gray Highlight"></button>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Divider -->
+            <div class="toolbar-glass-divider" aria-hidden="true"></div>
+
+            <!-- 4. More (Expands Full Rich-Text Formatting Menu) -->
+            <div class="toolbar-more-wrapper">
+              <button 
+                type="button" 
+                class="toolbar-glass-btn" 
+                [class.is-active]="showFormattingMore()"
+                (click)="showFormattingMore.set(!showFormattingMore()); showColorPicker.set(false)" 
+                title="More formatting options" 
+                aria-label="More formatting options"
+              >
+                <ts-icon name="layout-grid-circles" [size]="15" />
+              </button>
+
+              @if (showFormattingMore()) {
+                <div class="toolbar-glass-popover more-menu-popover" (mousedown)="$event.preventDefault(); $event.stopPropagation()">
+                  <!-- Text Styles Section -->
+                  <div class="popover-section-label">Typography & Style</div>
+                  <div class="popover-btn-grid">
+                    <button type="button" class="popover-menu-item" (mousedown)="$event.preventDefault()" (click)="applyFormatting('heading1')">
+                      <ts-icon name="heading-1" [size]="14" />
+                      <span>Heading 1</span>
+                    </button>
+                    <button type="button" class="popover-menu-item" (mousedown)="$event.preventDefault()" (click)="applyFormatting('heading2')">
+                      <ts-icon name="heading-2" [size]="14" />
+                      <span>Heading 2</span>
+                    </button>
+                    <button type="button" class="popover-menu-item" (mousedown)="$event.preventDefault()" (click)="applyFormatting('heading3')">
+                      <ts-icon name="heading-3" [size]="14" />
+                      <span>Heading 3</span>
+                    </button>
+                    <button type="button" class="popover-menu-item" (mousedown)="$event.preventDefault()" (click)="applyFormatting('underline')">
+                      <ts-icon name="underline" [size]="14" />
+                      <span>Underline</span>
+                    </button>
+                    <button type="button" class="popover-menu-item" (mousedown)="$event.preventDefault()" (click)="applyFormatting('strikethrough')">
+                      <ts-icon name="strikethrough" [size]="14" />
+                      <span>Strikethrough</span>
+                    </button>
+                    <button type="button" class="popover-menu-item" (mousedown)="$event.preventDefault()" (click)="applyFormatting('code')">
+                      <ts-icon name="code" [size]="14" />
+                      <span>Inline Code</span>
+                    </button>
+                    <button type="button" class="popover-menu-item" (mousedown)="$event.preventDefault()" (click)="applyFormatting('clear')">
+                      <ts-icon name="remove-formatting" [size]="14" />
+                      <span>Clear format</span>
+                    </button>
+                  </div>
+
+                  <!-- Lists & Blocks Section -->
+                  <div class="popover-section-label">Lists & Blocks</div>
+                  <div class="popover-btn-grid">
+                    <button type="button" class="popover-menu-item" (mousedown)="$event.preventDefault()" (click)="applyFormatting('bullet')">
+                      <ts-icon name="list" [size]="14" />
+                      <span>Bullet List</span>
+                    </button>
+                    <button type="button" class="popover-menu-item" (mousedown)="$event.preventDefault()" (click)="applyFormatting('number')">
+                      <ts-icon name="list-ordered" [size]="14" />
+                      <span>Numbered List</span>
+                    </button>
+                    <button type="button" class="popover-menu-item" (mousedown)="$event.preventDefault()" (click)="applyFormatting('quote')">
+                      <ts-icon name="quote" [size]="14" />
+                      <span>Blockquote</span>
+                    </button>
+                    <button type="button" class="popover-menu-item" (mousedown)="$event.preventDefault()" (click)="applyFormatting('codeblock')">
+                      <ts-icon name="square-terminal" [size]="14" />
+                      <span>Code Block</span>
+                    </button>
+                    <button type="button" class="popover-menu-item" (mousedown)="$event.preventDefault()" (click)="applyFormatting('link')">
+                      <ts-icon name="link" [size]="14" />
+                      <span>Hyperlink</span>
+                    </button>
+                    <button type="button" class="popover-menu-item" (mousedown)="$event.preventDefault()" (click)="applyFormatting('hr')">
+                      <ts-icon name="minus" [size]="14" />
+                      <span>Divider</span>
+                    </button>
+                  </div>
+
+                  <!-- Editor Metrics Section -->
+                  <div class="popover-metrics-footer">
+                    <span>{{ editorWordCount() }} words</span>
+                    <span class="metrics-dot">•</span>
+                    <span>{{ editorCharCount() }} characters</span>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
 
           <!-- Corner capacity warning indicator (only when payload approaches ceiling) -->
           @if (isTextOver80Percent()) {
@@ -407,79 +593,130 @@
           }
         </div>
 
-        <!-- Action Row: Copy, Refresh, Save, Clear & Status Text -->
+        <!-- Bottom Actions Container: Desktop Single-Row & Mobile 2-Row Layout -->
         <div class="text-actions-bottom-row">
-          <div class="text-actions-left-group">
-            <button 
-              type="button" 
-              class="text-btn btn-secondary" 
-              (click)="copyEntireText()"
-              [disabled]="!sharedText()"
-              title="Copy text to clipboard"
-            >
-              <ts-icon name="clipboard" [size]="18" />
-              <span>{{ copy.textTab.copy }}</span>
-            </button>
+          <div class="text-actions-left-cluster">
+            <!-- Row 1 (Mobile) / Left Primary (Desktop): Copy & Save with Name and Icon -->
+            <div class="text-actions-row-primary">
+              <!-- Copy Button -->
+              <button 
+                type="button" 
+                class="text-action-pill-btn btn-secondary" 
+                [class.is-copied]="copiedText()"
+                (click)="copyEntireText()"
+                [disabled]="!sharedText()"
+                title="Copy all text to clipboard"
+                aria-label="Copy all text"
+              >
+                <ts-icon [name]="copiedText() ? 'check' : 'copy'" [size]="16" />
+                <span>{{ copiedText() ? 'Copied!' : copy.textTab.copy }}</span>
+              </button>
 
-            <button 
-              type="button" 
-              class="text-btn btn-secondary" 
-              (click)="pasteTextFromClipboard()"
-              title="Paste text from system clipboard"
-            >
-              <ts-icon name="clipboard-paste" [size]="18" />
-              <span>{{ copy.textTab.paste }}</span>
-            </button>
+              <!-- Save / Retry Button -->
+              <button 
+                type="button" 
+                class="text-action-pill-btn btn-primary-accent" 
+                [class.is-saving]="isSavingText()"
+                [class.is-failed]="saveFailed()"
+                (click)="saveTextContent()"
+                [disabled]="(!isTextDirty() && !saveFailed()) || isSavingText()"
+                [title]="saveFailed() ? 'Save failed: click to retry' : 'Save changes'"
+                aria-label="Save changes"
+              >
+                @if (isSavingText()) {
+                  <span class="spinner-circle-sm" aria-hidden="true"></span>
+                  <span>{{ copy.textTab.saving }}</span>
+                } @else if (saveFailed()) {
+                  <ts-icon name="alert-circle" [size]="16" />
+                  <span>{{ copy.textTab.retry }}</span>
+                } @else {
+                  <ts-icon name="save" [size]="16" />
+                  <span>{{ copy.textTab.save }}</span>
+                }
+              </button>
+            </div>
 
-            <button 
-              type="button" 
-              class="text-btn btn-secondary" 
-              [class.is-refreshing]="isRefreshing()"
-              (click)="refreshTextContent()"
-              [disabled]="isRefreshing()"
-              title="Refresh from server"
-            >
-              <ts-icon name="refresh-cw" [size]="18" [class.animate-spin]="isRefreshing()" />
-              <span>{{ copy.textTab.refresh }}</span>
-            </button>
+            <!-- Row 2 (Mobile) / Secondary (Desktop): Wrap, Refresh, Revisions, Clear -->
+            <div class="text-actions-row-icons" role="toolbar" aria-label="Editor actions">
+              <!-- 1. Word Wrap Toggle -->
+              <button 
+                type="button" 
+                class="text-icon-btn btn-wrap-toggle" 
+                [class.is-active]="isWordWrap()"
+                (click)="isWordWrap.set(!isWordWrap())"
+                [title]="isWordWrap() ? 'Word wrap enabled (click to disable)' : 'Word wrap disabled (click to enable)'"
+                aria-label="Toggle word wrap"
+              >
+                <ts-icon name="text-wrap" [size]="16" />
+                <span class="btn-label-desktop">Wrap</span>
+              </button>
 
-            <!-- Save Primary Accent Button -->
-            <button 
-              type="button" 
-              class="text-btn btn-primary-accent" 
-              [class.is-saving]="isSavingText()"
-              (click)="saveTextContent()"
-              [disabled]="!isTextDirty() || isSavingText()"
-              title="Save changes"
-            >
-              @if (isSavingText()) {
-                <span class="spinner-circle-sm" aria-hidden="true"></span>
-              } @else {
-                <ts-icon name="save" [size]="20" />
-              }
-              <span>{{ copy.textTab.save }}</span>
-            </button>
+              <!-- 2. Refresh from Server -->
+              <button 
+                type="button" 
+                class="text-icon-btn btn-secondary" 
+                [class.is-refreshing]="isRefreshing()"
+                (click)="refreshTextContent()"
+                [disabled]="isRefreshing()"
+                title="Refresh from server"
+                aria-label="Refresh from server"
+              >
+                <ts-icon name="refresh-cw" [size]="16" [class.animate-spin]="isRefreshing()" />
+                <span class="btn-label-desktop">{{ copy.textTab.refresh }}</span>
+              </button>
 
-            <!-- Clear (Quietest) -->
-            <button 
-              type="button" 
-              class="text-btn btn-quiet-clear" 
-              (click)="clearTextContent()"
-              [disabled]="!sharedText()"
-              title="Clear text (with undo)"
-            >
-              <ts-icon name="trash-2" [size]="20" />
-              <span>{{ copy.textTab.clear }}</span>
-            </button>
+              <!-- 3. Version History / Revisions -->
+              <button 
+                type="button" 
+                class="text-icon-btn btn-secondary" 
+                (click)="openRevisionsDrawer()"
+                title="View version revisions & restore past changes"
+                aria-label="View revisions"
+              >
+                <ts-icon name="history" [size]="16" />
+                <span class="btn-label-desktop">Revisions</span>
+              </button>
+
+              <!-- 4. Clear Text (with undo) -->
+              <button 
+                type="button" 
+                class="text-icon-btn btn-quiet-clear" 
+                (click)="clearTextContent()"
+                [disabled]="!sharedText()"
+                title="Clear text (with undo)"
+                aria-label="Clear text"
+              >
+                <ts-icon name="trash-2" [size]="16" />
+                <span class="btn-label-desktop">{{ copy.textTab.clear }}</span>
+              </button>
+            </div>
           </div>
 
           <!-- Status Indicator Text -->
           <div class="text-status-caption">
             @if (isSavingText()) {
-              <span>Saving...</span>
+              <span class="status-saving-text">
+                <span class="spinner-circle-xs mr-1" aria-hidden="true"></span>
+                {{ copy.textTab.saving }}
+              </span>
+            } @else if (saveFailed()) {
+              <span class="status-failed-text text-red-500 inline-flex items-center gap-1 font-medium">
+                <ts-icon name="alert-circle" [size]="14" />
+                <span>{{ copy.textTab.saveFailed }} • </span>
+                <button type="button" class="retry-link underline hover:text-red-400 font-semibold cursor-pointer" (click)="saveTextContent()">{{ copy.textTab.retry }}</button>
+              </span>
             } @else if (isTextDirty()) {
               <span class="status-unsaved-dot">•</span>
               <span>{{ copy.textTab.unsaved }}</span>
+              <span class="status-sep mx-1">•</span>
+              <button 
+                type="button" 
+                class="discard-changes-link" 
+                (click)="confirmDiscardChanges()"
+                title="Discard unsaved changes and revert to last saved version"
+              >
+                Discard
+              </button>
             } @else if (lastSavedTime()) {
               <span>{{ copy.textTab.savedRelative(getRelativeTimeString(lastSavedTime()!)) }}</span>
             } @else {
@@ -511,166 +748,383 @@
           (change)="onFileSelected($event)" 
         />
 
-        <!-- 1. Toolbar Row (Filter button, Grid/List toggle, Search pill, Add pill, Sort icon) -->
-        <div class="files-toolbar-row">
-          
-          <!-- Filter Button with Active Dot -->
-          <button 
-            type="button" 
-            class="toolbar-filter-btn" 
-            [class.is-active]="hasActiveFilters()"
-            (click)="showFilterPopover.set(!showFilterPopover())" 
-            title="Filter files"
-            aria-label="Filter files"
-          >
-            <ts-icon name="filter" [size]="20" />
-            @if (hasActiveFilters()) {
-              <span class="filter-active-dot" aria-label="Filters active"></span>
-            }
-          </button>
-
-          <!-- Grid / List Toggle (Active gets soft circle background, Image 3 style) -->
-          <div class="view-mode-toggle-group" role="group" aria-label="View layout">
-            <button 
-              type="button" 
-              class="view-toggle-btn" 
-              [class.active]="viewMode() === 'grid'"
-              (click)="setViewMode('grid')"
-              title="Grid view"
-              aria-label="Grid view"
-            >
-              <ts-icon name="layout-grid" [size]="18" />
-            </button>
-            <button 
-              type="button" 
-              class="view-toggle-btn" 
-              [class.active]="viewMode() === 'list'"
-              (click)="setViewMode('list')"
-              title="List view"
-              aria-label="List view"
-            >
-              <ts-icon name="list" [size]="18" />
-            </button>
-          </div>
-
-          <!-- Rounded Search Pill with "/" shortcut -->
-          <div class="search-pill-container">
-            <ts-icon name="search" [size]="16" class="search-icon" />
-            <input 
-              #fileSearchInput
-              type="text" 
-              class="search-pill-input" 
-              [placeholder]="copy.filesTab.searchPlaceholder"
-              [(ngModel)]="searchQuery"
-            />
-            @if (!searchQuery()) {
-              <kbd class="search-shortcut-kbd hide-below-640">/</kbd>
-            } @else {
-              <button type="button" class="search-clear-btn" (click)="searchQuery.set('')" aria-label="Clear search">
-                <ts-icon name="x" [size]="14" />
+        <!-- Sticky Header (Toolbar Row + Sub-Category Filter Chips) -->
+        <div class="files-sticky-header" [class.is-scrolled]="isFilesScrolled()">
+          <!-- 1. DESKTOP Toolbar Row (>=640px) -->
+          <div class="files-toolbar-row hide-below-640">
+            <!-- Left: Sub-Category Filter Chips -->
+            <div class="sub-filter-chips-bar" role="tablist" aria-label="Category sub-filter">
+              <button 
+                type="button" 
+                class="sub-pill-chip" 
+                [class.active]="fileSubFilter() === 'all'"
+                (click)="setFileSubFilter('all')"
+              >
+                <span>{{ copy.tabs.allChip }}</span>
+                @if (allFileItems().length > 0) {
+                  <span class="chip-count">{{ allFileItems().length }}</span>
+                }
               </button>
-            }
-          </div>
 
-          <!-- Dark Pill "Add v" Button -->
-          <div class="add-button-wrapper">
-            <button 
-              type="button" 
-              class="dark-pill-add-btn" 
-              (click)="showAddMenu.set(!showAddMenu())"
-              title="Add files"
-            >
-              <ts-icon name="plus" [size]="16" />
-              <span>{{ copy.filesTab.addButton }}</span>
-              <ts-icon name="chevron-down" [size]="14" class="chevron-icon" />
-            </button>
+              <button 
+                type="button" 
+                class="sub-pill-chip" 
+                [class.active]="fileSubFilter() === 'images'"
+                (click)="setFileSubFilter('images')"
+              >
+                <span>{{ copy.tabs.imagesChip }}</span>
+                @if (imagesCount() > 0) {
+                  <span class="chip-count">{{ imagesCount() }}</span>
+                }
+              </button>
 
-            @if (showAddMenu()) {
-              <div class="add-dropdown-menu" (mouseleave)="showAddMenu.set(false)">
-                <button type="button" class="add-menu-item" (click)="openFilePicker(); showAddMenu.set(false)">
-                  <ts-icon name="hard-drive" [size]="16" />
-                  <span>{{ copy.filesTab.addFromDevice }}</span>
+              <button 
+                type="button" 
+                class="sub-pill-chip" 
+                [class.active]="fileSubFilter() === 'files'"
+                (click)="setFileSubFilter('files')"
+              >
+                <span>{{ copy.tabs.filesChip }}</span>
+                @if (filesCount() > 0) {
+                  <span class="chip-count">{{ filesCount() }}</span>
+                }
+              </button>
+            </div>
+
+            <!-- Center: Rounded Search Pill with "/" shortcut -->
+            <div class="search-pill-container desktop-search-pill">
+              <ts-icon name="search" [size]="16" class="search-icon" />
+              <input 
+                #fileSearchInput
+                type="text" 
+                class="search-pill-input" 
+                [placeholder]="copy.filesTab.searchPlaceholder"
+                [(ngModel)]="searchQuery"
+              />
+              @if (!searchQuery()) {
+                <kbd class="search-shortcut-kbd">/</kbd>
+              } @else {
+                <button type="button" class="search-clear-btn" (click)="searchQuery.set('')" aria-label="Clear search">
+                  <ts-icon name="x" [size]="14" />
                 </button>
-                <button type="button" class="add-menu-item" (click)="pasteFromClipboard(); showAddMenu.set(false)">
-                  <ts-icon name="clipboard-paste" [size]="16" />
-                  <span>{{ copy.filesTab.addPasteClipboard }}</span>
+              }
+            </div>
+
+            <!-- Right: Controls Group (Filter, Sort, View Toggle, Add) -->
+            <div class="files-desktop-controls-group">
+              <!-- Filter Button with Active Dot -->
+              <button 
+                type="button" 
+                class="toolbar-filter-btn" 
+                [class.is-active]="hasActiveFilters()"
+                (click)="showFilterPopover.set(!showFilterPopover())" 
+                title="Filter files"
+                aria-label="Filter files"
+              >
+                <ts-icon name="filter" [size]="18" />
+                @if (hasActiveFilters()) {
+                  <span class="filter-active-dot" aria-label="Filters active"></span>
+                }
+              </button>
+
+              <!-- Sliders Icon for Sort Popover -->
+              <button 
+                type="button" 
+                class="toolbar-sort-btn" 
+                (click)="showSortPopover.set(!showSortPopover())"
+                title="Sort options"
+                aria-label="Sort options"
+              >
+                <ts-icon name="sliders-horizontal" [size]="18" />
+              </button>
+
+              <!-- Grid / List Toggle -->
+              <div class="view-mode-toggle-group" role="group" aria-label="View layout">
+                <button 
+                  type="button" 
+                  class="view-toggle-btn" 
+                  [class.active]="viewMode() === 'grid'"
+                  (click)="setViewMode('grid')"
+                  title="Grid view"
+                  aria-label="Grid view"
+                >
+                  <ts-icon name="layout-grid" [size]="16" />
+                </button>
+                <button 
+                  type="button" 
+                  class="view-toggle-btn" 
+                  [class.active]="viewMode() === 'list'"
+                  (click)="setViewMode('list')"
+                  title="List view"
+                  aria-label="List view"
+                >
+                  <ts-icon name="list" [size]="16" />
                 </button>
               </div>
-            }
+
+              <!-- Dark Pill "Add v" Button -->
+              <div class="add-button-wrapper">
+                <button 
+                  type="button" 
+                  class="dark-pill-add-btn" 
+                  (click)="showAddMenu.set(!showAddMenu())"
+                  title="Add files"
+                >
+                  <ts-icon name="plus" [size]="16" />
+                  <span>{{ copy.filesTab.addButton }}</span>
+                  <ts-icon name="chevron-down" [size]="14" class="chevron-icon" />
+                </button>
+
+                @if (showAddMenu()) {
+                  <div class="add-dropdown-menu" (mouseleave)="showAddMenu.set(false)">
+                    <button type="button" class="add-menu-item" (click)="openFilePicker(); showAddMenu.set(false)">
+                      <ts-icon name="hard-drive" [size]="16" />
+                      <span>{{ copy.filesTab.addFromDevice }}</span>
+                    </button>
+                    <button 
+                      type="button" 
+                      class="add-menu-item" 
+                      (click)="openFolderPicker(); showAddMenu.set(false)"
+                      title="Upload folder"
+                    >
+                      <ts-icon name="folder-up" [size]="16" />
+                      <span>{{ copy.filesTab.addFolder }}</span>
+                    </button>
+                    <button type="button" class="add-menu-item" (click)="pasteFromClipboard(); showAddMenu.set(false)">
+                      <ts-icon name="clipboard-paste" [size]="16" />
+                      <span>{{ copy.filesTab.addPasteClipboard }}</span>
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
           </div>
 
-          <!-- Sliders Icon for Sort Popover -->
-          <button 
-            type="button" 
-            class="toolbar-sort-btn" 
-            (click)="showSortPopover.set(!showSortPopover())"
-            title="Sort options"
-            aria-label="Sort options"
-          >
-            <ts-icon name="sliders-horizontal" [size]="20" />
-          </button>
+          <!-- 2. MOBILE LINE 1: Search Pill (flex-1) + Add Button (<640px) -->
+          <div class="files-mobile-line-1 show-below-640">
+            <div class="search-pill-container mobile-search-pill">
+              <ts-icon name="search" [size]="15" class="search-icon" />
+              <input 
+                type="text" 
+                class="search-pill-input" 
+                [placeholder]="copy.filesTab.searchPlaceholder"
+                [(ngModel)]="searchQuery"
+              />
+              @if (searchQuery()) {
+                <button type="button" class="search-clear-btn" (click)="searchQuery.set('')" aria-label="Clear search">
+                  <ts-icon name="x" [size]="13" />
+                </button>
+              }
+            </div>
 
-        </div>
+            <div class="add-button-wrapper">
+              <button 
+                type="button" 
+                class="dark-pill-add-btn mobile-add-btn" 
+                (click)="showAddMenu.set(!showAddMenu())"
+                title="Add files"
+              >
+                <ts-icon name="plus" [size]="15" />
+                <span>{{ copy.filesTab.addButton }}</span>
+              </button>
 
-        <!-- 2. Sub-Category Pill Chips (All / Images / Files) -->
-        <div class="sub-filter-chips-bar" role="tablist" aria-label="Category sub-filter">
-          <button 
-            type="button" 
-            class="sub-pill-chip" 
-            [class.active]="fileSubFilter() === 'all'"
-            (click)="fileSubFilter.set('all')"
-          >
-            <span>{{ copy.tabs.allChip }}</span>
-            @if (allFileItems().length > 0) {
-              <span class="chip-count">{{ allFileItems().length }}</span>
-            }
-          </button>
+              @if (showAddMenu()) {
+                <div class="add-dropdown-menu" (mouseleave)="showAddMenu.set(false)">
+                  <button type="button" class="add-menu-item" (click)="openFilePicker(); showAddMenu.set(false)">
+                    <ts-icon name="hard-drive" [size]="16" />
+                    <span>{{ copy.filesTab.addFromDevice }}</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    class="add-menu-item" 
+                    (click)="openFolderPicker(); showAddMenu.set(false)"
+                  >
+                    <ts-icon name="folder-up" [size]="16" />
+                    <span>{{ copy.filesTab.addFolder }}</span>
+                  </button>
+                  <button type="button" class="add-menu-item" (click)="pasteFromClipboard(); showAddMenu.set(false)">
+                    <ts-icon name="clipboard-paste" [size]="16" />
+                    <span>{{ copy.filesTab.addPasteClipboard }}</span>
+                  </button>
+                </div>
+              }
+            </div>
+          </div>
 
-          <button 
-            type="button" 
-            class="sub-pill-chip" 
-            [class.active]="fileSubFilter() === 'images'"
-            (click)="fileSubFilter.set('images')"
-          >
-            <span>{{ copy.tabs.imagesChip }}</span>
-            @if (imagesCount() > 0) {
-              <span class="chip-count">{{ imagesCount() }}</span>
-            }
-          </button>
+          <!-- 3. MOBILE LINE 2: Sub-Category Chips (Left) + Options 3-Dots Dropdown (Right) (<640px) -->
+          <div class="files-subfilter-controls-row show-below-640">
+            <div class="sub-filter-chips-bar" role="tablist" aria-label="Category sub-filter">
+              <button 
+                type="button" 
+                class="sub-pill-chip" 
+                [class.active]="fileSubFilter() === 'all'"
+                (click)="setFileSubFilter('all')"
+              >
+                <span>{{ copy.tabs.allChip }}</span>
+                @if (allFileItems().length > 0) {
+                  <span class="chip-count">{{ allFileItems().length }}</span>
+                }
+              </button>
 
-          <button 
-            type="button" 
-            class="sub-pill-chip" 
-            [class.active]="fileSubFilter() === 'files'"
-            (click)="fileSubFilter.set('files')"
-          >
-            <span>{{ copy.tabs.filesChip }}</span>
-            @if (filesCount() > 0) {
-              <span class="chip-count">{{ filesCount() }}</span>
-            }
-          </button>
+              <button 
+                type="button" 
+                class="sub-pill-chip" 
+                [class.active]="fileSubFilter() === 'images'"
+                (click)="setFileSubFilter('images')"
+              >
+                <span>{{ copy.tabs.imagesChip }}</span>
+                @if (imagesCount() > 0) {
+                  <span class="chip-count">{{ imagesCount() }}</span>
+                }
+              </button>
+
+              <button 
+                type="button" 
+                class="sub-pill-chip" 
+                [class.active]="fileSubFilter() === 'files'"
+                (click)="setFileSubFilter('files')"
+              >
+                <span>{{ copy.tabs.filesChip }}</span>
+                @if (filesCount() > 0) {
+                  <span class="chip-count">{{ filesCount() }}</span>
+                }
+              </button>
+            </div>
+
+            <!-- Options Dropdown Button in Line 2 of Quick Filter -->
+            <div class="files-more-dropdown-anchor">
+              <button 
+                type="button" 
+                class="files-more-options-btn" 
+                [class.is-active]="showFilesMoreMenu() || hasActiveFilters()"
+                (click)="showFilesMoreMenu.set(!showFilesMoreMenu())"
+                title="View & filter options"
+                aria-label="View & filter options"
+                aria-haspopup="true"
+                [attr.aria-expanded]="showFilesMoreMenu()"
+              >
+                <ts-icon name="ellipsis-vertical" [size]="18" />
+                @if (hasActiveFilters()) {
+                  <span class="filter-active-dot" aria-label="Filters active"></span>
+                }
+              </button>
+
+              @if (showFilesMoreMenu()) {
+                <div class="files-more-backdrop" (click)="showFilesMoreMenu.set(false)"></div>
+                <div class="files-more-dropdown-card" role="menu">
+                  <!-- Section: View Mode -->
+                  <div class="more-menu-heading">View</div>
+                  <button 
+                    type="button" 
+                    class="more-menu-row" 
+                    [class.is-selected]="viewMode() === 'grid'"
+                    (click)="setViewMode('grid'); showFilesMoreMenu.set(false)"
+                    role="menuitemradio"
+                    [attr.aria-checked]="viewMode() === 'grid'"
+                  >
+                    <div class="row-left">
+                      <ts-icon name="layout-grid" [size]="16" />
+                      <span>Card item view</span>
+                    </div>
+                    @if (viewMode() === 'grid') {
+                      <ts-icon name="check" [size]="16" class="row-check" />
+                    }
+                  </button>
+
+                  <button 
+                    type="button" 
+                    class="more-menu-row" 
+                    [class.is-selected]="viewMode() === 'list'"
+                    (click)="setViewMode('list'); showFilesMoreMenu.set(false)"
+                    role="menuitemradio"
+                    [attr.aria-checked]="viewMode() === 'list'"
+                  >
+                    <div class="row-left">
+                      <ts-icon name="list" [size]="16" />
+                      <span>List view</span>
+                    </div>
+                    @if (viewMode() === 'list') {
+                      <ts-icon name="check" [size]="16" class="row-check" />
+                    }
+                  </button>
+
+                  <div class="more-menu-divider"></div>
+
+                  <!-- Section: Filter & Sort -->
+                  <div class="more-menu-heading">Filter & Sort</div>
+                  <button 
+                    type="button" 
+                    class="more-menu-row" 
+                    [class.is-selected]="hasActiveFilters()"
+                    (click)="showFilesMoreMenu.set(false); showFilterPopover.set(true)"
+                    role="menuitem"
+                  >
+                    <div class="row-left">
+                      <ts-icon name="filter" [size]="16" />
+                      <span>Filter files...</span>
+                    </div>
+                    @if (hasActiveFilters()) {
+                      <span class="more-active-tag">Active</span>
+                    }
+                  </button>
+
+                  <button 
+                    type="button" 
+                    class="more-menu-row" 
+                    (click)="showFilesMoreMenu.set(false); showSortPopover.set(true)"
+                    role="menuitem"
+                  >
+                    <div class="row-left">
+                      <ts-icon name="sliders-horizontal" [size]="16" />
+                      <span>Sort files...</span>
+                    </div>
+                  </button>
+                </div>
+              }
+            </div>
+          </div>
         </div>
 
         <!-- Upload Progress Items Bar -->
         @if (uploadingFiles().length > 0) {
           <div class="uploading-queue-list">
             @for (up of uploadingFiles(); track up.id) {
-              <div class="upload-progress-card">
+              <div class="upload-progress-card" [class.is-error]="up.status === 'error'">
                 <div class="upload-info-row">
                   <div class="upload-filename-wrap">
-                    <span class="upload-spinner" aria-hidden="true"></span>
-                    <span class="upload-filename">{{ up.name }}</span>
+                    @if (up.status === 'uploading') {
+                      <span class="upload-spinner" aria-hidden="true"></span>
+                    } @else if (up.status === 'error') {
+                      <span class="upload-error-icon" aria-hidden="true">
+                        <ts-icon name="alert-circle" [size]="14" />
+                      </span>
+                    }
+                    <span class="upload-filename" [title]="up.name">{{ up.name }}</span>
+                    <span class="upload-filesize">({{ formatBytes(up.size) }})</span>
                   </div>
                   <div class="upload-meta-right">
-                    <span>{{ up.progress }}%</span>
-                    <button type="button" class="upload-cancel-btn" (click)="cancelUpload(up.id)">
+                    @if (up.status === 'error') {
+                      <span class="upload-status-badge error">Interrupted</span>
+                      <button type="button" class="upload-action-btn retry" (click)="retryUpload(up.id)" title="Resume Upload">
+                        <ts-icon name="rotate-cw" [size]="13" />
+                        <span class="btn-label">Resume</span>
+                      </button>
+                    } @else {
+                      <span class="upload-percent">{{ up.progress }}%</span>
+                    }
+                    <button type="button" class="upload-cancel-btn" (click)="cancelUpload(up.id)" title="Cancel">
                       <ts-icon name="x" [size]="14" />
                     </button>
                   </div>
                 </div>
                 <div class="progress-bar-track">
-                  <div class="progress-bar-fill" [style.width.%]="up.progress"></div>
+                  <div class="progress-bar-fill" [class.is-error]="up.status === 'error'" [style.width.%]="up.progress"></div>
                 </div>
+                @if (up.status === 'error' && up.errorMessage) {
+                  <div class="upload-error-msg">
+                    <span>{{ up.errorMessage }}</span>
+                  </div>
+                }
               </div>
             }
           </div>
@@ -707,13 +1161,14 @@
         <!-- 4. Files Card Display: Grid Mode (Image 3 Style) -->
         @if (displayFileItems().length > 0 && viewMode() === 'grid') {
           <div class="library-cards-grid">
-            @for (item of displayFileItems(); track item.id) {
+            @for (item of displayFileItems(); track item.id + '-' + fileSubFilter()) {
               <div 
                 class="library-file-card" 
                 [class.is-image-card]="isImageItem(item)"
                 [class.is-selected]="selectedItemIds().has(item.id)"
                 [class.is-deleting]="deletingItemIds().has(item.id)"
                 (click)="onCardClick(item, $event)"
+                (dblclick)="onCardDblClick(item, $event)"
               >
                 <!-- For image items: No header, no footer - clean image preview only with selection check badge -->
                 @if (isImageItem(item)) {
@@ -721,6 +1176,7 @@
                     <img 
                       [src]="getItemThumbnailUrl(item)" 
                       [alt]="item.originalName || 'image'" 
+                      [title]="item.originalName || 'image'" 
                       class="card-thumbnail-cover" 
                       loading="lazy" 
                       decoding="async" 
@@ -781,12 +1237,13 @@
         <!-- 5. Files Card Display: List Mode -->
         @if (displayFileItems().length > 0 && viewMode() === 'list') {
           <div class="library-rows-list">
-            @for (item of displayFileItems(); track item.id) {
+            @for (item of displayFileItems(); track item.id + '-' + fileSubFilter()) {
               <div 
                 class="library-row-item" 
                 [class.is-selected]="selectedItemIds().has(item.id)"
                 [class.is-deleting]="deletingItemIds().has(item.id)"
                 (click)="onCardClick(item, $event)"
+                (dblclick)="onCardDblClick(item, $event)"
               >
                 <div 
                   class="row-checkbox" 
@@ -822,7 +1279,7 @@
   <!-- ═══════════════════════════════════════════════════════════ -->
   <!-- FLOATING SELECTION ACTION BAR (Image 3 Dark Pill at Bottom) -->
   <!-- ═══════════════════════════════════════════════════════════ -->
-  @if (selectedItemIds().size > 0) {
+  @if (activeTab() === 'files' && selectedItemIds().size > 0) {
     <div class="floating-selection-bar" role="toolbar" aria-label="Selection actions">
       <span class="selection-count-text">
         {{ copy.filesTab.selectionBar.selectedCount(selectedItemIds().size) }}
@@ -1129,34 +1586,45 @@
   <!-- LIGHTBOX IMAGE PREVIEW                                     -->
   <!-- ═══════════════════════════════════════════════════════════ -->
   @if (lightboxImage(); as imgItem) {
-    <div class="lightbox-backdrop" (click)="lightboxImage.set(null)">
+    <div class="lightbox-backdrop" [class.is-closing]="isClosingLightbox()" (click)="closeLightbox()">
+      <!-- Fixed Viewport Header Bar (Always visible regardless of image size) -->
+      <div class="lightbox-header-bar" (click)="$event.stopPropagation()">
+        <span class="lightbox-title">{{ imgItem.originalName }}</span>
+        <div class="lightbox-header-actions">
+          <button type="button" class="lightbox-action-btn" (click)="triggerDirectDownload(imgItem)">
+            <ts-icon name="download" [size]="18" />
+            <span>{{ copy.filesTab.lightbox.download }}</span>
+          </button>
+          <button type="button" class="lightbox-close-icon" (click)="closeLightbox()" title="Close" aria-label="Close">
+            <ts-icon name="x" [size]="20" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Viewport Navigation Buttons (Placed on either side of screen, outside the image) -->
+      <button 
+        type="button" 
+        class="lightbox-nav-btn prev" 
+        (click)="$event.stopPropagation(); navigateLightbox(-1)" 
+        title="Previous image"
+        aria-label="Previous image"
+      >
+        <ts-icon name="chevron-left" [size]="28" />
+      </button>
+
+      <button 
+        type="button" 
+        class="lightbox-nav-btn next" 
+        (click)="$event.stopPropagation(); navigateLightbox(1)" 
+        title="Next image"
+        aria-label="Next image"
+      >
+        <ts-icon name="chevron-right" [size]="28" />
+      </button>
+
+      <!-- Center Image Stage -->
       <div class="lightbox-stage" (click)="$event.stopPropagation()">
         <img [src]="getItemThumbnailUrl(imgItem)" [alt]="imgItem.originalName || 'image'" class="lightbox-full-img" />
-
-        <button type="button" class="lightbox-nav-btn prev" (click)="navigateLightbox(-1)" title="Previous image">
-          <ts-icon name="chevron-left" [size]="24" />
-        </button>
-
-        <button type="button" class="lightbox-nav-btn next" (click)="navigateLightbox(1)" title="Next image">
-          <ts-icon name="chevron-right" [size]="24" />
-        </button>
-
-        <div class="lightbox-header-bar">
-          <span class="lightbox-title">{{ imgItem.originalName }}</span>
-          <div class="lightbox-header-actions">
-            <button type="button" class="lightbox-action-btn" (click)="triggerDirectDownload(imgItem)">
-              <ts-icon name="download" [size]="18" />
-              <span>{{ copy.filesTab.lightbox.download }}</span>
-            </button>
-            <button type="button" class="lightbox-close-preview-btn" (click)="lightboxImage.set(null)" title="Close preview">
-              <ts-icon name="x" [size]="16" />
-              <span>Close Preview</span>
-            </button>
-            <button type="button" class="lightbox-close-icon" (click)="lightboxImage.set(null)" title="Close" aria-label="Close">
-              <ts-icon name="x" [size]="20" />
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   }
@@ -1272,57 +1740,143 @@
   <!-- ═══════════════════════════════════════════════════════════ -->
   @if (showHistoryDrawer()) {
     <div class="drawer-backdrop" (click)="showHistoryDrawer.set(false)"></div>
-    <aside class="history-drawer-panel" role="dialog" aria-label="Recent clipboards">
+    <aside class="history-drawer-panel" role="dialog" aria-label="History and Revisions">
       <div class="drawer-header-row">
-        <h3 class="drawer-title">{{ copy.historyDrawer.title }}</h3>
+        <h3 class="drawer-title">
+          {{ historyDrawerTab() === 'recent' ? copy.historyDrawer.tabRecent : copy.historyDrawer.tabVersions }}
+        </h3>
         <button type="button" class="drawer-close-btn" (click)="showHistoryDrawer.set(false)">
           <ts-icon name="x" [size]="18" />
         </button>
       </div>
 
-      <div class="drawer-body-list">
-        @if (recentClipboards().length === 0) {
-          <div class="drawer-empty-state">
-            <ts-icon name="clock" [size]="28" class="text-muted" />
-            <p>{{ copy.historyDrawer.empty }}</p>
-          </div>
-        } @else {
-          @for (rec of recentClipboards(); track rec.code) {
-            <div 
-              class="history-item-row" 
-              [class.is-switching]="switchingCode() === rec.code"
-              (click)="switchingCode() === rec.code ? null : openFromHistory(rec)"
-            >
-              <div class="history-item-info">
-                <span class="history-code-mono">{{ rec.code }}</span>
-                <span class="history-time-meta">{{ getRelativeTimeString(rec.createdAt) }}</span>
-              </div>
-              <div class="history-item-actions">
-                @if (switchingCode() === rec.code) {
-                  <span class="spinner-circle-xs" aria-hidden="true"></span>
-                } @else {
-                  <button 
-                    type="button" 
-                    class="history-item-remove-btn" 
-                    (click)="removeClipboardFromHistory(rec.code, $event)"
-                    title="Remove from history"
-                    aria-label="Remove from history"
-                  >
-                    <ts-icon name="trash-2" [size]="14" />
-                  </button>
-                  <ts-icon name="arrow-up-right" [size]="16" class="history-arrow" />
-                }
-              </div>
-            </div>
-          }
-        }
+      <!-- Segmented Tab Switcher for Drawer -->
+      <div class="drawer-tabs-row">
+        <button 
+          type="button" 
+          class="drawer-tab-btn" 
+          [class.is-active]="historyDrawerTab() === 'recent'"
+          (click)="historyDrawerTab.set('recent'); loadHistory()"
+        >
+          {{ copy.historyDrawer.tabRecent }}
+        </button>
+        <button 
+          type="button" 
+          class="drawer-tab-btn" 
+          [class.is-active]="historyDrawerTab() === 'revisions'"
+          (click)="historyDrawerTab.set('revisions'); loadTextRevisions()"
+        >
+          {{ copy.historyDrawer.tabVersions }}
+        </button>
       </div>
 
-      @if (recentClipboards().length > 0) {
-        <div class="drawer-footer-row">
-          <button type="button" class="clear-history-btn" (click)="clearHistory()">
-            {{ copy.historyDrawer.clearAll }}
-          </button>
+      <!-- Tab 1: Recent Clipboards -->
+      @if (historyDrawerTab() === 'recent') {
+        <div class="drawer-body-list">
+          @if (recentClipboards().length === 0) {
+            <div class="drawer-empty-state">
+              <ts-icon name="clock" [size]="28" class="text-muted" />
+              <p>{{ copy.historyDrawer.empty }}</p>
+            </div>
+          } @else {
+            @for (rec of recentClipboards(); track rec.code) {
+              <div 
+                class="history-item-row" 
+                [class.is-switching]="switchingCode() === rec.code"
+                (click)="switchingCode() === rec.code ? null : openFromHistory(rec)"
+              >
+                <div class="history-item-info">
+                  <div class="history-code-row">
+                    <span class="history-code-mono">{{ rec.code }}</span>
+                    @if (shareCode() && rec.code.toLowerCase() === (shareCode() || '').toLowerCase()) {
+                      <span class="history-current-pill">Active</span>
+                    }
+                  </div>
+                  <span class="history-time-meta">{{ getRelativeTimeString(rec.createdAt) }}</span>
+                </div>
+                <div class="history-item-actions">
+                  @if (switchingCode() === rec.code) {
+                    <span class="spinner-circle-xs" aria-hidden="true"></span>
+                  } @else {
+                    @if (rec.code !== shareCode()) {
+                      <button 
+                        type="button" 
+                        class="history-item-remove-btn" 
+                        (click)="removeClipboardFromHistory(rec.code, $event)"
+                        title="Remove from history"
+                        aria-label="Remove from history"
+                      >
+                        <ts-icon name="trash-2" [size]="14" />
+                      </button>
+                    }
+                    <ts-icon name="arrow-up-right" [size]="16" class="history-arrow" />
+                  }
+                </div>
+              </div>
+            }
+          }
+        </div>
+
+        @if (recentClipboards().length > 0) {
+          <div class="drawer-footer-row">
+            <button type="button" class="clear-history-btn" (click)="clearHistory()">
+              {{ copy.historyDrawer.clearAll }}
+            </button>
+          </div>
+        }
+      }
+
+      <!-- Tab 2: Version History Revisions -->
+      @if (historyDrawerTab() === 'revisions') {
+        <div class="drawer-body-list revisions-list">
+          @if (isLoadingRevisions()) {
+            <div class="drawer-empty-state">
+              <span class="spinner-circle-sm" aria-hidden="true"></span>
+              <p>Loading version history...</p>
+            </div>
+          } @else if (textRevisions().length === 0) {
+            <div class="drawer-empty-state">
+              <ts-icon name="history" [size]="28" class="text-muted" />
+              <p>{{ copy.historyDrawer.versionsEmpty }}</p>
+            </div>
+          } @else {
+            @for (rev of textRevisions(); track rev.id) {
+              <div class="revision-item-card">
+                <div class="revision-card-header">
+                  <div class="revision-badge-row">
+                    <span class="revision-num-badge">#{{ rev.revisionNumber }}</span>
+                    <span class="revision-time">{{ getRelativeTimeString(rev.createdAt) }}</span>
+                  </div>
+                  @if (rev.isCurrent) {
+                    <span class="revision-current-badge">Current Version</span>
+                  } @else {
+                    <button 
+                      type="button" 
+                      class="revision-restore-btn"
+                      [disabled]="isRestoringRevision() === rev.id"
+                      (click)="restoreRevision(rev)"
+                      title="Restore this saved version"
+                    >
+                      @if (isRestoringRevision() === rev.id) {
+                        <span class="spinner-circle-xs mr-1" aria-hidden="true"></span>
+                      } @else {
+                        <ts-icon name="rotate-ccw" [size]="13" />
+                      }
+                      <span>{{ copy.historyDrawer.restore }}</span>
+                    </button>
+                  }
+                </div>
+                <div class="revision-meta-info">
+                  <span>{{ rev.charCount }} chars</span>
+                  <span class="meta-dot">•</span>
+                  <span>{{ rev.lineCount }} lines</span>
+                </div>
+                @if (rev.textPreview) {
+                  <p class="revision-preview-snippet">{{ rev.textPreview }}</p>
+                }
+              </div>
+            }
+          }
         </div>
       }
     </aside>
@@ -1360,6 +1914,19 @@
           <div class="confirm-header-text">
             <h3 class="confirm-dialog-title">{{ dialog.title }}</h3>
             <p class="confirm-dialog-message">{{ dialog.message }}</p>
+
+            @if (dialog.withInput) {
+              <div class="confirm-dialog-input-wrapper">
+                <input 
+                  type="text" 
+                  class="confirm-dialog-input" 
+                  [(ngModel)]="confirmDialogInput" 
+                  [placeholder]="dialog.inputPlaceholder || 'Enter clipboard ID...'"
+                  (keyup.enter)="dialog.onActionWithInput ? dialog.onActionWithInput(confirmDialogInput) : dialog.action(); confirmDialog.set(null)"
+                  autofocus
+                />
+              </div>
+            }
           </div>
         </div>
 
@@ -1371,13 +1938,72 @@
           >
             {{ dialog.cancelText || 'Cancel' }}
           </button>
+
+          @if (dialog.secondaryText && dialog.secondaryAction) {
+            <button 
+              type="button" 
+              class="confirm-secondary-btn" 
+              [class.btn-secondary-danger]="dialog.secondaryDestructive"
+              (click)="dialog.secondaryAction(); confirmDialog.set(null)"
+            >
+              {{ dialog.secondaryText }}
+            </button>
+          }
+
           <button 
             type="button" 
             class="confirm-action-btn"
             [class.btn-danger]="dialog.isDestructive"
-            (click)="dialog.action(); confirmDialog.set(null)"
+            (click)="dialog.withInput && dialog.onActionWithInput ? dialog.onActionWithInput(confirmDialogInput) : dialog.action(); confirmDialog.set(null)"
           >
             {{ dialog.confirmText || 'Confirm' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- CONFLICT COMPARISON MODAL (Side-by-Side Diff)               -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  @if (isComparingConflict()) {
+    <div class="modal-backdrop-blur" (click)="closeCompareConflict()">
+      <div class="compare-conflict-dialog" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Compare Versions">
+        <div class="compare-dialog-header">
+          <div class="compare-title-row">
+            <ts-icon name="git-compare" [size]="20" class="text-amber-500" />
+            <h3 class="compare-dialog-title">{{ copy.textTab.compareConflict }}</h3>
+          </div>
+          <button type="button" class="drawer-close-btn" (click)="closeCompareConflict()">
+            <ts-icon name="x" [size]="18" />
+          </button>
+        </div>
+
+        <div class="compare-dialog-body">
+          <div class="compare-pane mine-pane">
+            <div class="compare-pane-header">
+              <span class="compare-pane-badge is-mine">Your Local Edits (Unsaved)</span>
+              <button type="button" class="compare-use-btn is-primary" (click)="resolveConflictKeepMine()">
+                {{ copy.textTab.keepMine }}
+              </button>
+            </div>
+            <pre class="compare-content-box">{{ sharedText() }}</pre>
+          </div>
+
+          <div class="compare-pane server-pane">
+            <div class="compare-pane-header">
+              <span class="compare-pane-badge is-server">Server Confirmed Version</span>
+              <button type="button" class="compare-use-btn is-secondary" (click)="resolveConflictAcceptServer()">
+                {{ copy.textTab.acceptServer }}
+              </button>
+            </div>
+            <pre class="compare-content-box">{{ conflictServerText() }}</pre>
+          </div>
+        </div>
+
+        <div class="compare-dialog-footer">
+          <button type="button" class="confirm-cancel-btn" (click)="closeCompareConflict()">
+            Close
           </button>
         </div>
       </div>

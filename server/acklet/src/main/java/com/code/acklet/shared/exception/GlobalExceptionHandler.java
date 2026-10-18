@@ -35,7 +35,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationException(MethodArgumentNotValidException ex) {
-        log.warn("Validation failed [traceId={}]: {} errors -> {} ", getTraceId(), ex.getBindingResult().getErrorCount(),ex.getMessage());
+        log.warn("Validation failed [traceId={}]: {} errors", getTraceId(), ex.getBindingResult().getErrorCount());
         
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
@@ -69,49 +69,38 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
     }
 
-    @ExceptionHandler({
-            org.apache.catalina.connector.ClientAbortException.class,
-            org.springframework.web.context.request.async.AsyncRequestNotUsableException.class
-    })
-    public void handleClientAbortException(Exception ex) {
-        log.debug("[GlobalExceptionHandler] 🔌 Client disconnected or aborted stream connection [traceId={}]: {}",
-                getTraceId(), ex.getMessage());
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalStateException(IllegalStateException ex) {
+        log.warn("Conflict/State exception [traceId={}]: {}", getTraceId(), ex.getMessage());
+        ApiResponse<Void> response = ApiResponse.error(ex.getMessage(), getTraceId());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
-    @ExceptionHandler(java.io.IOException.class)
-    public ResponseEntity<ApiResponse<Void>> handleIOException(java.io.IOException ex, jakarta.servlet.http.HttpServletResponse response) {
-        String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
-        if (msg.contains("broken pipe") || msg.contains("connection reset") || msg.contains("connection closed") || msg.contains("aborted")) {
-            log.debug("[GlobalExceptionHandler] 🔌 Client socket closed during transfer [traceId={}]: {}", getTraceId(), ex.getMessage());
-            return null;
-        }
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        log.warn("Illegal argument exception [traceId={}]: {}", getTraceId(), ex.getMessage());
+        ApiResponse<Void> response = ApiResponse.error(ex.getMessage(), getTraceId());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
 
-        if (response.isCommitted()) {
-            log.warn("[GlobalExceptionHandler] ⚠️ IOException occurred after response was committed [traceId={}]: {}", getTraceId(), ex.getMessage());
-            return null;
-        }
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSecurityException(SecurityException ex) {
+        log.warn("Security exception [traceId={}]: {}", getTraceId(), ex.getMessage());
+        ApiResponse<Void> response = ApiResponse.error(ex.getMessage(), getTraceId());
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
 
-        log.error("IO exception caught [traceId={}]: ", getTraceId(), ex);
-        ApiResponse<Void> apiResponse = ApiResponse.error("An IO error occurred while processing the request.", getTraceId());
-        return new ResponseEntity<>(apiResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOptimisticLockingFailureException(org.springframework.dao.OptimisticLockingFailureException ex) {
+        log.warn("Optimistic locking conflict [traceId={}]: {}", getTraceId(), ex.getMessage());
+        ApiResponse<Void> response = ApiResponse.error("Conflict: The clipboard was updated by another session. Please reload to see the latest version.", getTraceId());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleAllUncaughtException(Exception ex, jakarta.servlet.http.HttpServletResponse response) {
-        String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
-        if (msg.contains("broken pipe") || msg.contains("connection reset") || msg.contains("clientabort") || msg.contains("asyncnotusable")) {
-            log.debug("[GlobalExceptionHandler] 🔌 Client disconnected mid-transfer [traceId={}]: {}", getTraceId(), ex.getMessage());
-            return null;
-        }
-
-        if (response.isCommitted()) {
-            log.warn("[GlobalExceptionHandler] ⚠️ Uncaught exception occurred on already-committed response [traceId={}]: {}",
-                    getTraceId(), ex.getMessage());
-            return null;
-        }
-
-        log.error("Unhandled exception caught [traceId={}]: ", getTraceId(), ex);
-        ApiResponse<Void> apiResponse = ApiResponse.error("An unexpected error occurred. Please contact support.", getTraceId());
-        return new ResponseEntity<>(apiResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    public ResponseEntity<ApiResponse<Void>> handleAllUncaughtException(Exception ex) {
+        log.error("Unhandled exception caught [traceId={}]:", getTraceId(), ex);
+        ApiResponse<Void> response = ApiResponse.error("An unexpected error occurred. Please contact support.", getTraceId());
+        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }
