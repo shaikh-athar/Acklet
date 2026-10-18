@@ -69,6 +69,34 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalStateException(IllegalStateException ex) {
+        log.warn("Conflict/State exception [traceId={}]: {}", getTraceId(), ex.getMessage());
+        ApiResponse<Void> response = ApiResponse.error(ex.getMessage(), getTraceId());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        log.warn("Illegal argument exception [traceId={}]: {}", getTraceId(), ex.getMessage());
+        ApiResponse<Void> response = ApiResponse.error(ex.getMessage(), getTraceId());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSecurityException(SecurityException ex) {
+        log.warn("Security exception [traceId={}]: {}", getTraceId(), ex.getMessage());
+        ApiResponse<Void> response = ApiResponse.error(ex.getMessage(), getTraceId());
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOptimisticLockingFailureException(org.springframework.dao.OptimisticLockingFailureException ex) {
+        log.warn("Optimistic locking conflict [traceId={}]: {}", getTraceId(), ex.getMessage());
+        ApiResponse<Void> response = ApiResponse.error("Conflict: The clipboard was updated by another session. Please reload to see the latest version.", getTraceId());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleAllUncaughtException(Exception ex) {
         log.error("Unhandled exception caught [traceId={}]:", getTraceId(), ex);

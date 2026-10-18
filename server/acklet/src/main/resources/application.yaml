@@ -22,6 +22,20 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    out-of-order: true
+    ignore-migration-patterns: "*:ignored"
+
+  # Multipart upload limits
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 200MB
+      max-request-size: 500MB
+
+server:
+  tomcat:
+    max-swallow-size: 500MB
+    max-http-form-post-size: 500MB
 
 # Base Logging settings
 logging:

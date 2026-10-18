@@ -22,6 +22,8 @@ public class ClipboardShareDto {
     private Boolean liveMode;
     private Boolean hasPin;
     @Builder.Default
+    private Long version = 1L;
+    @Builder.Default
     private List<ClipboardItemDto> items = new ArrayList<>();
     @Builder.Default
     private int textCount = 0;

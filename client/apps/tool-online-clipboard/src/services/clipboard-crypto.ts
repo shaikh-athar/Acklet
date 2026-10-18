@@ -1,5 +1,37 @@
 export class ClipboardCrypto {
   /**
+   * Derives a deterministic AES-GCM key from room code and fixed salt
+   */
+  static async deriveKeyFromCode(code: string): Promise<string> {
+    if (typeof window === 'undefined' || !window.crypto || !window.crypto.subtle || !code) {
+      return '';
+    }
+    const encoder = new TextEncoder();
+    const keyMaterial = await window.crypto.subtle.importKey(
+      'raw',
+      encoder.encode(`acklet-clipboard:${code.trim().toLowerCase()}`),
+      { name: 'PBKDF2' },
+      false,
+      ['deriveKey']
+    );
+    const salt = encoder.encode('acklet-salt-e2ee-room-v1');
+    const derivedKey = await window.crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: salt,
+        iterations: 10000,
+        hash: 'SHA-256'
+      },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    );
+    const exported = await window.crypto.subtle.exportKey('raw', derivedKey);
+    return this.bufferToBase64(new Uint8Array(exported));
+  }
+
+  /**
    * Generates a random 256-bit AES-GCM key as a base64url string
    */
   static async generateKey(): Promise<string> {
@@ -39,23 +71,51 @@ export class ClipboardCrypto {
   /**
    * Decrypts AES-GCM ciphertext back into plain string
    */
-  static async decryptText(encryptedJson: string, keyBase64: string): Promise<string> {
-    if (!keyBase64 || !encryptedJson.startsWith('{"iv":')) return encryptedJson;
-    try {
-      const parsed = JSON.parse(encryptedJson);
-      const key = await this.importKey(keyBase64);
-      const iv = this.base64ToBuffer(parsed.iv);
-      const ciphertext = this.base64ToBuffer(parsed.data);
+  static async decryptText(encryptedJson: string, keyBase64: string, fallbackCode?: string): Promise<string> {
+    if (!encryptedJson || !encryptedJson.startsWith('{"iv":')) return encryptedJson;
+    
+    // Attempt 1: Decrypt with provided key
+    if (keyBase64) {
+      try {
+        const parsed = JSON.parse(encryptedJson);
+        const key = await this.importKey(keyBase64);
+        const iv = this.base64ToBuffer(parsed.iv);
+        const ciphertext = this.base64ToBuffer(parsed.data);
 
-      const decrypted = await window.crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: iv as unknown as Uint8Array<ArrayBuffer> },
-        key,
-        ciphertext as unknown as Uint8Array<ArrayBuffer>
-      );
-      return new TextDecoder().decode(decrypted);
-    } catch (e) {
-      return '[Encrypted snippet - key required or invalid]';
+        const decrypted = await window.crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: iv as unknown as Uint8Array<ArrayBuffer> },
+          key,
+          ciphertext as unknown as Uint8Array<ArrayBuffer>
+        );
+        return new TextDecoder().decode(decrypted);
+      } catch (e) {
+        // Fall through to fallback code attempt if available
+      }
     }
+
+    // Attempt 2: If key was missing or failed, attempt code-derived key
+    if (fallbackCode) {
+      try {
+        const derivedKey = await this.deriveKeyFromCode(fallbackCode);
+        if (derivedKey) {
+          const parsed = JSON.parse(encryptedJson);
+          const key = await this.importKey(derivedKey);
+          const iv = this.base64ToBuffer(parsed.iv);
+          const ciphertext = this.base64ToBuffer(parsed.data);
+
+          const decrypted = await window.crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: iv as unknown as Uint8Array<ArrayBuffer> },
+            key,
+            ciphertext as unknown as Uint8Array<ArrayBuffer>
+          );
+          return new TextDecoder().decode(decrypted);
+        }
+      } catch (e) {
+        // Fall through
+      }
+    }
+
+    return '';
   }
 
   /**

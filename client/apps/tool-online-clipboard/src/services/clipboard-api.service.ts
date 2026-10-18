@@ -1,6 +1,5 @@
-// apps/tool-online-clipboard/src/services/clipboard-api.service.ts
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpEvent } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { environment } from '../environments/environment';
@@ -42,11 +41,26 @@ export interface ClipboardShare {
   burnAfterReading?: boolean;
   liveMode?: boolean;
   hasPin?: boolean;
+  version?: number;
   items: ClipboardItem[];
   textCount: number;
   imageCount: number;
   fileCount: number;
   totalSizeBytes: number;
+}
+
+export interface ClipboardTextRevision {
+  id: string;
+  shareCode: string;
+  version: number;
+  textContent: string;
+  isEncrypted?: boolean;
+  createdAt: string;
+  revisionNumber?: number;
+  textPreview?: string;
+  charCount?: number;
+  lineCount?: number;
+  isCurrent?: boolean;
 }
 
 export interface CreateShareOptions {
@@ -64,14 +78,15 @@ export interface UploadSessionResponse {
   totalSize: number;
   chunkSize: number;
   totalChunks: number;
-  uploadedChunks: number;
+  uploadedChunks: number[];
+  isComplete?: boolean;
   expiresAt: string;
 }
 
 export interface UploadChunkResponse {
   chunkNumber: number;
   totalChunks: number;
-  uploadedChunks: number;
+  uploadedChunks: number[];
   isComplete: boolean;
 }
 
@@ -155,27 +170,62 @@ export class ClipboardApiService {
     const pinParam = pin ? `?pin=${encodeURIComponent(pin)}` : '';
     return this.http.get<ApiResponse<ClipboardShare>>(`${this.baseUrl}/shares/${clean}${pinParam}`).pipe(
       map(res => res.data),
-      catchError(() => {
-        const mock = this.getOrCreateMockShare(clean);
-        return of(mock);
+      catchError(err => {
+        if (err.status === 0) {
+          const mock = this.getOrCreateMockShare(clean);
+          return of(mock);
+        }
+        throw err;
       })
     );
   }
 
-  addTextItem(code: string, text: string, ownerToken?: string, isEncrypted = false): Observable<ClipboardItem> {
+  renameShare(currentCode: string, newCode: string, ownerToken?: string): Observable<ClipboardShare> {
+    let headers = new HttpHeaders();
+    if (ownerToken) {
+      headers = headers.set('X-Owner-Token', ownerToken);
+    }
+    const cleanCurrent = currentCode.trim().toLowerCase();
+    const cleanNew = newCode.trim().toLowerCase();
+    return this.http.post<ApiResponse<ClipboardShare>>(
+      `${this.baseUrl}/shares/${cleanCurrent}/rename?newCode=${encodeURIComponent(cleanNew)}`,
+      {},
+      { headers }
+    ).pipe(
+      map(res => res.data)
+    );
+  }
+
+  checkCodeAvailability(code: string): Observable<boolean> {
+    const clean = code.trim().toLowerCase();
+    return this.http.get<ApiResponse<boolean>>(`${this.baseUrl}/shares/${clean}/available`).pipe(
+      map(res => res.data),
+      catchError(() => of(false))
+    );
+  }
+
+  addTextItem(code: string, text: string, ownerToken?: string, isEncrypted = false, expectedVersion?: number): Observable<ClipboardItem> {
     let headers = new HttpHeaders();
     if (ownerToken) {
       headers = headers.set('X-Owner-Token', ownerToken);
     }
     const clean = code.trim().toLowerCase();
+    const payload: { text: string; expectedVersion?: number } = { text };
+    if (expectedVersion !== undefined && expectedVersion !== null) {
+      payload.expectedVersion = expectedVersion;
+    }
     return this.http.post<ApiResponse<ClipboardItem>>(
       `${this.baseUrl}/shares/${clean}/text?isEncrypted=${isEncrypted}`,
-      { text },
+      payload,
       { headers }
     ).pipe(
       map(res => res.data),
-      catchError(() => {
-        // Update mock store
+      catchError(err => {
+        // If 409 Conflict, rethrow so component can handle optimistic lock conflict
+        if (err.status === 409) {
+          throw err;
+        }
+        // Update mock store for offline/development fallback
         const share = this.getOrCreateMockShare(clean);
         const existingIdx = share.items.findIndex(i => i.itemType === 'TEXT' || i.itemType === 'LINK');
         const item: ClipboardItem = {
@@ -195,8 +245,87 @@ export class ClipboardApiService {
           share.items.unshift(item);
           share.textCount++;
         }
+        share.version = (share.version || 1) + 1;
         return of(item);
       })
+    );
+  }
+
+  /**
+   * Transmits text content immediately using fetch with keepalive: true to survive tab closure
+   * and page reloads without showing native browser confirmation dialogs.
+   */
+  saveTextOnSuddenExit(code: string, text: string, ownerToken?: string, isEncrypted = false, expectedVersion?: number): void {
+    const clean = code.trim().toLowerCase();
+    const url = `${this.baseUrl}/shares/${clean}/text?isEncrypted=${isEncrypted}`;
+    const payload: { text: string; expectedVersion?: number } = { text };
+    if (expectedVersion !== undefined && expectedVersion !== null) {
+      payload.expectedVersion = expectedVersion;
+    }
+    const body = JSON.stringify(payload);
+
+    // Update local mock store for dev fallback
+    const share = this.getOrCreateMockShare(clean);
+    const existingIdx = share.items.findIndex(i => i.itemType === 'TEXT' || i.itemType === 'LINK');
+    const item: ClipboardItem = {
+      id: `item_${Date.now()}`,
+      shareCode: clean,
+      itemType: 'TEXT',
+      textContent: text,
+      sizeBytes: new Blob([text]).size,
+      createdAt: new Date().toISOString(),
+      downloadCount: 0,
+      viewCount: 1,
+      isEncrypted
+    };
+    if (existingIdx >= 0) {
+      share.items[existingIdx] = item;
+    } else {
+      share.items.unshift(item);
+      share.textCount++;
+    }
+    share.version = (share.version || 1) + 1;
+
+    try {
+      if (typeof fetch !== 'undefined') {
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
+        if (ownerToken) {
+          headers['X-Owner-Token'] = ownerToken;
+        }
+        fetch(url, {
+          method: 'POST',
+          headers,
+          body,
+          keepalive: true
+        }).catch(() => {});
+      }
+    } catch (_) {}
+  }
+
+  getTextRevisions(code: string): Observable<ClipboardTextRevision[]> {
+    const clean = code.trim().toLowerCase();
+    return this.http.get<ApiResponse<ClipboardTextRevision[]>>(
+      `${this.baseUrl}/shares/${clean}/revisions`
+    ).pipe(
+      map(res => res.data),
+      catchError(() => of([]))
+    );
+  }
+
+  restoreTextRevision(code: string, revisionId: string, ownerToken?: string): Observable<ClipboardItem> {
+    let headers = new HttpHeaders();
+    if (ownerToken) {
+      headers = headers.set('X-Owner-Token', ownerToken);
+    }
+    const clean = code.trim().toLowerCase();
+    return this.http.post<ApiResponse<ClipboardItem>>(
+      `${this.baseUrl}/shares/${clean}/revisions/${revisionId}/restore`,
+      {},
+      { headers }
+    ).pipe(
+      map(res => res.data)
     );
   }
 
@@ -218,8 +347,34 @@ export class ClipboardApiService {
     );
   }
 
+  uploadFileWithProgress(
+    code: string,
+    file: File,
+    isImage: boolean,
+    ownerToken?: string,
+    isEncrypted = false,
+    contentHash?: string
+  ): Observable<HttpEvent<ApiResponse<ClipboardItem>>> {
+    let headers = new HttpHeaders();
+    if (ownerToken) {
+      headers = headers.set('X-Owner-Token', ownerToken);
+    }
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+
+    const clean = code.trim().toLowerCase();
+    const hashParam = contentHash ? `&contentHash=${encodeURIComponent(contentHash)}` : '';
+    const url = `${this.baseUrl}/shares/${clean}/files?isImage=${isImage}&isEncrypted=${isEncrypted}${hashParam}`;
+
+    return this.http.post<ApiResponse<ClipboardItem>>(url, formData, {
+      headers,
+      reportProgress: true,
+      observe: 'events'
+    });
+  }
+
   // Chunked Upload API
-  initChunkedUpload(code: string, fileName: string, totalSize: number, chunkSize: number, totalChunks: number, isImage: boolean, isEncrypted = false, ownerToken?: string): Observable<UploadSessionResponse> {
+  initChunkedUpload(code: string, fileName: string, totalSize: number, chunkSize: number, totalChunks: number, isImage: boolean, isEncrypted = false, ownerToken?: string, fileHash?: string): Observable<UploadSessionResponse> {
     let headers = new HttpHeaders();
     if (ownerToken) {
       headers = headers.set('X-Owner-Token', ownerToken);
@@ -227,7 +382,7 @@ export class ClipboardApiService {
     const clean = code.trim().toLowerCase();
     return this.http.post<ApiResponse<UploadSessionResponse>>(
       `${this.baseUrl}/shares/${clean}/uploads/init`,
-      { fileName, totalSize, chunkSize, totalChunks, isImage, isEncrypted },
+      { fileName, totalSize, chunkSize, totalChunks, isImage, isEncrypted, fileHash },
       { headers }
     ).pipe(
       map(res => res.data)

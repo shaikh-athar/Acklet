@@ -768,6 +768,9 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
     }
 
     @media (max-width: 1023px) {
+      :host {
+        display: contents !important;
+      }
       .hide-mobile {
         display: none !important;
       }
@@ -845,10 +848,14 @@ export class TsSidebarComponent {
     return links;
   });
 
+
   @HostListener('document:keydown.escape')
   onEscape(): void {
     if (this.sidebarService.isMobileDrawerOpen()) {
       this.sidebarService.closeMobileDrawer();
+    }
+    if (!this.sidebarService.isCollapsed()) {
+      this.sidebarService.isCollapsed.set(true);
     }
   }
 

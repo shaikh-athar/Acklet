@@ -30,6 +30,7 @@ import {
   LucideRuler,
   LucideFileCode,
   LucideClock,
+  LucideImages,
   LucideClock4,
   LucidePalette,
   LucideScanText,
@@ -226,6 +227,7 @@ export class IconComponent {
     'panel-left-open': LucidePanelLeftOpen,
     'layout-dashboard': LucideLayoutDashboard,
     list: LucideList,
+    images: LucideImages,
   };
 
   readonly lucideIconComponent = computed(() => {

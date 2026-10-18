@@ -6,49 +6,66 @@
   <component name="ChangeListManager">
     <list default="true" id="8cc24f72-cf76-4714-94a5-20cada12dd6d" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/../../.agents/AGENTS.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../.agents/AGENTS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../.agents/rules/security.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../.agents/rules/security.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../.agents/rules/surfaces.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../.agents/rules/surfaces.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../.agents/rules/tools-ui.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../.agents/rules/tools-ui.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../.agents/workflows/tools.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../.agents/workflows/tools.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/../../.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/angular.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/angular.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/app/app.component.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/app/app.component.spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/PROMPT-TEMPLATE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/SESSION_FAILURES.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/SKILL.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/agents/coordinator.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/agents/explore.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/agents/general.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/agents/plan.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/agents/verify.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/references/delegation.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/references/model-routing.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/references/reasoning.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/references/reconnaissance.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/references/recovery.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/references/task-contract.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/references/verification.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/resources/adversarial-critique.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/resources/anti-rationalization.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/resources/context-management.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/resources/gemini-native.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/resources/memory-protocol.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/resources/persona-protocol.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/resources/subagent-patterns.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/resources/tool-orchestration.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/resources/verification-engine.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/scripts/detect_project.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/scripts/doctor.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/scripts/run-checks.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/scripts/verify.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.agents/skills/gravitas/scripts/verify.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/app/app.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/app/app.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard-features.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard-features.spec.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard.component.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard.component.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard.component.html" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard.component.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard.component.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard.config.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard.copy.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/clipboard.copy.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/services/clipboard-api.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/services/clipboard-api.service.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/services/clipboard-crypto.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/services/clipboard-crypto.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/services/clipboard-history.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/services/clipboard-history.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/services/clipboard-sync.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/services/clipboard-sync.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/styles.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/packages/tool-registry/src/tools.manifest.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-registry/src/tools.manifest.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/about-modal/ts-about-panel.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/about-modal/ts-about-panel.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/icon/ts-icon-map.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/icon/ts-icon-map.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/shell/ts-shell.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/shell/ts-shell.component.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/styles/base.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/styles/base.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/styles/tokens.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/styles/tokens.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/services/admin.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/services/admin.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/services/auth.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/services/auth.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/services/blog.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/services/blog.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/services/community.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/services/community.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/services/github.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/services/github.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/services/notification.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/services/notification.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/services/publisher.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/services/publisher.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/services/reviews.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/services/reviews.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/services/tools.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/services/tools.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/app/core/services/workspace-state.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/core/services/workspace-state.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/workspace/projects/publish-preview/publish-preview.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/workspace/projects/publish-preview/publish-preview.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/app/pages/workspace/projects/publish-wizard/publish-wizard.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/pages/workspace/projects/publish-wizard/publish-wizard.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/sidebar/ts-sidebar.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/sidebar/ts-sidebar.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/shared/components/icon/icon.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/shared/components/icon/icon.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/src/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/styles.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/vite.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/vite.config.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../docs/build-configuration.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/build-configuration.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/integration-and-reliability.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/integration-and-reliability.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../docs/online-clipboard.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/online-clipboard.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../docs/performance-optimization.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/performance-optimization.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/security/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/security/SecurityConfig.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/repository/ToolRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/repository/ToolRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/service/ToolService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/service/ToolService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/AckletApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/AckletApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/exception/GlobalExceptionHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/exception/GlobalExceptionHandler.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/clipboard/controller/ClipboardController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/clipboard/controller/ClipboardController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/clipboard/dto/ClipboardItemDto.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/clipboard/dto/ClipboardItemDto.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/clipboard/dto/AddTextRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/clipboard/dto/AddTextRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/clipboard/dto/ClipboardShareDto.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/clipboard/dto/ClipboardShareDto.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/clipboard/service/ClipboardService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/clipboard/service/ClipboardService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/application-prod.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application-prod.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/application.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
