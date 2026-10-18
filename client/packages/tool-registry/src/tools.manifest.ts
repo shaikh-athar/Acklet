@@ -22,6 +22,7 @@ export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
     order: 1,
     subdomain: 'clipboard',
     executionMode: 'browser',
+    layout: 'fullBleed',
     addedAt: '2026-01-15',
     updatedAt: '2026-10-07',
     accent: 'teal',

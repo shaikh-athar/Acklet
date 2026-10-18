@@ -5,4 +5,5 @@ import lombok.Data;
 @Data
 public class AddTextRequest {
     private String text;
+    private Long expectedVersion;
 }

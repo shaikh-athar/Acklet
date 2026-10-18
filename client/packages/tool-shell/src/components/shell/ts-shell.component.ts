@@ -360,6 +360,8 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
     /* Main Content Card: Glass card with --ts-b1/b2 alpha tokens */
     .ts-main-content-card {
       position: relative;
+      display: flex;
+      flex-direction: column;
       height: 100%;
       min-height: 0;
       min-width: 0;
@@ -410,8 +412,15 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
 
     .ts-main-scroll-container.full-bleed {
       max-width: 100%;
-      padding: 0;
-      gap: 0;
+      height: 100%;
+      max-height: 100%;
+      min-height: 0;
+      flex: 1 1 0%;
+      padding: 0 !important;
+      gap: 0 !important;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
 
     /* ══ WORKSPACE SECTION: Desktop One-Screen Workspace ══ */
@@ -425,6 +434,11 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
 
     .ts-workspace-section.full-bleed {
       height: 100%;
+      max-height: 100%;
+      min-height: 0;
+      flex: 1 1 0%;
+      display: flex;
+      flex-direction: column;
     }
 
     @media (min-width: 1024px) and (min-height: 600px) {
@@ -460,12 +474,17 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
     }
 
     .ts-workspace-grid.full-bleed {
-      display: block;
+      height: 100%;
+      max-height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 0%;
       gap: 0;
     }
 
     @container main-card (max-width: 599px) {
-      .ts-main-scroll-container {
+      .ts-main-scroll-container:not(.full-bleed) {
         padding: 16px;
         gap: 16px;
       }
@@ -489,11 +508,17 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
     }
 
     .ts-tool-card-surface.full-bleed {
-      background: transparent;
-      border: none;
-      border-radius: 0;
-      padding: 0;
-      box-shadow: none;
+      height: 100%;
+      max-height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 0%;
+      background: transparent !important;
+      border: none !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+      box-shadow: none !important;
     }
 
     /* Cleanly hide duplicate header & trust chips if present in tool child template */
@@ -533,7 +558,7 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
       }
       to {
         opacity: 1;
-        transform: translateY(0);
+        transform: none;
       }
     }
 
@@ -576,6 +601,9 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
     }
 
     @media (max-width: 1023px) {
+      ts-sidebar {
+        display: contents !important;
+      }
       .ts-bottom-row-grid,
       .ts-bottom-row-grid.no-sidebar {
         grid-template-columns: 1fr;
@@ -605,11 +633,11 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
       .ts-main-content-card {
         border-radius: 16px;
       }
-      .ts-main-scroll-container {
+      .ts-main-scroll-container:not(.full-bleed) {
         padding: 16px;
         gap: 16px;
       }
-      .ts-tool-card-surface {
+      .ts-tool-card-surface:not(.full-bleed) {
         padding: 16px;
         border-radius: 16px;
       }
