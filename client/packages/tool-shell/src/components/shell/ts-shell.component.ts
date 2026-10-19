@@ -108,11 +108,9 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
               </div>
 
               <!-- 4. BELOW the grid, full width: About, How to use, FAQ, Related -->
-              @if (!isFullBleed()) {
-                <div class="ts-content-below-grid ts-entry-content">
-                  <ts-tool-content [tool]="tool()" />
-                </div>
-              }
+              <div class="ts-content-below-grid ts-entry-content">
+                <ts-tool-content [tool]="tool()" />
+              </div>
 
               <!-- About & Documentation Card Below Tool -->
               @if (showDescriptionCard() && tool()) {
@@ -406,21 +404,22 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: contain;
       scroll-behavior: smooth;
-      transform: translateZ(0);
-      will-change: scroll-position;
     }
 
     .ts-main-scroll-container.full-bleed {
       max-width: 100%;
       height: 100%;
-      max-height: 100%;
       min-height: 0;
       flex: 1 1 0%;
       padding: 0 !important;
       gap: 0 !important;
-      overflow: hidden;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      scroll-behavior: smooth !important;
       display: flex;
       flex-direction: column;
+      overscroll-behavior-y: contain;
+      -webkit-overflow-scrolling: touch;
     }
 
     /* ══ WORKSPACE SECTION: Desktop One-Screen Workspace ══ */
@@ -433,10 +432,9 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
     }
 
     .ts-workspace-section.full-bleed {
+      min-height: 100%;
       height: 100%;
-      max-height: 100%;
-      min-height: 0;
-      flex: 1 1 0%;
+      flex-shrink: 0;
       display: flex;
       flex-direction: column;
     }
@@ -542,6 +540,19 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
       width: 100%;
       min-width: 0;
       margin-top: 8px;
+    }
+
+    .ts-main-scroll-container.full-bleed .ts-content-below-grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+      box-sizing: border-box;
+    }
+
+    @media (max-width: 767px) {
+      .ts-main-scroll-container.full-bleed .ts-content-below-grid {
+        padding: 24px 16px 80px;
+      }
     }
 
     .ts-tool-description-section {

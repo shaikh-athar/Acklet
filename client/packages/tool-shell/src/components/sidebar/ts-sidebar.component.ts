@@ -190,13 +190,13 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
               <div class="ts-sheet-section-title">This Tool</div>
               <div class="ts-sheet-section-pills">
                 @for (sec of sectionLinks(); track sec.id) {
-                  <a 
-                    [href]="'#' + sec.id" 
+                  <button 
+                    type="button" 
                     class="ts-sheet-section-pill"
-                    (click)="sidebarService.closeMobileDrawer()"
+                    (click)="scrollToSection($event, sec.id)"
                   >
                     {{ sec.label }}
-                  </a>
+                  </button>
                 }
               </div>
             </div>
@@ -688,6 +688,8 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
       color: var(--text, #18181B);
       font-size: 13px;
       font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
       text-decoration: none;
       transition: background-color 150ms ease, color 150ms ease;
     }
@@ -847,6 +849,61 @@ export class TsSidebarComponent {
     }
     return links;
   });
+
+  scrollToSection(event: MouseEvent, sectionId: string): void {
+    event.preventDefault();
+    this.sidebarService.closeMobileDrawer();
+
+    if (typeof document === 'undefined') return;
+
+    const performScroll = () => {
+      const scrollContainer = (document.querySelector('.ts-main-scroll-container') || document.getElementById('main-content')) as HTMLElement | null;
+
+      if (sectionId === 'tool') {
+        if (scrollContainer) {
+          scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          const toolEl = document.getElementById('tool');
+          if (toolEl) {
+            toolEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        }
+        return;
+      }
+
+      const targetEl = document.getElementById(sectionId);
+      if (targetEl) {
+        if (scrollContainer) {
+          const containerRect = scrollContainer.getBoundingClientRect();
+          const targetRect = targetEl.getBoundingClientRect();
+          const scrollOffset = targetRect.top - containerRect.top + scrollContainer.scrollTop;
+          scrollContainer.scrollTo({
+            top: Math.max(0, scrollOffset - 24),
+            behavior: 'smooth'
+          });
+        } else {
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      } else {
+        setTimeout(() => {
+          const retryEl = document.getElementById(sectionId);
+          if (retryEl && scrollContainer) {
+            const containerRect = scrollContainer.getBoundingClientRect();
+            const targetRect = retryEl.getBoundingClientRect();
+            const scrollOffset = targetRect.top - containerRect.top + scrollContainer.scrollTop;
+            scrollContainer.scrollTo({
+              top: Math.max(0, scrollOffset - 24),
+              behavior: 'smooth'
+            });
+          }
+        }, 100);
+      }
+    };
+
+    setTimeout(performScroll, 50);
+  }
 
 
   @HostListener('document:keydown.escape')

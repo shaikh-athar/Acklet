@@ -708,7 +708,7 @@
   overflow: hidden;
   padding: 0;
   box-sizing: border-box;
-  overscroll-behavior-y: contain;
+  overscroll-behavior-y: auto;
   scrollbar-width: thin;
   display: flex;
   flex-direction: column;
