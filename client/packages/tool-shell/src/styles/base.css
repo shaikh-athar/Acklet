@@ -1,0 +1,147 @@
+/* packages/tool-shell/src/styles/base.css */
+@import "./tokens.css";
+@import "./motion.css";
+
+/* ══ ROOT RESET & FULL VIEWPORT LOCK ═════════════════════════════ */
+.ts-root {
+  isolation: isolate;
+  box-sizing: border-box;
+  font-family: var(--ts-font-sans);
+  font-size: var(--ts-text-base);
+  color: var(--ts-text);
+  background-color: var(--ts-bg);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  position: relative;
+}
+
+.ts-root *,
+.ts-root *::before,
+.ts-root *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ══ HEADINGS & TITLES (Differentiated by sizing & weight in DM Sans) ══ */
+.ts-root h1,
+.ts-root h2,
+.ts-root h3,
+.ts-root .ts-heading {
+  font-family: var(--ts-font-heading);
+  font-optical-sizing: auto;
+  font-style: normal;
+  letter-spacing: var(--ts-tracking-tight);
+}
+
+/* ══ BUTTON / ICON INTERACTION RULES (No border/outline on mouse click/hover) ══ */
+.ts-root button,
+.ts-root .ts-btn,
+.ts-root .ts-icon-btn,
+.ts-root .ts-action-btn {
+  outline: none !important;
+  border: none;
+  border-radius: var(--ts-radius-md, 12px);
+  cursor: pointer;
+  transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
+              color var(--ts-dur-fast, 150ms) var(--ts-ease);
+}
+
+.ts-root button:hover,
+.ts-root .ts-btn:hover,
+.ts-root .ts-icon-btn:hover,
+.ts-root .ts-action-btn:hover {
+  background: var(--surface-hover, var(--ts-raised));
+  outline: none !important;
+}
+
+.ts-root button:active,
+.ts-root .ts-btn:active,
+.ts-root .ts-icon-btn:active,
+.ts-root .ts-action-btn:active {
+  background: var(--ts-raised-hover);
+  outline: none !important;
+}
+
+/* ══ KEYBOARD FOCUS VISIBLE ONLY (2px offset ring, never on mouse click) ══ */
+.ts-root *:focus-visible {
+  outline: 2px solid var(--ts-focus-ring) !important;
+  outline-offset: 2px !important;
+}
+
+.ts-root *:focus:not(:focus-visible) {
+  outline: none !important;
+}
+
+/* ══ CUSTOM SCROLLBARS ═════════════════════════════════════════ */
+.ts-root ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.ts-root ::-webkit-scrollbar-track {
+  background: var(--ts-scrollbar-track);
+}
+
+.ts-root ::-webkit-scrollbar-thumb {
+  background: var(--ts-scrollbar-thumb);
+  border-radius: var(--ts-radius-full);
+  transition: background-color var(--ts-dur-base) var(--ts-ease);
+}
+
+.ts-root ::-webkit-scrollbar-thumb:hover {
+  background: var(--ts-scrollbar-thumb-hover);
+}
+
+/* Firefox scrollbar */
+.ts-root * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ts-scrollbar-thumb) var(--ts-scrollbar-track);
+}
+
+/* ══ TYPOGRAPHY HELPERS ═════════════════════════════════════════ */
+.ts-font-mono {
+  font-family: var(--ts-font-mono);
+}
+
+.ts-text-muted {
+  color: var(--ts-text-muted);
+}
+
+.ts-text-subtle {
+  color: var(--ts-text-subtle);
+}
+
+.ts-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ts-space-1);
+  padding: 2px 8px;
+  font-size: var(--ts-text-xs);
+  font-weight: 500;
+  border-radius: var(--ts-radius-full);
+  background: var(--ts-raised);
+  color: var(--ts-text-muted);
+  border: 1px solid var(--ts-border);
+}
+
+/* ══ TOOLTIP BUBBLE ══════════════════════════════════════════════ */
+.ts-tooltip-bubble {
+  position: fixed;
+  z-index: 3000;
+  padding: 4px 8px;
+  border-radius: var(--ts-radius-sm, 8px);
+  background: var(--ts-raised);
+  border: 1px solid var(--ts-border);
+  color: var(--ts-text);
+  font-size: var(--ts-text-xs, 12px);
+  font-family: var(--ts-font-sans);
+  pointer-events: none;
+  box-shadow: var(--ts-shadow-md);
+  opacity: 0;
+  transition: opacity var(--ts-dur-base) var(--ts-ease);
+}

@@ -1,0 +1,723 @@
+<div class="clipboard-container">
+
+  <!-- 1. Page Title & Explainer -->
+  <header class="tool-header-block">
+    <h1 class="tool-page-title">Online Clipboard</h1>
+    <p class="tool-page-subtitle">Send text or files to another device with a 5-digit code.</p>
+  </header>
+
+  <!-- 2. Trust Information Chips Row -->
+  <div class="trust-chips-row" aria-label="Tool specifications and privacy">
+    <div class="trust-chip" title="Maximum file upload limit">
+      <lib-tool-icon name="upload-cloud" class="size-4 text-current" />
+      <span class="trust-chip-label">Max File Size:</span>
+      <span class="trust-chip-value">200 MB</span>
+    </div>
+    <div class="trust-chip" title="Automatic storage retention">
+      <lib-tool-icon name="clock" class="size-4 text-current" />
+      <span class="trust-chip-label">Auto Delete:</span>
+      <span class="trust-chip-value">7 Days</span>
+    </div>
+    <div class="trust-chip" title="Instant usage with no registration">
+      <lib-tool-icon name="check-circle" class="size-4 text-current" />
+      <span class="trust-chip-label">Sign-up:</span>
+      <span class="trust-chip-value">Not required</span>
+    </div>
+    <div class="trust-chip" title="End-to-End Encryption with AES-GCM">
+      <lib-tool-icon name="shield-check" class="size-4 text-current" />
+      <span class="trust-chip-label">Encryption:</span>
+      <span class="trust-chip-value">AES-GCM</span>
+    </div>
+  </div>
+
+  <!-- 3. Top Level: Mode Segmented Control + Actions -->
+  <div class="clipboard-top-bar">
+    <div class="mode-segmented-control" role="tablist" aria-label="Operation Mode">
+      <button 
+        type="button"
+        role="tab"
+        class="segmented-btn" 
+        [class.active]="mode() === 'send'"
+        [attr.aria-selected]="mode() === 'send'"
+        (click)="setMode('send')"
+      >
+        <lib-tool-icon name="upload" class="size-5" />
+        <span>Send</span>
+      </button>
+      <button 
+        type="button"
+        role="tab"
+        class="segmented-btn" 
+        [class.active]="mode() === 'receive'"
+        [attr.aria-selected]="mode() === 'receive'"
+        (click)="setMode('receive')"
+      >
+        <lib-tool-icon name="download" class="size-5" />
+        <span>Receive</span>
+      </button>
+    </div>
+
+    <!-- Actions: History, Settings, ZIP, Report -->
+    <div class="top-actions-cluster">
+      @if (activeShare() && currentItems().length > 1) {
+        <button class="top-action-btn" (click)="downloadZipAll()" title="Download All as ZIP" aria-label="Download all as ZIP">
+          <lib-tool-icon name="archive" class="size-4" />
+          <span>ZIP All</span>
+        </button>
+      }
+
+      @if (activeShare() && mode() === 'receive') {
+        <button class="top-action-btn btn-report" (click)="showReportModal.set(true)" title="Report Abuse or Illegal Content" aria-label="Report Abuse">
+          <lib-tool-icon name="flag" class="size-4" />
+          <span>Report</span>
+        </button>
+      }
+
+      <button 
+        type="button"
+        class="top-action-btn" 
+        [class.active]="showHistoryDrawer()"
+        (click)="showHistoryDrawer.set(!showHistoryDrawer())" 
+        title="Recent Clipboard History"
+        aria-label="Recent Clipboard History"
+      >
+        <lib-tool-icon name="history" class="size-4" />
+        <span>History</span>
+      </button>
+
+      @if (mode() === 'send') {
+        <button 
+          type="button"
+          class="top-action-btn" 
+          [class.active]="showShareSettings()" 
+          (click)="showShareSettings.set(!showShareSettings())" 
+          title="Clipboard & Security Settings"
+          aria-label="Clipboard Settings"
+        >
+          <lib-tool-icon name="settings-2" class="size-4" />
+          <span>Settings</span>
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- History Drawer / Overlay -->
+  @if (showHistoryDrawer()) {
+    <div class="history-card-drawer">
+      <div class="history-drawer-header">
+        <div class="flex items-center gap-2">
+          <lib-tool-icon name="history" class="size-4 text-current" />
+          <span class="font-semibold text-sm">Recent Clipboards (IndexedDB)</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button 
+            type="button"
+            class="private-toggle-btn" 
+            [class.private-on]="isPrivateMode()" 
+            (click)="togglePrivateMode()"
+            title="Private Mode: Never store clipboard history locally"
+          >
+            <lib-tool-icon [name]="isPrivateMode() ? 'eye-off' : 'eye'" class="size-3.5" />
+            <span>{{ isPrivateMode() ? 'Private ON' : 'Private Mode' }}</span>
+          </button>
+          <button type="button" class="close-btn-xs" (click)="showHistoryDrawer.set(false)" aria-label="Close history">
+            <lib-tool-icon name="x" class="size-4" />
+          </button>
+        </div>
+      </div>
+
+      <div class="history-drawer-body">
+        @if (recentClipboards().length === 0) {
+          <p class="empty-history-hint">
+            {{ isPrivateMode() ? 'Private mode is enabled. No history is stored.' : 'No recent clipboards found on this device.' }}
+          </p>
+        } @else {
+          <div class="history-items-grid">
+            @for (rec of recentClipboards(); track rec.code) {
+              <div class="history-item-pill" (click)="openFromHistory(rec)">
+                <span class="history-code">{{ rec.code }}</span>
+                @if (rec.wordCode) {
+                  <span class="history-word">({{ rec.wordCode }})</span>
+                }
+                <span class="history-tag">{{ rec.isSender ? 'Sent' : 'Received' }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Sender Share Options Config Panel (Collapsible) -->
+  @if (mode() === 'send' && showShareSettings()) {
+    <div class="settings-drawer-panel">
+      <div class="settings-grid">
+        <div class="setting-col">
+          <label class="setting-label">Retention Expiry</label>
+          <select [(ngModel)]="expiryHours" class="setting-select">
+            <option [ngValue]="1">1 Hour</option>
+            <option [ngValue]="24">24 Hours (1 Day)</option>
+            <option [ngValue]="168">7 Days (Default)</option>
+          </select>
+        </div>
+
+        <div class="setting-col">
+          <label class="setting-label">Access PIN (Optional)</label>
+          <input 
+            type="password" 
+            maxlength="6" 
+            placeholder="4-6 digits" 
+            [(ngModel)]="pinProtection" 
+            class="setting-input" 
+          />
+        </div>
+
+        <div class="setting-col flex-row-toggle">
+          <label class="toggle-checkbox-label">
+            <input type="checkbox" [(ngModel)]="burnAfterReading" class="toggle-checkbox" />
+            <span>Burn after reading</span>
+          </label>
+          <span class="setting-hint">Deletes file after download</span>
+        </div>
+
+        <div class="setting-col flex-row-toggle">
+          <label class="toggle-checkbox-label">
+            <input type="checkbox" [(ngModel)]="liveRoomMode" class="toggle-checkbox" />
+            <span>Live Room (2-way)</span>
+          </label>
+          <span class="setting-hint">Both sides can add items</span>
+        </div>
+
+        <div class="setting-col flex-row-toggle">
+          <label class="toggle-checkbox-label">
+            <input type="checkbox" [(ngModel)]="e2eeEnabled" class="toggle-checkbox" />
+            <span>End-to-End Encryption</span>
+          </label>
+          <span class="setting-hint">AES-GCM Web Crypto (#key)</span>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Active Sender Code Bar if generated -->
+  @if (mode() === 'send' && shareCode()) {
+    <div class="code-pill-active-bar">
+      <div class="code-pill-details">
+        <div class="flex items-center gap-2">
+          <span class="code-label">5-Digit Code:</span>
+          <span class="code-number">{{ shareCode() }}</span>
+        </div>
+        @if (wordCode()) {
+          <div class="word-code-pill hidden md:flex items-center gap-1.5" title="Memorable word code for room dictation">
+            <span class="word-label">Word Code:</span>
+            <span class="word-value">{{ wordCode() }}</span>
+          </div>
+        }
+      </div>
+
+      <div class="code-pill-actions">
+        <button type="button" class="pill-btn" (click)="copyShareCode()" title="Copy Code">
+          <lib-tool-icon [name]="copiedCode() ? 'check' : 'copy'" class="size-4" />
+          <span>{{ copiedCode() ? 'Copied' : 'Copy' }}</span>
+        </button>
+        <button type="button" class="pill-btn" (click)="copyDirectLink()" title="Copy Direct Receiver Link">
+          <lib-tool-icon [name]="copiedLink() ? 'check' : 'link'" class="size-4" />
+          <span>{{ copiedLink() ? 'Copied' : 'Link' }}</span>
+        </button>
+        <button type="button" class="pill-btn" (click)="showQrModal.set(true)" title="Show QR Code for Mobile">
+          <lib-tool-icon name="qr-code" class="size-4" />
+          <span>QR</span>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Receiver Input Mode Header -->
+  @if (mode() === 'receive') {
+    <div class="receiver-input-section">
+      <div class="code-input-wrapper">
+        <label class="code-input-label" for="receive-code-input">Enter 5-Digit Code or Word Code</label>
+        <div class="code-input-box">
+          <input 
+            #codeBox
+            id="receive-code-input"
+            type="text" 
+            placeholder="12345 or swift-tiger-42"
+            [ngModel]="receiveCode"
+            (ngModelChange)="onReceiveCodeInput($event)"
+            class="digits-input"
+            autocomplete="off"
+            autofocus
+          />
+          @if (isLoadingShare()) {
+            <div class="input-spinner"></div>
+          }
+        </div>
+        <p class="code-hint">Instant sync: Enter code to open the clipboard stream live.</p>
+      </div>
+
+      @if (pinRequired()) {
+        <div class="pin-entry-card">
+          <lib-tool-icon name="lock" class="size-5 text-amber-400 flex-shrink-0" />
+          <div class="pin-form flex items-center gap-2 flex-grow">
+            <input 
+              type="password" 
+              maxlength="6" 
+              placeholder="Enter PIN" 
+              [(ngModel)]="receivePin" 
+              class="pin-input"
+            />
+            <button type="button" class="btn-unlock" (click)="onPinSubmit()">Unlock</button>
+          </div>
+        </div>
+      }
+
+      @if (receiveError()) {
+        <div class="receive-error-card">
+          <lib-tool-icon name="circle-alert" class="size-5 text-rose-400 flex-shrink-0" />
+          <div class="error-msg-body">
+            <strong>Notice:</strong> {{ receiveError() }}
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Level 2: Underline Tab Group (Text & Links | Images | Files) -->
+  <div class="clipboard-underline-tabs-bar" role="tablist" aria-label="Content type">
+    <button 
+      type="button"
+      role="tab"
+      class="underline-tab" 
+      [class.active]="activeTab() === 'text'"
+      [attr.aria-selected]="activeTab() === 'text'"
+      (click)="setActiveTab('text')"
+    >
+      <lib-tool-icon name="file-text" class="size-5" />
+      <span>Text & Links</span>
+      <span class="tab-count-badge">{{ textItems().length }}</span>
+    </button>
+
+    <button 
+      type="button"
+      role="tab"
+      class="underline-tab" 
+      [class.active]="activeTab() === 'images'"
+      [attr.aria-selected]="activeTab() === 'images'"
+      (click)="setActiveTab('images')"
+    >
+      <lib-tool-icon name="image" class="size-5" />
+      <span>Images</span>
+      <span class="tab-count-badge">{{ imageItems().length }}</span>
+    </button>
+
+    <button 
+      type="button"
+      role="tab"
+      class="underline-tab" 
+      [class.active]="activeTab() === 'files'"
+      [attr.aria-selected]="activeTab() === 'files'"
+      (click)="setActiveTab('files')"
+    >
+      <lib-tool-icon name="folder" class="size-5" />
+      <span>Files</span>
+      <span class="tab-count-badge">{{ fileItems().length }}</span>
+    </button>
+  </div>
+
+  <!-- TAB CONTENT -->
+  <div class="clipboard-tab-body">
+
+    <!-- ==================== TAB 1: TEXT & LINKS ==================== -->
+    @if (activeTab() === 'text') {
+      <div class="tab-panel">
+        
+        <!-- Input Form (Sender or Live Room) -->
+        @if (mode() === 'send' || activeShare()?.liveMode) {
+          <div class="text-input-box-container">
+            <textarea 
+              rows="3" 
+              placeholder="Paste or type text, notes, JSON, code, or URL links here... (Ctrl+V works anywhere)"
+              [ngModel]="newTextSnippet()"
+              (ngModelChange)="newTextSnippet.set($event)"
+              class="text-input-field"
+            ></textarea>
+
+            <div class="text-input-actions-bar">
+              <span class="text-size-caption">Max 1 MB</span>
+              <button 
+                type="button"
+                class="btn-add-snippet"
+                [disabled]="!newTextSnippet().trim() || isSubmittingText() || isCreatingShare()"
+                (click)="submitTextSnippet()"
+              >
+                <lib-tool-icon name="plus" class="size-4" />
+                <span>{{ isSubmittingText() ? 'Adding...' : 'Add Snippet' }}</span>
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- Text/Links List -->
+        <div class="items-stream-section">
+          @if (textItems().length === 0) {
+            <div class="empty-items-placeholder">
+              <div class="empty-icon-circle">
+                <lib-tool-icon name="file-text" class="size-6 text-current" />
+              </div>
+              <p class="empty-title">No text or links shared yet</p>
+              <p class="empty-desc">
+                {{ mode() === 'send' ? 'Type or paste content above to generate your clipboard code.' : 'Items added by the sender will appear here in real time.' }}
+              </p>
+            </div>
+          } @else {
+            <div class="text-items-grid">
+              @for (item of textItems(); track item.id) {
+                <div class="snippet-card">
+                  <div class="snippet-card-header">
+                    <div class="flex items-center gap-2">
+                      <lib-tool-icon [name]="item.itemType === 'LINK' ? 'link' : 'file-code'" class="size-4 text-current" />
+                      <span class="snippet-type-label">{{ item.itemType === 'LINK' ? 'URL Link' : 'Text Snippet' }}</span>
+                      @if (item.isEncrypted) {
+                        <span class="encrypted-badge" title="End-to-End Encrypted with AES-GCM">E2EE</span>
+                      }
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="item-receipt-tick" title="Live Views">
+                        <lib-tool-icon name="eye" class="size-3 mr-0.5 inline" />{{ item.viewCount || 0 }}
+                      </span>
+                      <span class="snippet-time">{{ item.createdAt | date:'shortTime' }}</span>
+                      @if (mode() === 'send' || activeShare()?.liveMode) {
+                        <button type="button" class="item-delete-btn" (click)="deleteItem(item)" title="Delete" aria-label="Delete snippet">
+                          <lib-tool-icon name="trash-2" class="size-3.5" />
+                        </button>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="snippet-content-body">
+                    @if (item.itemType === 'LINK') {
+                      <a [href]="item.textContent" target="_blank" rel="noopener noreferrer" class="link-display">
+                        {{ item.textContent }}
+                      </a>
+                    } @else {
+                      <pre class="plain-snippet-text">{{ item.textContent }}</pre>
+                    }
+                  </div>
+
+                  <div class="snippet-footer">
+                    <span class="byte-size">{{ formatBytes(item.sizeBytes) }}</span>
+                    <button type="button" class="btn-copy-snippet" (click)="copySnippetText(item)" aria-label="Copy snippet">
+                      <lib-tool-icon [name]="copiedItemId() === item.id ? 'check' : 'copy'" class="size-3.5" />
+                      <span>{{ copiedItemId() === item.id ? 'Copied' : 'Copy' }}</span>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ==================== TAB 2: IMAGES ==================== -->
+    @if (activeTab() === 'images') {
+      <div class="tab-panel">
+        
+        <!-- Upload Drop Zone (Sender or Live Room) -->
+        @if (mode() === 'send' || activeShare()?.liveMode) {
+          <div 
+            class="file-drop-zone"
+            [class.drag-over]="isDragOver()"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave($event)"
+            (drop)="onFileDrop($event)"
+            (click)="imageFileInput.click()"
+          >
+            <input 
+              #imageFileInput 
+              type="file" 
+              accept="image/jpeg,image/png,image/webp,image/gif" 
+              multiple 
+              class="hidden" 
+              (change)="onImageSelected($event)" 
+            />
+            <lib-tool-icon name="image-plus" class="size-8 text-current mb-2" />
+            <p class="drop-title">Drop images here or click to browse</p>
+            <p class="drop-hint">Supports JPG, PNG, WebP, GIF up to {{ formattedMaxFileSize() }}</p>
+          </div>
+        }
+
+        <!-- Uploading Progress Cards -->
+        @if (uploadingFiles().length > 0) {
+          <div class="uploading-stack">
+            @for (up of uploadingFiles(); track up.id) {
+              <div class="upload-progress-row">
+                <div class="flex items-center justify-between text-xs mb-1">
+                  <span class="truncate font-medium max-w-[200px]">{{ up.name }}</span>
+                  <div class="flex items-center gap-2">
+                    <span>{{ up.progress }}%</span>
+                    @if (up.status === 'paused') {
+                      <button class="btn-action-xs" (click)="resumeUpload(up.id)">Resume</button>
+                    } @else if (up.status === 'uploading') {
+                      <button class="btn-action-xs" (click)="pauseUpload(up.id)">Pause</button>
+                    }
+                    <button class="btn-action-xs text-rose-400" (click)="cancelUpload(up.id)">Cancel</button>
+                  </div>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill" [style.width.%]="up.progress"></div>
+                </div>
+                @if (up.status === 'error') {
+                  <span class="text-xs text-rose-400 mt-1">{{ up.errorMessage }}</span>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Images Gallery Grid -->
+        <div class="items-stream-section">
+          @if (imageItems().length === 0) {
+            <div class="empty-items-placeholder">
+              <div class="empty-icon-circle">
+                <lib-tool-icon name="image" class="size-6 text-current" />
+              </div>
+              <p class="empty-title">No images uploaded yet</p>
+              <p class="empty-desc">
+                {{ mode() === 'send' ? 'Upload photos or screenshots above to generate your clipboard code.' : 'Images uploaded by the sender will appear here in real time.' }}
+              </p>
+            </div>
+          } @else {
+            <div class="images-gallery-grid">
+              @for (item of imageItems(); track item.id) {
+                <div class="image-card">
+                  <div class="image-thumbnail-box" (click)="openPreview(item)">
+                    <img [src]="getPreviewUrl(item)" [alt]="item.originalName || 'Image'" class="thumb-img" loading="lazy" />
+                    <div class="image-overlay-hover">
+                      <lib-tool-icon name="maximize-2" class="size-6 text-white" />
+                    </div>
+                  </div>
+
+                  <div class="image-card-footer">
+                    <div class="truncate text-xs font-medium" [title]="item.originalName">{{ item.originalName }}</div>
+                    <div class="flex items-center justify-between mt-1 text-[11px] text-muted">
+                      <span>{{ formatBytes(item.sizeBytes) }}</span>
+                      <div class="flex items-center gap-2">
+                        <span class="item-receipt-tick" title="Downloads"><lib-tool-icon name="download" class="size-3 mr-0.5 inline" />{{ item.downloadCount || 0 }}</span>
+                        <a [href]="getDownloadUrl(item)" class="action-icon-btn" title="Download">
+                          <lib-tool-icon name="download" class="size-3.5" />
+                        </a>
+                        @if (mode() === 'send' || activeShare()?.liveMode) {
+                          <button class="action-icon-btn text-rose-400" (click)="deleteItem(item)" title="Delete">
+                            <lib-tool-icon name="trash-2" class="size-3.5" />
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ==================== TAB 3: FILES ==================== -->
+    @if (activeTab() === 'files') {
+      <div class="tab-panel">
+        
+        <!-- Upload Drop Zone (Sender or Live Room) -->
+        @if (mode() === 'send' || activeShare()?.liveMode) {
+          <div 
+            class="file-drop-zone"
+            [class.drag-over]="isDragOver()"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave($event)"
+            (drop)="onFileDrop($event)"
+            (click)="docFileInput.click()"
+          >
+            <input 
+              #docFileInput 
+              type="file" 
+              multiple 
+              class="hidden" 
+              (change)="onFileSelected($event)" 
+            />
+            <lib-tool-icon name="upload-cloud" class="size-8 text-current mb-2" />
+            <p class="drop-title">Drop files or archives here or click to browse</p>
+            <p class="drop-hint">PDFs, ZIPs, documents, media up to {{ formattedMaxFileSize() }}</p>
+          </div>
+        }
+
+        <!-- Uploading Progress Cards -->
+        @if (uploadingFiles().length > 0) {
+          <div class="uploading-stack">
+            @for (up of uploadingFiles(); track up.id) {
+              <div class="upload-progress-row">
+                <div class="flex items-center justify-between text-xs mb-1">
+                  <span class="truncate font-medium max-w-[200px]">{{ up.name }}</span>
+                  <div class="flex items-center gap-2">
+                    <span>{{ up.progress }}%</span>
+                    @if (up.status === 'paused') {
+                      <button class="btn-action-xs" (click)="resumeUpload(up.id)">Resume</button>
+                    } @else if (up.status === 'uploading') {
+                      <button class="btn-action-xs" (click)="pauseUpload(up.id)">Pause</button>
+                    }
+                    <button class="btn-action-xs text-rose-400" (click)="cancelUpload(up.id)">Cancel</button>
+                  </div>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill" [style.width.%]="up.progress"></div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Files List -->
+        <div class="items-stream-section">
+          @if (fileItems().length === 0) {
+            <div class="empty-items-placeholder">
+              <div class="empty-icon-circle">
+                <lib-tool-icon name="folder-open" class="size-6 text-current" />
+              </div>
+              <p class="empty-title">No files shared yet</p>
+              <p class="empty-desc">
+                {{ mode() === 'send' ? 'Upload files above to generate your clipboard code.' : 'Files uploaded by the sender will appear here in real time.' }}
+              </p>
+            </div>
+          } @else {
+            <div class="files-list-stack">
+              @for (item of fileItems(); track item.id) {
+                <div class="file-item-row">
+                  <div class="file-info-col">
+                    <div class="file-icon-box">
+                      <lib-tool-icon name="file" class="size-5 text-current" />
+                    </div>
+                    <div class="file-meta-texts">
+                      <span class="file-row-name" [title]="item.originalName">{{ item.originalName }}</span>
+                      <div class="flex items-center gap-2 text-[11px] text-muted">
+                        <span>{{ formatBytes(item.sizeBytes) }}</span>
+                        <span>•</span>
+                        <span>{{ item.detectedMime }}</span>
+                        <span>•</span>
+                        <span class="item-receipt-tick" title="Downloads">
+                          <lib-tool-icon name="download" class="size-3 mr-0.5 inline" />{{ item.downloadCount || 0 }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="file-actions-col">
+                    <a [href]="getDownloadUrl(item)" class="btn-download-file" target="_blank">
+                      <lib-tool-icon name="download" class="size-3.5 mr-1" />
+                      <span>Download</span>
+                    </a>
+                    @if (mode() === 'send' || activeShare()?.liveMode) {
+                      <button class="action-icon-btn text-rose-400" (click)="deleteItem(item)" title="Delete">
+                        <lib-tool-icon name="trash-2" class="size-3.5" />
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+  </div>
+
+  <!-- QR Code Modal -->
+  @if (showQrModal()) {
+    <div class="modal-backdrop" (click)="showQrModal.set(false)">
+      <div class="modal-dialog-qr" (click)="$event.stopPropagation()">
+        <div class="modal-qr-header">
+          <div class="flex items-center gap-2">
+            <lib-tool-icon name="qr-code" class="size-5 text-current" />
+            <h3 class="text-sm font-semibold">Scan to Open Clipboard</h3>
+          </div>
+          <button class="close-btn-xs" (click)="showQrModal.set(false)">
+            <lib-tool-icon name="x" class="size-4" />
+          </button>
+        </div>
+
+        <div class="modal-qr-body">
+          <img [src]="getQrCodeImageUrl()" alt="Receiver QR Code" class="qr-code-img" />
+          <p class="qr-code-desc">Scan with your phone camera to instantly connect to code <strong>{{ shareCode() }}</strong>.</p>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Image Lightbox Modal -->
+  @if (previewItem()) {
+    <div class="modal-backdrop" (click)="closePreview()">
+      <div class="lightbox-dialog" (click)="$event.stopPropagation()">
+        <div class="lightbox-header">
+          <span class="truncate font-medium text-sm">{{ previewItem()?.originalName }}</span>
+          <div class="flex items-center gap-2">
+            <a [href]="getDownloadUrl(previewItem()!)" class="action-icon-btn" title="Download">
+              <lib-tool-icon name="download" class="size-4" />
+            </a>
+            <button class="close-btn-xs" (click)="closePreview()">
+              <lib-tool-icon name="x" class="size-4" />
+            </button>
+          </div>
+        </div>
+        <div class="lightbox-body">
+          <img [src]="getPreviewUrl(previewItem()!)" [alt]="previewItem()?.originalName" class="lightbox-img" />
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Abuse Report Modal -->
+  @if (showReportModal()) {
+    <div class="modal-backdrop" (click)="showReportModal.set(false)">
+      <div class="modal-dialog-qr" (click)="$event.stopPropagation()">
+        <div class="modal-qr-header">
+          <div class="flex items-center gap-2">
+            <lib-tool-icon name="flag" class="size-5 text-rose-400" />
+            <h3 class="text-sm font-semibold">Report Clipboard Content</h3>
+          </div>
+          <button class="close-btn-xs" (click)="showReportModal.set(false)">
+            <lib-tool-icon name="x" class="size-4" />
+          </button>
+        </div>
+
+        <div class="modal-qr-body text-left">
+          @if (reportSubmitted()) {
+            <div class="p-4 text-center">
+              <lib-tool-icon name="check-circle" class="size-8 text-current mx-auto mb-2" />
+              <p class="text-sm font-medium">Thank you for reporting.</p>
+              <p class="text-xs text-muted mt-1">This report has been logged and the content is flagged for review.</p>
+            </div>
+          } @else {
+            <p class="text-xs text-muted mb-3">Please specify why you are reporting this clipboard share (e.g. copyright violation, illegal content, malware):</p>
+            <textarea 
+              [(ngModel)]="reportReason" 
+              placeholder="Describe the issue with this content..." 
+              rows="3" 
+              class="w-full bg-[var(--color-bg-subtle,#18181b)] border border-[var(--color-border,#27272a)] rounded-lg p-2.5 text-xs text-[var(--color-text,#f4f4f5)] focus:outline-none focus:border-rose-500 mb-3"
+            ></textarea>
+            <div class="flex justify-end gap-2">
+              <button class="btn-action-xs" (click)="showReportModal.set(false)">Cancel</button>
+              <button 
+                class="btn-action-xs bg-rose-600 hover:bg-rose-500 text-white font-medium disabled:opacity-50" 
+                [disabled]="!reportReason.trim() || isReportingAbuse()"
+                (click)="submitAbuseReport()"
+              >
+                {{ isReportingAbuse() ? 'Submitting...' : 'Submit Report' }}
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

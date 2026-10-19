@@ -1,0 +1,124 @@
+/* packages/tool-shell/src/styles/motion.css */
+
+:root,
+.ts-root {
+  /* Motion timing tokens */
+  --ts-dur-fast: calc(120ms * var(--ts-motion-scale, 1));
+  --ts-dur-base: calc(200ms * var(--ts-motion-scale, 1));
+  --ts-dur-hover: calc(220ms * var(--ts-motion-scale, 1));
+  --ts-dur-slow: calc(350ms * var(--ts-motion-scale, 1));
+  --ts-dur-scroll: calc(500ms * var(--ts-motion-scale, 1));
+
+  /* Ultra-smooth quintic & ease-out curves */
+  --ts-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ts-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ts-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Standard transitions */
+  --ts-transition-colors: color var(--ts-dur-base) var(--ts-ease),
+                          background-color var(--ts-dur-base) var(--ts-ease),
+                          border-color var(--ts-dur-base) var(--ts-ease),
+                          box-shadow var(--ts-dur-base) var(--ts-ease);
+
+  --ts-transition-transform: transform var(--ts-dur-base) var(--ts-ease);
+  --ts-transition-opacity: opacity var(--ts-dur-base) var(--ts-ease);
+  --ts-transition-all: all var(--ts-dur-base) var(--ts-ease);
+}
+
+/* Keyframes for Staggered Scroll Reveal (12px rise + fade-in) */
+@keyframes tsRevealRise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ts-reveal-item {
+  opacity: 0;
+  transform: translateY(12px);
+  will-change: opacity, transform;
+}
+
+.ts-reveal-item.is-revealed {
+  animation: tsRevealRise 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Keyframes for Tool Canvas Entrance */
+@keyframes tsCanvasEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ══ SPOTLIGHT HOVER EFFECTS ══════════════════════════════════════════ */
+.ts-spotlight-host {
+  position: relative;
+  isolation: isolate;
+  transition: transform var(--ts-dur-hover) var(--ts-ease-out),
+              box-shadow var(--ts-dur-hover) var(--ts-ease-out),
+              border-color var(--ts-dur-hover) var(--ts-ease-out),
+              background-color var(--ts-dur-hover) var(--ts-ease-out);
+}
+
+/* Subtle radial glow following cursor */
+.ts-spotlight-host::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    220px circle at var(--mx, -9999px) var(--my, -9999px),
+    var(--spotlight, rgba(252, 252, 252, 0.12)),
+    transparent 80%
+  );
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+  transition: opacity var(--ts-dur-hover) var(--ts-ease-out);
+}
+
+.ts-spotlight-host:hover::before {
+  opacity: 1;
+}
+
+/* Lift on hover */
+@media (hover: hover) {
+  .ts-spotlight-host:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), var(--ts-shadow-lg);
+    border-color: var(--border-accent, var(--ts-accent));
+  }
+}
+
+/* Accessibility: Respect Reduced Motion Preferences */
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  .ts-root,
+  .ts-root * {
+    --ts-dur-base: 0ms !important;
+    --ts-dur-hover: 0ms !important;
+    --ts-dur-slow: 0ms !important;
+    --ts-dur-scroll: 0ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+    transform: none !important;
+  }
+  .ts-reveal-item {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .ts-spotlight-host:hover {
+    transform: none !important;
+  }
+}
