@@ -1,8 +1,9 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { AirVaultSyncService } from './airvault-sync.service';
-import { AirVaultStorageService } from './airvault-storage.service';
-import { AirVaultDeviceService } from './airvault-device.service';
-import { AirVaultCryptoService } from './airvault-crypto.service';
+import { AirVaultStorageService, AirVaultItem } from './airvault-storage.service';
+import { AirVaultDeviceService, AirVaultDevice } from './airvault-device.service';
+import { AirVaultCryptoService, EncryptedPacket } from './airvault-crypto.service';
 import { AirVaultWsTransportService } from './airvault-ws-transport.service';
 import { AirVaultClipboardService } from './airvault-clipboard.service';
 import { AirVaultNotificationService } from './airvault-notification.service';
@@ -12,7 +13,6 @@ import { AirVaultBlameService } from './airvault-blame.service';
 import { AirVaultDocSyncService } from './airvault-doc-sync.service';
 import { AirVaultUIStore } from './airvault-ui.store';
 import { PreferenceService } from '../../../app/core/services/preference.service';
-import { AirVaultDevice, AirVaultItem, EncryptedPacket } from '../models/airvault.types';
 
 describe('AirVault Cross-Device Sync & Delivery ACK Pipeline', () => {
   let syncService: AirVaultSyncService;
@@ -41,7 +41,7 @@ describe('AirVault Cross-Device Sync & Delivery ACK Pipeline', () => {
     id: 'device_destination_safari',
     name: 'Safari iPhone',
     username: 'bob',
-    type: 'phone',
+    type: 'smartphone',
     os: 'iOS',
     browser: 'Safari',
     thumbprint: 'TP-BOB',
@@ -79,12 +79,12 @@ describe('AirVault Cross-Device Sync & Delivery ACK Pipeline', () => {
     wsTransport = TestBed.inject(AirVaultWsTransportService);
 
     // Initialize mock source device identity
-    spyOn(deviceService, 'currentDevice').and.returnValue(mockSourceDevice);
-    spyOn(deviceService, 'pairedDevices').and.returnValue([mockDestinationDevice]);
+    vi.spyOn(deviceService, 'currentDevice').mockReturnValue(mockSourceDevice);
+    vi.spyOn(deviceService, 'pairedDevices').mockReturnValue([mockDestinationDevice]);
   });
 
   it('Scenario 1: should encrypt and emit SYNC_PACKET to eligible paired device when beaming content', async () => {
-    const wsSendSpy = spyOn(wsTransport, 'send').and.returnValue(true);
+    const wsSendSpy = vi.spyOn(wsTransport, 'send').mockReturnValue(true);
 
     const beamedItem = await syncService.beamContent(
       'Test cross-device payload',
@@ -100,14 +100,14 @@ describe('AirVault Cross-Device Sync & Delivery ACK Pipeline', () => {
     expect(beamedItem.deliveryStatus).toBe('pending');
     expect(wsSendSpy).toHaveBeenCalled();
 
-    const sentCall = wsSendSpy.calls.mostRecent();
-    expect(sentCall.args[0].type).toBe('SYNC_PACKET');
-    expect(sentCall.args[0].targetDeviceId).toBe(mockDestinationDevice.id);
+    const lastCall = wsSendSpy.mock.calls[wsSendSpy.mock.calls.length - 1];
+    expect(lastCall[0].type).toBe('SYNC_PACKET');
+    expect(lastCall[0].targetDeviceId).toBe(mockDestinationDevice.id);
   });
 
   it('Scenario 2: destination client decrypts incoming packet, persists to store, and responds with SYNC_ACK', async () => {
-    const wsSendSpy = spyOn(wsTransport, 'send').and.returnValue(true);
-    const incomingItemSpy = spyOn(syncService.onIncomingItem, 'emit');
+    const wsSendSpy = vi.spyOn(wsTransport, 'send').mockReturnValue(true);
+    const incomingItemSpy = vi.spyOn(syncService.onIncomingItem, 'emit');
 
     const samplePayload = JSON.stringify({
       raw: 'Synced from Chrome to Safari',
@@ -119,7 +119,7 @@ describe('AirVault Cross-Device Sync & Delivery ACK Pipeline', () => {
     const encryptedPacket = await cryptoService.encryptPayload(samplePayload, mockSourceDevice.id, mockDestinationDevice.id);
 
     // Simulate destination receiving the CLIPBOARD_BEAM message
-    await syncService.handleMessage({
+    await (syncService as any).handleMessage({
       type: 'CLIPBOARD_BEAM',
       packet: encryptedPacket,
       senderDevice: mockSourceDevice,
@@ -134,39 +134,44 @@ describe('AirVault Cross-Device Sync & Delivery ACK Pipeline', () => {
     expect(incomingItemSpy).toHaveBeenCalled();
 
     // Destination must send SYNC_ACK back to sender
-    const ackCall = wsSendSpy.calls.all().find(c => c.args[0].type === 'SYNC_ACK');
+    const ackCall = wsSendSpy.mock.calls.find((c: any) => c[0].type === 'SYNC_ACK');
     expect(ackCall).toBeTruthy();
-    expect(ackCall?.args[0].targetDeviceId).toBe(mockSourceDevice.id);
+    expect(ackCall?.[0].targetDeviceId).toBe(mockSourceDevice.id);
   });
 
-  it('Scenario 3: source device receives SYNC_ACK and marks item delivered and emits onDeliveryConfirmed', (done) => {
-    const testPacketId = 'packet_ack_test_123';
+  it('Scenario 3: source device receives SYNC_ACK and marks item delivered and emits onDeliveryConfirmed', () => {
+    return new Promise<void>((resolve) => {
+      const testPacketId = 'packet_ack_test_123';
 
-    // Seed item in local store with pending delivery
-    storageService.addItem({
-      id: testPacketId,
-      packetId: testPacketId,
-      content: { category: 'text', raw: 'Pending sync item' },
-      timestamp: Date.now(),
-      deliveryStatus: 'pending'
-    });
+      // Seed item in local store with pending delivery
+      storageService.addItem({
+        id: testPacketId,
+        packetId: testPacketId,
+        content: { category: 'text', raw: 'Pending sync item', isSensitive: false, byteSize: 17 },
+        timestamp: Date.now(),
+        deliveryStatus: 'pending',
+        senderDeviceId: mockSourceDevice.id,
+        senderDeviceName: mockSourceDevice.name,
+        isPinned: false
+      });
 
-    syncService.onDeliveryConfirmed.subscribe(({ packetId, targetDeviceId }) => {
-      expect(packetId).toBe(testPacketId);
-      expect(targetDeviceId).toBe(mockDestinationDevice.id);
+      syncService.onDeliveryConfirmed.subscribe(({ packetId, targetDeviceId }) => {
+        expect(packetId).toBe(testPacketId);
+        expect(targetDeviceId).toBe(mockDestinationDevice.id);
 
-      const updated = storageService.allItems().find(i => i.id === testPacketId);
-      expect(updated?.deliveryStatus).toBe('delivered');
-      done();
-    });
+        const updated = storageService.allItems().find(i => i.id === testPacketId);
+        expect(updated?.deliveryStatus).toBe('delivered');
+        resolve();
+      });
 
-    // Simulate receiving SYNC_ACK from destination
-    syncService.handleMessage({
-      type: 'SYNC_ACK',
-      packetId: testPacketId,
-      senderDevice: mockDestinationDevice,
-      targetDeviceId: mockSourceDevice.id,
-      timestamp: Date.now()
+      // Simulate receiving SYNC_ACK from destination
+      (syncService as any).handleMessage({
+        type: 'SYNC_ACK',
+        packetId: testPacketId,
+        senderDevice: mockDestinationDevice,
+        targetDeviceId: mockSourceDevice.id,
+        timestamp: Date.now()
+      });
     });
   });
 
@@ -180,7 +185,7 @@ describe('AirVault Cross-Device Sync & Delivery ACK Pipeline', () => {
     expect(deviceService.pairedDevices()[0].status).toBe('offline');
 
     // Simulate incoming DEVICE_ONLINE frame from the returning destination device
-    syncService.handleMessage({
+    (syncService as any).handleMessage({
       type: 'DEVICE_ONLINE',
       senderDevice: mockDestinationDevice,
       targetDeviceId: 'broadcast',

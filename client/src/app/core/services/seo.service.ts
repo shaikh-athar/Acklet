@@ -1,6 +1,7 @@
 import { Injectable, inject, DOCUMENT } from '@angular/core';
 import { Title, Meta } from '@angular/platform-browser';
 import { ToolManifest } from '../tool-registry';
+import { ToolKnowledgeHub } from '../models/tool-knowledge.model';
 
 @Injectable({
   providedIn: 'root'
@@ -38,6 +39,26 @@ export class SeoService {
     if (url) {
       this.meta.updateTag({ property: 'og:url', content: url });
       this.updateCanonicalUrl(url);
+    }
+  }
+
+  setTitle(title: string): void {
+    this.title.setTitle(title);
+  }
+
+  setToolKnowledgeSeo(hub: ToolKnowledgeHub | null, toolName: string, categoryName: string): void {
+    const pageTitle = `${toolName} - Features, Privacy, Technical Details & Resources | Acklet`;
+    const description = hub?.overview || `${toolName} online utility on Acklet`;
+    const url = hub ? `https://acklet.io/tools/${hub.toolId}` : `https://acklet.io/tools`;
+
+    this.title.setTitle(pageTitle);
+    this.meta.updateTag({ name: 'description', content: description });
+    this.meta.updateTag({ property: 'og:title', content: pageTitle });
+    this.meta.updateTag({ property: 'og:description', content: description });
+    this.meta.updateTag({ property: 'og:url', content: url });
+
+    if (hub) {
+      this.injectStructuredDataFromHub(hub, toolName, categoryName, url);
     }
   }
 
@@ -92,6 +113,32 @@ export class SeoService {
     script.id = 'acklet-tool-jsonld';
     script.type = 'application/ld+json';
     script.text = JSON.stringify(schemas);
+    this.document.head.appendChild(script);
+  }
+
+  private injectStructuredDataFromHub(hub: ToolKnowledgeHub, name: string, category: string, url: string): void {
+    const existingScript = this.document.getElementById('acklet-tool-jsonld');
+    if (existingScript) existingScript.remove();
+
+    const schema = {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      'name': name,
+      'description': hub.overview,
+      'applicationCategory': category,
+      'operatingSystem': 'Web, Windows, macOS, Linux',
+      'url': url,
+      'offers': {
+        '@type': 'Offer',
+        'price': '0.00',
+        'priceCurrency': 'USD'
+      }
+    };
+
+    const script = this.document.createElement('script');
+    script.id = 'acklet-tool-jsonld';
+    script.type = 'application/ld+json';
+    script.text = JSON.stringify(schema);
     this.document.head.appendChild(script);
   }
 }
