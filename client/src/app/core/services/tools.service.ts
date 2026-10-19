@@ -9,8 +9,6 @@ import { Category } from '../models/category.model';
 import { MOCK_TOOLS } from '../mock-data/tools.data';
 import { environment } from '../../../environments/environment';
 
-import { environment } from '../../../environments/environment';
-
 export interface ApiResponse<T> {
   success: boolean;
   message: string;

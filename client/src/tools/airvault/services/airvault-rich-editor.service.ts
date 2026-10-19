@@ -84,14 +84,14 @@ export class AirvaultRichEditorService {
             spellcheck: 'true',
           },
         },
-        onUpdate: ({ editor }) => {
+        onUpdate: ({ editor }: { editor: Editor }) => {
           // Re-enter Angular zone so signal writes trigger change detection
           this.ngZone.run(() => {
             this._contentSubject.next(editor.getHTML());
             this._transactionSubject.next();
           });
         },
-        onSelectionUpdate: ({ editor }) => {
+        onSelectionUpdate: ({ editor }: { editor: Editor }) => {
           const { empty, from, to } = editor.state.selection;
           this.ngZone.run(() => {
             this._selectionSubject.next({ empty, from, to });

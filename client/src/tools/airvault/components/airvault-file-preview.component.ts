@@ -1172,7 +1172,7 @@ export class AirVaultFilePreviewComponent {
       }
       const zip = await JSZip.loadAsync(u8arr);
       const entries: ArchiveFileEntry[] = [];
-      zip.forEach((relativePath, file) => {
+      zip.forEach((relativePath: string, file: JSZip.JSZipObject) => {
         entries.push({
           name: relativePath,
           size: (file as any)._data?.uncompressedSize || 0,
@@ -1230,7 +1230,7 @@ export class AirVaultFilePreviewComponent {
     try {
       const zip = await JSZip.loadAsync(buffer);
       const entries: ArchiveFileEntry[] = [];
-      zip.forEach((relativePath, file) => {
+      zip.forEach((relativePath: string, file: JSZip.JSZipObject) => {
         entries.push({
           name: relativePath,
           size: (file as any)._data?.uncompressedSize || 0,

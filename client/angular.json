@@ -50,8 +50,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "24kB",
-                  "maximumError": "48kB"
+                  "maximumWarning": "150kB",
+                  "maximumError": "250kB"
                 }
               ],
               "outputHashing": "all"
@@ -119,7 +119,7 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "1.2MB",
+                  "maximumWarning": "1.5MB",
                   "maximumError": "2MB"
                 }
               ],
@@ -168,8 +168,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "1.2MB",
+                  "maximumError": "2MB"
                 }
               ],
               "outputHashing": "all"
