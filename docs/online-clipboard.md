@@ -313,6 +313,19 @@ The **Online Clipboard** tool allows users to share text, links, and files acros
   - Modals, drawers, and popovers maintain strict stacking contexts (`toast-floating-container` at `z-index: 1100`, `.floating-selection-bar` at `1000`, drawer backdrop at `950`, modal backdrop at `900`), and adapt to mobile bottom sheets on screens `< 640px`.
   - Files tab features independent smooth scrolling (`overflow-y: auto`) without parent container interference.
 
+- **Below-the-Fold Content & Cross-Device Section Scrolling**:
+  - **Universal Content Rendering**: In full-bleed tool layouts (`layout: 'fullBleed'`), the below-the-fold section (`ts-tool-content`) containing **About**, **How to use**, **FAQ**, and **Related Tools** is permanently mounted in the DOM directly underneath the primary workspace section (`#tool`).
+  - **Initial Screen Coverage with Smooth Scroll Reachability**:
+    - The top workspace section (`.ts-workspace-section.full-bleed`) is configured with `min-height: 100%; height: 100%; flex-shrink: 0;`, ensuring that on initial load the tool takes 100% of the viewport height without prematurely peeking text.
+    - The scroll container (`.ts-main-scroll-container.full-bleed`) uses `overflow-y: auto !important; overflow-x: hidden !important; scroll-behavior: smooth !important; -webkit-overflow-scrolling: touch !important;`, allowing smooth mouse-wheel, trackpad, and touch swipe scrolling down to the documentation and FAQ.
+    - Tool content containers (`.clipboard-content-scroller`) use `overscroll-behavior-y: auto;`, allowing vertical scrolling gestures at the boundaries of the clipboard editor/file list to chain into the parent scroll container.
+  - **Deterministic Navigation Scrolling Across All Devices**:
+    - Clicking on any topbar pill or mobile drawer link (**Tool**, **About**, **How to use**, **FAQ**, **Related**) invokes `scrollToSection()`.
+    - Instead of relying on fragile native `scrollIntoView()` (which can fail on nested `contain: layout` or inner scroll containers in Safari and Android Chrome), `scrollToSection()` calculates the exact relative offset within `.ts-main-scroll-container` (`targetRect.top - containerRect.top + scrollContainer.scrollTop - 24`) and dispatches `scrollContainer.scrollTo({ top, behavior: 'smooth' })`.
+    - Mobile drawer navigation closes the sidebar overlay before dispatching the scroll with a brief transition deferral (50ms), preventing touch locks or offset miscalculations.
+    - Initial URL hash loading (e.g. `#faq` or `#about`) is automatically recognized on mount and smoothly scrolled into view.
+    - An `IntersectionObserver` coupled with a scroll listener continuously updates the active navigation pill indicator as the user scrolls through sections, snapping back to `Tool` when near the top.
+
 For complete design system tokens and component architecture, refer to [ui-design-system.md](file:///Users/ayaz/Acklet/docs/ui-design-system.md).
 For backend integration, CORS headers, and real-time synchronization tracing, refer to [integration-and-reliability.md](file:///Users/ayaz/Acklet/docs/integration-and-reliability.md).
 For verification commands and test layers, refer to [verification-guide.md](file:///Users/ayaz/Acklet/docs/verification-guide.md).
