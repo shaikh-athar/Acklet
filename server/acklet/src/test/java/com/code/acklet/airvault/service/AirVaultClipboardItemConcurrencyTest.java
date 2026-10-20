@@ -9,6 +9,7 @@ import com.code.acklet.airvault.security.AirVaultAuthorizationService;
 import com.code.acklet.airvault.security.AirVaultPrincipal;
 import com.code.acklet.airvault.security.AirVaultTokenService;
 import com.code.acklet.airvault.websocket.AirVaultWebSocketHandler;
+import com.code.acklet.airvault.config.AirVaultLimitsProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -72,7 +73,8 @@ public class AirVaultClipboardItemConcurrencyTest {
                 webSocketHandler,
                 syncRelayService,
                 objectMapper,
-                auditService
+                auditService,
+                new AirVaultLimitsProperties()
         );
 
         ownerPrincipal = AirVaultPrincipal.builder()

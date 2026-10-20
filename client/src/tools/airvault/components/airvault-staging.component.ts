@@ -1219,6 +1219,8 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
       if (globalTtl === 60 * 60 * 1000) return 'Default (1h)';
       if (globalTtl === 24 * 60 * 60 * 1000) return 'Default (24h)';
       if (globalTtl === 7 * 24 * 60 * 60 * 1000) return 'Default (7d)';
+      if (globalTtl === 10 * 24 * 60 * 60 * 1000) return 'Default (10d)';
+      if (globalTtl === 20 * 24 * 60 * 60 * 1000) return 'Default (20d)';
       if (globalTtl === 30 * 24 * 60 * 60 * 1000) return 'Default (1mo)';
       return `Default (${Math.round(globalTtl / (24 * 3600 * 1000))}d)`;
     }
@@ -1228,6 +1230,8 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     if (ttl === 60 * 60 * 1000) return '1h';
     if (ttl === 24 * 60 * 60 * 1000) return '24h';
     if (ttl === 7 * 24 * 60 * 60 * 1000) return '7d';
+    if (ttl === 10 * 24 * 60 * 60 * 1000) return '10d';
+    if (ttl === 20 * 24 * 60 * 60 * 1000) return '20d';
     if (ttl === 30 * 24 * 60 * 60 * 1000) return '1mo';
     return `${Math.round(ttl / (3600 * 1000))}h`;
   }

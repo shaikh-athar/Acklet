@@ -45,30 +45,35 @@ WHERE LOWER(c.owner_username) = LOWER(i.username)
 
 -- 4. Add Foreign Keys with CASCADE DELETE
 ALTER TABLE airvault_shared_clipboards
+    DROP CONSTRAINT IF EXISTS fk_airvault_clipboards_owner_identity,
     ADD CONSTRAINT fk_airvault_clipboards_owner_identity
     FOREIGN KEY (owner_identity_id)
     REFERENCES airvault_identities(id)
     ON DELETE SET NULL;
 
 ALTER TABLE airvault_clipboard_items
+    DROP CONSTRAINT IF EXISTS fk_airvault_items_clipboard,
     ADD CONSTRAINT fk_airvault_items_clipboard
     FOREIGN KEY (clipboard_id)
     REFERENCES airvault_shared_clipboards(id)
     ON DELETE CASCADE;
 
 ALTER TABLE airvault_clipboard_files
+    DROP CONSTRAINT IF EXISTS fk_airvault_files_clipboard,
     ADD CONSTRAINT fk_airvault_files_clipboard
     FOREIGN KEY (clipboard_id)
     REFERENCES airvault_shared_clipboards(id)
     ON DELETE CASCADE;
 
 ALTER TABLE airvault_clipboard_collaborators
+    DROP CONSTRAINT IF EXISTS fk_airvault_collaborators_clipboard,
     ADD CONSTRAINT fk_airvault_collaborators_clipboard
     FOREIGN KEY (clipboard_id)
     REFERENCES airvault_shared_clipboards(id)
     ON DELETE CASCADE;
 
 ALTER TABLE airvault_invitations
+    DROP CONSTRAINT IF EXISTS fk_airvault_invitations_clipboard,
     ADD CONSTRAINT fk_airvault_invitations_clipboard
     FOREIGN KEY (clipboard_id)
     REFERENCES airvault_shared_clipboards(id)

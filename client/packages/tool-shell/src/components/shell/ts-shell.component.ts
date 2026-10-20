@@ -1,5 +1,4 @@
-// packages/tool-shell/src/components/shell/ts-shell.component.ts
-import { Component, input, output, signal, computed, inject, OnInit, AfterViewInit, ElementRef, viewChild, isDevMode, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, signal, computed, inject, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, viewChild, isDevMode, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolRegistryItem, getAllTools } from '@acklet/tool-registry';
 import { ToolShellConfig, ToolTab } from '../../models/tool-shell.models';
@@ -16,6 +15,8 @@ import { TsToolContentComponent } from '../primitive/ts-tool-content.component';
 import { TsToolHeaderComponent } from '../header/ts-tool-header.component';
 import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
 import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
+import { TsIconComponent } from '../icon/ts-icon.component';
+import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
 import { RevealDirective, TsRevealDirective } from '../../directives/reveal.directive';
 import { PerfFlagsService } from '../../services/perf-flags.service';
 
@@ -32,6 +33,8 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
     TsAboutPanelComponent,
     TsBackdropComponent,
     TsToolContentComponent,
+    TsIconComponent,
+    TsTooltipDirective,
     RevealDirective
   ],
   template: `
@@ -127,6 +130,20 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
               }
 
             </div>
+
+            <!-- Floating 'Go to Tool' button (Visible when scrolled down into bottom documentation/FAQ) -->
+            <button 
+              type="button" 
+              class="ts-goto-tool-btn" 
+              [class.is-visible]="showBackToTool()" 
+              (click)="scrollToTool()" 
+              [attr.aria-label]="'Go to ' + (tool()?.name || 'Tool')"
+              [attr.tabindex]="showBackToTool() ? 0 : -1"
+              [tsTooltip]="'Go to ' + (tool()?.name || 'Tool')"
+              tooltipPosition="left"
+            >
+              <ts-icon name="chevron-up" [size]="20" class="ts-goto-icon" />
+            </button>
           </main>
 
         </div>
@@ -355,7 +372,7 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
     }
 
     /* Main Content Card: Standalone Floating Card with non-scrolling background */
-    /* Main Content Card: Glass card with --ts-b1/b2 alpha tokens */
+    /* Main Content Card: Glass card matching sidebar and navbar */
     .ts-main-content-card {
       position: relative;
       display: flex;
@@ -368,21 +385,21 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
       container-type: inline-size;
       container-name: main-card;
       isolation: isolate;
-      /* Gradient fill using main-card alphas (b1/b2) */
       background: linear-gradient(
         180deg,
-        color-mix(in srgb, var(--ts-glass, #F0F3FF) var(--ts-b1-pct, calc(var(--ts-b1, .46) * 100%)), transparent),
-        color-mix(in srgb, var(--ts-glass, #F0F3FF) var(--ts-b2-pct, calc(var(--ts-b2, .30) * 100%)), transparent)
+        color-mix(in srgb, var(--ts-glass, #F0F3FF) var(--ts-a1-pct, calc(var(--ts-a1, .52) * 100%)), transparent),
+        color-mix(in srgb, var(--ts-glass, #F0F3FF) var(--ts-a2-pct, calc(var(--ts-a2, .34) * 100%)), transparent)
       );
       border-radius: var(--shell-radius, 20px);
-      box-shadow: none;
+      box-shadow: var(--ts-edge), var(--ts-shadow);
       border: none;
-      backdrop-filter: blur(var(--ts-glass-blur, 16px));
-      -webkit-backdrop-filter: blur(var(--ts-glass-blur, 16px));
+      backdrop-filter: var(--ts-blur, blur(5px) saturate(160%));
+      -webkit-backdrop-filter: var(--ts-blur, blur(5px) saturate(160%));
       box-sizing: border-box;
       outline: none;
-      transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
-                  border-color var(--ts-dur-base, 200ms) var(--ts-ease);
+      transform: translateZ(0);
+      transition: background var(--ts-dur-base, 200ms) var(--ts-ease),
+                  box-shadow var(--ts-dur-base, 200ms) var(--ts-ease);
     }
 
     .ts-main-scroll-container {
@@ -503,6 +520,79 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
       display: flex;
       flex-direction: column;
       min-height: fit-content;
+    }
+
+    /* Floating 'Go to Tool' button when scrolled down */
+    .ts-goto-tool-btn {
+      position: absolute;
+      bottom: 28px;
+      right: 32px;
+      z-index: 90;
+      width: 44px;
+      height: 44px;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--ts-glass, #F0F3FF) var(--ts-a1-pct, calc(var(--ts-a1, .52) * 100%)), transparent),
+        color-mix(in srgb, var(--ts-glass, #F0F3FF) var(--ts-a2-pct, calc(var(--ts-a2, .34) * 100%)), transparent)
+      );
+      -webkit-backdrop-filter: var(--ts-blur, blur(5px) saturate(160%));
+      backdrop-filter: var(--ts-blur, blur(5px) saturate(160%));
+      box-shadow: var(--ts-edge), var(--ts-shadow), 0 4px 14px rgba(0, 0, 0, 0.12);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.2));
+      color: var(--text, #18181B);
+      cursor: pointer;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(20px) scale(0.85);
+      transition: opacity 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+                  transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+                  visibility 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+                  background 180ms ease,
+                  box-shadow 180ms ease,
+                  color 180ms ease,
+                  border-color 180ms ease;
+      pointer-events: none;
+      outline: none;
+    }
+
+    :host-context([data-theme="dark"]) .ts-goto-tool-btn {
+      color: var(--text, #FCFCFC);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .ts-goto-tool-btn.is-visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .ts-goto-tool-btn:hover {
+      transform: translateY(-3px) scale(1.1);
+      color: var(--accent-strong, var(--accent));
+      border-color: var(--accent);
+      box-shadow: var(--ts-edge), var(--ts-shadow), 0 8px 24px color-mix(in srgb, var(--accent) 35%, transparent);
+    }
+
+    .ts-goto-tool-btn:hover .ts-goto-icon {
+      animation: tsFloatUp 700ms ease-in-out infinite alternate;
+    }
+
+    .ts-goto-tool-btn:active {
+      transform: translateY(0) scale(0.94);
+    }
+
+    @keyframes tsFloatUp {
+      0% {
+        transform: translateY(0);
+      }
+      100% {
+        transform: translateY(-3px);
+      }
     }
 
     .ts-tool-card-surface.full-bleed {
@@ -655,7 +745,7 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
     }
   `]
 })
-export class ToolLayoutComponent implements OnInit, AfterViewInit {
+export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly tool = input<ToolRegistryItem | null>(null);
   readonly config = input<ToolShellConfig | null>(null);
   readonly surface = input<'clear' | 'frost' | 'tinted' | 'solid'>('clear');
@@ -667,10 +757,13 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit {
   readonly allTools = signal<ToolRegistryItem[]>(getAllTools());
   readonly showCommandPalette = signal<boolean>(false);
   readonly showAboutPanel = signal<boolean>(false);
+  readonly showBackToTool = signal<boolean>(false);
   readonly sidebarService = inject(ToolSidebarService);
   readonly themeService = inject(ToolThemeService);
   private readonly capsuleService = inject(ToolCapsuleService);
   private readonly perfFlags = inject(PerfFlagsService);
+  private readonly ngZone = inject(NgZone);
+  private scrollListener: (() => void) | null = null;
 
   readonly internalActiveTab = signal<string>('');
   private readonly devSurfaceOverride = signal<'clear' | 'frost' | 'tinted' | 'solid' | null>(null);
@@ -724,6 +817,37 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit {
     const sc = this.scrollContainer()?.nativeElement;
     if (sc) {
       sc.classList.add('ts-reveal-ready');
+      this.scrollListener = () => {
+        const scrolled = sc.scrollTop > 240;
+        if (this.showBackToTool() !== scrolled) {
+          this.ngZone.run(() => {
+            this.showBackToTool.set(scrolled);
+          });
+        }
+      };
+      sc.addEventListener('scroll', this.scrollListener, { passive: true });
+    }
+  }
+
+  ngOnDestroy(): void {
+    const sc = this.scrollContainer()?.nativeElement;
+    if (sc && this.scrollListener) {
+      sc.removeEventListener('scroll', this.scrollListener);
+      this.scrollListener = null;
+    }
+  }
+
+  scrollToTool(): void {
+    const sc = this.scrollContainer()?.nativeElement || (typeof document !== 'undefined' ? document.querySelector('.ts-main-scroll-container') : null);
+    if (sc) {
+      sc.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    const toolEl = typeof document !== 'undefined' ? document.getElementById('tool') : null;
+    if (toolEl && sc) {
+      toolEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }
 

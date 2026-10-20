@@ -1026,12 +1026,12 @@ export class ClipboardComponent implements OnInit, OnDestroy {
       const created = new Date(share.createdAt).getTime();
       const expires = new Date(share.expiresAt).getTime();
       const diffHours = Math.round((expires - created) / (1000 * 60 * 60));
-      if (diffHours >= 600) {
-        this.retentionHours.set(720);
-        this.selectedRetentionHours = 720;
-      } else if (diffHours >= 300) {
-        this.retentionHours.set(360);
-        this.selectedRetentionHours = 360;
+      if (diffHours >= 360) {
+        this.retentionHours.set(480);
+        this.selectedRetentionHours = 480;
+      } else if (diffHours >= 200) {
+        this.retentionHours.set(240);
+        this.selectedRetentionHours = 240;
       } else {
         this.retentionHours.set(168);
         this.selectedRetentionHours = 168;

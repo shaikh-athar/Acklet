@@ -8,6 +8,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -28,7 +29,12 @@ public class AirVaultTokenService {
     private static final long DEFAULT_USER_TOKEN_EXPIRY_MS = 30L * 24 * 60 * 60 * 1000; // 30 days
     private static final long DEFAULT_GUEST_TOKEN_EXPIRY_MS = 7L * 24 * 60 * 60 * 1000; // 7 days
 
-    public AirVaultTokenService(AppProperties appProperties, AirVaultRedisTracker redisTracker) {
+    public AirVaultTokenService(AppProperties appProperties) {
+        this(appProperties, null);
+    }
+
+    @Autowired
+    public AirVaultTokenService(AppProperties appProperties, @Autowired(required = false) AirVaultRedisTracker redisTracker) {
         this.redisTracker = redisTracker;
         String secret = appProperties.getSecurity() != null && appProperties.getSecurity().getJwt() != null
                 ? appProperties.getSecurity().getJwt().getSecret()
@@ -153,7 +159,7 @@ public class AirVaultTokenService {
             }
 
             // Check if token has been revoked / logged out in Redis
-            if ("USER".equalsIgnoreCase(tokenType) && !redisTracker.validateDeviceSession(token)) {
+            if ("USER".equalsIgnoreCase(tokenType) && redisTracker != null && !redisTracker.validateDeviceSession(token)) {
                 log.debug("[AirVault Token] Token was invalidated or not found in active Redis sessions: {}", token);
                 return null;
             }
