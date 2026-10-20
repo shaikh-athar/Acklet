@@ -15,6 +15,7 @@ import com.code.acklet.airvault.websocket.dto.AirVaultWsMessage;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.domain.PageRequest;
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,7 +29,7 @@ import java.time.Instant;
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = {@org.springframework.beans.factory.annotation.Autowired})
 @Slf4j
 public class AirVaultSharedClipboardService {
 
@@ -42,6 +43,21 @@ public class AirVaultSharedClipboardService {
     private final ObjectMapper objectMapper;
     private final AirVaultAuditService auditService;
     private final com.code.acklet.airvault.config.AirVaultLimitsProperties limitsProperties;
+
+    public AirVaultSharedClipboardService(
+            AirVaultSharedClipboardRepository clipboardRepository,
+            AirVaultClipboardItemRepository itemRepository,
+            AirVaultIdentityRepository identityRepository,
+            AirVaultAuthorizationService authorizationService,
+            AirVaultTokenService tokenService,
+            AirVaultWebSocketHandler webSocketHandler,
+            AirVaultSyncRelayService syncRelayService,
+            ObjectMapper objectMapper,
+            AirVaultAuditService auditService) {
+        this(clipboardRepository, itemRepository, identityRepository, authorizationService,
+             tokenService, webSocketHandler, syncRelayService, objectMapper, auditService,
+             new com.code.acklet.airvault.config.AirVaultLimitsProperties());
+    }
 
     private static final String ID_LETTERS = "bcdfghjkmnpqrstvwxyz";
     private static final String ID_DIGITS = "0123456789";

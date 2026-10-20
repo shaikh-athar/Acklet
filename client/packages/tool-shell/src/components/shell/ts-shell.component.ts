@@ -115,6 +115,13 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
                 <ts-tool-content [tool]="tool()" />
               </div>
 
+              <!-- 4. BELOW the grid, full width: About, How to use, FAQ, Related -->
+              @if (!isFullBleed()) {
+                <div class="ts-content-below-grid ts-entry-content">
+                  <ts-tool-content [tool]="tool()" />
+                </div>
+              }
+
               <!-- About & Documentation Card Below Tool -->
               @if (showDescriptionCard() && tool()) {
                 <section 

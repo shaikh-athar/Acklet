@@ -147,4 +147,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleAllUncaughtException(Exception ex) {
         return handleAllUncaughtException(ex, null);
     }
+
+    public ResponseEntity<ApiResponse<Void>> handleAllUncaughtException(Exception ex) {
+        return handleAllUncaughtException(ex, null);
+    }
 }
