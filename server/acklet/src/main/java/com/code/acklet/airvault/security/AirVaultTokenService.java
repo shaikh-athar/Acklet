@@ -28,7 +28,12 @@ public class AirVaultTokenService {
     private static final long DEFAULT_USER_TOKEN_EXPIRY_MS = 30L * 24 * 60 * 60 * 1000; // 30 days
     private static final long DEFAULT_GUEST_TOKEN_EXPIRY_MS = 7L * 24 * 60 * 60 * 1000; // 7 days
 
-    public AirVaultTokenService(AppProperties appProperties, AirVaultRedisTracker redisTracker) {
+    public AirVaultTokenService(AppProperties appProperties) {
+        this(appProperties, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public AirVaultTokenService(AppProperties appProperties, @org.springframework.beans.factory.annotation.Autowired(required = false) AirVaultRedisTracker redisTracker) {
         this.redisTracker = redisTracker;
         String secret = appProperties.getSecurity() != null && appProperties.getSecurity().getJwt() != null
                 ? appProperties.getSecurity().getJwt().getSecret()

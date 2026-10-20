@@ -97,10 +97,53 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler({
+            org.apache.catalina.connector.ClientAbortException.class,
+            org.springframework.web.context.request.async.AsyncRequestNotUsableException.class
+    })
+    public void handleClientAbortException(Exception ex) {
+        log.debug("[GlobalExceptionHandler] 🔌 Client disconnected or aborted stream connection [traceId={}]: {}",
+                getTraceId(), ex.getMessage());
+    }
+
+    @ExceptionHandler(java.io.IOException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIOException(java.io.IOException ex, jakarta.servlet.http.HttpServletResponse response) {
+        String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+        if (msg.contains("broken pipe") || msg.contains("connection reset") || msg.contains("connection closed") || msg.contains("aborted")) {
+            log.debug("[GlobalExceptionHandler] 🔌 Client socket closed during transfer [traceId={}]: {}", getTraceId(), ex.getMessage());
+            return null;
+        }
+
+        if (response != null && response.isCommitted()) {
+            log.warn("[GlobalExceptionHandler] ⚠️ IOException occurred after response was committed [traceId={}]: {}", getTraceId(), ex.getMessage());
+            return null;
+        }
+
+        log.error("IO exception caught [traceId={}]: ", getTraceId(), ex);
+        ApiResponse<Void> apiResponse = ApiResponse.error("An IO error occurred while processing the request.", getTraceId());
+        return new ResponseEntity<>(apiResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
     @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleAllUncaughtException(Exception ex, jakarta.servlet.http.HttpServletResponse response) {
+        String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+        if (msg.contains("broken pipe") || msg.contains("connection reset") || msg.contains("clientabort") || msg.contains("asyncnotusable")) {
+            log.debug("[GlobalExceptionHandler] 🔌 Client disconnected mid-transfer [traceId={}]: {}", getTraceId(), ex.getMessage());
+            return null;
+        }
+
+        if (response != null && response.isCommitted()) {
+            log.warn("[GlobalExceptionHandler] ⚠️ Uncaught exception occurred on already-committed response [traceId={}]: {}",
+                    getTraceId(), ex.getMessage());
+            return null;
+        }
+
+        log.error("Unhandled exception caught [traceId={}]: ", getTraceId(), ex);
+        ApiResponse<Void> apiResponse = ApiResponse.error("An unexpected error occurred. Please contact support.", getTraceId());
+        return new ResponseEntity<>(apiResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
     public ResponseEntity<ApiResponse<Void>> handleAllUncaughtException(Exception ex) {
-        log.error("Unhandled exception caught [traceId={}]:", getTraceId(), ex);
-        ApiResponse<Void> response = ApiResponse.error("An unexpected error occurred. Please contact support.", getTraceId());
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        return handleAllUncaughtException(ex, null);
     }
 }

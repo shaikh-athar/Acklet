@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import org.springframework.data.domain.Persistable;
 
 import java.time.Instant;
 import java.util.Map;
@@ -16,12 +17,31 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AirVaultAuditEvent {
+public class AirVaultAuditEvent implements Persistable<UUID> {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "event_id")
     private UUID eventId;
+
+    @Transient
+    @Builder.Default
+    private boolean isNew = true;
+
+    @Override
+    public UUID getId() {
+        return eventId;
+    }
+
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+
+    @PostLoad
+    @PostPersist
+    void markNotNew() {
+        this.isNew = false;
+    }
 
     @Column(name = "timestamp_utc", nullable = false)
     private Instant timestampUtc;
@@ -62,6 +82,9 @@ public class AirVaultAuditEvent {
 
     @PrePersist
     protected void onCreate() {
+        if (eventId == null) {
+            eventId = UUID.randomUUID();
+        }
         if (timestampUtc == null) {
             timestampUtc = Instant.now();
         }

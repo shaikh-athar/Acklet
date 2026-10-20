@@ -54,4 +54,3 @@ Before writing any new code, stop at the first rung that holds:
   - Smart Scope automatically skips unchanged backend/frontend layers; pass `--all` to force all checks.
 - **Plan Discipline:** Require a structured plan before multi-file architectural changes; avoid lengthy planning documents for trivial 1-line fixes.
 
-

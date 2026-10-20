@@ -5,12 +5,6 @@ spring:
   application:
     name: acklet
 
-  servlet:
-    multipart:
-      enabled: true
-      max-file-size: 500MB
-      max-request-size: 500MB
-
   # Database configuration driver
   datasource:
     driver-class-name: org.postgresql.Driver
@@ -35,7 +29,7 @@ spring:
   servlet:
     multipart:
       enabled: true
-      max-file-size: 200MB
+      max-file-size: 500MB
       max-request-size: 500MB
 
 server:
