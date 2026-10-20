@@ -5,9 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8cc24f72-cf76-4714-94a5-20cada12dd6d" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/airvault/service/AirVaultSharedClipboardService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/airvault/service/AirVaultSharedClipboardService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/exception/GlobalExceptionHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/exception/GlobalExceptionHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/README.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -43,7 +41,7 @@
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "Spring Boot.AckletApplication.executor": "Run",
     "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "main",
+    "git-widget-placeholder": "develop",
     "kotlin-language-version-configured": "true",
     "nodejs_package_manager_path": "npm",
     "ts.external.directory.path": "/Applications/IntelliJ IDEA.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external",
