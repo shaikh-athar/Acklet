@@ -29,7 +29,6 @@ import java.time.Instant;
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor(onConstructor_ = {@org.springframework.beans.factory.annotation.Autowired})
 @Slf4j
 public class AirVaultSharedClipboardService {
 
@@ -43,6 +42,30 @@ public class AirVaultSharedClipboardService {
     private final ObjectMapper objectMapper;
     private final AirVaultAuditService auditService;
     private final com.code.acklet.airvault.config.AirVaultLimitsProperties limitsProperties;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public AirVaultSharedClipboardService(
+            AirVaultSharedClipboardRepository clipboardRepository,
+            AirVaultClipboardItemRepository itemRepository,
+            AirVaultIdentityRepository identityRepository,
+            AirVaultAuthorizationService authorizationService,
+            AirVaultTokenService tokenService,
+            AirVaultWebSocketHandler webSocketHandler,
+            AirVaultSyncRelayService syncRelayService,
+            ObjectMapper objectMapper,
+            AirVaultAuditService auditService,
+            com.code.acklet.airvault.config.AirVaultLimitsProperties limitsProperties) {
+        this.clipboardRepository = clipboardRepository;
+        this.itemRepository = itemRepository;
+        this.identityRepository = identityRepository;
+        this.authorizationService = authorizationService;
+        this.tokenService = tokenService;
+        this.webSocketHandler = webSocketHandler;
+        this.syncRelayService = syncRelayService;
+        this.objectMapper = objectMapper;
+        this.auditService = auditService;
+        this.limitsProperties = limitsProperties;
+    }
 
     public AirVaultSharedClipboardService(
             AirVaultSharedClipboardRepository clipboardRepository,
