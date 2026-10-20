@@ -14,6 +14,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -107,7 +108,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(java.io.IOException.class)
-    public ResponseEntity<ApiResponse<Void>> handleIOException(java.io.IOException ex, jakarta.servlet.http.HttpServletResponse response) {
+    public ResponseEntity<ApiResponse<Void>> handleIOException(java.io.IOException ex, HttpServletResponse response) {
         String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
         if (msg.contains("broken pipe") || msg.contains("connection reset") || msg.contains("connection closed") || msg.contains("aborted")) {
             log.debug("[GlobalExceptionHandler] 🔌 Client socket closed during transfer [traceId={}]: {}", getTraceId(), ex.getMessage());
@@ -125,7 +126,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleAllUncaughtException(Exception ex, jakarta.servlet.http.HttpServletResponse response) {
+    public ResponseEntity<ApiResponse<Void>> handleAllUncaughtException(Exception ex, HttpServletResponse response) {
         String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
         if (msg.contains("broken pipe") || msg.contains("connection reset") || msg.contains("clientabort") || msg.contains("asyncnotusable")) {
             log.debug("[GlobalExceptionHandler] 🔌 Client disconnected mid-transfer [traceId={}]: {}", getTraceId(), ex.getMessage());
@@ -138,9 +139,13 @@ public class GlobalExceptionHandler {
             return null;
         }
 
-        log.error("Unhandled exception caught [traceId={}]: ", getTraceId(), ex);
-        ApiResponse<Void> apiResponse = ApiResponse.error("An unexpected error occurred. Please contact support.", getTraceId());
-        return new ResponseEntity<>(apiResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+        log.error("Unhandled exception caught [traceId={}]:", getTraceId(), ex);
+        ApiResponse<Void> responseBody = ApiResponse.error("An unexpected error occurred. Please contact support.", getTraceId());
+        return new ResponseEntity<>(responseBody, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    public ResponseEntity<ApiResponse<Void>> handleAllUncaughtException(Exception ex) {
+        return handleAllUncaughtException(ex, null);
     }
 
     public ResponseEntity<ApiResponse<Void>> handleAllUncaughtException(Exception ex) {

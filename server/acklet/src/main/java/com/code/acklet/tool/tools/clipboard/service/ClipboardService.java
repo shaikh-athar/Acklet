@@ -93,8 +93,6 @@ public class ClipboardService {
         }
     }
 
-    private final Map<String, byte[]> fileByteStore = new ConcurrentHashMap<>();
-
     public ClipboardConfigDto getConfig() {
         return ClipboardConfigDto.builder()
                 .codeLength(5)

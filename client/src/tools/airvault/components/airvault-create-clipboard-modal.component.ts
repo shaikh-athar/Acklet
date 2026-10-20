@@ -636,7 +636,7 @@ export class AirVaultCreateClipboardModalComponent {
   readonly customSlug = signal<string>('');
   readonly accessMode = signal<'read-only' | 'read-write'>('read-write');
   readonly retentionDays = signal<number>(7);
-  readonly retentionOptions = [1, 7, 30];
+  readonly retentionOptions = [7, 10, 20];
 
   // Slug check
   readonly isCheckingSlug = signal<boolean>(false);

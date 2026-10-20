@@ -13,7 +13,8 @@ import {
   viewChildren,
   AfterViewInit,
   NgZone,
-  ChangeDetectionStrategy
+  ChangeDetectionStrategy,
+  effect
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolSidebarService } from '../../services/tool-sidebar.service';
@@ -742,6 +743,20 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private intersectionObserver?: IntersectionObserver;
+  private boundScrollListener?: () => void;
+  private scrollContainerEl?: HTMLElement | null;
+
+  constructor() {
+    effect(() => {
+      const links = this.sectionLinks();
+      if (links.length > 0 && typeof window !== 'undefined') {
+        setTimeout(() => {
+          this.updatePillIndicator();
+          this.setupScrollSpy();
+        }, 150);
+      }
+    });
+  }
 
   // Build section links from tool definition
   readonly sectionLinks = computed<SectionNavLink[]>(() => {
@@ -775,16 +790,36 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     if (typeof window !== 'undefined') {
-      setTimeout(() => this.setupScrollSpy(), 100);
+      setTimeout(() => {
+        this.setupScrollSpy();
+        this.handleInitialHash();
+      }, 250);
+    }
+  }
+
+  private handleInitialHash(): void {
+    if (typeof window === 'undefined' || !window.location.hash) return;
+    const hash = window.location.hash.replace('#', '');
+    const valid = this.sectionLinks().some(l => l.id === hash);
+    if (valid) {
+      setTimeout(() => {
+        this.scrollToSection(new MouseEvent('click'), hash);
+      }, 350);
     }
   }
 
   ngAfterViewInit(): void {
-    setTimeout(() => this.updatePillIndicator(), 150);
+    setTimeout(() => {
+      this.updatePillIndicator();
+      this.setupScrollSpy();
+    }, 250);
   }
 
   ngOnDestroy(): void {
     this.intersectionObserver?.disconnect();
+    if (this.scrollContainerEl && this.boundScrollListener) {
+      this.scrollContainerEl.removeEventListener('scroll', this.boundScrollListener);
+    }
   }
 
   scrollToSection(event: MouseEvent, sectionId: string): void {
@@ -794,23 +829,59 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (typeof document === 'undefined') return;
 
+    const scrollContainer = (document.querySelector('.ts-main-scroll-container') || document.getElementById('main-content')) as HTMLElement | null;
+
     if (sectionId === 'tool') {
-      const mainEl = document.getElementById('main-content');
-      mainEl?.scrollTo({ top: 0, behavior: 'smooth' });
+      if (scrollContainer) {
+        scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        const toolEl = document.getElementById('tool');
+        if (toolEl) {
+          toolEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
       return;
     }
 
+    const performScroll = (el: HTMLElement) => {
+      if (scrollContainer) {
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const targetRect = el.getBoundingClientRect();
+        const scrollOffset = targetRect.top - containerRect.top + scrollContainer.scrollTop;
+        scrollContainer.scrollTo({
+          top: Math.max(0, scrollOffset - 24),
+          behavior: 'smooth'
+        });
+      } else {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+
     const targetEl = document.getElementById(sectionId);
     if (targetEl) {
-      targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      performScroll(targetEl);
+    } else {
+      setTimeout(() => {
+        const retryEl = document.getElementById(sectionId);
+        if (retryEl) {
+          performScroll(retryEl);
+        }
+      }, 100);
     }
   }
 
   private setupScrollSpy(): void {
     if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
 
-    const mainCard = document.getElementById('main-content');
-    if (!mainCard) return;
+    const scrollContainer = (document.querySelector('.ts-main-scroll-container') || document.getElementById('main-content')) as HTMLElement | null;
+    if (!scrollContainer) return;
+
+    if (this.scrollContainerEl && this.boundScrollListener) {
+      this.scrollContainerEl.removeEventListener('scroll', this.boundScrollListener);
+    }
+    this.intersectionObserver?.disconnect();
 
     this.intersectionObserver = new IntersectionObserver((entries) => {
       this.zone.run(() => {
@@ -825,7 +896,7 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       });
     }, {
-      root: mainCard,
+      root: scrollContainer,
       rootMargin: '-10% 0px -70% 0px',
       threshold: 0
     });
@@ -837,6 +908,17 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
         this.intersectionObserver?.observe(el);
       }
     });
+
+    this.boundScrollListener = () => {
+      if (scrollContainer.scrollTop < 80 && this.activeSection() !== 'tool') {
+        this.zone.run(() => {
+          this.activeSection.set('tool');
+          this.updatePillIndicator();
+        });
+      }
+    };
+    this.scrollContainerEl = scrollContainer;
+    scrollContainer.addEventListener('scroll', this.boundScrollListener, { passive: true });
   }
 
   private updatePillIndicator(): void {

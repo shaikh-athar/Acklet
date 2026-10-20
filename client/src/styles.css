@@ -1199,10 +1199,12 @@ html[data-theme="dark"] {
 
 .ts-main-scroll-container.full-bleed {
   height: 100% !important;
-  max-height: 100% !important;
   min-height: 0 !important;
   flex: 1 1 0% !important;
-  overflow: hidden !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scroll-behavior: smooth !important;
+  -webkit-overflow-scrolling: touch !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: flex-start !important;
@@ -1212,10 +1214,9 @@ html[data-theme="dark"] {
 }
 
 .ts-workspace-section.full-bleed {
+  min-height: 100% !important;
   height: 100% !important;
-  max-height: 100% !important;
-  min-height: 0 !important;
-  flex: 1 1 0% !important;
+  flex-shrink: 0 !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: flex-start !important;

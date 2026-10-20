@@ -11,8 +11,8 @@ export const CLIPBOARD_CONFIG = {
   defaultExpiryHours: 168, // 7 days default
   retentionOptions: [
     { label: '7 Days', hours: 168 },
-    { label: '15 Days', hours: 360 },
-    { label: '1 Month (30 Days)', hours: 720 }
+    { label: '10 Days', hours: 240 },
+    { label: '20 Days', hours: 480 }
   ]
 } as const;
 

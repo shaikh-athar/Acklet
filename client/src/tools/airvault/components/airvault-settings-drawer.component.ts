@@ -1323,9 +1323,9 @@ export class AirVaultSettingsDrawerComponent {
 
   ttlOptions = [
     { value: BURN_AFTER_READ_TTL, label: '🔥 Burn After Read (After Seen)', desc: 'Permanently destroys item everywhere immediately after first view (Resources only)' },
-    { value: 24 * 60 * 60 * 1000, label: '1 Day (24 Hours)', desc: 'Standard single-day developer memory' },
     { value: 7 * 24 * 60 * 60 * 1000, label: '7 Days (Default)', desc: 'Standard 7-day retention policy for clipboard & uploads' },
-    { value: 30 * 24 * 60 * 60 * 1000, label: '1 Month (30 Days)', desc: 'Extended 30-day vault retention' },
+    { value: 10 * 24 * 60 * 60 * 1000, label: '10 Days', desc: 'Extended 10-day vault retention' },
+    { value: 20 * 24 * 60 * 60 * 1000, label: '20 Days', desc: 'Maximum 20-day vault retention' },
     { value: 0, label: 'Never Expire', desc: 'Keep history until manually cleared' }
   ];
 

@@ -337,21 +337,6 @@
       </div>
     }
 
-    <!-- Switching / Connecting Stage Overlay -->
-    @if (isSwitching()) {
-      <div class="switching-stage-overlay" role="status" aria-live="polite">
-        <div class="switching-stage-card">
-          <div class="switching-info-box">
-            <div class="switching-title-row">
-              <span class="spinner-circle-xs" aria-hidden="true"></span>
-              <h3 class="switching-title">Connecting to Clipboard</h3>
-            </div>
-            <p class="switching-desc">Opening clipboard <code class="switching-code-badge">{{ switchingCode() }}</code>...</p>
-          </div>
-        </div>
-      </div>
-    }
-
     <!-- ─────────────────────────────────────────────────────────── -->
     <!-- TAB 1: TEXT & LINKS (Klipit-style One Big Shared Textarea) -->
     <!-- ─────────────────────────────────────────────────────────── -->
@@ -1735,8 +1720,8 @@
               (ngModelChange)="retentionHours.set($event)"
             >
               <option [ngValue]="168">7 Days</option>
-              <option [ngValue]="360">15 Days</option>
-              <option [ngValue]="720">1 Month (30 Days)</option>
+              <option [ngValue]="240">10 Days</option>
+              <option [ngValue]="480">20 Days</option>
             </select>
           </div>
         </div>

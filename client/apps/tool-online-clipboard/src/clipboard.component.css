@@ -511,6 +511,7 @@
     transform: scale(0.92);
     opacity: 0.7;
   }
+
   100% {
     transform: scale(1);
     opacity: 1;
@@ -558,6 +559,7 @@
     opacity: 0;
     transform: translateY(-4px) scale(0.96);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -706,7 +708,7 @@
   overflow: hidden;
   padding: 0;
   box-sizing: border-box;
-  overscroll-behavior-y: contain;
+  overscroll-behavior-y: auto;
   scrollbar-width: thin;
   display: flex;
   flex-direction: column;
@@ -874,7 +876,8 @@
 
 /* Shared Big Textarea */
 .shared-textarea-container {
-  display: block;
+  display: flex;
+  flex-direction: column;
   position: relative;
   width: 100%;
   flex: 1 1 0%;
@@ -2677,10 +2680,12 @@
     opacity: 1;
     transform: scale(1) translateY(0);
   }
+
   50% {
     opacity: 0.5;
     transform: scale(0.94) translateY(4px);
   }
+
   100% {
     opacity: 0;
     transform: scale(0.85) translateY(12px);
@@ -2921,6 +2926,7 @@
     opacity: 1;
     transform: translateX(0) scale(1);
   }
+
   100% {
     opacity: 0;
     transform: translateX(-16px) scale(0.96);
@@ -3274,6 +3280,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -3284,6 +3291,7 @@
     opacity: 0;
     transform: scale(0.94) translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -4379,6 +4387,7 @@ input:checked+.toggle-slider:before {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -4402,6 +4411,7 @@ input:checked+.toggle-slider:before {
     transform: scale(0.92) translateY(8px);
     opacity: 0;
   }
+ 
   to {
     transform: scale(1) translateY(0);
     opacity: 1;
