@@ -45,6 +45,7 @@ import {
   LucideShield,
   LucideShieldCheck,
   LucideZap,
+  LucideZapOff,
   LucideQrCode,
   LucidePlus,
   LucideMinus,
@@ -108,7 +109,19 @@ import {
   LucideQuote,
   LucideSquareTerminal,
   LucideImages,
-  LucideTextWrap
+  LucideTextWrap,
+  LucideGlobe,
+  LucideType,
+  LucideMail,
+  LucidePhone,
+  LucideMessageSquare,
+  LucideWifi,
+  LucideMapPin,
+  LucideCalendar,
+  LucideUser,
+  LucideShare2,
+  LucideSmartphone,
+  LucideWallet
 } from '@lucide/angular';
 
 import {
@@ -200,7 +213,8 @@ export const LUCIDE_MOTION_MAP: Record<string, string> = {
   'arrow-right': 'motion-translate-right',
   sun: 'motion-rotate-15',
   moon: 'motion-rotate-15',
-  zap: 'motion-scale-up'
+  zap: 'motion-scale-up',
+  'zap-off': 'motion-scale-up'
 };
 
 /**
@@ -438,6 +452,9 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   zap: {
     lucide: LucideZap
   },
+  'zap-off': {
+    lucide: LucideZapOff
+  },
   'qr-code': {
     lucide: LucideQrCode
   },
@@ -638,5 +655,41 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   },
   'wrap-text': {
     lucide: LucideTextWrap
+  },
+  globe: {
+    lucide: LucideGlobe
+  },
+  type: {
+    lucide: LucideType
+  },
+  mail: {
+    lucide: LucideMail
+  },
+  phone: {
+    lucide: LucidePhone
+  },
+  'message-square': {
+    lucide: LucideMessageSquare
+  },
+  wifi: {
+    lucide: LucideWifi
+  },
+  'map-pin': {
+    lucide: LucideMapPin
+  },
+  calendar: {
+    lucide: LucideCalendar
+  },
+  user: {
+    lucide: LucideUser
+  },
+  'share-2': {
+    lucide: LucideShare2
+  },
+  smartphone: {
+    lucide: LucideSmartphone
+  },
+  wallet: {
+    lucide: LucideWallet
   }
 };

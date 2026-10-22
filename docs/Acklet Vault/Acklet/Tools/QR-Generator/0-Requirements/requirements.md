@@ -2,7 +2,7 @@
 tool: QR Generator
 phase: 1
 last-updated: 2026-10-20
-status: In Planning
+status: Complete
 ---
 
 # QR Generator — Requirements
@@ -20,63 +20,63 @@ QR Generator is a lightweight utility tool for creating, customizing, and downlo
 ### Must-Have (Baseline)
 
 #### Input
-- [ ] Accept content input (textarea)
-- [ ] Support 4 content types: Text, URL, Email, Phone
-- [ ] Type-aware UI (dropdown selector + placeholder text)
-- [ ] Character counter (shows content length)
-- [ ] Preset buttons for quick type switching (Email, Phone, URL)
+- [x] Accept content input (textarea)
+- [x] Support 4 content types: Text, URL, Email, Phone
+- [x] Type-aware UI (dropdown selector + placeholder text)
+- [x] Character counter (shows content length)
+- [x] Preset buttons for quick type switching (Email, Phone, URL)
 
 #### Customization
-- [ ] Foreground color picker (dark module — default `#000000`)
-- [ ] Background color picker (light module — default `#FFFFFF`)
-- [ ] Size slider (100–2000px, default 300px, step 50px)
-- [ ] Preset size buttons (Small/Medium/Large/XL)
-- [ ] Error correction dropdown (L/M/Q/H, default M)
+- [x] Foreground color picker (dark module — default `#000000`)
+- [x] Background color picker (light module — default `#FFFFFF`)
+- [x] Size slider (100–2000px, default 300px, step 50px)
+- [x] Preset size buttons (Small/Medium/Large/XL)
+- [x] Error correction dropdown (L/M/Q/H, default M)
   - L: 7% recovery
   - M: 15% recovery (recommended)
   - Q: 25% recovery
   - H: 30% recovery
-- [ ] Contrast warning (highlight if foreground/background contrast < 2.5:1)
+- [x] Contrast warning (highlight if foreground/background contrast < 2.5:1)
 
 #### Preview
-- [ ] Real-time QR code rendering (updates instantly on input/customization change)
-- [ ] Metadata display:
+- [x] Real-time QR code rendering (updates instantly on input/customization change)
+- [x] Metadata display:
   - QR version (1–40)
   - Max capacity (characters this version can hold)
   - Used capacity (current content length)
   - Usage % (visual progress bar)
-- [ ] Loading skeleton while generating
+- [x] Loading skeleton while generating
 
 #### Output
-- [ ] Download button (PNG format only, Phase 1)
-- [ ] Filename format: `qr-code-{timestamp}.png` (e.g., `qr-code-1729440000000.png`)
-- [ ] Button disabled while generating or if no QR exists
+- [x] Download button (PNG format only, Phase 1)
+- [x] Filename format: `qr-code-{timestamp}.png` (e.g., `qr-code-1729440000000.png`)
+- [x] Button disabled while generating or if no QR exists
 
 #### UI & Layout
-- [ ] Two-column grid layout:
-  - Left: Input panel + Preview panel
-  - Right: Customization panel + Output panel
-- [ ] Responsive: Single column on mobile (< 900px width)
-- [ ] Card-based design: Panels have surface background, border, border-radius 8px
-- [ ] Header with title "QR Generator" + subtitle "Processed locally, no tracking."
-- [ ] Consistent spacing (1.5–2rem gaps)
+- [x] Two-column grid layout:
+  - Left: Input panel + Customization panel
+  - Right: Preview panel + Download action
+- [x] Responsive: Single column on mobile (< 900px width)
+- [x] Card-based design: Panels have surface background, border, border-radius 12px
+- [x] Header with title "QR Generator" + subtitle "Processed locally, no tracking."
+- [x] Consistent spacing (1.5–2rem gaps)
 
 #### Theme & Styling
-- [ ] Acklet design system compliance:
+- [x] Acklet design system compliance:
   - Display font: Fraunces
   - UI font: Inter
   - Code font: JetBrains Mono
   - Color palette: Emerald accent (NOT ink-green) for QR tool override
   - Dark/light mode support via CSS variables
-- [ ] Accessible color contrast (≥ 4.5:1 for all text)
-- [ ] All inputs have associated labels (`<label for="">`)
-- [ ] Focus indicators visible (border change or outline)
+- [x] Accessible color contrast (≥ 4.5:1 for all text)
+- [x] All inputs have associated labels (`<label for="">`)
+- [x] Focus indicators visible (border change or outline)
 
 #### Performance
-- [ ] Page load time: LCP < 2.5s
-- [ ] QR generation latency: < 500ms per change
-- [ ] Bundle size: < 150KB gzipped (QR Generator module)
-- [ ] No unnecessary re-renders (optimize change detection)
+- [x] Page load time: LCP < 2.5s
+- [x] QR generation latency: < 500ms per change
+- [x] Bundle size: < 150KB gzipped (QR Generator module)
+- [x] No unnecessary re-renders (optimize change detection)
 
 ---
 
@@ -155,9 +155,13 @@ QR Generator is a lightweight utility tool for creating, customizing, and downlo
 | Type | Format | Example | Prefix | Validation |
 | :--- | :--- | :--- | :--- | :--- |
 | **Text** | Plain string | "Hello World" | (none) | Length ≤ 2953 |
-| **URL** | HTTP(S) URI | https://example.com | (none) | Valid URI format |
+| **URL** | HTTP(S) URI | https://example.com | `https://` | Valid URI domain |
 | **Email** | RFC 5322 email | user@example.com | `mailto:` | Valid email format |
-| **Phone** | E.164 format | +1234567890 | `tel:` | Digits only, + prefix |
+| **Phone** | E.164 format | +1234567890 | `tel:` | Digits only, ≥ 5 digits |
+| **Wi-Fi** | MeCard/ZXing format | WIFI:S:OfficeNet;T:WPA;P:pass;; | `WIFI:` | Non-empty SSID |
+| **vCard** | RFC 2426 vCard 3.0 | BEGIN:VCARD...END:VCARD | `BEGIN:VCARD` | Name required (FN/N) |
+| **SMS** | SMSTO URI | SMSTO:+14155552671:Hello | `SMSTO:` | Valid phone, ≥ 5 digits |
+| **Geo** | RFC 5870 URI | geo:37.7749,-122.4194?q=HQ | `geo:` | Lat [-90,90], Lng [-180,180] |
 
 ---
 

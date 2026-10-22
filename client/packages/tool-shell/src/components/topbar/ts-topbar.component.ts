@@ -18,12 +18,14 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolSidebarService } from '../../services/tool-sidebar.service';
+import { SidebarStateService } from '../../services/sidebar-state.service';
 import { getToolsHubUrl, getPortalUrl } from '@acklet/shared';
 import { ToolRegistryItem } from '@acklet/tool-registry';
 import { TsIconComponent } from '../icon/ts-icon.component';
 import { TsThemeToggleComponent } from '../theme/ts-theme-toggle.component';
 import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
 import { HlmKbdImports } from '../../helm/kbd';
+import { FAVORITES_KEY } from '../sidebar/ts-tool-list.component';
 
 export interface SectionNavLink {
   id: string;
@@ -57,11 +59,22 @@ export interface SectionNavLink {
           >
             <ts-icon name="menu" [size]="18" />
           </button>
+
+          <button 
+            type="button" 
+            class="ts-desktop-sidebar-toggle hide-mobile" 
+            (click)="sidebarState.toggle()"
+            [attr.aria-label]="sidebarState.isPinned() ? 'Unpin sidebar (⌘B)' : 'Pin sidebar (⌘B)'"
+            [tsTooltip]="sidebarState.isPinned() ? 'Unpin sidebar (⌘B)' : 'Pin sidebar (⌘B)'"
+            tooltipPosition="bottom"
+          >
+            <ts-icon [name]="sidebarState.isPinned() ? 'panel-left-close' : 'panel-left'" [size]="18" />
+          </button>
         }
 
         <!-- Acklet Tools Brand Link to Tools Hub -->
         <a [href]="hubUrl" class="ts-brand-link" title="Acklet Tools Hub">
-          <ts-icon name="zap" [size]="24" class="ts-brand-mark" />
+          <ts-icon name="zap" [size]="22" class="ts-brand-mark" />
           <span class="ts-brand-wordmark">Acklet</span>
         </a>
 
@@ -232,6 +245,36 @@ export interface SectionNavLink {
       background: var(--ts-row-hover, rgba(15, 23, 42, 0.035));
     }
 
+    .ts-desktop-sidebar-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-2, #52525B);
+      cursor: pointer;
+      padding: 0;
+      flex-shrink: 0;
+      transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
+                  color var(--ts-dur-fast, 150ms) var(--ts-ease),
+                  border-color var(--ts-dur-fast, 150ms) var(--ts-ease);
+    }
+
+    .ts-desktop-sidebar-toggle:hover {
+      background: var(--surface-hover, rgba(15, 23, 42, 0.04));
+      color: var(--text, #09090B);
+      border-color: var(--border, rgba(0, 0, 0, 0.08));
+    }
+
+    :host-context([data-theme="dark"]) .ts-desktop-sidebar-toggle:hover {
+      background: var(--surface-hover, rgba(255, 255, 255, 0.06));
+      color: var(--text, #FCFCFC);
+      border-color: var(--border, rgba(255, 255, 255, 0.1));
+    }
+
     .ts-brand-link {
       display: inline-flex;
       align-items: center;
@@ -248,7 +291,7 @@ export interface SectionNavLink {
     }
 
     .ts-brand-link:hover {
-      opacity: 0.85;
+      opacity: 0.95;
     }
 
     .ts-brand-mark {
@@ -256,9 +299,16 @@ export interface SectionNavLink {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 24px;
-      height: 24px;
+      width: 22px;
+      height: 22px;
       flex-shrink: 0;
+      transition: transform var(--ts-dur-fast, 150ms) var(--ts-ease),
+                  color var(--ts-dur-fast, 150ms) var(--ts-ease);
+    }
+
+    .ts-brand-link:hover .ts-brand-mark {
+      transform: scale(1.1);
+      color: var(--accent);
     }
 
     .ts-brand-wordmark {
@@ -444,8 +494,8 @@ export interface SectionNavLink {
     :host-context([data-theme="light"]) .ts-nav-active-pill,
     :host-context(:not([data-theme="dark"])) .ts-nav-active-pill {
       background: #FFFFFF;
-      border: 1px solid var(--accent-border, rgba(15, 118, 110, 0.22));
-      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.09), 0 0 0 1px rgba(15, 118, 110, 0.08);
+      border: 1px solid var(--accent-border, rgba(37, 99, 235, 0.22));
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.09), 0 0 0 1px var(--accent-border, rgba(37, 99, 235, 0.08));
     }
 
     :host-context([data-theme="light"]) .ts-nav-link-btn,
@@ -462,7 +512,7 @@ export interface SectionNavLink {
 
     :host-context([data-theme="light"]) .ts-nav-link-btn.active,
     :host-context(:not([data-theme="dark"])) .ts-nav-link-btn.active {
-      color: var(--accent, #0F766E);
+      color: var(--accent-strong, var(--accent, #1D4ED8));
       font-weight: 700;
       letter-spacing: -0.01em;
     }
@@ -476,8 +526,8 @@ export interface SectionNavLink {
 
     :host-context([data-theme="dark"]) .ts-nav-active-pill {
       background: rgba(255, 255, 255, 0.08);
-      border: 1px solid var(--accent-border, rgba(45, 212, 191, 0.3));
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 8px -2px var(--accent-glow, rgba(45, 212, 191, 0.2));
+      border: 1px solid var(--accent-border, rgba(59, 130, 246, 0.3));
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 8px -2px var(--accent-glow, rgba(59, 130, 246, 0.2));
     }
 
     :host-context([data-theme="dark"]) .ts-nav-link-btn {
@@ -708,6 +758,7 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly aboutClick = output<void>();
 
   readonly sidebarService = inject(ToolSidebarService);
+  readonly sidebarState = inject(SidebarStateService);
   readonly portalUrl = getPortalUrl();
   readonly hubUrl = getToolsHubUrl();
   private readonly zone = inject(NgZone);
@@ -733,6 +784,21 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly isCelebrating = signal<boolean>(false);
 
+  private loadFavoriteState(): void {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const slug = this.tool()?.slug;
+        if (!slug) {
+          this.isFavorited.set(false);
+          return;
+        }
+        const raw = window.localStorage.getItem(FAVORITES_KEY);
+        const list: string[] = raw ? JSON.parse(raw) : [];
+        this.isFavorited.set(list.includes(slug));
+      }
+    } catch {}
+  }
+
   toggleFavorite(): void {
     const next = !this.isFavorited();
     this.isFavorited.set(next);
@@ -740,6 +806,22 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
       this.isCelebrating.set(true);
       setTimeout(() => this.isCelebrating.set(false), 850);
     }
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const slug = this.tool()?.slug;
+        if (slug) {
+          const raw = window.localStorage.getItem(FAVORITES_KEY);
+          let list: string[] = raw ? JSON.parse(raw) : [];
+          if (next) {
+            if (!list.includes(slug)) list.push(slug);
+          } else {
+            list = list.filter(s => s !== slug);
+          }
+          window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(list));
+          window.dispatchEvent(new Event('storage'));
+        }
+      }
+    } catch {}
   }
 
   private intersectionObserver?: IntersectionObserver;
@@ -747,6 +829,11 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   private scrollContainerEl?: HTMLElement | null;
 
   constructor() {
+    effect(() => {
+      this.tool();
+      this.loadFavoriteState();
+    });
+
     effect(() => {
       const links = this.sectionLinks();
       if (links.length > 0 && typeof window !== 'undefined') {
@@ -756,6 +843,10 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
         }, 150);
       }
     });
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', () => this.loadFavoriteState());
+    }
   }
 
   // Build section links from tool definition

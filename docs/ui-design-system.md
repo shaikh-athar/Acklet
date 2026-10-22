@@ -109,3 +109,30 @@ Acklet enforces surface isolation through pre-commit and automated checks:
   - `var(--ts-z-chrome)`: 10 (Navbar & Sidebar rails)
   - `var(--ts-z-surface)`: 20 (Tool content card)
   - `var(--ts-z-overlay)`: 1000 (Modal backdrops, About drawer, and Command palette)
+
+### 6.1 Collapsible Sidebar System (Vercel/v0-Style Architecture)
+The shared tool shell ([`client/packages/tool-shell`](file:///Users/ayaz/Acklet/client/packages/tool-shell)) provides an intelligent 3-state collapsible navigation sidebar managed by [`SidebarStateService`](file:///Users/ayaz/Acklet/client/packages/tool-shell/src/services/sidebar-state.service.ts):
+
+1. **HIDDEN Mode (Default on Large Screens `>= 1100px`)**:
+   - The sidebar is completely out of view (`transform: translateX(calc(-100% - 24px)); opacity: 0; pointer-events: none`).
+   - The workspace canvas occupies 100% full width (`minmax(0, 1fr)`).
+   - An unintrusive first-visit edge discovery hint pill (`.ts-sidebar-edge-hint`) pulses near the far-left edge to educate users on hover reveal, auto-dismissing after 5 seconds or upon any interaction (`acklet_sidebar_hint_seen`).
+
+2. **PEEK Mode (Hover Reveal Overlay)**:
+   - Moving the cursor to the far-left edge of the viewport (8px hotzone `.ts-sidebar-hotzone`) triggers an intentional 100ms hover delay before sliding the sidebar in as a floating overlay on top of content (`position: absolute; left: 0; z-index: 50`).
+   - The workspace content does **not** move or re-flow.
+   - Moving the cursor out provides a 250ms grace window before sliding out. Pressing `Escape` or clicking outside immediately dismisses peek mode.
+   - Peek mode can be toggled on/off using the lightning bolt icon in the sidebar pinned footer (`acklet_sidebar_hover`).
+
+3. **PINNED Mode (In-Flow Grid Push)**:
+   - Toggling the sidebar button in the topbar (`.ts-desktop-sidebar-toggle`), the sidebar footer button, or pressing `Cmd/Ctrl+B` transitions the shell into pinned mode.
+   - The shell bottom row transitions into a two-column grid (`272px minmax(0, 1fr)`), pushing the tool card smoothly to the right.
+   - Pinned state is persisted across all subdomains via root cookie (`acklet_sidebar_pinned`, scoped to `.acklet.com`, `.localhost`, or local storage).
+
+4. **Mobile & Tablet Drawer (`< 1024px`)**:
+   - Desktop peek and pinned grid modes are suppressed (`grid-template-columns: 1fr !important`).
+   - Hamburger icon in the topbar opens a mobile off-canvas sheet (`role="dialog"`, `aria-modal="true"`).
+   - Native touch swipe-to-close gestures (`onTouchStart`, `onTouchMove`, `onTouchEnd` on `.ts-mobile-sheet-panel`) allow natural dismissal.
+   - Background scrolling is automatically locked (`document.body.style.overflow = 'hidden'`) and restored on close.
+   - Selecting any tool, section link, or pressing `Escape` automatically dismisses the drawer and returns focus smoothly.
+

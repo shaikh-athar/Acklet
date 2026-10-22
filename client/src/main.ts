@@ -24,6 +24,18 @@ if (isToolsHubHostname(hostname)) {
       });
     })
     .catch((err) => console.error('[Tool Clipboard Bootstrap Error]', err));
+} else if (toolSlug === 'qr' || toolSlug === 'qr-generator') {
+  // Bootstrap QR Generator tool (apps/tool-qr-generator)
+  Promise.all([
+    import('../apps/tool-qr-generator/src/app/app.component'),
+    import('@angular/common/http')
+  ])
+    .then(([{ AppComponent }, { provideHttpClient, withFetch }]) => {
+      return bootstrapApplication(AppComponent, {
+        providers: [provideHttpClient(withFetch())]
+      });
+    })
+    .catch((err) => console.error('[Tool QR Generator Bootstrap Error]', err));
 } else {
   // Bootstrap Acklet Portal (default)
   Promise.all([

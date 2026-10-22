@@ -40,7 +40,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(requestHandler)
-                .ignoringRequestMatchers("/api/v1/auth/**", "/api/v1/github/webhooks", "/.well-known/**", "/api/v1/publish/**", "/api/v1/clipboard/**")
+                .ignoringRequestMatchers("/api/v1/auth/**", "/api/v1/github/webhooks", "/.well-known/**", "/api/v1/publish/**", "/api/v1/clipboard/**", "/api/v1/qr/**", "/q/**")
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
@@ -50,6 +50,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 // Public online clipboard endpoints (anonymous cross-device sharing)
                 .requestMatchers("/api/v1/clipboard/**").permitAll()
+                // Public dynamic QR short links & anonymous QR generation
+                .requestMatchers("/q/**").permitAll()
+                .requestMatchers("/api/v1/qr/**").permitAll()
                 // Public tools retrieval
                 .requestMatchers(HttpMethod.GET, "/api/v1/tools/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()

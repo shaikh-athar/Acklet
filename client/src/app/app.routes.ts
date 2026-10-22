@@ -4,6 +4,19 @@ import { authGuard, publisherGuard, adminGuard } from './core/auth/auth.guard';
 import { ToolsRedirectComponent } from './pages/tools-redirect/tools-redirect';
 
 export const routes: Routes = [
+  // --- Standalone Tool Applications (Pure Tool UI with ts-shell, No Platform Shell) ---
+  {
+    path: 'tools/qr-generator',
+    loadComponent: () => import('../../apps/tool-qr-generator/src/app/app.component').then(m => m.AppComponent),
+    title: 'QR Code Generator — Acklet'
+  },
+  {
+    path: 'tools/qr-generator/view/:code',
+    loadComponent: () => import('../../apps/tool-qr-generator/src/components/landing-viewer/landing-viewer.component').then(m => m.QrLandingViewerComponent),
+    title: 'QR Destination — Acklet'
+  },
+  { path: 'tools/qr', redirectTo: 'tools/qr-generator', pathMatch: 'full' },
+
   // --- Public Pages under main header/navbar layout ---
   {
     path: '',

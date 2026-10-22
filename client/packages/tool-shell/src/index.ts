@@ -11,6 +11,7 @@ export * from './services/tool-permissions.service';
 export * from './services/tool-ad.service';
 export * from './services/tool-capsule.service';
 export * from './services/perf-flags.service';
+export * from './services/sidebar-state.service';
 
 // Icons & Primitives
 export * from './components/icon/tool-icon.component';

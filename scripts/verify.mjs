@@ -104,11 +104,25 @@ function skipStep(name, reason) {
   summary.push({ name, status: 'SKIPPED', duration: '0.00', reason });
 }
 
+// Resolve Java 21 for Maven if available
+let javaHomeEnv = process.env.JAVA_HOME;
+if (!javaHomeEnv || javaHomeEnv.includes('26')) {
+  try {
+    const detected = execSync('/usr/libexec/java_home -v 21', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    if (detected) javaHomeEnv = detected;
+  } catch {}
+}
+
 function runStep(name, cmd, cwd) {
   const stepStart = Date.now();
   process.stdout.write(`  ⏳ ${name}... `);
   try {
-    const output = execSync(cmd, { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+    const env = { ...process.env };
+    if (javaHomeEnv) {
+      env.JAVA_HOME = javaHomeEnv;
+      env.PATH = `${javaHomeEnv}/bin:${env.PATH || ''}`;
+    }
+    const output = execSync(cmd, { cwd, env, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
     const duration = ((Date.now() - stepStart) / 1000).toFixed(2);
     console.log(`${colors.green}PASSED${colors.reset} ${colors.dim}(${duration}s)${colors.reset}`);
     summary.push({ name, status: 'PASSED', duration });

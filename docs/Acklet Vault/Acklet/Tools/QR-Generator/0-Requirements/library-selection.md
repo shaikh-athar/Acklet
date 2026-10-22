@@ -9,21 +9,23 @@ status: In Planning
 
 ## Frontend
 
-### QR Generation: qrcode.js (v1.5.3)
+### QR Generation: qr-code-styling (v1.9.2)
 
 **Why**: 
-- Lightweight (< 20KB uncompressed)
-- Zero external dependencies
-- Client-side only (privacy advantage)
-- Simple API: `QRCode.toDataURL(content, options)`
-- Active maintenance, widely used
+- Replaced baseline `qrcode` library to achieve competitor parity (Phase 2).
+- Native support for custom dot patterns (dots, rounded, extra-rounded, classy).
+- Native support for custom corner squares and corner dots.
+- Lossless SVG vector export and rendering.
+- Embedded logo support with background dot clearance (`hideBackgroundDots`).
+- Multi-format client-side export (PNG, SVG, JPEG).
+- Client-side only (preserves Acklet's zero-tracking privacy guarantee).
 
 **Alternatives Considered**:
+- `qrcode.js`: Lightweight but limited to basic black/white square matrices; cannot support custom dot shapes, corner stylings, or logo embedding without fragile manual canvas manipulation.
 - ❌ jsbarcode — designed for 1D codes, overkill for QR
-- ❌ zxing.js — heavier (100KB+), complex API
-- ❌ QR Scanner libs — generate + scan together, not needed Phase 1
+- ❌ zxing.js — heavier (100KB+), primarily scanning-focused
 
-**Installation**: `npm install qrcode@^1.5.3`
+**Installation**: `npm install qr-code-styling`
 
 ### Form Handling: @angular/forms (FormsModule)
 

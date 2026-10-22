@@ -5,7 +5,30 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8cc24f72-cf76-4714-94a5-20cada12dd6d" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../../client/angular.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/angular.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-registry/src/tools.manifest.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-registry/src/tools.manifest.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/icon/ts-icon-map.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/icon/ts-icon-map.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/styles/tokens.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/styles/tokens.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/app/app.routes.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/app.routes.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/main.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/main.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/0-Requirements/api-contract.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/0-Requirements/api-contract.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/0-Requirements/features.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/0-Requirements/features.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/0-Requirements/library-selection.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/0-Requirements/library-selection.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/0-Requirements/requirements.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/0-Requirements/requirements.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/1-Progress/implementation-log.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/1-Progress/implementation-log.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/1-Progress/phase-1-progress.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/1-Progress/phase-1-progress.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/1-Progress/phase-2-progress.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/1-Progress/phase-2-progress.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/2-Implementation/component-tree.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/2-Implementation/component-tree.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/2-Implementation/service-design.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/2-Implementation/service-design.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/2-Implementation/testing-strategy.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/2-Implementation/testing-strategy.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../scripts/verify.mjs" beforeDir="false" afterPath="$PROJECT_DIR$/../../scripts/verify.mjs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/security/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/security/SecurityConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -41,7 +64,7 @@
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "Spring Boot.AckletApplication.executor": "Run",
     "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "develop",
+    "git-widget-placeholder": "tools/qr",
     "kotlin-language-version-configured": "true",
     "nodejs_package_manager_path": "npm",
     "ts.external.directory.path": "/Applications/IntelliJ IDEA.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external",
