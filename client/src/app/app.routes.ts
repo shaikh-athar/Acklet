@@ -16,6 +16,13 @@ export const routes: Routes = [
     title: 'QR Destination — Acklet'
   },
   { path: 'tools/qr', redirectTo: 'tools/qr-generator', pathMatch: 'full' },
+  {
+    path: 'tools/clipboard',
+    loadComponent: () => import('../../apps/tool-online-clipboard/src/app/app.component').then(m => m.AppComponent),
+    title: 'Online Clipboard — Acklet'
+  },
+  { path: 'tools/online-clipboard', redirectTo: 'tools/clipboard', pathMatch: 'full' },
+  { path: 'tools/app/airvault', redirectTo: 'tools/clipboard', pathMatch: 'full' },
 
   // --- Public Pages under main header/navbar layout ---
   {

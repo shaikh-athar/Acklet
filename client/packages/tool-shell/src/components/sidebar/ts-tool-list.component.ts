@@ -1,8 +1,9 @@
 import { Component, input, computed, signal, inject, OnInit, isDevMode, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ToolRegistryItem } from '@acklet/tool-registry';
+import { ToolRegistryItem, resolveToolAccent } from '@acklet/tool-registry';
 import { getToolUrl, getToolsHubUrl } from '@acklet/shared';
 import { ToolSidebarService } from '../../services/tool-sidebar.service';
+import { ToolThemeService } from '../../services/tool-theme.service';
 import { TsIconComponent } from '../icon/ts-icon.component';
 import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
 import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
@@ -35,6 +36,8 @@ export const RECENT_KEY = 'acklet.tools.recent';
                   [tsTooltip]="isRail() ? (tool.category + ' / ' + tool.name) : ''"
                   tooltipPosition="right"
                   [attr.aria-label]="tool.name"
+                  [style.--row-accent]="getToolAccent(tool)"
+                  [style.--row-accent-soft]="getToolAccentSoft(tool)"
                   (click)="onToolSelect()"
                 >
                   @if (treeMarker() === 'dot' && !isRail()) {
@@ -87,6 +90,8 @@ export const RECENT_KEY = 'acklet.tools.recent';
                       [class.active]="fav.slug === currentSlug()"
                       [attr.aria-current]="fav.slug === currentSlug() ? 'page' : null"
                       [attr.aria-label]="fav.name"
+                      [style.--row-accent]="getToolAccent(fav)"
+                      [style.--row-accent-soft]="getToolAccentSoft(fav)"
                       (click)="onToolSelect()"
                     >
                       <ts-tool-tile [icon]="fav.icon" [name]="fav.name" [size]="20" [flat]="true" />
@@ -132,6 +137,8 @@ export const RECENT_KEY = 'acklet.tools.recent';
                       [class.active]="rec.slug === currentSlug()"
                       [attr.aria-current]="rec.slug === currentSlug() ? 'page' : null"
                       [attr.aria-label]="rec.name"
+                      [style.--row-accent]="getToolAccent(rec)"
+                      [style.--row-accent-soft]="getToolAccentSoft(rec)"
                       (click)="onToolSelect()"
                     >
                       <ts-tool-tile [icon]="rec.icon" [name]="rec.name" [size]="20" [flat]="true" />
@@ -187,6 +194,8 @@ export const RECENT_KEY = 'acklet.tools.recent';
                         [tsTooltip]="group.category + ' / ' + tool.name"
                         tooltipPosition="right"
                         [attr.aria-label]="tool.name"
+                        [style.--row-accent]="getToolAccent(tool)"
+                        [style.--row-accent-soft]="getToolAccentSoft(tool)"
                         (click)="onToolSelect()"
                       >
                         <ts-tool-tile [icon]="tool.icon" [name]="tool.name" [size]="20" [flat]="true" />
@@ -214,6 +223,8 @@ export const RECENT_KEY = 'acklet.tools.recent';
                             [class.active]="tool.slug === currentSlug()"
                             [attr.aria-current]="tool.slug === currentSlug() ? 'page' : null"
                             [attr.aria-label]="tool.name"
+                            [style.--row-accent]="getToolAccent(tool)"
+                            [style.--row-accent-soft]="getToolAccentSoft(tool)"
                             (click)="onToolSelect()"
                           >
                             @if (treeMarker() === 'dot') {
@@ -523,10 +534,10 @@ export const RECENT_KEY = 'acklet.tools.recent';
         color: var(--text, #09090B);
       }
       .ts-tool-item:hover ts-tool-tile {
-        color: var(--accent-strong, #111111);
+        color: var(--row-accent, var(--accent-strong, #111111));
       }
       .ts-tool-item:hover .ts-hollow-dot {
-        border-color: var(--accent-strong, #111111);
+        border-color: var(--row-accent, var(--accent-strong, #111111));
       }
     }
 
@@ -535,17 +546,17 @@ export const RECENT_KEY = 'acklet.tools.recent';
     }
 
     .ts-tool-item.active {
-      background: var(--accent-soft, var(--ts-row-active, rgba(15, 23, 42, 0.07)));
+      background: var(--row-accent-soft, var(--accent-soft, var(--ts-row-active, rgba(15, 23, 42, 0.07))));
       color: var(--text, #09090B);
       font-weight: 500;
     }
 
     .ts-tool-item.active ts-tool-tile {
-      color: var(--accent-strong, #111111);
+      color: var(--row-accent, var(--accent-strong, #111111));
     }
 
     .ts-tool-item.active .ts-hollow-dot {
-      border-color: var(--accent-strong, #111111);
+      border-color: var(--row-accent, var(--accent-strong, #111111));
     }
 
     :host-context([data-theme="dark"]) .ts-tool-item {
@@ -553,12 +564,12 @@ export const RECENT_KEY = 'acklet.tools.recent';
     }
 
     :host-context([data-theme="dark"]) .ts-tool-item.active {
-      background: var(--accent-soft, rgba(255, 255, 255, 0.08));
+      background: var(--row-accent-soft, var(--accent-soft, rgba(255, 255, 255, 0.08)));
       color: var(--text, #FCFCFC);
     }
 
     .ts-tool-item:focus-visible {
-      outline: 2px solid var(--accent-strong) !important;
+      outline: 2px solid var(--row-accent, var(--accent-strong)) !important;
       outline-offset: 1px;
     }
 
@@ -584,7 +595,7 @@ export const RECENT_KEY = 'acklet.tools.recent';
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: var(--accent);
+      background: var(--row-accent, var(--accent));
       flex-shrink: 0;
     }
 
@@ -641,6 +652,7 @@ export const RECENT_KEY = 'acklet.tools.recent';
 })
 export class TsToolListComponent implements OnInit {
   private readonly sidebarService = inject(ToolSidebarService, { optional: true });
+  private readonly themeService = inject(ToolThemeService);
 
   readonly tools = input<ToolRegistryItem[]>([]);
   readonly currentSlug = input<string>('');
@@ -649,6 +661,16 @@ export class TsToolListComponent implements OnInit {
 
   readonly getToolUrl = getToolUrl;
   readonly hubUrl = getToolsHubUrl();
+
+  getToolAccent(tool: ToolRegistryItem): string {
+    const mode = this.themeService.effectiveTheme();
+    return resolveToolAccent(tool, mode).base;
+  }
+
+  getToolAccentSoft(tool: ToolRegistryItem): string {
+    const mode = this.themeService.effectiveTheme();
+    return resolveToolAccent(tool, mode).soft;
+  }
 
   onToolSelect(): void {
     this.sidebarService?.closeMobileDrawer();

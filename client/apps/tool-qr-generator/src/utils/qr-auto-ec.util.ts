@@ -6,6 +6,7 @@ export interface AutoEcParams {
   type?: string;
   hasLogo: boolean;
   hasCenterFrame?: boolean;
+  hasCustomShapes?: boolean;
 }
 
 export interface AutoEcResult {
@@ -30,15 +31,14 @@ const V10_CAPACITY_M = 382;
  *
  * Rules:
  * 1. Default to 'Q' for standard clean codes.
- * 2. If a logo or center frame image is present, upgrade to 'H' (highest 30% redundancy).
+ * 2. If a logo, center frame, or custom module shape is present, upgrade to 'H' (highest 30% redundancy).
  * 3. If payload length exceeds Version 10 density limit:
- *    - With logo: drop from 'H' to 'M'. Never go below 'M' with a logo.
- *      If payload exceeds 'M' capacity (>382 chars), issue a clear plain-language warning.
+ *    - With logo or custom shapes: drop from 'H' to 'M'. Never go below 'M'.
  *    - Without logo: drop from 'Q' to 'M', then 'L' for extreme lengths.
  */
 export function calculateAutoErrorCorrection(params: AutoEcParams): AutoEcResult {
   const length = (params.content || '').length;
-  const requiresHighRecovery = params.hasLogo || Boolean(params.hasCenterFrame);
+  const requiresHighRecovery = params.hasLogo || Boolean(params.hasCenterFrame) || Boolean(params.hasCustomShapes);
 
   if (requiresHighRecovery) {
     if (length <= V10_CAPACITY_H) {

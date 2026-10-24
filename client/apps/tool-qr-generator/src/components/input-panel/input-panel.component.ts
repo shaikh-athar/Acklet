@@ -31,13 +31,25 @@ import {
 import { TsIconComponent } from '@acklet/tool-shell';
 import { QRGeneratorService } from '../../services/qr-generator.service';
 import { QrDynamicService } from '../../services/qr-dynamic.service';
-import { parseMapCoordinates } from '../../services/qr-payload-builders';
+import { parseMapCoordinates, detectPotentialTextType } from '../../services/qr-payload-builders';
 import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.component';
+import { PhoneInputComponent, PhoneInputValue } from '../phone-input/phone-input.component';
+import { LocationInputComponent, LocationInputValue } from '../location-input/location-input.component';
+import { SocialLinkInputComponent, SocialLinkInputValue, AddCenterIconEvent } from '../social-link-input/social-link-input.component';
+import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/store-link-normalizer';
 
 @Component({
   selector: 'app-qr-input-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, TsIconComponent, QrSelectComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    TsIconComponent,
+    QrSelectComponent,
+    PhoneInputComponent,
+    LocationInputComponent,
+    SocialLinkInputComponent
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="qr-input-panel-body">
@@ -45,12 +57,6 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
       <div class="qr-field-container">
         <div class="qr-field-header-row">
           <span class="qr-active-type-label">{{ activeConfig().label }} Content</span>
-          @if (capacityUsedPercent() > 80) {
-            <span class="qr-capacity-warning-badge" title="QR capacity is nearly full, scan reliability may decrease">
-              <ts-icon name="alert-triangle" class="warning-badge-icon" />
-              <span>{{ contentLength() }} chars ({{ capacityUsedPercent() | number:'1.0-0' }}% capacity)</span>
-            </span>
-          }
         </div>
 
         <!-- 1. WEBSITE / URL -->
@@ -69,6 +75,10 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
                   (ngModelChange)="onWebsiteChange()"
                   (blur)="onUrlBlur()"
                   aria-describedby="qr-input-helper qr-input-error"
+                  inputmode="url"
+                  enterkeyhint="done"
+                  autocorrect="off"
+                  autocapitalize="none"
                 />
               </div>
             </div>
@@ -132,7 +142,7 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
                 <div class="dynamic-qr-box">
                   <div class="dynamic-box-header">
                     <div class="dynamic-box-title">
-                      <ts-icon name="zap" class="dyn-icon" />
+                      <ts-icon name="zap" [size]="18" class="dyn-icon" />
                       <div>
                         <h4 class="dyn-heading">Convert to Hosted Dynamic QR</h4>
                         <p class="dyn-desc">Edit destination anytime without reprinting + privacy-friendly scan analytics.</p>
@@ -244,6 +254,19 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
         <!-- 2. PLAIN TEXT -->
         @if (selectedType() === 'text') {
           <div class="qr-structured-form">
+            @if (textTypeNudge(); as nudge) {
+              <div class="type-nudge-pill slide-fade-in">
+                <ts-icon name="info" class="nudge-icon" />
+                <span class="nudge-text">{{ nudge.message }}</span>
+                <button type="button" class="nudge-switch-btn" (click)="applyTextTypeSwitch(nudge.type)">
+                  Switch to {{ nudge.targetLabel }}
+                </button>
+                <button type="button" class="nudge-dismiss-btn" (click)="dismissTextNudge()" title="Dismiss suggestion">
+                  <ts-icon name="x" />
+                </button>
+              </div>
+            }
+
             <div class="qr-form-row">
               <label for="qr-text-input" class="qr-sub-label">Text Content *</label>
               <textarea
@@ -273,6 +296,10 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
                   placeholder="contact@company.com"
                   [(ngModel)]="emailData.to"
                   (ngModelChange)="onEmailChange()"
+                  inputmode="email"
+                  enterkeyhint="next"
+                  autocorrect="off"
+                  autocapitalize="none"
                 />
               </div>
             </div>
@@ -328,46 +355,36 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
                 </div>
               </div>
             </details>
+
+            <div class="attachment-protocol-note">
+              <ts-icon name="info" class="note-icon" />
+              <span>Standard QR codes cannot embed file attachments. To share documents, images, or PDFs, upload them to Google Drive or your website and use the <strong>Website Link</strong> option.</span>
+            </div>
           </div>
         }
 
         <!-- 4. PHONE -->
         @if (selectedType() === 'phone') {
           <div class="qr-structured-form">
-            <div class="qr-form-row">
-              <label for="phone-num" class="qr-sub-label">Phone Number *</label>
-              <div class="qr-single-input-wrapper">
-                <ts-icon name="phone" class="input-leading-icon" />
-                <input
-                  id="phone-num"
-                  type="tel"
-                  class="qr-input"
-                  placeholder="+1 (415) 555-2671"
-                  [(ngModel)]="phoneData.number"
-                  (ngModelChange)="onPhoneChange()"
-                />
-              </div>
-            </div>
+            <app-phone-input
+              id="phone-num-input"
+              label="Phone Number *"
+              [initialValue]="phoneData.number || ''"
+              (valueChange)="onPhoneInputValueChange($event)"
+            />
           </div>
         }
 
         <!-- 5. SMS -->
         @if (selectedType() === 'sms') {
           <div class="qr-structured-form">
-            <div class="qr-form-row">
-              <label for="sms-phone" class="qr-sub-label">Recipient Phone Number *</label>
-              <div class="qr-single-input-wrapper">
-                <ts-icon name="phone" class="input-leading-icon" />
-                <input
-                  id="sms-phone"
-                  type="tel"
-                  class="qr-input"
-                  placeholder="+1 (415) 555-2671"
-                  [(ngModel)]="smsData.phone"
-                  (ngModelChange)="onSmsChange()"
-                />
-              </div>
-            </div>
+            <app-phone-input
+              id="sms-phone-input"
+              label="Recipient Phone Number *"
+              [initialValue]="smsData.phone || ''"
+              [requireMobile]="true"
+              (valueChange)="onSmsPhoneInputValueChange($event)"
+            />
 
             <details class="more-options">
               <summary>More options (Pre-filled Message & Format)</summary>
@@ -394,6 +411,11 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
                 </div>
               </div>
             </details>
+
+            <div class="attachment-protocol-note">
+              <ts-icon name="info" class="note-icon" />
+              <span>QR text messages cannot attach files (MMS). To share a document or image, paste a link to the file in your message or use the <strong>Website Link</strong> option.</span>
+            </div>
           </div>
         }
 
@@ -496,77 +518,26 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
         <!-- 7. LOCATION / GEO -->
         @if (selectedType() === 'geo') {
           <div class="qr-structured-form">
-            <!-- Quick Paste Map Link -->
-            <div class="qr-form-row">
-              <label for="geo-paste-url" class="qr-sub-label">Paste Google Maps / Apple Maps Link</label>
-              <input
-                id="geo-paste-url"
-                type="text"
-                class="qr-input"
-                placeholder="Paste maps.google.com/... link to auto-fill coordinates"
-                [(ngModel)]="geoPasteInput"
-                (ngModelChange)="onMapUrlPaste($event)"
-              />
-            </div>
-
-            <div class="qr-input-grid">
-              <div class="qr-form-row">
-                <label for="geo-lat" class="qr-sub-label">Latitude (-90 to 90) *</label>
-                <input
-                  id="geo-lat"
-                  type="number"
-                  step="0.0001"
-                  class="qr-input"
-                  placeholder="37.7749"
-                  [(ngModel)]="geoData.latitude"
-                  (ngModelChange)="onGeoChange()"
-                />
-              </div>
-              <div class="qr-form-row">
-                <label for="geo-lng" class="qr-sub-label">Longitude (-180 to 180) *</label>
-                <input
-                  id="geo-lng"
-                  type="number"
-                  step="0.0001"
-                  class="qr-input"
-                  placeholder="-122.4194"
-                  [(ngModel)]="geoData.longitude"
-                  (ngModelChange)="onGeoChange()"
-                />
-              </div>
-            </div>
-
-            <details class="more-options">
-              <summary>More options (Location Label & Map Provider)</summary>
-              <div class="options-content">
-                <div class="qr-form-row">
-                  <label for="geo-label" class="qr-sub-label">Place Label / Query</label>
-                  <input
-                    id="geo-label"
-                    type="text"
-                    class="qr-input"
-                    placeholder="e.g. Acklet HQ, San Francisco"
-                    [(ngModel)]="geoData.label"
-                    (ngModelChange)="onGeoChange()"
-                  />
-                </div>
-                <div class="qr-form-row">
-                  <label for="geo-provider" class="qr-sub-label">Link Output Format</label>
-                  <app-qr-select
-                    id="geo-provider"
-                    [options]="geoProviderOptions"
-                    [value]="geoData.provider"
-                    (valueChange)="geoData.provider = $event; onGeoChange()"
-                  />
-                </div>
-              </div>
-            </details>
+            <app-location-input
+              [initialLat]="geoLatitudeNum"
+              [initialLng]="geoLongitudeNum"
+              [initialLabel]="geoData.label || ''"
+              (valueChange)="onLocationInputValueChange($event)"
+            />
           </div>
         }
 
         <!-- 8. EVENT (iCalendar RFC 5545) -->
         @if (selectedType() === 'event') {
           <div class="qr-structured-form">
+            <div class="event-form-top-bar">
+              <span class="form-section-tip">Creates an RFC 5545 calendar event that adds to Apple Calendar & Google Calendar in 1 tap.</span>
+              <button type="button" class="fill-example-btn" (click)="applyEventPreset()">
+                <ts-icon name="sparkles" />
+                <span>Fill example</span>
+              </button>
+            </div>
+
             <div class="qr-form-row">
               <label for="event-title" class="qr-sub-label">Event Title *</label>
               <input
@@ -592,7 +563,7 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
               </div>
               @if (!eventData.allDay) {
                 <div class="qr-form-row">
-                  <label for="event-stime" class="qr-sub-label">Start Time</label>
+                  <label for="event-stime" class="qr-sub-label">Start Time *</label>
                   <input
                     id="event-stime"
                     type="time"
@@ -632,7 +603,7 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
                   </div>
                   @if (!eventData.allDay) {
                     <div class="qr-form-row">
-                      <label for="event-etime" class="qr-sub-label">End Time</label>
+                      <label for="event-etime" class="qr-sub-label">End Time (defaults to +1 hr if empty)</label>
                       <input
                         id="event-etime"
                         type="time"
@@ -736,14 +707,11 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
 
             <div class="qr-input-grid">
               <div class="qr-form-row">
-                <label for="vcard-phone" class="qr-sub-label">Mobile Phone</label>
-                <input
-                  id="vcard-phone"
-                  type="tel"
-                  class="qr-input"
-                  placeholder="+14155552671"
-                  [(ngModel)]="vcardData.phone"
-                  (ngModelChange)="onVCardChange()"
+                <app-phone-input
+                  id="vcard-phone-input"
+                  label="Mobile Phone"
+                  [initialValue]="vcardData.phone || ''"
+                  (valueChange)="onVCardPhoneInputValueChange($event)"
                 />
               </div>
               <div class="qr-form-row">
@@ -842,43 +810,12 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
         <!-- 10. SOCIAL PROFILE -->
         @if (selectedType() === 'social') {
           <div class="qr-structured-form">
-            <div class="qr-input-grid">
-              <div class="qr-form-row">
-                <label for="social-platform" class="qr-sub-label">Social Platform</label>
-                <app-qr-select
-                  id="social-platform"
-                  [options]="socialPlatformOptions"
-                  [value]="socialData.platform"
-                  (valueChange)="socialData.platform = $event; onSocialChange()"
-                />
-              </div>
-
-              <div class="qr-form-row">
-                <label for="social-handle" class="qr-sub-label">Username / Handle / URL *</label>
-                <input
-                  id="social-handle"
-                  type="text"
-                  class="qr-input"
-                  placeholder="e.g. acklet or full link"
-                  [(ngModel)]="socialData.handleOrUrl"
-                  (ngModelChange)="onSocialChange()"
-                />
-              </div>
-            </div>
-
-            @if (socialData.platform === 'whatsapp') {
-              <div class="qr-form-row">
-                <label for="social-wa-msg" class="qr-sub-label">Pre-filled WhatsApp Message (Optional)</label>
-                <input
-                  id="social-wa-msg"
-                  type="text"
-                  class="qr-input"
-                  placeholder="Hi, I'm reaching out from your QR code..."
-                  [(ngModel)]="socialData.whatsappMessage"
-                  (ngModelChange)="onSocialChange()"
-                />
-              </div>
-            }
+            <app-social-link-input
+              [initialPlatform]="socialData.platform"
+              [initialValue]="socialData.handleOrUrl"
+              (valueChange)="onSocialInputValueChange($event)"
+              (addCenterIcon)="onAddSocialCenterIcon($event)"
+            />
           </div>
         }
 
@@ -886,7 +823,7 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
         @if (selectedType() === 'app') {
           <div class="qr-structured-form">
             <div class="qr-form-row">
-              <label for="app-platform" class="qr-sub-label">Target Mobile Platform</label>
+              <label for="app-platform" class="qr-sub-label">Mobile Store</label>
               <app-qr-select
                 id="app-platform"
                 [options]="appPlatformOptions"
@@ -895,31 +832,46 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
               />
             </div>
 
+            @if (appData.platform === 'both') {
+              <div class="attachment-protocol-note">
+                <ts-icon name="info" class="note-icon" />
+                <span>Smart App Links that automatically redirect iPhone users to Apple App Store and Android users to Google Play require a hosted shortlink (coming in Stage 6). You can configure both stores below:</span>
+              </div>
+            }
+
             @if (appData.platform === 'ios' || appData.platform === 'both') {
               <div class="qr-form-row">
-                <label for="app-ios" class="qr-sub-label">Apple App Store URL *</label>
+                <label for="app-ios" class="qr-sub-label">Apple App Store Link or ID *</label>
                 <input
                   id="app-ios"
-                  type="url"
+                  type="text"
                   class="qr-input"
-                  placeholder="https://apps.apple.com/app/id123456789"
-                  [(ngModel)]="appData.iosUrl"
-                  (ngModelChange)="onAppChange()"
+                  [class.invalid-input]="appIosError()"
+                  placeholder="e.g. apps.apple.com/... or numeric ID like 123456789"
+                  [ngModel]="appData.iosUrl"
+                  (ngModelChange)="onIosAppInputChange($event)"
                 />
+                @if (appIosError()) {
+                  <span class="inline-input-error">{{ appIosError() }}</span>
+                }
               </div>
             }
 
             @if (appData.platform === 'android' || appData.platform === 'both') {
               <div class="qr-form-row">
-                <label for="app-android" class="qr-sub-label">Google Play Store URL *</label>
+                <label for="app-android" class="qr-sub-label">Google Play Store Link or Package *</label>
                 <input
                   id="app-android"
-                  type="url"
+                  type="text"
                   class="qr-input"
-                  placeholder="https://play.google.com/store/apps/details?id=com.example"
-                  [(ngModel)]="appData.androidUrl"
-                  (ngModelChange)="onAppChange()"
+                  [class.invalid-input]="appAndroidError()"
+                  placeholder="e.g. play.google.com/... or com.example.app"
+                  [ngModel]="appData.androidUrl"
+                  (ngModelChange)="onAndroidAppInputChange($event)"
                 />
+                @if (appAndroidError()) {
+                  <span class="inline-input-error">{{ appAndroidError() }}</span>
+                }
               </div>
             }
 
@@ -1045,10 +997,10 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
                 </button>
               }
             </div>
-          } @else if (capacityUsedPercent() > 80) {
-            <div class="status-line status-warning">
-              <span class="status-dot warning-dot"></span>
-              <span class="status-text">High data density — scan reliability may decrease</span>
+          } @else if (qrVersion() >= 10) {
+            <div class="status-line status-dense">
+              <span class="status-dot dense-dot"></span>
+              <span class="status-text">Long content makes the code busy. Shorter content scans more easily.</span>
             </div>
           } @else {
             <div class="status-line status-ready">
@@ -1464,8 +1416,8 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
       gap: 8px;
       padding: 7px 15px;
       border-radius: var(--ts-radius-md, 8px);
-      background: var(--tool-accent, var(--accent, #3b82f6));
-      color: #FFFFFF;
+      background: var(--tool-accent, var(--accent, #3b82f6)) !important;
+      color: #FFFFFF !important;
       font-size: 13px;
       font-weight: 600;
       border: none;
@@ -1475,6 +1427,8 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
     }
 
     .guided-next-btn:hover {
+      background: var(--tool-accent, var(--accent, #3b82f6)) !important;
+      color: #FFFFFF !important;
       filter: brightness(1.1);
       transform: translateY(-1px);
       box-shadow: 0 3px 8px rgba(59, 130, 246, 0.3);
@@ -1542,9 +1496,172 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
       height: 13px;
     }
 
+    /* Plain Text Type Nudge Pill */
+    .type-nudge-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      font-size: 12px;
+      color: var(--text-primary, #ffffff);
+    }
+
+    :host-context([data-theme="light"]) .type-nudge-pill {
+      background: #eef2ff;
+      border-color: #c7d2fe;
+      color: #1e1b4b;
+    }
+
+    .nudge-icon {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      color: var(--accent-primary, #818cf8);
+    }
+
+    :host-context([data-theme="light"]) .nudge-icon {
+      color: #4f46e5;
+    }
+
+    .nudge-text {
+      flex: 1 1 0%;
+      min-width: 0;
+      line-height: 1.35;
+    }
+
+    .nudge-switch-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border: none;
+      border-radius: 5px;
+      background: var(--accent-primary, #6366f1);
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .nudge-dismiss-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: transparent;
+      color: var(--text-tertiary, rgba(255, 255, 255, 0.5));
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    :host-context([data-theme="light"]) .nudge-dismiss-btn {
+      color: #64748b;
+    }
+
+    .nudge-dismiss-btn ts-icon {
+      width: 12px;
+      height: 12px;
+    }
+
+    /* Honest Attachment Protocol Note */
+    .attachment-protocol-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      padding: 8px 10px;
+      border-radius: 7px;
+      background: var(--surface-2, rgba(255, 255, 255, 0.03));
+      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+      font-size: 11.5px;
+      line-height: 1.4;
+      color: var(--text-tertiary, rgba(255, 255, 255, 0.65));
+    }
+
+    :host-context([data-theme="light"]) .attachment-protocol-note {
+      background: #f8fafc;
+      border-color: #e2e8f0;
+      color: #475569;
+    }
+
+    .attachment-protocol-note .note-icon {
+      width: 13px;
+      height: 13px;
+      margin-top: 2px;
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+
+    /* Event Form Top Bar */
+    .event-form-top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .form-section-tip {
+      font-size: 11.5px;
+      color: var(--text-tertiary, rgba(255, 255, 255, 0.6));
+    }
+
+    :host-context([data-theme="light"]) .form-section-tip {
+      color: #64748b;
+    }
+
+    .fill-example-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+      border-radius: 6px;
+      background: var(--surface-2, rgba(255, 255, 255, 0.04));
+      color: var(--text-secondary, rgba(255, 255, 255, 0.85));
+      font-size: 11.5px;
+      font-weight: 500;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 120ms ease;
+    }
+
+    :host-context([data-theme="light"]) .fill-example-btn {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #1e293b;
+    }
+
+    .fill-example-btn:hover {
+      background: var(--surface-3, rgba(255, 255, 255, 0.1));
+    }
+
+    .fill-example-btn ts-icon {
+      width: 12px;
+      height: 12px;
+      color: #f59e0b;
+    }
+
     .warning-dot {
       background: #f59e0b;
       box-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
+    }
+
+    .dense-dot {
+      background: #38bdf8;
+      box-shadow: 0 0 6px rgba(56, 189, 248, 0.4);
+    }
+
+    .status-dense {
+      color: var(--text-secondary, rgba(255, 255, 255, 0.75));
+      font-weight: 500;
+    }
+
+    :host-context([data-theme="light"]) .status-dense {
+      color: #475569;
     }
 
     .status-warning {
@@ -1652,9 +1769,11 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
     }
 
     .dyn-icon {
-      font-size: 1.125rem;
-      color: var(--accent, #3b82f6);
+      width: 18px;
+      height: 18px;
+      color: var(--tool-accent, var(--accent, #3b82f6));
       margin-top: 0.125rem;
+      flex-shrink: 0;
     }
 
     .dyn-heading {
@@ -1835,6 +1954,28 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
         grid-template-columns: 1fr;
       }
     }
+
+    .invalid-input {
+      border-color: var(--destructive, #ef4444) !important;
+    }
+
+    .inline-input-error {
+      font-size: 0.6875rem;
+      color: var(--destructive, #ef4444);
+      margin-top: 4px;
+      display: block;
+      font-weight: 500;
+    }
+
+    /* Mobile Zoom Prevention & Touch Comfort (iOS Safari font-size >= 16px) */
+    @media (max-width: 1023px) {
+      .qr-input,
+      .qr-select,
+      .qr-textarea {
+        font-size: 16px !important;
+        min-height: 44px;
+      }
+    }
   `]
 })
 export class InputPanelComponent {
@@ -1853,12 +1994,17 @@ export class InputPanelComponent {
   readonly content = input<string>('');
   readonly validationError = input<string | null>(null);
   readonly isGenerating = input<boolean>(false);
+  readonly qrVersion = input<number>(1);
   readonly capacityUsedPercent = input<number>(0);
 
   readonly typeChange = output<ContentType>();
   readonly contentChange = output<string>();
   readonly openDynamicManager = output<void>();
   readonly switchTab = output<'content' | 'design' | 'settings' | 'advanced' | string>();
+  readonly addSocialCenterIcon = output<{ iconId: string; platformName: string }>();
+
+  readonly appIosError = signal<string>('');
+  readonly appAndroidError = signal<string>('');
 
   canFixUrl(): boolean {
     const url = (this.websiteData.url || '').trim();
@@ -1879,6 +2025,61 @@ export class InputPanelComponent {
   readonly isCreatingDynamic = signal<boolean>(false);
   readonly dynamicError = signal<string | null>(null);
   readonly lastCreatedDynamic = signal<DynamicQrCode | null>(null);
+
+  readonly dismissedTextNudge = signal<boolean>(false);
+
+  readonly textTypeNudge = computed<{ type: 'url' | 'email' | 'phone'; targetLabel: string; message: string } | null>(() => {
+    if (this.selectedType() !== 'text' || this.dismissedTextNudge()) {
+      return null;
+    }
+    const detected = detectPotentialTextType(this.content());
+    if (!detected) return null;
+
+    if (detected === 'url') {
+      return {
+        type: 'url',
+        targetLabel: 'Website Link',
+        message: 'This text looks like a website link. Switch to Website Link for 1-tap browser opening?'
+      };
+    }
+    if (detected === 'email') {
+      return {
+        type: 'email',
+        targetLabel: 'Email',
+        message: 'This text looks like an email address. Switch to Email for 1-tap compose?'
+      };
+    }
+    if (detected === 'phone') {
+      return {
+        type: 'phone',
+        targetLabel: 'Phone',
+        message: 'This text looks like a phone number. Switch to Phone for 1-tap calling?'
+      };
+    }
+    return null;
+  });
+
+  dismissTextNudge(): void {
+    this.dismissedTextNudge.set(true);
+  }
+
+  applyTextTypeSwitch(type: 'url' | 'email' | 'phone'): void {
+    const text = this.content().trim();
+    if (type === 'url') {
+      this.websiteData.url = text;
+      this.onWebsiteChange();
+      this.onTypeSelect('url');
+    } else if (type === 'email') {
+      this.emailData.to = text;
+      this.onEmailChange();
+      this.onTypeSelect('email');
+    } else if (type === 'phone') {
+      this.phoneData.number = text;
+      this.onPhoneChange();
+      this.onTypeSelect('phone');
+    }
+    this.dismissedTextNudge.set(false);
+  }
 
   onDynamicTitleChange(event: Event): void {
     this.dynamicTitle.set((event.target as HTMLInputElement).value);
@@ -2057,6 +2258,22 @@ export class InputPanelComponent {
     provider: 'geo'
   };
 
+  get geoLatitudeNum(): number | null {
+    if (this.geoData.latitude === null || this.geoData.latitude === undefined || (typeof this.geoData.latitude === 'string' && !this.geoData.latitude)) {
+      return null;
+    }
+    const n = Number(this.geoData.latitude);
+    return isNaN(n) ? null : n;
+  }
+
+  get geoLongitudeNum(): number | null {
+    if (this.geoData.longitude === null || this.geoData.longitude === undefined || (typeof this.geoData.longitude === 'string' && !this.geoData.longitude)) {
+      return null;
+    }
+    const n = Number(this.geoData.longitude);
+    return isNaN(n) ? null : n;
+  }
+
   geoPasteInput = '';
 
   eventData: EventData = {
@@ -2217,6 +2434,74 @@ export class InputPanelComponent {
   onVCardChange(): void {
     const payload = this.qrService.buildVCardPayload(this.vcardData);
     this.contentChange.emit(payload);
+  }
+
+  onPhoneInputValueChange(val: PhoneInputValue): void {
+    this.phoneData.number = val.e164 || val.digitsOnly;
+    if (val.isValid) {
+      this.onPhoneChange();
+    }
+  }
+
+  onSmsPhoneInputValueChange(val: PhoneInputValue): void {
+    this.smsData.phone = val.e164 || val.digitsOnly;
+    if (val.isValid) {
+      this.onSmsChange();
+    }
+  }
+
+  onVCardPhoneInputValueChange(val: PhoneInputValue): void {
+    this.vcardData.phone = val.e164 || val.digitsOnly;
+    this.onVCardChange();
+  }
+
+  onLocationInputValueChange(val: LocationInputValue): void {
+    this.geoData.latitude = val.latitude ?? 0;
+    this.geoData.longitude = val.longitude ?? 0;
+    this.geoData.label = val.label || '';
+    if (val.payload) {
+      this.contentChange.emit(val.payload);
+    }
+  }
+
+  onSocialInputValueChange(val: SocialLinkInputValue): void {
+    this.socialData.platform = val.platform as SocialPlatform;
+    this.socialData.handleOrUrl = val.handleOrUrl;
+    if (val.canonicalUrl) {
+      this.contentChange.emit(val.canonicalUrl);
+    }
+  }
+
+  onAddSocialCenterIcon(event: AddCenterIconEvent): void {
+    this.addSocialCenterIcon.emit(event);
+  }
+
+  onIosAppInputChange(val: string): void {
+    this.appData.iosUrl = val;
+    const res = normalizeIosAppInput(val);
+    if (res.isValid) {
+      this.appData.iosUrl = res.canonicalUrl;
+      this.appIosError.set('');
+      this.onAppChange();
+    } else if (val.trim()) {
+      this.appIosError.set(res.error || '');
+    } else {
+      this.appIosError.set('');
+    }
+  }
+
+  onAndroidAppInputChange(val: string): void {
+    this.appData.androidUrl = val;
+    const res = normalizeAndroidAppInput(val);
+    if (res.isValid) {
+      this.appData.androidUrl = res.canonicalUrl;
+      this.appAndroidError.set('');
+      this.onAppChange();
+    } else if (val.trim()) {
+      this.appAndroidError.set(res.error || '');
+    } else {
+      this.appAndroidError.set('');
+    }
   }
 
   onSocialChange(): void {

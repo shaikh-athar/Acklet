@@ -5,6 +5,9 @@ import {
   validateWebsite,
   buildTextPayload,
   validateText,
+  detectPotentialTextType,
+  addDaysToDateString,
+  computeDefaultEndTime,
   buildEmailPayload,
   validateEmail,
   buildPhonePayload,
@@ -29,7 +32,8 @@ import {
   buildAppPayload,
   validateApp,
   buildCryptoPayload,
-  validateCrypto
+  validateCrypto,
+  cleanCryptoAddress
 } from './qr-payload-builders';
 
 describe('QR Payload Builders & Validators', () => {
@@ -85,6 +89,22 @@ describe('QR Payload Builders & Validators', () => {
       expect(validateText('').isValid).toBe(false);
       expect(validateText('Valid text').isValid).toBe(true);
       expect(validateText('x'.repeat(3000)).isValid).toBe(false);
+    });
+
+    it('normalizes CRLF and CR to clean single LF and strips UTF-8 BOM', () => {
+      const inputWithCrLf = '\uFEFFLine 1\r\nLine 2\rLine 3\r\n';
+      const normalized = buildTextPayload(inputWithCrLf);
+      expect(normalized).toBe('Line 1\nLine 2\nLine 3');
+      expect(normalized.startsWith('\uFEFF')).toBe(false);
+      expect(normalized).not.toContain('\r');
+    });
+
+    it('detects potential text types for links, emails, and phone numbers', () => {
+      expect(detectPotentialTextType('https://acklet.com/studio')).toBe('url');
+      expect(detectPotentialTextType('www.example.org')).toBe('url');
+      expect(detectPotentialTextType('support@acklet.com')).toBe('email');
+      expect(detectPotentialTextType('+1 415 555 2671')).toBe('phone');
+      expect(detectPotentialTextType('Just some casual meeting notes here')).toBeNull();
     });
   });
 
@@ -172,6 +192,18 @@ describe('QR Payload Builders & Validators', () => {
       expect(validateWifi({ ssid: 'Net', security: 'WPA', password: 'validPassword123' }).isValid).toBe(true);
       expect(validateWifi({ ssid: 'Net', security: 'nopass' }).isValid).toBe(true);
     });
+
+    it('validates WEP 5-char ASCII or 10-hex keys without requiring 8 chars', () => {
+      expect(validateWifi({ ssid: 'LegacyNet', security: 'WEP', password: 'abcde' }).isValid).toBe(true);
+      expect(validateWifi({ ssid: 'LegacyNet', security: 'WEP', password: '0123456789' }).isValid).toBe(true);
+      expect(validateWifi({ ssid: 'LegacyNet', security: 'WEP', password: '123' }).isValid).toBe(false);
+    });
+
+    it('escapes quotes and special characters in SSID and password', () => {
+      const payload = buildWifiPayload({ ssid: 'Café "Central"', security: 'WPA', password: 'key:with;semi,and\\slash' });
+      expect(payload).toContain('Café \\"Central\\"');
+      expect(payload).toContain('key\\:with\\;semi\\,and\\\\slash');
+    });
   });
 
   describe('Location / Geo', () => {
@@ -241,10 +273,57 @@ describe('QR Payload Builders & Validators', () => {
       expect(escapeICal('Meeting, Review; Planning\nNotes')).toBe('Meeting\\, Review\\; Planning\\nNotes');
     });
 
-    it('validates required title and start date', () => {
+    it('generates exclusive next-day DTEND for all-day events per RFC 5545', () => {
+      // Single-day all-day event
+      const singleDay = buildEventPayload({
+        title: 'Company Holiday',
+        startDate: '2026-10-20',
+        allDay: true
+      });
+      expect(singleDay).toContain('DTSTART;VALUE=DATE:20261020\r\n');
+      expect(singleDay).toContain('DTEND;VALUE=DATE:20261021\r\n');
+
+      // Multi-day all-day event (ends on 2026-10-25 inclusive -> exclusive DTEND is 2026-10-26)
+      const multiDay = buildEventPayload({
+        title: 'Design Offsite',
+        startDate: '2026-10-20',
+        endDate: '2026-10-25',
+        allDay: true
+      });
+      expect(multiDay).toContain('DTSTART;VALUE=DATE:20261020\r\n');
+      expect(multiDay).toContain('DTEND;VALUE=DATE:20261026\r\n');
+    });
+
+    it('defaults timed event duration to +1 hour when endTime is omitted', () => {
+      const payload = buildEventPayload({
+        title: 'Sprint Planning',
+        startDate: '2026-10-20',
+        startTime: '14:30',
+        allDay: false
+      });
+      expect(payload).toContain('DTSTART:20261020T143000\r\n');
+      expect(payload).toContain('DTEND:20261020T153000\r\n');
+    });
+
+    it('advances end date when default +1 hour duration crosses midnight', () => {
+      const payload = buildEventPayload({
+        title: 'Midnight Launch Countdown',
+        startDate: '2026-10-20',
+        startTime: '23:30',
+        allDay: false
+      });
+      expect(payload).toContain('DTSTART:20261020T233000\r\n');
+      expect(payload).toContain('DTEND:20261021T003000\r\n');
+    });
+
+    it('validates required title and start date, accepting optional endTime', () => {
       expect(validateEvent({ title: '', startDate: '2026-10-20' }).isValid).toBe(false);
       expect(validateEvent({ title: 'Launch', startDate: '' }).isValid).toBe(false);
       expect(validateEvent({ title: 'Launch', startDate: '2026-10-20', allDay: true }).isValid).toBe(true);
+      // Valid without endTime
+      expect(validateEvent({ title: 'Launch', startDate: '2026-10-20', startTime: '10:00', allDay: false }).isValid).toBe(true);
+      // Invalid if scheduled timed event has no startTime
+      expect(validateEvent({ title: 'Launch', startDate: '2026-10-20', allDay: false }).isValid).toBe(false);
     });
   });
 
@@ -369,6 +448,34 @@ describe('QR Payload Builders & Validators', () => {
       const sol = validateCrypto({ coin: 'solana', address: '7eynhQoR9YM3N7UoaKRoA44Uy8JeaTue3qyspnqv8Dpz' });
       expect(sol.isValid).toBe(true);
       expect(sol.warnings?.some(w => w.includes('irreversible'))).toBe(true);
+    });
+
+    it('strips crypto URI scheme prefixes when user pastes full wallet URLs', () => {
+      expect(cleanCryptoAddress('bitcoin', 'bitcoin:1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa')).toBe('1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa');
+      expect(cleanCryptoAddress('ethereum', 'ethereum:0xde0B29E307579945136015a66a297973c9887716')).toBe('0xde0B29E307579945136015a66a297973c9887716');
+      expect(cleanCryptoAddress('solana', 'solana:7eynhQoR9YM3N7UoaKRoA44Uy8JeaTue3qyspnqv8Dpz')).toBe('7eynhQoR9YM3N7UoaKRoA44Uy8JeaTue3qyspnqv8Dpz');
+    });
+
+    it('auto-prepends 0x to bare 40-hex Ethereum addresses', () => {
+      const bareHex = 'de0B29E307579945136015a66a297973c9887716';
+      expect(cleanCryptoAddress('ethereum', bareHex)).toBe('0xde0B29E307579945136015a66a297973c9887716');
+      expect(validateCrypto({ coin: 'ethereum', address: bareHex }).isValid).toBe(true);
+    });
+
+    it('builds Ethereum payload with value, label, and message parameters', () => {
+      const payload = buildCryptoPayload({
+        coin: 'ethereum',
+        address: 'ethereum:0xde0B29E307579945136015a66a297973c9887716',
+        amount: '2.5',
+        label: 'Acklet Dev',
+        message: 'Sprint payment'
+      });
+      expect(payload).toBe('ethereum:0xde0B29E307579945136015a66a297973c9887716?value=2.5&label=Acklet%20Dev&message=Sprint%20payment');
+    });
+
+    it('allows any valid URL when social platform is custom', () => {
+      expect(validateSocial({ platform: 'custom' as any, handleOrUrl: 'https://mysite.blog/author' }).isValid).toBe(true);
+      expect(buildSocialPayload({ platform: 'custom' as any, handleOrUrl: 'https://mysite.blog/author' })).toBe('https://mysite.blog/author');
     });
   });
 });

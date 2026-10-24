@@ -318,6 +318,27 @@ describe('QRGeneratorService', () => {
       expect(dataUrl.startsWith('data:image/')).toBe(true);
     });
 
+    it('supports rich custom shapes (diamond, star, heart, cross, scanline, pinch, shield)', async () => {
+      const shapes: Array<{ dot: any; square: any; dotCorner: any }> = [
+        { dot: 'diamond', square: 'pinch', dotCorner: 'diamond' },
+        { dot: 'star', square: 'shield', dotCorner: 'star' },
+        { dot: 'heart', square: 'rounded', dotCorner: 'heart' },
+        { dot: 'cross', square: 'classy', dotCorner: 'cross' },
+        { dot: 'scanline', square: 'extra-rounded', dotCorner: 'rounded' }
+      ];
+
+      for (const s of shapes) {
+        const dataUrl = await service.generate('https://acklet.com/shapes', {
+          type: 'url',
+          dotType: s.dot,
+          cornerSquareType: s.square,
+          cornerDotType: s.dotCorner
+        });
+        expect(dataUrl).toBeTypeOf('string');
+        expect(dataUrl.startsWith('data:image/svg+xml')).toBe(true);
+      }
+    });
+
     it('supports independent custom corner square and corner dot colors', async () => {
       const dataUrl = await service.generate('https://acklet.com', {
         type: 'url',

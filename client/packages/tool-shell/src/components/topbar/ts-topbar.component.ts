@@ -19,6 +19,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { ToolSidebarService } from '../../services/tool-sidebar.service';
 import { SidebarStateService } from '../../services/sidebar-state.service';
+import { ToolSettingsService } from '../../services/tool-settings.service';
 import { getToolsHubUrl, getPortalUrl } from '@acklet/shared';
 import { ToolRegistryItem } from '@acklet/tool-registry';
 import { TsIconComponent } from '../icon/ts-icon.component';
@@ -58,17 +59,6 @@ export interface SectionNavLink {
             tsTooltip="Toggle menu"
           >
             <ts-icon name="menu" [size]="18" />
-          </button>
-
-          <button 
-            type="button" 
-            class="ts-desktop-sidebar-toggle hide-mobile" 
-            (click)="sidebarState.toggle()"
-            [attr.aria-label]="sidebarState.isPinned() ? 'Unpin sidebar (⌘B)' : 'Pin sidebar (⌘B)'"
-            [tsTooltip]="sidebarState.isPinned() ? 'Unpin sidebar (⌘B)' : 'Pin sidebar (⌘B)'"
-            tooltipPosition="bottom"
-          >
-            <ts-icon [name]="sidebarState.isPinned() ? 'panel-left-close' : 'panel-left'" [size]="18" />
           </button>
         }
 
@@ -145,23 +135,16 @@ export interface SectionNavLink {
         >
           <div class="ts-star-stage" aria-hidden="true">
             <svg class="ts-nav-star-svg" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <defs>
-                <linearGradient id="tsStarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#F59E0B" />
-                  <stop offset="50%" stop-color="#10B981" />
-                  <stop offset="100%" stop-color="#06B6D4" />
-                </linearGradient>
-              </defs>
               <polygon 
                 points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
-                [attr.fill]="isFavorited() ? 'url(#tsStarGradient)' : 'transparent'"
-                [attr.stroke]="isFavorited() ? 'url(#tsStarGradient)' : 'currentColor'"
+                [attr.fill]="isFavorited() ? 'currentColor' : 'transparent'"
+                stroke="currentColor"
               />
             </svg>
-            <svg class="ts-star-sparkle sp-1" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="#F59E0B"/></svg>
-            <svg class="ts-star-sparkle sp-2" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="#10B981"/></svg>
-            <svg class="ts-star-sparkle sp-3" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="#06B6D4"/></svg>
-            <svg class="ts-star-sparkle sp-4" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="#FBBF24"/></svg>
+            <svg class="ts-star-sparkle sp-1" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="currentColor"/></svg>
+            <svg class="ts-star-sparkle sp-2" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="currentColor"/></svg>
+            <svg class="ts-star-sparkle sp-3" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="currentColor"/></svg>
+            <svg class="ts-star-sparkle sp-4" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="currentColor"/></svg>
           </div>
           <span class="ts-action-label hide-below-1100">{{ isFavorited() ? 'Saved' : 'Save' }}</span>
         </button>
@@ -243,36 +226,6 @@ export interface SectionNavLink {
 
     .ts-mobile-menu-btn:hover {
       background: var(--ts-row-hover, rgba(15, 23, 42, 0.035));
-    }
-
-    .ts-desktop-sidebar-toggle {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: transparent;
-      border: 1px solid transparent;
-      color: var(--text-2, #52525B);
-      cursor: pointer;
-      padding: 0;
-      flex-shrink: 0;
-      transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
-                  color var(--ts-dur-fast, 150ms) var(--ts-ease),
-                  border-color var(--ts-dur-fast, 150ms) var(--ts-ease);
-    }
-
-    .ts-desktop-sidebar-toggle:hover {
-      background: var(--surface-hover, rgba(15, 23, 42, 0.04));
-      color: var(--text, #09090B);
-      border-color: var(--border, rgba(0, 0, 0, 0.08));
-    }
-
-    :host-context([data-theme="dark"]) .ts-desktop-sidebar-toggle:hover {
-      background: var(--surface-hover, rgba(255, 255, 255, 0.06));
-      color: var(--text, #FCFCFC);
-      border-color: var(--border, rgba(255, 255, 255, 0.1));
     }
 
     .ts-brand-link {
@@ -571,18 +524,30 @@ export interface SectionNavLink {
     }
 
     .ts-save-btn.is-favorited {
-      color: var(--accent, #0F766E);
+      background: linear-gradient(135deg, var(--accent, #0284C7) 0%, color-mix(in srgb, var(--accent, #0284C7) 70%, #2563EB) 100%) !important;
+      border-color: color-mix(in srgb, var(--accent, #0284C7) 90%, #ffffff) !important;
+      color: #ffffff !important;
+      box-shadow: 0 3px 12px color-mix(in srgb, var(--accent, #0284C7) 45%, transparent);
+    }
+
+    .ts-save-btn.is-favorited:hover {
+      background: linear-gradient(135deg, color-mix(in srgb, var(--accent, #0284C7) 90%, #000) 0%, color-mix(in srgb, var(--accent, #0284C7) 75%, #1D4ED8) 100%) !important;
+      color: #ffffff !important;
     }
 
     .ts-save-btn.is-favorited .ts-nav-star-svg {
-      filter: drop-shadow(0 2px 8px rgba(16, 185, 129, 0.4));
+      color: #ffffff !important;
+      fill: #ffffff !important;
+      stroke: #ffffff !important;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
     }
 
     .ts-save-btn.is-favorited .ts-action-label {
-      background: linear-gradient(135deg, #F59E0B 0%, #10B981 50%, #06B6D4 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: #ffffff !important;
+      background: none !important;
+      -webkit-text-fill-color: initial !important;
       font-weight: 700;
+      letter-spacing: -0.01em;
     }
 
     @keyframes tsStarPop {
@@ -759,6 +724,7 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly sidebarService = inject(ToolSidebarService);
   readonly sidebarState = inject(SidebarStateService);
+  readonly settingsService = inject(ToolSettingsService);
   readonly portalUrl = getPortalUrl();
   readonly hubUrl = getToolsHubUrl();
   private readonly zone = inject(NgZone);

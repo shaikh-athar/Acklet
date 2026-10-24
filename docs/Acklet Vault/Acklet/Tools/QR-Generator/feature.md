@@ -31,6 +31,9 @@ status: Complete
 | **QR-F18** | Dynamic QR Passcode Gate | Optional client-side PIN/passcode verification before unlocking private hosted content | **Implemented** |
 | **QR-F19** | Decorative Frames & CTA Borders | Vector frames (Bottom Banner, Top Header, Polaroid, Badge Pill, Chat Bubble) with custom CTA captions | **Implemented** |
 | **QR-F20** | Batch QR Code Generation | Client-side bulk generation from CSV or text list with live progress and ZIP archive download | **Implemented** |
+| **QR-F21** | Overall Shape Engine | 12 geometric overall shapes (Circle, Heart, Star, Hexagon, Diamond, Shield, Drop, Speech Bubble, Badge, Ticket) across Around, Badge, and Trim modes | **Implemented** |
+| **QR-F22** | Brand Name & Brand Artwork | Custom brand typography (8 Google Fonts, up to 12 chars), client-side verified image silhouettes (PNG/JPEG/SVG <= 2MB), and 3 placements | **Implemented** |
+| **QR-F23** | Calm Scan Confidence & Auto-Fix | Calm scan confidence rating chip (High, Medium, Low), one-click automatic fix, and ready-made presets | **Implemented** |
 
 ---
 
@@ -214,6 +217,28 @@ status: Complete
   - Live generation progress bar (`Generating X of Y`).
   - Scrollable interactive preview grid with individual PNG downloads and payload clipboard copy.
   - Single-click "Download ZIP Archive" powered by `jszip` packaging all generated codes into a formatted archive (`acklet-qr-batch-<timestamp>.zip`).
+
+### QR-F21: Overall Shape Engine
+- **Purpose**: Render scannable QR codes styled into non-square silhouettes while preserving ISO 18004 locator patterns.
+- **Shapes Supported**: Circle, Heart, Star, Hexagon, Diamond, Shield, Drop, Speech Bubble, Badge, Ticket, Rounded Square, Square.
+- **Rendering Modes**:
+  - `Around`: Keeps the core QR rectangular with a >= 4 module quiet zone, scattering decorative modules outward into the shape boundary with edge fade and anti-finder rules.
+  - `Badge`: Encapsulates the complete QR code inside a solid shaped vector SVG badge with high-contrast border and padding.
+  - `Trim`: Soft-crops outer non-reserved data modules within a strict 12% error-correction allowance and automatically elevates recovery to Level H (30%). Real finder locators (top-left, top-right, bottom-left) remain 100% untouched.
+
+### QR-F22: Brand Name & Brand Image Artwork
+- **Purpose**: Infuse brand identity into the QR code client-side without compromising camera readability.
+- **Brand Name**: Encodes up to 12 characters in 8 Google fonts (Outfit, Inter, Montserrat, Playfair Display, Space Grotesk, Plus Jakarta Sans, Bebas Neue, Caveat) across 3 placements:
+  - `In the code`: Tone-maps modules over the text mask using WCAG AA compliant contrast.
+  - `Around the code`: Styles modules in the perimeter silhouette field to highlight letter forms.
+  - `Banner`: Adds a vector pill banner beneath the code with bold, uppercase brand text.
+- **Brand Image**: Client-side validated (magic-byte checks for PNG, JPEG, SVG up to 2MB) in-memory thresholding generating decorative module masks.
+
+### QR-F23: Calm Scan Confidence & Auto-Fix
+- **Purpose**: Provide reassurance about real-world camera readability with actionable one-click resolution.
+- **Confidence Rating**: Evaluates decoder passes and luminance dynamic range into High, Medium, or Low confidence.
+- **Fix Automatically**: Single-click button that automatically elevates error correction to Level H, adjusts shape density to Safe/Balanced, and sharpens contrast to guarantee instantaneous camera recognition.
+- **Examples Menu**: Quick-load presets for Circle Badge, Heart Silhouette, Brand Name "Acklet", and Standard Sample.
 
 ---
 

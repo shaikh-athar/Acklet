@@ -5,7 +5,9 @@ import { isToolsHubHostname, extractToolSlugFromHostname } from '@acklet/shared'
 ['acklet:repos', 'acklet:tools', 'acklet:store', 'acklet:collections'].forEach(k => localStorage.removeItem(k));
 
 const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-const toolSlug = extractToolSlugFromHostname(hostname);
+const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+const queryTool = urlParams?.get('tool')?.toLowerCase();
+const toolSlug = extractToolSlugFromHostname(hostname) || (queryTool && ['clipboard', 'qr', 'qr-generator'].includes(queryTool) ? queryTool : null);
 
 if (isToolsHubHostname(hostname)) {
   // Bootstrap Tools Hub (apps/tools-hub)

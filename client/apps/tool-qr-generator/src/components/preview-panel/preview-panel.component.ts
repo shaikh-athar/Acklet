@@ -60,7 +60,7 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
               title="Recent QR codes"
               aria-label="Recent QR codes"
             >
-              <ts-icon name="history" />
+              <ts-icon name="history" [size]="18" />
               @if (historyItems().length > 0) {
                 <span class="btn-badge">{{ historyItems().length }}</span>
               }
@@ -97,7 +97,7 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
                     class="overflow-item"
                     (click)="openDynamicManager.emit(); isOverflowMenuOpen.set(false)"
                   >
-                    <ts-icon name="activity" class="overflow-item-icon" />
+                    <ts-icon name="zap" class="overflow-item-icon" />
                     <span>Dynamic Shortlinks</span>
                     @if (dynamicCount() > 0) {
                       <span class="overflow-badge">{{ dynamicCount() }}</span>
@@ -228,25 +228,39 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
               </div>
             }
 
-            <!-- Silent Verification Floating Notification (Shown ONLY when scan is problematic) -->
-            @if (verification(); as result) {
-              @if (!result.isScannable || (!result.match && formattedPayload())) {
+            <!-- Calm Scan Confidence Bar (High / Medium / Low with Auto-Fix) -->
+            @if (qrDataUrl() && verification(); as result) {
+              <div class="scan-confidence-bar slide-fade-up">
                 <div
-                  class="scan-floating-banner slide-fade-up"
-                  [class.scannable]="result.isScannable && result.match"
-                  [class.mismatch]="result.isScannable && !result.match"
-                  [class.unscannable]="!result.isScannable"
+                  class="confidence-chip"
+                  [class.confidence-high]="result.confidence === 'high'"
+                  [class.confidence-medium]="result.confidence === 'medium'"
+                  [class.confidence-low]="result.confidence === 'low'"
                 >
-                  <ts-icon name="alert-triangle" class="banner-icon" />
-                  <div class="banner-text">
-                    <span class="banner-title">Scan Warning</span>
-                    <span class="banner-msg">{{ result.message }}</span>
-                  </div>
-                  <button type="button" class="banner-close-btn" (click)="verification.set(null)" aria-label="Dismiss scan notification">
-                    <ts-icon name="x" />
-                  </button>
+                  @if (result.confidence === 'high') {
+                    <ts-icon name="check-circle" class="confidence-icon" />
+                    <span class="confidence-text">Scan Confidence: High</span>
+                  } @else if (result.confidence === 'medium') {
+                    <ts-icon name="alert-circle" class="confidence-icon" />
+                    <span class="confidence-text">Scan Confidence: Medium</span>
+                  } @else {
+                    <ts-icon name="alert-triangle" class="confidence-icon" />
+                    <span class="confidence-text">Scan Confidence: Low</span>
+                  }
                 </div>
-              }
+
+                @if (result.confidence === 'medium' || result.confidence === 'low' || result.fixAvailable || !result.isScannable) {
+                  <button
+                    type="button"
+                    class="auto-fix-btn"
+                    (click)="autoFixClick.emit()"
+                    title="Optimize contrast and error recovery for guaranteed scanning"
+                  >
+                    <ts-icon name="sparkles" class="fix-icon" />
+                    <span>Fix automatically</span>
+                  </button>
+                }
+              </div>
             }
           </div>
         </div>
@@ -270,8 +284,7 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
               <button
                 type="button"
                 class="split-arrow-btn"
-                [disabled]="!qrDataUrl() || isGenerating()"
-                (click)="isFormatMenuOpen.set(!isFormatMenuOpen())"
+                (click)="toggleFormatMenu($event)"
                 [attr.aria-expanded]="isFormatMenuOpen()"
                 title="Export in other formats (SVG, JPEG, Copy)"
                 aria-label="Export in other formats"
@@ -281,7 +294,7 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
 
               <!-- Split Dropdown Menu -->
               @if (isFormatMenuOpen()) {
-                <div class="split-menu slide-fade-up" role="menu">
+                <div class="split-menu slide-fade-up" role="menu" (click)="$event.stopPropagation()">
                   <button type="button" role="menuitem" class="split-menu-item" (click)="onDownload('svg'); isFormatMenuOpen.set(false)">
                     <ts-icon name="file-code" />
                     <div class="menu-item-info">
@@ -303,6 +316,10 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
                       <span class="menu-item-desc">Direct paste into Figma, docs, chats</span>
                     </div>
                   </button>
+                  <div class="print-recommendation-note">
+                    <ts-icon name="info" class="print-icon" />
+                    <span>Recommended print size: &ge; 3.5 &times; 3.5 cm (1.4 &times; 1.4 in) for guaranteed camera readability.</span>
+                  </div>
                 </div>
               }
             </div>
@@ -323,9 +340,7 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
 
           <!-- Clean Footer Note -->
           <div class="preview-footer-note">
-            <span class="kbd-note">
-              <kbd class="kbd-key">⌘S</kbd> to quick save
-            </span>
+
           </div>
         </div>
 
@@ -560,20 +575,21 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
 
     .btn-badge {
       position: absolute;
-      top: 2px;
-      right: 2px;
+      top: -2px;
+      right: -2px;
       min-width: 15px;
       height: 15px;
-      padding: 0 3px;
+      padding: 0 4px;
       border-radius: 999px;
       background: var(--tool-accent, #3b82f6);
       color: #ffffff;
-      font-size: 9.5px;
+      font-size: 10px;
       font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
       line-height: 1;
+      border: 1.5px solid var(--surface-card, #ffffff);
     }
 
     /* Overflow 3-dots Menu */
@@ -1062,84 +1078,118 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
       font-weight: 500;
     }
 
-    /* Floating Test Scan Notification */
-    .scan-floating-banner {
+    /* Calm Scan Confidence Bar & Auto-Fix Action */
+    .scan-confidence-bar {
       position: absolute;
-      bottom: 8px;
-      left: 8px;
-      right: 8px;
+      bottom: 10px;
+      left: 12px;
+      right: 12px;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 8px;
-      padding: 6px 10px;
-      border-radius: 8px;
-      background: var(--surface-1, #1e2027);
-      border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.15));
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+      padding: 6px 12px;
+      border-radius: 9999px;
+      background: var(--bg-surface, var(--surface-1, #1e2027));
+      border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+      backdrop-filter: blur(10px);
       z-index: 20;
+      transition: all 300ms cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .scan-floating-banner.scannable {
-      border-color: #10b981;
-      background: rgba(16, 185, 129, 0.15);
-      color: #10b981;
+    .confidence-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      padding: 3px 8px;
+      border-radius: 9999px;
     }
 
-    .scan-floating-banner.mismatch {
-      border-color: #f59e0b;
-      background: rgba(245, 158, 11, 0.15);
-      color: #f59e0b;
+    .confidence-chip.confidence-high {
+      background: rgba(16, 185, 129, 0.14);
+      color: #059669;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    :host-context([data-theme="dark"]) .confidence-chip.confidence-high {
+      background: rgba(16, 185, 129, 0.18);
+      color: #34d399;
+      border-color: rgba(52, 211, 153, 0.35);
     }
 
-    .scan-floating-banner.unscannable {
-      border-color: #ef4444;
-      background: rgba(239, 68, 68, 0.15);
-      color: #ef4444;
+    .confidence-chip.confidence-medium {
+      background: rgba(245, 158, 11, 0.14);
+      color: #d97706;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    :host-context([data-theme="dark"]) .confidence-chip.confidence-medium {
+      background: rgba(245, 158, 11, 0.18);
+      color: #fbbf24;
+      border-color: rgba(251, 191, 36, 0.35);
     }
 
-    .banner-icon {
-      width: 16px;
-      height: 16px;
+    .confidence-chip.confidence-low {
+      background: rgba(239, 68, 68, 0.14);
+      color: #dc2626;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    :host-context([data-theme="dark"]) .confidence-chip.confidence-low {
+      background: rgba(239, 68, 68, 0.18);
+      color: #f87171;
+      border-color: rgba(248, 113, 113, 0.35);
+    }
+
+    .confidence-icon {
+      width: 14px;
+      height: 14px;
       flex-shrink: 0;
     }
 
-    .banner-text {
-      display: flex;
-      flex-direction: column;
-      flex: 1 1 0%;
-      min-width: 0;
-    }
-
-    .banner-title {
-      font-size: 11.5px;
-      font-weight: 700;
+    .confidence-text {
+      font-size: 11px;
+      font-weight: 600;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
 
-    .banner-msg {
-      font-size: 10.5px;
-      opacity: 0.9;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .banner-close-btn {
-      background: transparent;
-      border: none;
-      color: inherit;
-      cursor: pointer;
-      display: flex;
+    .auto-fix-btn {
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
-      padding: 2px;
-      opacity: 0.7;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--accent-surface, rgba(2, 132, 199, 0.12));
+      color: var(--accent-primary, #0284c7);
+      border: 1px solid var(--accent-border, rgba(2, 132, 199, 0.3));
+      cursor: pointer;
+      transition: all 200ms ease;
     }
 
-    .banner-close-btn:hover {
-      opacity: 1;
+    .auto-fix-btn:hover {
+      background: var(--accent-primary, #0284c7);
+      color: #ffffff;
+      transform: translateY(-0.5px);
+    }
+
+    .auto-fix-btn:active {
+      transform: translateY(0);
+    }
+
+    .fix-icon {
+      width: 12px;
+      height: 12px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .scan-confidence-bar,
+      .auto-fix-btn {
+        transition: none !important;
+        animation: none !important;
+      }
     }
 
     /* Bottom Action Bar */
@@ -1178,8 +1228,8 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
       border-radius: 9px 0 0 9px;
       border: 1px solid var(--tool-accent, #3b82f6);
       border-right: none;
-      background: var(--tool-accent, #3b82f6);
-      color: #ffffff;
+      background: var(--tool-accent, #3b82f6) !important;
+      color: #ffffff !important;
       font-size: 13px;
       font-weight: 650;
       cursor: pointer;
@@ -1188,7 +1238,9 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
     }
 
     .split-primary-btn:hover:not(:disabled) {
-      opacity: 0.92;
+      background: var(--tool-accent, #3b82f6) !important;
+      color: #ffffff !important;
+      filter: brightness(1.08);
       box-shadow: 0 2px 10px var(--tool-accent-glow, rgba(59, 130, 246, 0.35));
     }
 
@@ -1206,14 +1258,16 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
       border-radius: 0 9px 9px 0;
       border: 1px solid var(--tool-accent, #3b82f6);
       border-left: 1px solid rgba(255, 255, 255, 0.25);
-      background: var(--tool-accent, #3b82f6);
-      color: #ffffff;
+      background: var(--tool-accent, #3b82f6) !important;
+      color: #ffffff !important;
       cursor: pointer;
       transition: all 150ms ease;
     }
 
     .split-arrow-btn:hover:not(:disabled) {
-      opacity: 0.92;
+      background: var(--tool-accent, #3b82f6) !important;
+      color: #ffffff !important;
+      filter: brightness(1.08);
     }
 
     .split-arrow-btn:disabled {
@@ -1234,18 +1288,19 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
     /* Split Dropdown Menu */
     .split-menu {
       position: absolute;
-      bottom: 44px;
+      bottom: calc(100% + 8px);
       left: 0;
       right: 0;
-      background: var(--surface-1, #1e2027);
-      border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.15));
-      border-radius: 10px;
-      padding: 4px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-      z-index: 50;
+      min-width: 220px;
+      background: var(--surface-card, var(--surface-1, #1e2027));
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+      border-radius: 12px;
+      padding: 6px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+      z-index: 100;
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 3px;
     }
 
     .split-menu-item {
@@ -1256,15 +1311,20 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
       border-radius: 7px;
       border: none;
       background: transparent;
-      color: var(--text, #fcfcfc);
+      color: var(--text, #18181b);
       cursor: pointer;
       text-align: left;
-      transition: background 150ms ease;
+      transition: background 150ms ease, color 150ms ease;
       font-size: 12px;
     }
 
+    :host-context([data-theme="dark"]) .split-menu-item {
+      color: var(--text, #fcfcfc);
+    }
+
     .split-menu-item:hover {
-      background: var(--surface-2, rgba(255, 255, 255, 0.08));
+      background: var(--surface-hover, rgba(15, 23, 42, 0.06)) !important;
+      color: var(--tool-accent, var(--accent, #3b82f6)) !important;
     }
 
     .menu-item-info {
@@ -1280,6 +1340,28 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
     .menu-item-desc {
       font-size: 10.5px;
       color: var(--text-muted, var(--text-3, rgba(255, 255, 255, 0.5)));
+    }
+
+    .print-recommendation-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 8px 10px;
+      margin-top: 4px;
+      border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+      font-size: 10px;
+      line-height: 1.35;
+      color: var(--text-tertiary, var(--text-2, rgba(255, 255, 255, 0.65)));
+      background: var(--surface-2, rgba(255, 255, 255, 0.02));
+      border-radius: 0 0 6px 6px;
+    }
+
+    .print-icon {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+      margin-top: 1px;
+      color: var(--accent-primary, #0284c7);
     }
 
     /* Quick SVG Vector Export Button */
@@ -1812,6 +1894,7 @@ export class PreviewPanelComponent {
   readonly openDynamicManager = output<void>();
   readonly openBatchGenerator = output<void>();
   readonly loadSampleClick = output<void>();
+  readonly autoFixClick = output<void>();
   readonly sizeChange = output<number>();
   readonly errorCorrectionChange = output<ErrorCorrectionLevel>();
 
@@ -1856,6 +1939,11 @@ export class PreviewPanelComponent {
   toggleOverflowMenu(event: MouseEvent): void {
     event.stopPropagation();
     this.isOverflowMenuOpen.set(!this.isOverflowMenuOpen());
+  }
+
+  toggleFormatMenu(event: MouseEvent): void {
+    event.stopPropagation();
+    this.isFormatMenuOpen.set(!this.isFormatMenuOpen());
   }
 
   @HostListener('document:click')

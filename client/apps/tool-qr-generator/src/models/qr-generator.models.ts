@@ -110,7 +110,8 @@ export type SocialPlatform =
   | 'youtube'
   | 'vimeo'
   | 'whatsapp'
-  | 'telegram';
+  | 'telegram'
+  | 'custom';
 
 export interface SocialData {
   platform: SocialPlatform;
@@ -141,9 +142,40 @@ export type QrErrorCorrectionLevel = ErrorCorrectionLevel;
 
 export type ExportFormat = 'png' | 'jpeg' | 'svg';
 
-export type QrDotType = 'square' | 'dots' | 'rounded' | 'classy' | 'classy-rounded' | 'extra-rounded';
-export type QrCornerSquareType = 'square' | 'dot' | 'extra-rounded';
-export type QrCornerDotType = 'square' | 'dot';
+export type QrDotType =
+  | 'square'
+  | 'dots'
+  | 'rounded'
+  | 'extra-rounded'
+  | 'classy'
+  | 'classy-rounded'
+  | 'diamond'
+  | 'star'
+  | 'heart'
+  | 'cross'
+  | 'scanline';
+
+export type QrCornerSquareType =
+  | 'square'
+  | 'dot'
+  | 'extra-rounded'
+  | 'classy'
+  | 'classy-rounded'
+  | 'rounded'
+  | 'pinch'
+  | 'shield';
+
+export type QrCornerDotType =
+  | 'square'
+  | 'dot'
+  | 'rounded'
+  | 'extra-rounded'
+  | 'classy'
+  | 'classy-rounded'
+  | 'diamond'
+  | 'star'
+  | 'heart'
+  | 'cross';
 
 export type QrFrameStyle =
   | 'none'
@@ -183,6 +215,89 @@ export const DEFAULT_FRAME_OPTIONS: QrFrameOptions = {
   textColor: '#ffffff'
 };
 
+export interface QrGradientOptions {
+  enabled: boolean;
+  type: 'linear' | 'radial';
+  rotation: number; // in degrees: 0 to 360
+  color1: string;
+  color2: string;
+}
+
+export const DEFAULT_GRADIENT_OPTIONS: QrGradientOptions = {
+  enabled: false,
+  type: 'linear',
+  rotation: 45,
+  color1: '#0284C7',
+  color2: '#2563EB'
+};
+
+export type QrOverallShape =
+  | 'square'
+  | 'circle'
+  | 'rounded-square'
+  | 'heart'
+  | 'star'
+  | 'hexagon'
+  | 'diamond'
+  | 'shield'
+  | 'drop'
+  | 'speech-bubble'
+  | 'badge'
+  | 'ticket';
+
+export type QrShapeMode = 'around' | 'badge' | 'trim';
+
+export type QrStyleStrength = 'safe' | 'balanced' | 'bold';
+
+export interface QrArtShapeOptions {
+  shape: QrOverallShape;
+  mode: QrShapeMode;
+  strength: QrStyleStrength;
+  fadeEdges?: boolean;
+  brandTint?: string;
+}
+
+export const DEFAULT_ART_SHAPE_OPTIONS: QrArtShapeOptions = {
+  shape: 'square',
+  mode: 'around',
+  strength: 'balanced',
+  fadeEdges: false
+};
+
+export type QrBrandPlacement = 'in-code' | 'around-code' | 'banner';
+
+export type QrBrandFont =
+  | 'Outfit'
+  | 'Inter'
+  | 'Montserrat'
+  | 'Playfair Display'
+  | 'Space Grotesk'
+  | 'Plus Jakarta Sans'
+  | 'Bebas Neue'
+  | 'Caveat';
+
+export interface QrBrandOptions {
+  enabled: boolean;
+  type: 'name' | 'image';
+  mode?: 'name' | 'image';
+  placement: QrBrandPlacement;
+  text?: string;
+  font?: QrBrandFont;
+  color?: string;
+  gradient?: QrGradientOptions;
+  imageData?: string;
+  imageThreshold?: number;
+}
+
+export const DEFAULT_BRAND_OPTIONS: QrBrandOptions = {
+  enabled: false,
+  type: 'name',
+  placement: 'in-code',
+  text: '',
+  font: 'Outfit',
+  color: '#0284c7'
+};
+
 export interface QROptions {
   content: string;
   type: ContentType;
@@ -192,6 +307,10 @@ export interface QROptions {
   foregroundColor?: string;
   /** Hex code for background/light modules (default: #FFFFFF) */
   backgroundColor?: string;
+  /** Optional rich gradient for foreground modules */
+  foregroundGradient?: QrGradientOptions;
+  /** Optional rich gradient for background canvas */
+  backgroundGradient?: QrGradientOptions;
   /** Error correction capability: L (7%), M (15%), Q (25%), H (30%) */
   errorCorrection?: ErrorCorrectionLevel;
   /** Quiet zone margin in modules (default: 2) */
@@ -214,6 +333,10 @@ export interface QROptions {
   logoMargin?: number;
   /** Decorative frame and CTA banner */
   frame?: QrFrameOptions;
+  /** QR Art overall silhouette & shape styling */
+  artShape?: QrArtShapeOptions;
+  /** QR Art brand name and brand image artwork */
+  brand?: QrBrandOptions;
 }
 
 export interface BatchQrItem {
@@ -249,12 +372,16 @@ export interface QRValidationResult {
   warnings?: string[];
 }
 
+export type QrScanConfidence = 'high' | 'medium' | 'low';
+
 export interface QRVerificationResult {
   isScannable: boolean;
   decodedPayload?: string;
   expectedPayload: string;
   match: boolean;
   message: string;
+  confidence?: QrScanConfidence;
+  fixAvailable?: boolean;
 }
 
 export interface QRMetadata {
@@ -495,6 +622,30 @@ export const DESIGN_PRESETS: DesignPreset[] = [
     backgroundColor: '#fafafa',
     cornerSquareColor: null,
     cornerDotColor: null
+  },
+  {
+    id: 'diamond-luxe',
+    name: 'Diamond Luxe',
+    description: 'Jeweled diamond modules with leaf locator frames',
+    dotType: 'diamond',
+    cornerSquareType: 'classy',
+    cornerDotType: 'diamond',
+    foregroundColor: '#0284c7',
+    backgroundColor: '#f0f9ff',
+    cornerSquareColor: '#0284c7',
+    cornerDotColor: '#0369a1'
+  },
+  {
+    id: 'starlight',
+    name: 'Starlight',
+    description: 'Stellar four-point sparkles with rounded corners',
+    dotType: 'star',
+    cornerSquareType: 'extra-rounded',
+    cornerDotType: 'star',
+    foregroundColor: '#7c3aed',
+    backgroundColor: '#faf5ff',
+    cornerSquareColor: '#7c3aed',
+    cornerDotColor: '#6d28d9'
   }
 ];
 

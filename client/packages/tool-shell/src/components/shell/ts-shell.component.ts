@@ -5,6 +5,7 @@ import { ToolShellConfig, ToolTab } from '../../models/tool-shell.models';
 import { ToolSidebarService } from '../../services/tool-sidebar.service';
 import { SidebarStateService, FIRST_HINT_KEY, readCookie, writeCookie, resolveCookieDomain } from '../../services/sidebar-state.service';
 import { ToolThemeService } from '../../services/tool-theme.service';
+import { ToolThemeProviderService } from '../../services/tool-theme-provider.service';
 import { ToolCapsuleService } from '../../services/tool-capsule.service';
 import { TsTopbarComponent } from '../topbar/ts-topbar.component';
 import { TsSidebarComponent } from '../sidebar/ts-sidebar.component';
@@ -20,6 +21,7 @@ import { TsIconComponent } from '../icon/ts-icon.component';
 import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
 import { RevealDirective, TsRevealDirective } from '../../directives/reveal.directive';
 import { PerfFlagsService } from '../../services/perf-flags.service';
+import { TsSettingsModalComponent } from '../settings/ts-settings-modal.component';
 
 @Component({
   selector: 'ts-shell, lib-tool-layout',
@@ -36,14 +38,17 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
     TsToolContentComponent,
     TsIconComponent,
     TsTooltipDirective,
-    RevealDirective
+    RevealDirective,
+    TsSettingsModalComponent
   ],
   template: `
     <div 
       class="ts-root" 
+      [attr.data-tool]="tool()?.slug || 'default'"
       [attr.data-theme]="themeService.effectiveTheme()"
       [attr.data-accent]="tool()?.accent || 'neutral'"
       [attr.data-surface]="effectiveSurface()"
+      [style]="computedThemeStyles()"
     >
       
       <!-- Skip to main content accessibility link -->
@@ -140,11 +145,6 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
               </div>
 
               <!-- 4. BELOW the grid, full width: About, How to use, FAQ, Related -->
-              <div class="ts-content-below-grid ts-entry-content">
-                <ts-tool-content [tool]="tool()" />
-              </div>
-
-              <!-- 4. BELOW the grid, full width: About, How to use, FAQ, Related -->
               @if (!isFullBleed()) {
                 <div class="ts-content-below-grid ts-entry-content">
                   <ts-tool-content [tool]="tool()" />
@@ -197,6 +197,9 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
         [tools]="allTools()" 
         (close)="showCommandPalette.set(false)"
       />
+
+      <!-- Global Shell Settings Modal -->
+      <ts-settings-modal />
 
     </div>
   `,
@@ -301,46 +304,7 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
       --fx-glow-2: color-mix(in srgb, var(--accent-light) 22%, transparent);
       --fx-highlight: rgba(255, 255, 255, 0.80);
     }
-
-    .ts-root[data-accent="teal"] {
-      --accent: #2DD4BF;
-      --accent-ink: #042F2B;
-      --accent-soft: #10302D;
-      --accent-border: #1F4A45;
-    }
-
-    .ts-root[data-theme="light"][data-accent="teal"] {
-      --accent: #0F766E;
-      --accent-ink: #FFFFFF;
-      --accent-soft: #cbf1ecff;
-      --accent-border: #9dfef1ff;
-    }
-
-    .ts-root[data-accent="blue"] {
-      --accent: #3B82F6;
-      --accent-ink: #FFFFFF;
-      --accent-strong: #60A5FA;
-      --accent-soft: rgba(59, 130, 246, 0.12);
-      --accent-border: rgba(59, 130, 246, 0.25);
-      --accent-glow: rgba(59, 130, 246, 0.20);
-      --tool-accent: #3B82F6;
-      --tool-accent-soft: rgba(59, 130, 246, 0.12);
-      --tool-accent-border: rgba(59, 130, 246, 0.25);
-      --tool-accent-glow: rgba(59, 130, 246, 0.20);
-    }
-
-    .ts-root[data-theme="light"][data-accent="blue"] {
-      --accent: #2563EB;
-      --accent-ink: #FFFFFF;
-      --accent-strong: #1D4ED8;
-      --accent-soft: rgba(37, 99, 235, 0.08);
-      --accent-border: rgba(37, 99, 235, 0.20);
-      --accent-glow: rgba(37, 99, 235, 0.15);
-      --tool-accent: #2563EB;
-      --tool-accent-soft: rgba(37, 99, 235, 0.08);
-      --tool-accent-border: rgba(37, 99, 235, 0.20);
-      --tool-accent-glow: rgba(37, 99, 235, 0.15);
-    }
+    /* Dynamic per-tool theme tokens (--accent, --tool-accent, --font-*) are injected at host via ToolThemeProviderService */
 
     .ts-root {
       width: 100vw;
@@ -431,7 +395,7 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
       left: 0;
       top: 0;
       bottom: 0;
-      width: 8px;
+      width: 14px;
       z-index: 65;
       pointer-events: auto;
       cursor: e-resize;
@@ -820,6 +784,15 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
       box-shadow: none !important;
     }
 
+    .ts-tool-card-surface.full-bleed > * {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      flex: 1 1 0%;
+      display: flex;
+      flex-direction: column;
+    }
+
     /* Cleanly hide duplicate header & trust chips if present in tool child template */
     ::ng-deep .ts-tool-card-surface .tool-header-block,
     ::ng-deep .ts-tool-card-surface .trust-chips-row {
@@ -983,10 +956,15 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly sidebarState = inject(SidebarStateService);
   readonly sidebarWidth = computed(() => this.sidebarService.width());
   readonly themeService = inject(ToolThemeService);
+  private readonly themeProvider = inject(ToolThemeProviderService);
   private readonly capsuleService = inject(ToolCapsuleService);
   private readonly perfFlags = inject(PerfFlagsService);
   private readonly ngZone = inject(NgZone);
   private scrollListener: (() => void) | null = null;
+
+  readonly computedThemeStyles = computed(() => {
+    return this.themeProvider.resolveThemeTokens(this.tool(), this.themeService.effectiveTheme());
+  });
 
   readonly isHotzoneHovered = signal<boolean>(false);
   private hotzoneIntentTimer: ReturnType<typeof setTimeout> | null = null;

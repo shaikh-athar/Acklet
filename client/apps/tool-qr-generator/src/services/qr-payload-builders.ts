@@ -12,6 +12,7 @@ import {
   SocialData,
   AppData,
   CryptoData,
+  CryptoCoin,
   QRValidationResult
 } from '../models/qr-generator.models';
 
@@ -97,7 +98,37 @@ export function validateWebsite(data: WebsiteData): QRValidationResult {
 // ==========================================
 
 export function buildTextPayload(text: string): string {
-  return (text || '').trim();
+  if (!text) return '';
+  // Strip UTF-8 BOM if present, normalize all CRLF/CR to single LF
+  const clean = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  return clean.trim();
+}
+
+/**
+ * Detects whether plain text looks like a URL, email, or phone number
+ * so the UI can gently offer a 1-tap switch to the dedicated action type.
+ */
+export function detectPotentialTextType(text: string): 'url' | 'email' | 'phone' | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  // Web link pattern: https://..., http://..., or www.domain.tld
+  if (/^(?:https?:\/\/|www\.)[^\s]+\.[a-z]{2,}(?:\/[^\s]*)?$/i.test(trimmed)) {
+    return 'url';
+  }
+
+  // Email pattern: user@domain.tld
+  if (/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(trimmed)) {
+    return 'email';
+  }
+
+  // Phone pattern: e.g. +14155552671, +91 98765 43210, (415) 555-2671
+  const digits = trimmed.replace(/\D/g, '');
+  if (/^(\+?[0-9\s\-().]{8,25})$/.test(trimmed) && digits.length >= 7 && digits.length <= 15) {
+    return 'phone';
+  }
+
+  return null;
 }
 
 export function validateText(text: string): QRValidationResult {
@@ -227,7 +258,7 @@ export function validateSms(data: SmsData): QRValidationResult {
 // ==========================================
 
 export function escapeWifi(str: string): string {
-  return str.replace(/([\\;,:"\\])/g, '\\$1');
+  return str.replace(/([\\;,:"'])/g, '\\$1');
 }
 
 export function buildWifiPayload(data: WifiData): string {
@@ -263,11 +294,19 @@ export function validateWifi(data: WifiData): QRValidationResult {
   }
 
   const sec = data.security || data.encryption || 'WPA';
-  if (sec !== 'nopass' && (!data.password || data.password.length < 8)) {
-    return {
-      isValid: false,
-      error: 'WPA/WEP/WPA3 Wi-Fi passwords must be at least 8 characters long.'
-    };
+  if (sec !== 'nopass') {
+    if (sec === 'WEP') {
+      const pw = data.password || '';
+      const isAscii = pw.length === 5 || pw.length === 13 || pw.length === 16;
+      const isHex = /^[0-9a-fA-F]{10}$|^[0-9a-fA-F]{26}$|^[0-9a-fA-F]{32}$/.test(pw);
+      if (!isAscii && !isHex && pw.length < 5) {
+        return { isValid: false, error: 'WEP password must be 5 or 13 characters (or 10/26 hexadecimal digits).' };
+      }
+    } else {
+      if (!data.password || data.password.length < 8) {
+        return { isValid: false, error: 'Wi-Fi password must be at least 8 characters long.' };
+      }
+    }
   }
 
   return { isValid: true };
@@ -279,13 +318,26 @@ export function validateWifi(data: WifiData): QRValidationResult {
 
 export function parseMapCoordinates(input: string): { latitude: number; longitude: number } | null {
   const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  // Pattern: "geo:37.7749,-122.4194"
+  const geoMatch = trimmed.match(/^geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/i);
+  if (geoMatch) {
+    const lat = parseFloat(geoMatch[1]);
+    const lng = parseFloat(geoMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { latitude: lat, longitude: lng };
+    }
+  }
 
   // Pattern: "37.7749, -122.4194"
   const simpleMatch = trimmed.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
   if (simpleMatch) {
     const lat = parseFloat(simpleMatch[1]);
     const lng = parseFloat(simpleMatch[2]);
-    if (!isNaN(lat) && !isNaN(lng)) return { latitude: lat, longitude: lng };
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { latitude: lat, longitude: lng };
+    }
   }
 
   // Google Maps @lat,lng e.g. /@37.774929,-122.419416,15z
@@ -293,15 +345,49 @@ export function parseMapCoordinates(input: string): { latitude: number; longitud
   if (googleAtMatch) {
     const lat = parseFloat(googleAtMatch[1]);
     const lng = parseFloat(googleAtMatch[2]);
-    if (!isNaN(lat) && !isNaN(lng)) return { latitude: lat, longitude: lng };
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { latitude: lat, longitude: lng };
+    }
   }
 
-  // Google Maps ?q=lat,lng or ll=lat,lng
-  const paramMatch = trimmed.match(/[?&](?:q|ll)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+  // Google Maps data param: !3d37.7749!4d-122.4194
+  const googleDataMatch = trimmed.match(/!3d(-?\d+(?:\.\d+)?)[^!]*!4d(-?\d+(?:\.\d+)?)/);
+  if (googleDataMatch) {
+    const lat = parseFloat(googleDataMatch[1]);
+    const lng = parseFloat(googleDataMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { latitude: lat, longitude: lng };
+    }
+  }
+
+  // Google Maps / Apple Maps ?q=lat,lng or ll=lat,lng or loc:lat,lng
+  const paramMatch = trimmed.match(/[?&](?:q|ll|loc:?)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/i);
   if (paramMatch) {
     const lat = parseFloat(paramMatch[1]);
     const lng = parseFloat(paramMatch[2]);
-    if (!isNaN(lat) && !isNaN(lng)) return { latitude: lat, longitude: lng };
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { latitude: lat, longitude: lng };
+    }
+  }
+
+  // OpenStreetMap hash: #map=15/37.7749/-122.4194
+  const osmHashMatch = trimmed.match(/#map=\d+\/(-?\d+(?:\.\d+)?)\/(-?\d+(?:\.\d+)?)/);
+  if (osmHashMatch) {
+    const lat = parseFloat(osmHashMatch[1]);
+    const lng = parseFloat(osmHashMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { latitude: lat, longitude: lng };
+    }
+  }
+
+  // OpenStreetMap params: ?lat=37.7749&lon=-122.4194
+  const osmParamMatch = trimmed.match(/[?&]lat=(-?\d+(?:\.\d+)?)[&]lon=(-?\d+(?:\.\d+)?)/i);
+  if (osmParamMatch) {
+    const lat = parseFloat(osmParamMatch[1]);
+    const lng = parseFloat(osmParamMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { latitude: lat, longitude: lng };
+    }
   }
 
   return null;
@@ -346,7 +432,7 @@ export function validateGeo(data: GeoData): QRValidationResult {
 }
 
 // ==========================================
-// 8. EVENT / iCALENDAR BUILDER & VALIDATOR
+// 8. EVENT / iCALENDAR BUILDER & VALIDATOR (RFC 5545)
 // ==========================================
 
 export function escapeICal(str: string): string {
@@ -371,21 +457,37 @@ export function foldICalLine(line: string): string {
   return result;
 }
 
+export function addDaysToDateString(dateStr: string, days = 1): string {
+  const parts = dateStr.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return dateStr;
+  const d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+  d.setUTCDate(d.getUTCDate() + days);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export function computeDefaultEndTime(startTime: string): { endTime: string; nextDay: boolean } {
+  const parts = startTime.split(':').map(Number);
+  if (parts.length < 2 || parts.some(isNaN)) return { endTime: '13:00', nextDay: false };
+  let hours = parts[0] + 1;
+  const minutes = parts[1];
+  let nextDay = false;
+  if (hours >= 24) {
+    hours = hours % 24;
+    nextDay = true;
+  }
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return { endTime: `${pad(hours)}:${pad(minutes)}`, nextDay };
+}
+
 export function buildEventPayload(data: EventData): string {
   if (!data.title?.trim() || !data.startDate) return '';
 
   const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
   const now = new Date();
   const dtStamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
-
-  const formatDateTime = (dateStr: string, timeStr?: string, isAllDay?: boolean): string => {
-    const cleanDate = dateStr.replace(/-/g, '');
-    if (isAllDay || !timeStr) {
-      return `;VALUE=DATE:${cleanDate}`;
-    }
-    const cleanTime = timeStr.replace(/:/g, '') + '00';
-    return `:${cleanDate}T${cleanTime}`;
-  };
 
   const lines: string[] = [
     'BEGIN:VCALENDAR',
@@ -401,10 +503,51 @@ export function buildEventPayload(data: EventData): string {
     'BEGIN:VEVENT',
     `UID:acklet-${Date.now()}@acklet.com`,
     `DTSTAMP:${dtStamp}`,
-    `SUMMARY:${escapeICal(data.title.trim())}`,
-    `DTSTART${formatDateTime(data.startDate, data.startTime, data.allDay)}`,
-    `DTEND${formatDateTime(data.endDate || data.startDate, data.endTime, data.allDay)}`
+    `SUMMARY:${escapeICal(data.title.trim())}`
   );
+
+  if (data.allDay) {
+    // RFC 5545: All-day events specify DTSTART with VALUE=DATE, and DTEND must be exclusive (the day after the event ends)
+    const startClean = data.startDate.replace(/-/g, '');
+    const endBase = data.endDate || data.startDate;
+    const exclusiveEnd = addDaysToDateString(endBase, 1).replace(/-/g, '');
+
+    lines.push(`DTSTART;VALUE=DATE:${startClean}`);
+    lines.push(`DTEND;VALUE=DATE:${exclusiveEnd}`);
+  } else {
+    // Timed event
+    const startTimeClean = (data.startTime ? data.startTime.replace(/:/g, '') : '0900') + '00';
+    let endTimeClean = '';
+    let finalEndDate = data.endDate || data.startDate;
+
+    if (data.endTime) {
+      endTimeClean = data.endTime.replace(/:/g, '') + '00';
+    } else if (data.startTime) {
+      const def = computeDefaultEndTime(data.startTime);
+      endTimeClean = def.endTime.replace(/:/g, '') + '00';
+      if (def.nextDay && !data.endDate) {
+        finalEndDate = addDaysToDateString(data.startDate, 1);
+      }
+    } else {
+      endTimeClean = '100000';
+    }
+
+    const startClean = data.startDate.replace(/-/g, '');
+    const endClean = finalEndDate.replace(/-/g, '');
+
+    if (data.timezone && data.timezone !== 'floating') {
+      if (data.timezone === 'UTC' || data.timezone === 'Z') {
+        lines.push(`DTSTART:${startClean}T${startTimeClean}Z`);
+        lines.push(`DTEND:${endClean}T${endTimeClean}Z`);
+      } else {
+        lines.push(`DTSTART;TZID=${data.timezone}:${startClean}T${startTimeClean}`);
+        lines.push(`DTEND;TZID=${data.timezone}:${endClean}T${endTimeClean}`);
+      }
+    } else {
+      lines.push(`DTSTART:${startClean}T${startTimeClean}`);
+      lines.push(`DTEND:${endClean}T${endTimeClean}`);
+    }
+  }
 
   if (data.location?.trim()) {
     lines.push(`LOCATION:${escapeICal(data.location.trim())}`);
@@ -448,8 +591,8 @@ export function validateEvent(data: EventData): QRValidationResult {
   if (!data.startDate) {
     return { isValid: false, error: 'Event start date is required.' };
   }
-  if (!data.allDay && (!data.startTime || !data.endTime)) {
-    return { isValid: false, error: 'Start time and end time are required for scheduled events.' };
+  if (!data.allDay && !data.startTime) {
+    return { isValid: false, error: 'Start time is required for scheduled events.' };
   }
   return { isValid: true };
 }
@@ -614,6 +757,9 @@ export function validateSocial(data: SocialData): QRValidationResult {
   if (/^https?:\/\//i.test(raw)) {
     try {
       const parsed = new URL(raw);
+      if (data.platform === 'custom') {
+        return { isValid: true };
+      }
       const allowed = SOCIAL_DOMAINS[data.platform] || [];
       const isAllowed = allowed.some(dom => parsed.hostname === dom || parsed.hostname.endsWith(`.${dom}`));
       if (!isAllowed) {
@@ -670,8 +816,36 @@ export function isValidEip55Checksum(address: string): boolean {
   return true;
 }
 
+/**
+ * Cleans user-pasted crypto addresses by stripping URI scheme prefixes (e.g. bitcoin:, solana:)
+ * and automatically prepending 0x to bare 40-hex Ethereum addresses.
+ */
+export function cleanCryptoAddress(coin: CryptoCoin, rawAddress: string): string {
+  let addr = (rawAddress || '').trim();
+  if (!addr) return '';
+
+  const prefixMap: Record<string, RegExp> = {
+    bitcoin: /^bitcoin:/i,
+    ethereum: /^ethereum:/i,
+    litecoin: /^litecoin:/i,
+    bitcoincash: /^bitcoincash:/i,
+    solana: /^solana:/i
+  };
+
+  const regex = prefixMap[coin];
+  if (regex && regex.test(addr)) {
+    addr = addr.replace(regex, '');
+  }
+
+  if (coin === 'ethereum' && /^[0-9a-fA-F]{40}$/.test(addr)) {
+    addr = '0x' + addr;
+  }
+
+  return addr;
+}
+
 export function buildCryptoPayload(data: CryptoData): string {
-  const addr = (data.address || '').trim();
+  const addr = cleanCryptoAddress(data.coin, data.address || '');
   if (!addr) return '';
 
   const params: string[] = [];
@@ -685,13 +859,17 @@ export function buildCryptoPayload(data: CryptoData): string {
     case 'bitcoin':
       return `bitcoin:${addr}${query}`;
     case 'ethereum': {
-      const ethQuery = data.amount?.trim() ? `?value=${data.amount.trim()}` : '';
+      const ethParams: string[] = [];
+      if (data.amount?.trim()) ethParams.push(`value=${encodeURIComponentStrict(data.amount.trim())}`);
+      if (data.label?.trim()) ethParams.push(`label=${encodeURIComponentStrict(data.label.trim())}`);
+      if (data.message?.trim()) ethParams.push(`message=${encodeURIComponentStrict(data.message.trim())}`);
+      const ethQuery = ethParams.length > 0 ? `?${ethParams.join('&')}` : '';
       return `ethereum:${addr}${ethQuery}`;
     }
     case 'litecoin':
       return `litecoin:${addr}${query}`;
     case 'bitcoincash':
-      return `bitcoincash:${addr.replace(/^bitcoincash:/i, '')}${query}`;
+      return `bitcoincash:${addr}${query}`;
     case 'solana':
       return `solana:${addr}${query}`;
     default:
@@ -700,7 +878,7 @@ export function buildCryptoPayload(data: CryptoData): string {
 }
 
 export function validateCrypto(data: CryptoData): QRValidationResult {
-  const addr = (data.address || '').trim();
+  const addr = cleanCryptoAddress(data.coin, data.address || '');
   if (!addr) {
     return { isValid: false, error: 'Wallet address is required.' };
   }

@@ -14,7 +14,9 @@ import {
   QrCornerDotType,
   DesignPreset,
   QrFrameOptions,
-  DEFAULT_FRAME_OPTIONS
+  DEFAULT_FRAME_OPTIONS,
+  QrArtShapeOptions,
+  DEFAULT_ART_SHAPE_OPTIONS
 } from '../../models/qr-generator.models';
 import { ColorCustomizerComponent } from '../color-customizer/color-customizer.component';
 import { SizeSliderComponent } from '../size-slider/size-slider.component';
@@ -107,6 +109,7 @@ import { TsIconComponent, HlmBadge } from '@acklet/tool-shell';
       @if (activeTab() === 'design') {
         <div class="tab-content">
           <app-qr-design-customizer
+            [artShape]="artShape()"
             [dotType]="dotType()"
             [cornerSquareType]="cornerSquareType()"
             [cornerDotType]="cornerDotType()"
@@ -117,6 +120,7 @@ import { TsIconComponent, HlmBadge } from '@acklet/tool-shell';
             [logoSize]="logoSize()"
             [logoMargin]="logoMargin()"
             [frame]="frame()"
+            (artShapeChange)="artShapeChange.emit($event)"
             (dotTypeChange)="dotTypeChange.emit($event)"
             (cornerSquareTypeChange)="cornerSquareTypeChange.emit($event)"
             (cornerDotTypeChange)="cornerDotTypeChange.emit($event)"
@@ -251,6 +255,7 @@ export class CustomizationPanelComponent {
   readonly errorCorrection = input<ErrorCorrectionLevel>('M');
 
   // Design Inputs
+  readonly artShape = input<QrArtShapeOptions>(DEFAULT_ART_SHAPE_OPTIONS);
   readonly dotType = input<QrDotType>('square');
   readonly cornerSquareType = input<QrCornerSquareType>('square');
   readonly cornerDotType = input<QrCornerDotType>('square');
@@ -268,6 +273,7 @@ export class CustomizationPanelComponent {
   readonly errorCorrectionChange = output<ErrorCorrectionLevel>();
 
   // Design Outputs
+  readonly artShapeChange = output<QrArtShapeOptions>();
   readonly dotTypeChange = output<QrDotType>();
   readonly cornerSquareTypeChange = output<QrCornerSquareType>();
   readonly cornerDotTypeChange = output<QrCornerDotType>();
@@ -283,6 +289,7 @@ export class CustomizationPanelComponent {
 
   hasCustomDesign(): boolean {
     return (
+      this.artShape().shape !== 'square' ||
       this.dotType() !== 'square' ||
       this.cornerSquareType() !== 'square' ||
       this.cornerDotType() !== 'square' ||

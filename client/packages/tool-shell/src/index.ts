@@ -1,8 +1,10 @@
 // packages/tool-shell/src/index.ts
 // Models & Contracts
 export * from './models/tool-shell.models';
+export * from './models/tool-responsive.models';
 
 // Services
+export * from './services/responsive.service';
 export * from './services/tool-theme.service';
 export * from './services/tool-sidebar.service';
 export * from './services/tool-storage.service';
@@ -12,6 +14,9 @@ export * from './services/tool-ad.service';
 export * from './services/tool-capsule.service';
 export * from './services/perf-flags.service';
 export * from './services/sidebar-state.service';
+export * from './services/tool-theme-provider.service';
+export * from './services/tool-settings.service';
+export * from './components/settings/ts-settings-modal.component';
 
 // Icons & Primitives
 export * from './components/icon/tool-icon.component';
@@ -64,3 +69,14 @@ export * from './helm/tooltip';
 export * from './components/shell/ts-shell.component';
 export * from './hub/hub-home.component';
 export * from './hub/hub-tool-card.component';
+
+// Responsive Adaptive Primitives
+export * from './components/bottom-sheet/bottom-sheet.component';
+export * from './components/sticky-action-bar/sticky-action-bar.component';
+export * from './components/adaptive-dropdown/adaptive-dropdown.component';
+
+// Interaction & Gestures
+export * from './services/haptic.service';
+export * from './directives/ts-long-press.directive';
+export * from './directives/ts-double-tap.directive';
+

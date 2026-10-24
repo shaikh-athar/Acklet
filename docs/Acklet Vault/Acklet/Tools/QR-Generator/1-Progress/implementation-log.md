@@ -636,6 +636,35 @@ Dated entries tracking what was done, decisions made, and learnings.
   - **Level A Verification (`node scripts/verify.mjs -A`)**: PASSED.
   - **Level B Verification (`node scripts/verify.mjs -B --surface tools`)**: PASSED.
 
+---
+
+### Phase 6: QR Art Engine — Overall Shapes, Brand Artwork & Guaranteed Scannability (2026-10-23)
+- **Task**: Implement "QR Art" capabilities into the QR Generator studio: overall shapes beyond square (12 geometric silhouettes), brand typography (8 Google fonts) and client-side verified image artwork, a unified in-house SVG vector renderer for zero-discrepancy preview and 2048px exports, and calm scan confidence chips with one-click automatic recovery.
+- **Key Enhancements**:
+  - **Overall Shape Registry ([qr-shapes.data.ts](file:///Users/ayaz/Acklet/client/apps/tool-qr-generator/src/utils/qr-shapes.data.ts))**:
+    - Extensible registry containing 12 shapes: Square, Circle, Rounded Square, Heart, Star, Hexagon, Diamond, Shield, Drop, Speech Bubble, Badge, Ticket.
+    - Each shape provides pure geometric boundary checks (`isInside(nx, ny)`), distance functions (`normalizedDistance(nx, ny)`), clean SVG path generators, and 28x28 preview thumbnail icons.
+  - **Unified In-House Vector SVG Renderer ([qr-svg-renderer.ts](file:///Users/ayaz/Acklet/client/apps/tool-qr-generator/src/utils/qr-svg-renderer.ts))**:
+    - Replaced dual-rendering discrepancy with single source-of-truth SVG vector generator powered by `qrcode.create()`.
+    - Handles all 11 dot types, 8 corner square types, 10 corner dot styles, linear/radial gradients, and logos with safety buffers.
+    - `Around` mode: preserves core QR with quiet zone, generates decorative outer silhouette field with anti-finder rules and smooth edge fading.
+    - `Badge` mode: places full QR inside a shaped high-contrast SVG container.
+    - `Trim` mode: soft-crops outer modules capped at 12% safe budget, forcing Error Correction to 'H' (30%) while preserving all 3 finder locators 100% untouched.
+  - **Brand Name & Brand Artwork Customizer ([brand-customizer.component.ts](file:///Users/ayaz/Acklet/client/apps/tool-qr-generator/src/components/brand-customizer/brand-customizer.component.ts), [qr-brand-mask.util.ts](file:///Users/ayaz/Acklet/client/apps/tool-qr-generator/src/utils/qr-brand-mask.util.ts))**:
+    - Studio subtab `Frame | Shape | Logo | Color | Brand`.
+    - 8 Google fonts: Outfit, Inter, Montserrat, Playfair Display, Space Grotesk, Plus Jakarta Sans, Bebas Neue, Caveat with lazy stylesheet loading.
+    - 3 placements: "In the code" (tone-mapped modules), "Around the code" (highlighted letters in silhouette field), "Banner" (high-impact vector pill banner).
+    - Client-side magic-byte inspection for PNG, JPEG, SVG (max 2MB), thresholded in-memory 2D canvas mask generation.
+  - **Calm Scan Confidence & One-Click Auto-Fix ([preview-panel.component.ts](file:///Users/ayaz/Acklet/client/apps/tool-qr-generator/src/components/preview-panel/preview-panel.component.ts), [qr-verifier.service.ts](file:///Users/ayaz/Acklet/client/apps/tool-qr-generator/src/services/qr-verifier.service.ts))**:
+    - Calm confidence chip: High (green), Medium (amber), Low (rose) evaluating multi-pass decoder results and contrast dynamic range.
+    - "Fix automatically" button: instantly boosts EC to 'H', scales shape strength to Balanced/Safe, and guarantees high contrast.
+    - Ready-made "Examples" preset menu: Circle Badge, Heart Silhouette, Brand Name "Acklet", Standard Sample.
+    - Recommended print size guideline ($3.5 \times 3.5\text{ cm}$) embedded under the Download menu.
+- **Verification Results**:
+  - **Vitest Suite**: 15 / 15 test files passed, **169 / 169 unit tests passing** (100% pass rate).
+  - **TypeScript Compilation (`tsc -b --noEmit`)**: PASSED (0 errors).
+  - **Level A Verification (`node scripts/verify.mjs -A`)**: PASSED cleanly.
+
 
 
 

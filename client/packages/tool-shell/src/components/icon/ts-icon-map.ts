@@ -121,7 +121,11 @@ import {
   LucideUser,
   LucideShare2,
   LucideSmartphone,
-  LucideWallet
+  LucideWallet,
+  LucideHeart,
+  LucideFrame,
+  LucideArrowLeftRight,
+  LucideActivity
 } from '@lucide/angular';
 
 import {
@@ -691,5 +695,20 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   },
   wallet: {
     lucide: LucideWallet
+  },
+  heart: {
+    lucide: LucideHeart
+  },
+  frame: {
+    lucide: LucideFrame
+  },
+  'arrow-left-right': {
+    lucide: LucideArrowLeftRight
+  },
+  swap: {
+    lucide: LucideArrowLeftRight
+  },
+  activity: {
+    lucide: LucideActivity
   }
 };

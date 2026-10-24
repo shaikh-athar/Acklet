@@ -8,7 +8,7 @@ import { TsIconComponent } from '../icon/ts-icon.component';
 import { TsToolListComponent, FAVORITES_KEY } from './ts-tool-list.component';
 import { TsSearchComponent } from '../search/ts-search.component';
 import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
-import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
+import { ToolSettingsService } from '../../services/tool-settings.service';
 
 @Component({
   selector: 'ts-sidebar',
@@ -25,8 +25,7 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
     TsIconComponent,
     TsToolListComponent,
     TsSearchComponent,
-    TsTooltipDirective,
-    TsToolDetailsComponent
+    TsTooltipDirective
   ],
   template: `
     <!-- Desktop Left Sidebar (Floating / Pinned Card) -->
@@ -82,15 +81,9 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
             [searchQuery]="searchQuery()"
           />
 
-          <!-- Embedded Tool Details inside Aside Sidebar -->
-          @if (tool()) {
-            <div class="ts-sidebar-details-container">
-              <ts-tool-details [tool]="tool()" />
-            </div>
-          }
         </div>
 
-        <!-- 3. Pinned Bottom Bar: Help (left) + Edge Hover Toggle (center) + Pin/Unpin (right) -->
+        <!-- 3. Pinned Bottom Bar: Help (left) + Settings (right) -->
         <div class="ts-sidebar-pinned-footer">
           <a 
             [href]="portalUrl + '/community/help'" 
@@ -100,26 +93,16 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
             tsTooltip="Help & Support" 
             aria-label="Help & Support"
           >
-            <ts-icon name="help-circle" [size]="20" />
+            <ts-icon name="help-circle" [size]="18" />
           </a>
-          <button 
-            type="button" 
-            class="ts-footer-btn ts-hover-toggle-btn"
-            [class.is-hover-disabled]="!sidebarState.isHoverEnabled()"
-            (click)="sidebarState.toggleHoverEnabled()"
-            [tsTooltip]="sidebarState.isHoverEnabled() ? 'Edge hover: ON (click to disable)' : 'Edge hover: OFF (click to enable)'"
-            [attr.aria-label]="sidebarState.isHoverEnabled() ? 'Edge hover: ON (click to disable)' : 'Edge hover: OFF (click to enable)'"
+          <button
+            type="button"
+            class="ts-footer-btn ts-settings-footer-btn"
+            (click)="toggleSettings()"
+            tsTooltip="Settings"
+            aria-label="Settings"
           >
-            <ts-icon [name]="sidebarState.isHoverEnabled() ? 'zap' : 'zap-off'" [size]="20" />
-          </button>
-          <button 
-            type="button" 
-            class="ts-footer-btn" 
-            (click)="sidebarState.toggle()" 
-            [tsTooltip]="sidebarState.isPinned() ? 'Unpin sidebar' : 'Pin sidebar (push content)'" 
-            [attr.aria-label]="sidebarState.isPinned() ? 'Unpin sidebar' : 'Pin sidebar'"
-          >
-            <ts-icon [name]="sidebarState.isPinned() ? 'panel-left-close' : 'panel-left'" [size]="20" />
+            <ts-icon name="settings" [size]="18" />
           </button>
         </div>
       </div>
@@ -211,12 +194,6 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
               [searchQuery]="searchQuery()"
             />
 
-            <!-- Embedded Tool Details inside Mobile Drawer -->
-            @if (tool()) {
-              <div class="ts-sidebar-details-container">
-                <ts-tool-details [tool]="tool()" />
-              </div>
-            }
           </div>
 
           <div class="ts-sidebar-pinned-footer">
@@ -224,6 +201,15 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
               <ts-icon name="grid" [size]="14" />
               <span>All tools</span>
             </a>
+            <button
+              type="button"
+              class="ts-footer-btn"
+              (click)="toggleSettings(); sidebarService.closeMobileDrawer()"
+              tsTooltip="Settings"
+              aria-label="Settings"
+            >
+              <ts-icon name="settings" [size]="18" />
+            </button>
           </div>
         </aside>
       </div>
@@ -870,9 +856,14 @@ export class TsSidebarComponent implements OnDestroy {
 
   readonly sidebarState = inject(SidebarStateService);
   readonly sidebarService = inject(ToolSidebarService);
+  readonly settingsService = inject(ToolSettingsService);
   readonly sidebarWidth = computed(() => this.sidebarService.width());
   readonly portalUrl = getPortalUrl();
   readonly hubUrl = getToolsHubUrl();
+
+  toggleSettings(): void {
+    this.settingsService.toggle();
+  }
 
   readonly showInlineSearch = signal<boolean>(false);
   readonly searchQuery = signal<string>('');

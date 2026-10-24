@@ -19,9 +19,15 @@ import {
   DESIGN_PRESETS,
   QrFrameStyle,
   QrFrameOptions,
-  DEFAULT_FRAME_OPTIONS
+  DEFAULT_FRAME_OPTIONS,
+  QrArtShapeOptions,
+  DEFAULT_ART_SHAPE_OPTIONS,
+  QrOverallShape,
+  QrShapeMode,
+  QrStyleStrength
 } from '../../models/qr-generator.models';
 import { QR_FRAME_TEMPLATES, QrFrameDefinition } from '../../models/qr-frames.data';
+import { QR_ART_SHAPES, getQrShapeById, QrShapeDefinition } from '../../utils/qr-shapes.data';
 import { TsIconComponent, HlmBadge } from '@acklet/tool-shell';
 
 export interface LogoPreset {
@@ -106,45 +112,23 @@ const PRESET_LOGOS: LogoPreset[] = [
             <span class="selection-indicator">{{ selectedFrameName() }}</span>
           </label>
 
-          <!-- Visual Gallery of All 18 Vector Frames (Horizontal Scroll Track, Tooltip on Hover, No Labels) -->
-          <div class="visual-gallery-wrapper">
-            <button
-              type="button"
-              class="gallery-scroll-arrow left"
-              (click)="scrollGallery(frameTrack, -220)"
-              aria-label="Scroll frames left"
-              title="Previous frames"
-            >
-              <ts-icon name="chevron-left" />
-            </button>
-
-            <div #frameTrack class="visual-gallery-track custom-scrollbar" tabindex="0" role="region" aria-label="Decorative frame options">
-              @for (opt of frameList; track opt.id) {
-                <button
-                  type="button"
-                  class="frame-thumb-card"
-                  [class.active]="frame().style === opt.id"
-                  (click)="onFrameStyleSelect(opt.id)"
-                  [title]="opt.name + (opt.hasText ? ' (with caption)' : '')"
-                  [attr.aria-label]="opt.name + ' frame'"
-                >
-                  <div class="frame-thumb-svg-wrap" [innerHTML]="opt.safeThumbnail"></div>
-                  @if (frame().style === opt.id) {
-                    <div class="active-indicator-pip"></div>
-                  }
-                </button>
-              }
-            </div>
-
-            <button
-              type="button"
-              class="gallery-scroll-arrow right"
-              (click)="scrollGallery(frameTrack, 220)"
-              aria-label="Scroll frames right"
-              title="Next frames"
-            >
-              <ts-icon name="chevron-right" />
-            </button>
+          <!-- Visual Gallery of All 18 Vector Frames (Responsive Grid: 5-6 per row, no horizontal scrolling) -->
+          <div class="frames-grid" role="region" aria-label="Decorative frame options">
+            @for (opt of frameList; track opt.id) {
+              <button
+                type="button"
+                class="frame-thumb-card"
+                [class.active]="frame().style === opt.id"
+                (click)="onFrameStyleSelect(opt.id)"
+                [title]="opt.name + (opt.hasText ? ' (with caption)' : '')"
+                [attr.aria-label]="opt.name + ' frame'"
+              >
+                <div class="frame-thumb-svg-wrap" [innerHTML]="opt.safeThumbnail"></div>
+                @if (frame().style === opt.id) {
+                  <div class="active-indicator-pip"></div>
+                }
+              </button>
+            }
           </div>
 
           <!-- Controls for Active Frame (Text, Colors) -->
@@ -234,6 +218,155 @@ const PRESET_LOGOS: LogoPreset[] = [
       <!-- 2. SHAPES SECTION                          -->
       <!-- ========================================== -->
       @if (activeSection() === 'all' || activeSection() === 'shapes') {
+        <!-- Overall Shape (Silhouette, Badge, Trim) -->
+        <div class="design-section">
+          <label class="design-section-label">
+            <span>Overall Shape</span>
+            <span class="selection-indicator">{{ currentShapeDef().name }}</span>
+          </label>
+
+          <!-- Horizontal Visual Shape Carousel Track -->
+          <div class="visual-gallery-wrapper">
+            <button
+              type="button"
+              class="gallery-scroll-arrow left"
+              (click)="scrollGallery(shapeTrack, -180)"
+              aria-label="Scroll shapes left"
+              title="Previous shapes"
+            >
+              <ts-icon name="chevron-left" />
+            </button>
+
+            <div #shapeTrack class="visual-gallery-track custom-scrollbar" tabindex="0" role="region" aria-label="Overall shape options">
+              @for (shp of shapeList; track shp.id) {
+                <button
+                  type="button"
+                  class="shape-thumb-card"
+                  [class.active]="artShape().shape === shp.id"
+                  (click)="onSelectShape(shp.id)"
+                  [title]="shp.name + ' — ' + shp.description"
+                  [attr.aria-label]="shp.name + ' overall shape'"
+                >
+                  <div class="shape-thumb-svg-wrap" [innerHTML]="shp.safeThumbnail"></div>
+                  <span class="shape-thumb-name">{{ shp.name }}</span>
+                  @if (artShape().shape === shp.id) {
+                    <div class="active-indicator-pip"></div>
+                  }
+                </button>
+              }
+            </div>
+
+            <button
+              type="button"
+              class="gallery-scroll-arrow right"
+              (click)="scrollGallery(shapeTrack, 180)"
+              aria-label="Scroll shapes right"
+              title="Next shapes"
+            >
+              <ts-icon name="chevron-right" />
+            </button>
+          </div>
+
+          <!-- Controls for selected shape (Mode, Strength, Fade) -->
+          @if (artShape().shape !== 'square') {
+            <div class="shape-controls-card slide-fade-up">
+              <!-- Mode Selection (Around | Badge | Trim corners) -->
+              <div class="shape-mode-group">
+                <span class="sub-picker-label">Shape Mode</span>
+                <div class="segmented-control" role="radiogroup" aria-label="Shape Mode">
+                  <button
+                    type="button"
+                    class="seg-btn"
+                    [class.active]="artShape().mode === 'around'"
+                    (click)="onSelectMode('around')"
+                    title="Decorative silhouette field surrounding the QR code"
+                  >
+                    <span>Around</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="seg-btn"
+                    [class.active]="artShape().mode === 'badge'"
+                    (click)="onSelectMode('badge')"
+                    title="QR code set inside a solid shaped badge container"
+                  >
+                    <span>Badge</span>
+                  </button>
+                  @if (currentShapeDef().supportsTrim) {
+                    <button
+                      type="button"
+                      class="seg-btn"
+                      [class.active]="artShape().mode === 'trim'"
+                      (click)="onSelectMode('trim')"
+                      title="Soft-crop outer corners while staying scannable"
+                    >
+                      <span>Trim corners</span>
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- Style Strength Control: Safe | Balanced | Bold -->
+              <div class="shape-strength-group">
+                <div class="strength-header">
+                  <span class="sub-picker-label">Style Strength</span>
+                  <span class="strength-hint">
+                    @switch (artShape().strength) {
+                      @case ('safe') { Subtle art, easiest scanning }
+                      @case ('balanced') { Recommended balance of style & scan speed }
+                      @case ('bold') { Rich, dense silhouette design }
+                    }
+                  </span>
+                </div>
+                <div class="segmented-control" role="radiogroup" aria-label="Style Strength">
+                  <button
+                    type="button"
+                    class="seg-btn"
+                    [class.active]="artShape().strength === 'safe'"
+                    (click)="onSelectStrength('safe')"
+                  >
+                    <span>Safe</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="seg-btn"
+                    [class.active]="artShape().strength === 'balanced'"
+                    (click)="onSelectStrength('balanced')"
+                  >
+                    <span>Balanced</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="seg-btn"
+                    [class.active]="artShape().strength === 'bold'"
+                    (click)="onSelectStrength('bold')"
+                  >
+                    <span>Bold</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Subtle Edge Fade Toggle (Around mode only) -->
+              @if (artShape().mode === 'around') {
+                <div class="fade-edges-row">
+                  <label class="toggle-checkbox-label">
+                    <input
+                      type="checkbox"
+                      class="native-checkbox"
+                      [checked]="artShape().fadeEdges"
+                      (change)="onToggleFadeEdges()"
+                    />
+                    <span class="toggle-text">Fade toward shape edge</span>
+                  </label>
+                  <span class="fade-hint">Gently softens outer silhouette dots</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <hr class="design-divider" />
+
         <!-- Quick Design Presets -->
         <div class="design-section">
           <label class="design-section-label">
@@ -270,65 +403,58 @@ const PRESET_LOGOS: LogoPreset[] = [
             <span>Body Dots</span>
             <span class="selection-indicator">{{ dotType() }}</span>
           </label>
-          <div class="visual-gallery-wrapper glyph-gallery">
-            <button
-              type="button"
-              class="gallery-scroll-arrow left"
-              (click)="scrollGallery(dotTrack, -140)"
-              aria-label="Scroll body dots left"
-              title="Previous shapes"
-            >
-              <ts-icon name="chevron-left" />
-            </button>
-
-            <div #dotTrack class="visual-gallery-track custom-scrollbar" tabindex="0" role="region" aria-label="Body dot shapes">
-              @for (opt of dotOptions; track opt.type) {
-                <button
-                  type="button"
-                  class="glyph-chip-btn"
-                  [class.active]="dotType() === opt.type"
-                  (click)="dotTypeChange.emit(opt.type)"
-                  [title]="'Dot shape: ' + opt.label"
-                  [attr.aria-label]="'Select ' + opt.label + ' dot shape'"
-                >
-                  <svg viewBox="0 0 24 24" width="22" height="22" class="chip-shape-svg" aria-hidden="true" focusable="false">
-                    @switch (opt.type) {
-                      @case ('square') {
-                        <rect x="3" y="3" width="18" height="18" rx="0" fill="currentColor" />
-                      }
-                      @case ('dots') {
-                        <circle cx="12" cy="12" r="9" fill="currentColor" />
-                      }
-                      @case ('rounded') {
-                        <rect x="3" y="3" width="18" height="18" rx="4" fill="currentColor" />
-                      }
-                      @case ('extra-rounded') {
-                        <rect x="3" y="3" width="18" height="18" rx="9" fill="currentColor" />
-                      }
-                      @case ('classy') {
-                        <path d="M 3 12 A 9 9 0 0 1 12 3 L 21 3 L 21 12 A 9 9 0 0 1 12 21 L 3 21 Z" fill="currentColor" />
-                      }
-                      @case ('classy-rounded') {
-                        <path d="M 5 3 L 19 3 A 2 2 0 0 1 21 5 L 21 12 A 9 9 0 0 1 12 21 L 5 21 A 2 2 0 0 1 3 19 L 3 12 A 9 9 0 0 1 12 3 Z" fill="currentColor" />
-                      }
+          <div class="glyph-grid" role="region" aria-label="Body dot shapes">
+            @for (opt of dotOptions; track opt.type) {
+              <button
+                type="button"
+                class="glyph-chip-btn"
+                [class.active]="dotType() === opt.type"
+                (click)="dotTypeChange.emit(opt.type)"
+                [title]="'Dot shape: ' + opt.label"
+                [attr.aria-label]="'Select ' + opt.label + ' dot shape'"
+              >
+                <svg viewBox="0 0 24 24" width="28" height="28" class="chip-shape-svg" aria-hidden="true" focusable="false">
+                  @switch (opt.type) {
+                    @case ('square') {
+                      <rect x="3" y="3" width="18" height="18" rx="0" fill="currentColor" />
                     }
-                  </svg>
-                  @if (dotType() === opt.type) {
-                    <div class="active-indicator-pip"></div>
+                    @case ('dots') {
+                      <circle cx="12" cy="12" r="9" fill="currentColor" />
+                    }
+                    @case ('rounded') {
+                      <rect x="3" y="3" width="18" height="18" rx="4" fill="currentColor" />
+                    }
+                    @case ('extra-rounded') {
+                      <rect x="3" y="3" width="18" height="18" rx="9" fill="currentColor" />
+                    }
+                    @case ('classy') {
+                      <path d="M 3 12 A 9 9 0 0 1 12 3 L 21 3 L 21 12 A 9 9 0 0 1 12 21 L 3 21 Z" fill="currentColor" />
+                    }
+                    @case ('classy-rounded') {
+                      <path d="M 5 3 L 19 3 A 2 2 0 0 1 21 5 L 21 12 A 9 9 0 0 1 12 21 L 5 21 A 2 2 0 0 1 3 19 L 3 12 A 9 9 0 0 1 12 3 Z" fill="currentColor" />
+                    }
+                    @case ('diamond') {
+                      <polygon points="12,2 22,12 12,22 2,12" fill="currentColor" />
+                    }
+                    @case ('star') {
+                      <polygon points="12,2 14.5,9.5 22,12 14.5,14.5 12,22 9.5,14.5 2,12 9.5,9.5" fill="currentColor" />
+                    }
+                    @case ('heart') {
+                      <path d="M 12 21 C 4 15 2 9 7 4 C 10 2 12 5 12 5 C 12 5 14 2 17 4 C 22 9 20 15 12 21 Z" fill="currentColor" />
+                    }
+                    @case ('cross') {
+                      <polygon points="9,2 15,2 15,9 22,9 22,15 15,15 15,22 9,22 9,15 2,15 2,9 9,9" fill="currentColor" />
+                    }
+                    @case ('scanline') {
+                      <rect x="2" y="6" width="20" height="12" rx="3" fill="currentColor" />
+                    }
                   }
-                </button>
-              }
-            </div>
-
-            <button
-              type="button"
-              class="gallery-scroll-arrow right"
-              (click)="scrollGallery(dotTrack, 140)"
-              aria-label="Scroll body dots right"
-              title="Next shapes"
-            >
-              <ts-icon name="chevron-right" />
-            </button>
+                </svg>
+                @if (dotType() === opt.type) {
+                  <div class="active-indicator-pip"></div>
+                }
+              </button>
+            }
           </div>
         </div>
 
@@ -338,56 +464,49 @@ const PRESET_LOGOS: LogoPreset[] = [
             <span>Corner Outer Frame</span>
             <span class="selection-indicator">{{ cornerSquareType() }}</span>
           </label>
-          <div class="visual-gallery-wrapper glyph-gallery">
-            <button
-              type="button"
-              class="gallery-scroll-arrow left"
-              (click)="scrollGallery(cornerSquareTrack, -140)"
-              aria-label="Scroll corner frames left"
-              title="Previous corner frames"
-            >
-              <ts-icon name="chevron-left" />
-            </button>
-
-            <div #cornerSquareTrack class="visual-gallery-track custom-scrollbar" tabindex="0" role="region" aria-label="Corner frame shapes">
-              @for (opt of cornerSquareOptions; track opt.type) {
-                <button
-                  type="button"
-                  class="glyph-chip-btn"
-                  [class.active]="cornerSquareType() === opt.type"
-                  (click)="cornerSquareTypeChange.emit(opt.type)"
-                  [title]="'Corner outer frame: ' + opt.label"
-                  [attr.aria-label]="'Select ' + opt.label + ' corner locator frame'"
-                >
-                  <svg viewBox="0 0 24 24" width="22" height="22" class="chip-shape-svg" aria-hidden="true" focusable="false">
-                    @switch (opt.type) {
-                      @case ('square') {
-                        <rect x="3" y="3" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3.5" />
-                      }
-                      @case ('extra-rounded') {
-                        <rect x="3" y="3" width="18" height="18" rx="6" fill="none" stroke="currentColor" stroke-width="3.5" />
-                      }
-                      @case ('dot') {
-                        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="3.5" />
-                      }
+          <div class="glyph-grid" role="region" aria-label="Corner frame shapes">
+            @for (opt of cornerSquareOptions; track opt.type) {
+              <button
+                type="button"
+                class="glyph-chip-btn"
+                [class.active]="cornerSquareType() === opt.type"
+                (click)="cornerSquareTypeChange.emit(opt.type)"
+                [title]="'Corner outer frame: ' + opt.label"
+                [attr.aria-label]="'Select ' + opt.label + ' corner locator frame'"
+              >
+                <svg viewBox="0 0 24 24" width="28" height="28" class="chip-shape-svg" aria-hidden="true" focusable="false">
+                  @switch (opt.type) {
+                    @case ('square') {
+                      <rect x="3" y="3" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3.5" />
                     }
-                  </svg>
-                  @if (cornerSquareType() === opt.type) {
-                    <div class="active-indicator-pip"></div>
+                    @case ('extra-rounded') {
+                      <rect x="3" y="3" width="18" height="18" rx="6" fill="none" stroke="currentColor" stroke-width="3.5" />
+                    }
+                    @case ('dot') {
+                      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="3.5" />
+                    }
+                    @case ('classy') {
+                      <path d="M 3 12 A 9 9 0 0 1 12 3 L 21 3 L 21 12 A 9 9 0 0 1 12 21 L 3 21 Z" fill="none" stroke="currentColor" stroke-width="3" />
+                    }
+                    @case ('classy-rounded') {
+                      <path d="M 5 3 L 19 3 A 2 2 0 0 1 21 5 L 21 12 A 9 9 0 0 1 12 21 L 5 21 A 2 2 0 0 1 3 19 L 3 12 A 9 9 0 0 1 12 3 Z" fill="none" stroke="currentColor" stroke-width="3" />
+                    }
+                    @case ('rounded') {
+                      <rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="3.5" />
+                    }
+                    @case ('pinch') {
+                      <path d="M 3 3 Q 12 7 21 3 Q 17 12 21 21 Q 12 17 3 21 Q 7 12 3 3 Z" fill="none" stroke="currentColor" stroke-width="2.5" />
+                    }
+                    @case ('shield') {
+                      <path d="M 3 3 L 21 3 L 21 14 Q 12 22 12 22 Q 12 22 3 14 Z" fill="none" stroke="currentColor" stroke-width="2.5" />
+                    }
                   }
-                </button>
-              }
-            </div>
-
-            <button
-              type="button"
-              class="gallery-scroll-arrow right"
-              (click)="scrollGallery(cornerSquareTrack, 140)"
-              aria-label="Scroll corner frames right"
-              title="Next corner frames"
-            >
-              <ts-icon name="chevron-right" />
-            </button>
+                </svg>
+                @if (cornerSquareType() === opt.type) {
+                  <div class="active-indicator-pip"></div>
+                }
+              </button>
+            }
           </div>
         </div>
 
@@ -397,53 +516,55 @@ const PRESET_LOGOS: LogoPreset[] = [
             <span>Corner Inner Dot</span>
             <span class="selection-indicator">{{ cornerDotType() }}</span>
           </label>
-          <div class="visual-gallery-wrapper glyph-gallery">
-            <button
-              type="button"
-              class="gallery-scroll-arrow left"
-              (click)="scrollGallery(cornerDotTrack, -140)"
-              aria-label="Scroll corner dots left"
-              title="Previous corner dots"
-            >
-              <ts-icon name="chevron-left" />
-            </button>
-
-            <div #cornerDotTrack class="visual-gallery-track custom-scrollbar" tabindex="0" role="region" aria-label="Corner dot shapes">
-              @for (opt of cornerDotOptions; track opt.type) {
-                <button
-                  type="button"
-                  class="glyph-chip-btn"
-                  [class.active]="cornerDotType() === opt.type"
-                  (click)="cornerDotTypeChange.emit(opt.type)"
-                  [title]="'Corner inner dot: ' + opt.label"
-                  [attr.aria-label]="'Select ' + opt.label + ' corner inner dot'"
-                >
-                  <svg viewBox="0 0 24 24" width="22" height="22" class="chip-shape-svg" aria-hidden="true" focusable="false">
-                    @switch (opt.type) {
-                      @case ('square') {
-                        <rect x="4" y="4" width="16" height="16" rx="1" fill="currentColor" />
-                      }
-                      @case ('dot') {
-                        <circle cx="12" cy="12" r="8" fill="currentColor" />
-                      }
+          <div class="glyph-grid" role="region" aria-label="Corner dot shapes">
+            @for (opt of cornerDotOptions; track opt.type) {
+              <button
+                type="button"
+                class="glyph-chip-btn"
+                [class.active]="cornerDotType() === opt.type"
+                (click)="cornerDotTypeChange.emit(opt.type)"
+                [title]="'Corner inner dot: ' + opt.label"
+                [attr.aria-label]="'Select ' + opt.label + ' corner inner dot'"
+              >
+                <svg viewBox="0 0 24 24" width="28" height="28" class="chip-shape-svg" aria-hidden="true" focusable="false">
+                  @switch (opt.type) {
+                    @case ('square') {
+                      <rect x="4" y="4" width="16" height="16" rx="1" fill="currentColor" />
                     }
-                  </svg>
-                  @if (cornerDotType() === opt.type) {
-                    <div class="active-indicator-pip"></div>
+                    @case ('dot') {
+                      <circle cx="12" cy="12" r="8" fill="currentColor" />
+                    }
+                    @case ('rounded') {
+                      <rect x="4" y="4" width="16" height="16" rx="4" fill="currentColor" />
+                    }
+                    @case ('extra-rounded') {
+                      <rect x="4" y="4" width="16" height="16" rx="8" fill="currentColor" />
+                    }
+                    @case ('classy') {
+                      <path d="M 4 12 A 8 8 0 0 1 12 4 L 20 4 L 20 12 A 8 8 0 0 1 12 20 L 4 20 Z" fill="currentColor" />
+                    }
+                    @case ('classy-rounded') {
+                      <path d="M 6 4 L 18 4 A 2 2 0 0 1 20 6 L 20 12 A 8 8 0 0 1 12 20 L 6 20 A 2 2 0 0 1 4 18 L 4 12 A 8 8 0 0 1 12 4 Z" fill="currentColor" />
+                    }
+                    @case ('diamond') {
+                      <polygon points="12,3 21,12 12,21 3,12" fill="currentColor" />
+                    }
+                    @case ('star') {
+                      <polygon points="12,3 14,9.5 21,12 14,14.5 12,21 10,14.5 3,12 10,9.5" fill="currentColor" />
+                    }
+                    @case ('heart') {
+                      <path d="M 12 20 C 5 15 3 9 7 5 C 10 3 12 6 12 6 C 12 6 14 3 17 5 C 21 9 19 15 12 20 Z" fill="currentColor" />
+                    }
+                    @case ('cross') {
+                      <polygon points="9,3 15,3 15,9 21,9 21,15 15,15 15,21 9,21 9,15 3,15 3,9 9,9" fill="currentColor" />
+                    }
                   }
-                </button>
-              }
-            </div>
-
-            <button
-              type="button"
-              class="gallery-scroll-arrow right"
-              (click)="scrollGallery(cornerDotTrack, 140)"
-              aria-label="Scroll corner dots right"
-              title="Next corner dots"
-            >
-              <ts-icon name="chevron-right" />
-            </button>
+                </svg>
+                @if (cornerDotType() === opt.type) {
+                  <div class="active-indicator-pip"></div>
+                }
+              </button>
+            }
           </div>
         </div>
 
@@ -518,7 +639,7 @@ const PRESET_LOGOS: LogoPreset[] = [
       <!-- 3. LOGO SECTION                            -->
       <!-- ========================================== -->
       @if (activeSection() === 'all' || activeSection() === 'logo') {
-        <div class="design-section">
+        <div class="design-section logo-section">
           <div class="logo-header">
             <label class="design-section-label">
               <span>Center Logo & Branding</span>
@@ -526,17 +647,6 @@ const PRESET_LOGOS: LogoPreset[] = [
             @if (logo()) {
               <span hlmBadge variant="outline" class="logo-active-badge">Active</span>
             }
-          </div>
-
-          <!-- Auto-EC Boost Note Callout -->
-          <div class="logo-ec-callout">
-            <ts-icon name="shield" class="ec-callout-icon" />
-            <div class="ec-callout-text">
-              <span class="ec-callout-title">Auto Error Correction Boost</span>
-              <span class="ec-callout-desc">
-                Embedding a logo automatically boosts error correction to High (30%) to ensure instant scan reliability.
-              </span>
-            </div>
           </div>
 
           <!-- Expanded Logo Presets (WiFi, Phone, Mail, Link, Star, Heart, Verified, None) -->
@@ -657,8 +767,11 @@ const PRESET_LOGOS: LogoPreset[] = [
   `,
   styles: [`
     :host {
-      display: block;
+      display: flex;
+      flex-direction: column;
       width: 100%;
+      flex: 1 1 auto;
+      min-height: 0;
       box-sizing: border-box;
     }
 
@@ -667,6 +780,8 @@ const PRESET_LOGOS: LogoPreset[] = [
       flex-direction: column;
       gap: 16px;
       width: 100%;
+      flex: 1 1 auto;
+      min-height: min-content;
     }
 
     .design-section {
@@ -674,6 +789,12 @@ const PRESET_LOGOS: LogoPreset[] = [
       flex-direction: column;
       gap: 8px;
       width: 100%;
+      flex: 0 0 auto;
+    }
+
+    .design-section.logo-section {
+      flex: 1 1 auto;
+      min-height: 200px;
     }
 
     .design-section-label {
@@ -704,18 +825,22 @@ const PRESET_LOGOS: LogoPreset[] = [
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 8px;
+      width: 100%;
     }
 
     .template-preset-btn {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 6px 10px;
+      padding: 7px 10px;
+      min-height: 44px;
       background: var(--surface-2, rgba(255, 255, 255, 0.04));
       border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
       border-radius: 8px;
       cursor: pointer;
       text-align: left;
+      overflow: hidden;
+      box-sizing: border-box;
       transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
     }
 
@@ -750,6 +875,7 @@ const PRESET_LOGOS: LogoPreset[] = [
       display: flex;
       flex-direction: column;
       min-width: 0;
+      overflow: hidden;
     }
 
     .template-name {
@@ -765,6 +891,9 @@ const PRESET_LOGOS: LogoPreset[] = [
       font-size: 11px;
       color: var(--text-muted, var(--text-3, rgba(255, 255, 255, 0.5)));
       text-transform: capitalize;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* Visual Gallery (Horizontal Scroll Track with Arrow Controls) */
@@ -814,20 +943,49 @@ const PRESET_LOGOS: LogoPreset[] = [
       -webkit-overflow-scrolling: touch;
     }
 
-    /* Frame Visual Thumbnails (No Labels, Tooltip on Hover) */
+    /* Decorative Frames Grid (5-6 per row, no horizontal scrolling) */
+    .frames-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    @media (max-width: 768px) {
+      .frames-grid {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+      }
+    }
+
+    @media (max-width: 540px) {
+      .frames-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .frames-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
+    }
+
+    /* Frame Visual Thumbnails (5-6 in one row, slightly bigger, tooltip on hover) */
     .frame-thumb-card {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 62px;
-      height: 70px;
-      padding: 4px;
-      border-radius: 10px;
+      width: 100%;
+      height: 86px;
+      padding: 6px;
+      border-radius: 12px;
       background: var(--surface-2, rgba(255, 255, 255, 0.04));
       border: 1.5px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
       color: var(--text-2, rgba(255, 255, 255, 0.75));
       cursor: pointer;
-      flex-shrink: 0;
       position: relative;
       transition: all 150ms ease;
       box-sizing: border-box;
@@ -851,6 +1009,13 @@ const PRESET_LOGOS: LogoPreset[] = [
       outline-offset: 1px;
     }
 
+    .frame-thumb-card .active-indicator-pip {
+      position: absolute;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
     .frame-thumb-svg-wrap {
       width: 100%;
       height: 100%;
@@ -863,17 +1028,19 @@ const PRESET_LOGOS: LogoPreset[] = [
     .frame-thumb-svg-wrap svg {
       width: 100%;
       height: 100%;
-      max-height: 58px;
+      max-height: 70px;
       object-fit: contain;
     }
 
-    /* Real Shape Glyph Chips (44x44, No Labels, Tooltip on Hover) */
-    .glyph-chip-btn {
+    /* Overall Shape Thumbnails & Controls */
+    .shape-thumb-card {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      width: 44px;
-      height: 44px;
+      width: 72px;
+      height: 72px;
+      padding: 6px 4px 4px 4px;
       border-radius: 10px;
       background: var(--surface-2, rgba(255, 255, 255, 0.04));
       border: 1.5px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
@@ -882,6 +1049,161 @@ const PRESET_LOGOS: LogoPreset[] = [
       flex-shrink: 0;
       position: relative;
       transition: all 150ms ease;
+      box-sizing: border-box;
+      gap: 4px;
+    }
+
+    .shape-thumb-card:hover {
+      background: var(--surface-3, rgba(255, 255, 255, 0.08));
+      border-color: var(--tool-accent-border, rgba(59, 130, 246, 0.4));
+      transform: translateY(-1px);
+    }
+
+    .shape-thumb-card.active {
+      background: var(--tool-accent-soft, rgba(59, 130, 246, 0.12));
+      border-color: var(--tool-accent, #3b82f6);
+      color: var(--tool-accent, #60a5fa);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+    }
+
+    .shape-thumb-card:focus-visible {
+      outline: 2px solid var(--tool-accent, #3b82f6);
+      outline-offset: 1px;
+    }
+
+    .shape-thumb-svg-wrap {
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .shape-thumb-name {
+      font-size: 10.5px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 64px;
+    }
+
+    .shape-controls-card {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 12px;
+      background: var(--surface-2, rgba(255, 255, 255, 0.03));
+      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+      border-radius: 10px;
+    }
+
+    .shape-mode-group,
+    .shape-strength-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .segmented-control {
+      display: flex;
+      align-items: center;
+      background: var(--surface-1, rgba(0, 0, 0, 0.25));
+      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+      border-radius: 8px;
+      padding: 2.5px;
+      gap: 2.5px;
+    }
+
+    .seg-btn {
+      flex: 1;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-2, rgba(255, 255, 255, 0.7));
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      transition: background 150ms ease, color 150ms ease;
+    }
+
+    .seg-btn:hover {
+      color: var(--text, #ffffff);
+      background: var(--surface-2, rgba(255, 255, 255, 0.06));
+    }
+
+    .seg-btn.active {
+      background: var(--tool-accent, #3b82f6);
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    }
+
+    .strength-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .strength-hint {
+      font-size: 11px;
+      color: var(--text-muted, rgba(255, 255, 255, 0.5));
+    }
+
+    .fade-edges-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 6px;
+      border-top: 1px dashed var(--border-subtle, rgba(255, 255, 255, 0.08));
+    }
+
+    .toggle-checkbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text, #ffffff);
+    }
+
+    .native-checkbox {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--tool-accent, #3b82f6);
+      cursor: pointer;
+    }
+
+    .fade-hint {
+      font-size: 11px;
+      color: var(--text-muted, rgba(255, 255, 255, 0.5));
+    }
+
+    /* Real Shape Glyph Grid & Larger Responsive Chips */
+    .glyph-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+      gap: 8px;
+      width: 100%;
+    }
+
+    .glyph-chip-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 48px;
+      height: 56px;
+      border-radius: 12px;
+      background: var(--surface-2, rgba(255, 255, 255, 0.04));
+      border: 1.5px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+      color: var(--text-2, rgba(255, 255, 255, 0.75));
+      cursor: pointer;
+      position: relative;
+      transition: all 150ms ease;
+      box-sizing: border-box;
     }
 
     .glyph-chip-btn:hover {
@@ -904,15 +1226,17 @@ const PRESET_LOGOS: LogoPreset[] = [
     }
 
     .chip-shape-svg {
-      width: 22px;
-      height: 22px;
+      width: 28px;
+      height: 28px;
       flex-shrink: 0;
       color: currentColor;
     }
 
     .active-indicator-pip {
       position: absolute;
-      bottom: 3px;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
       width: 4px;
       height: 4px;
       border-radius: 50%;
@@ -1155,14 +1479,19 @@ const PRESET_LOGOS: LogoPreset[] = [
     /* Logo Dropzone */
     .logo-dropzone {
       display: flex;
+      flex-direction: column;
       align-items: center;
+      justify-content: center;
       gap: 12px;
-      padding: 12px 14px;
+      padding: 32px 20px;
       background: var(--surface-2, rgba(0, 0, 0, 0.2));
       border: 1.5px dashed var(--border, rgba(255, 255, 255, 0.15));
-      border-radius: 10px;
+      border-radius: 12px;
       cursor: pointer;
-      transition: background 150ms ease, border-color 150ms ease;
+      transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+      flex: 1 1 auto;
+      min-height: 200px;
+      text-align: center;
     }
 
     .logo-dropzone:hover,
@@ -1177,20 +1506,28 @@ const PRESET_LOGOS: LogoPreset[] = [
     }
 
     .dropzone-icon {
-      width: 22px;
-      height: 22px;
-      color: var(--text-muted, rgba(255, 255, 255, 0.5));
+      width: 40px;
+      height: 40px;
+      color: var(--tool-accent, var(--accent, #3b82f6));
       flex-shrink: 0;
+      opacity: 0.85;
+      transition: transform 150ms ease;
+    }
+
+    .logo-dropzone:hover .dropzone-icon {
+      transform: scale(1.08);
+      opacity: 1;
     }
 
     .dropzone-text {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 4px;
+      align-items: center;
     }
 
     .dropzone-primary {
-      font-size: 12.5px;
+      font-size: 13px;
       font-weight: 600;
       color: var(--text, #fcfcfc);
     }
@@ -1371,7 +1708,15 @@ const PRESET_LOGOS: LogoPreset[] = [
   `]
 })
 export class DesignCustomizerComponent {
+  private readonly sanitizer = inject(DomSanitizer);
+
+  // Mini vector QR placeholder used inside illustrated frame thumbnails
+  private readonly MINI_QR = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="16" y="2" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="3" width="2" height="2"/><rect x="13" y="3" width="2" height="2"/><rect x="10" y="7" width="2" height="2"/><rect x="10" y="11" width="2" height="2"/><rect x="14" y="11" width="2" height="2"/><rect x="10" y="15" width="2" height="2"/><rect x="14" y="15" width="2" height="2"/><rect x="18" y="15" width="2" height="2"/><rect x="14" y="19" width="2" height="2"/><rect x="18" y="19" width="2" height="2"/></svg>`;
+
+  private readonly SAFE_PREVIEW_QR_DATA_URL = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#3B82F6"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="16" y="2" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="3" width="2" height="2"/><rect x="13" y="3" width="2" height="2"/><rect x="10" y="7" width="2" height="2"/><rect x="10" y="11" width="2" height="2"/><rect x="14" y="11" width="2" height="2"/><rect x="10" y="15" width="2" height="2"/><rect x="14" y="15" width="2" height="2"/><rect x="18" y="15" width="2" height="2"/><rect x="14" y="19" width="2" height="2"/><rect x="18" y="19" width="2" height="2"/></svg>');
+
   readonly activeSection = input<'all' | 'shapes' | 'logo' | 'frame'>('all');
+  readonly artShape = input<QrArtShapeOptions>(DEFAULT_ART_SHAPE_OPTIONS);
   readonly dotType = input<QrDotType>('square');
   readonly cornerSquareType = input<QrCornerSquareType>('square');
   readonly cornerDotType = input<QrCornerDotType>('square');
@@ -1383,6 +1728,7 @@ export class DesignCustomizerComponent {
   readonly logoMargin = input<number>(4);
   readonly frame = input<QrFrameOptions>(DEFAULT_FRAME_OPTIONS);
 
+  readonly artShapeChange = output<QrArtShapeOptions>();
   readonly dotTypeChange = output<QrDotType>();
   readonly cornerSquareTypeChange = output<QrCornerSquareType>();
   readonly cornerDotTypeChange = output<QrCornerDotType>();
@@ -1394,16 +1740,22 @@ export class DesignCustomizerComponent {
   readonly frameChange = output<QrFrameOptions>();
   readonly presetApply = output<DesignPreset>();
 
+  readonly shapeList: Array<QrShapeDefinition & { safeThumbnail: SafeHtml }> = QR_ART_SHAPES.map(s => ({
+    ...s,
+    safeThumbnail: this.sanitizer.bypassSecurityTrustHtml(
+      `<svg viewBox="0 0 32 32" width="28" height="28" class="shape-thumb-svg" aria-hidden="true">${s.previewSvg}</svg>`
+    )
+  }));
+
+  readonly currentShapeDef = computed<QrShapeDefinition>(() =>
+    getQrShapeById(this.artShape().shape)
+  );
+
   readonly designPresets = DESIGN_PRESETS;
   readonly linkCornerColors = signal<boolean>(true);
   readonly isDragging = signal<boolean>(false);
   readonly uploadError = signal<string | null>(null);
   readonly logoPresets = PRESET_LOGOS;
-
-  private sanitizer = inject(DomSanitizer);
-
-  // Mini vector QR placeholder used inside illustrated frame thumbnails
-  private readonly MINI_QR = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="16" y="2" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="3" width="2" height="2"/><rect x="13" y="3" width="2" height="2"/><rect x="10" y="7" width="2" height="2"/><rect x="10" y="11" width="2" height="2"/><rect x="14" y="11" width="2" height="2"/><rect x="10" y="15" width="2" height="2"/><rect x="14" y="15" width="2" height="2"/><rect x="18" y="15" width="2" height="2"/><rect x="14" y="19" width="2" height="2"/><rect x="18" y="19" width="2" height="2"/></svg>`;
 
   readonly frameList: Array<QrFrameDefinition & { safeThumbnail: SafeHtml }> = QR_FRAME_TEMPLATES.map(tpl => {
     const rawSvg = tpl.id === 'none'
@@ -1412,7 +1764,7 @@ export class DesignCustomizerComponent {
           primaryColor: 'currentColor',
           textColor: 'currentColor',
           text: 'SCAN',
-          qrDataUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2360a5fa"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="16" y="2" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="3" width="2" height="2"/><rect x="13" y="3" width="2" height="2"/><rect x="10" y="7" width="2" height="2"/><rect x="10" y="11" width="2" height="2"/><rect x="14" y="11" width="2" height="2"/><rect x="10" y="15" width="2" height="2"/><rect x="14" y="15" width="2" height="2"/><rect x="18" y="15" width="2" height="2"/><rect x="14" y="19" width="2" height="2"/><rect x="18" y="19" width="2" height="2"/></svg>'
+          qrDataUrl: this.SAFE_PREVIEW_QR_DATA_URL
         });
 
     return {
@@ -1431,20 +1783,38 @@ export class DesignCustomizerComponent {
     { type: 'square', label: 'Square' },
     { type: 'dots', label: 'Dots' },
     { type: 'rounded', label: 'Rounded' },
-    { type: 'extra-rounded', label: 'Extra-Round' },
-    { type: 'classy', label: 'Classy' },
-    { type: 'classy-rounded', label: 'Classy-Round' }
+    { type: 'extra-rounded', label: 'Pills' },
+    { type: 'classy', label: 'Leaf' },
+    { type: 'classy-rounded', label: 'Soft Leaf' },
+    { type: 'diamond', label: 'Diamond' },
+    { type: 'star', label: 'Star' },
+    { type: 'heart', label: 'Heart' },
+    { type: 'cross', label: 'Cross' },
+    { type: 'scanline', label: 'Scanline' }
   ];
 
   readonly cornerSquareOptions: { type: QrCornerSquareType; label: string }[] = [
     { type: 'square', label: 'Square' },
     { type: 'extra-rounded', label: 'Rounded' },
-    { type: 'dot', label: 'Circle' }
+    { type: 'dot', label: 'Circle' },
+    { type: 'classy', label: 'Leaf' },
+    { type: 'classy-rounded', label: 'Soft Leaf' },
+    { type: 'rounded', label: 'Smooth' },
+    { type: 'pinch', label: 'Pinch' },
+    { type: 'shield', label: 'Shield' }
   ];
 
   readonly cornerDotOptions: { type: QrCornerDotType; label: string }[] = [
     { type: 'square', label: 'Square' },
-    { type: 'dot', label: 'Circle' }
+    { type: 'dot', label: 'Circle' },
+    { type: 'rounded', label: 'Smooth' },
+    { type: 'extra-rounded', label: 'Pill' },
+    { type: 'classy', label: 'Leaf' },
+    { type: 'classy-rounded', label: 'Soft Leaf' },
+    { type: 'diamond', label: 'Diamond' },
+    { type: 'star', label: 'Star' },
+    { type: 'heart', label: 'Heart' },
+    { type: 'cross', label: 'Cross' }
   ];
 
   readonly ctaSuggestions: string[] = [
@@ -1593,5 +1963,39 @@ export class DesignCustomizerComponent {
       this.uploadError.set('Failed to read image file.');
     };
     reader.readAsDataURL(file);
+  }
+
+  onSelectShape(shapeId: QrOverallShape): void {
+    const def = getQrShapeById(shapeId);
+    let nextMode = this.artShape().mode;
+    if (nextMode === 'trim' && !def.supportsTrim) {
+      nextMode = 'around';
+    }
+    this.artShapeChange.emit({
+      ...this.artShape(),
+      shape: shapeId,
+      mode: nextMode
+    });
+  }
+
+  onSelectMode(mode: QrShapeMode): void {
+    this.artShapeChange.emit({
+      ...this.artShape(),
+      mode
+    });
+  }
+
+  onSelectStrength(strength: QrStyleStrength): void {
+    this.artShapeChange.emit({
+      ...this.artShape(),
+      strength
+    });
+  }
+
+  onToggleFadeEdges(): void {
+    this.artShapeChange.emit({
+      ...this.artShape(),
+      fadeEdges: !this.artShape().fadeEdges
+    });
   }
 }

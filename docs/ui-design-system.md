@@ -4,6 +4,7 @@
 This document outlines the stabilized design system architecture for Acklet, standardizing semantic tokens, Spartan UI Helm primitives, Tailwind CSS v4 theme integration, dual-theme contrast rules, and shell isolation boundaries across the repository.
 
 Related documentation:
+- [responsive-design-system.md](./responsive-design-system.md)
 - [online-clipboard.md](./online-clipboard.md)
 - [performance-optimization.md](./performance-optimization.md)
 - [build-configuration.md](./build-configuration.md)
@@ -119,7 +120,7 @@ The shared tool shell ([`client/packages/tool-shell`](file:///Users/ayaz/Acklet/
    - An unintrusive first-visit edge discovery hint pill (`.ts-sidebar-edge-hint`) pulses near the far-left edge to educate users on hover reveal, auto-dismissing after 5 seconds or upon any interaction (`acklet_sidebar_hint_seen`).
 
 2. **PEEK Mode (Hover Reveal Overlay)**:
-   - Moving the cursor to the far-left edge of the viewport (8px hotzone `.ts-sidebar-hotzone`) triggers an intentional 100ms hover delay before sliding the sidebar in as a floating overlay on top of content (`position: absolute; left: 0; z-index: 50`).
+   - Moving the cursor to the far-left edge of the viewport (14px hotzone `.ts-sidebar-hotzone`) triggers an intentional 100ms hover delay before sliding the sidebar in as a floating overlay on top of content (`position: absolute; left: 0; z-index: 50`).
    - The workspace content does **not** move or re-flow.
    - Moving the cursor out provides a 250ms grace window before sliding out. Pressing `Escape` or clicking outside immediately dismisses peek mode.
    - Peek mode can be toggled on/off using the lightning bolt icon in the sidebar pinned footer (`acklet_sidebar_hover`).
@@ -133,6 +134,44 @@ The shared tool shell ([`client/packages/tool-shell`](file:///Users/ayaz/Acklet/
    - Desktop peek and pinned grid modes are suppressed (`grid-template-columns: 1fr !important`).
    - Hamburger icon in the topbar opens a mobile off-canvas sheet (`role="dialog"`, `aria-modal="true"`).
    - Native touch swipe-to-close gestures (`onTouchStart`, `onTouchMove`, `onTouchEnd` on `.ts-mobile-sheet-panel`) allow natural dismissal.
-   - Background scrolling is automatically locked (`document.body.style.overflow = 'hidden'`) and restored on close.
    - Selecting any tool, section link, or pressing `Escape` automatically dismisses the drawer and returns focus smoothly.
 
+### 6.2 Universal Tool Architecture & Shell Reusability
+The shell layout is generic and unified across all tools in the Acklet ecosystem:
+- **Single Source of Truth**: All standalone tools (e.g. `apps/tool-qr-generator`, `apps/tool-online-clipboard`, and future tools) wrap their workspace inside `<ts-shell [tool]="manifest" [config]="shellConfig">` from [`@acklet/tool-shell`](file:///Users/ayaz/Acklet/client/packages/tool-shell).
+- **Generic Behavior Inheritance**: Navbars, topbar branding, command palette (`⌘K`), theme providers, settings modal, and the collapsible sidebar peek animation live inside `tool-shell`. Any enhancement made to the shell immediately applies to every tool across the application.
+- **Full-Bleed Viewport Surface**: When `layout: 'fullBleed'` is set, `.ts-tool-card-surface.full-bleed` automatically expands the projected tool container to 100% height and width without requiring bespoke CSS in child tools.
+- **Unified Routing & Dev Bootstrapping**:
+  - In `client/src/app/app.routes.ts`, standalone tools are directly registered under `/tools/<tool-slug>` (e.g. `/tools/clipboard`, `/tools/qr-generator`).
+  - In `client/src/main.ts`, tools can be tested on `localhost:4200` via subdomain (`clipboard.localhost:4200`), direct route (`/tools/clipboard`), or query parameter (`?tool=clipboard`).
+
+### 6.3 Responsive & Device-Aware Component Primitives
+For comprehensive architecture and rollout guides, see [responsive-design-system.md](./responsive-design-system.md).
+- **`ResponsiveService`**: Reactive signals for `deviceClass`, `inputMode`, `keyboardOpen` (via `visualViewport`), `orientation`, and `shouldReduceEffects`.
+- **`<ts-bottom-sheet>`**: Mobile sheet with drag-handle, swipe-down dismiss ($\ge 75$px), backdrop click dismiss, and reduced-motion handling.
+- **`<ts-sticky-action-bar>`**: Docked bottom action bar with automated virtual keyboard evasion and $\ge 44 \times 44$px touch targets.
+- **`<ts-adaptive-dropdown>`**: Context-aware dropdown that renders floating popovers on desktop and bottom sheets on phone.
+- **`[tsLongPress]` & `[tsDoubleTap]`**: Touch gesture directives with tactile feedback via `HapticService`.
+
+---
+
+## 7. Tool Shell & QR Code Generator Enhancements
+
+### 7.1 Topbar & Navigation Updates
+- **Saved Action Button**: Features a high-contrast jewel gradient (`linear-gradient(135deg, var(--accent) 0%, ...)`), solid white icon fill, and subtle depth glow (`box-shadow`) when marked as favorited, ensuring distinct visual status in both light and dark themes.
+- **Settings Consolidation**: The settings trigger button has been removed from the top navigation bar and unified exclusively within the collapsible sidebar footer rail.
+- **Icon Unification**: Standardized Lucide icons across shell and tools:
+  - Frame: `LucideFrame` (`frame`)
+  - Heart Logo preset: `LucideHeart` (`heart`)
+  - Color Swap: `LucideArrowLeftRight` (`arrow-left-right`)
+  - Dynamic Shortlinks: `LucideZap` (`zap`)
+
+### 7.2 QR Code Generator Customizer & Scannability
+- **Full-Bleed Dropzone**: The logo upload zone dynamically flexes to occupy 100% of the remaining vertical space in the Logo tab, eliminating empty white gaps.
+- **Foreground & Background Gradients**: Supports both Solid and Gradient modes with Linear / Radial options, 0–360° angle sliders, dual color stop selectors, and curated presets (Ocean Blue, Sunset Glow, Emerald Forest, Purple Dawn, Neon Cyber).
+- **Guaranteed Scanner Decodability**:
+  - Custom body shapes (`star`, `heart`, `cross`, `diamond`, `scanline`) retain high core fill ratios and automatically boost error correction to `H` (30%) or `Q` (25%).
+  - Corner finder locator patterns (the three 7x7 outer frames and 3x3 inner dots) strictly preserve standard geometric 1:1:3:1:1 scan line proportions so hardware and software decoders (`jsQR`) locate patterns reliably.
+  - Multi-pass decoding verification (standard decode, contrast-stretched histogram binarization, inverted luminance, center crop) eliminates false-negative unscannable warnings.
+- **Export Menu Reliability**: Fixed split download dropdown toggle with stop propagation handling to ensure robust format selection across SVG, JPEG, and PNG.
+- **Customizer Layout Stability**: Standardized `.design-section` to natural content height (`flex: 0 0 auto`) to prevent grid squishing or overlapping across multi-section views (e.g. Shape presets, body dots, corner frames), while retaining full flex expansion exclusively on `.design-section.logo-section`. Gradient angle controls use `-webkit-appearance: none`, bounded container widths, and `white-space: nowrap` labels to eliminate track overflow and label column wrapping.
