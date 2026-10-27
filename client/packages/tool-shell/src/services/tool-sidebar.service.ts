@@ -69,6 +69,10 @@ export class ToolSidebarService {
     this.isMobileDrawerOpen.update(v => !v);
   }
 
+  openMobileDrawer(): void {
+    this.isMobileDrawerOpen.set(true);
+  }
+
   closeMobileDrawer(): void {
     this.isMobileDrawerOpen.set(false);
   }

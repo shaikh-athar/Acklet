@@ -65,4 +65,40 @@ export interface ToolRegistryItem {
   executionMode?: 'browser' | 'offline' | 'cloud';
   navLinks?: { id: string; label: string }[];
   seo?: ToolSeo;
+  theme?: ToolManifestTheme;
+}
+
+export interface ToolThemeColorVariants {
+  base: string;           // Primary accent color, e.g. '#2563EB'
+  ink: string;            // High-contrast foreground text on base accent
+  strong: string;         // Emphasized accent (e.g. for focus/hover rings)
+  soft: string;           // Low-opacity translucent tint for pill/row backgrounds
+  border: string;         // Subtle accent border tint
+  glow: string;           // Ambient atmospheric glow tint
+}
+
+export interface ToolAccentConfig {
+  name: string;           // Palette identifier, e.g. 'blue', 'teal'
+  hue?: number;           // Hue in degrees (0-360) for dynamic canvas glows
+  dark: ToolThemeColorVariants;
+  light: ToolThemeColorVariants;
+}
+
+export interface ToolFontConfig {
+  family: string;         // Human font family name, e.g. 'Figtree'
+  fontFamily: string;     // Complete CSS font-family rule
+  weights?: number[];     // Font weights supported, e.g. [400, 500, 600, 700]
+  fallback?: string;      // Metric-adjusted or system fallback font list
+  source?: 'self-hosted' | 'google' | 'system';
+}
+
+export type ToolDensity = 'default' | 'compact';
+export type ToolSurfaceStyle = 'glass' | 'solid';
+
+export interface ToolManifestTheme {
+  accent?: ToolAccentConfig;
+  font?: ToolFontConfig;
+  radius?: string;        // Specific tool radius override, or inherited default
+  density?: ToolDensity;
+  surfaceStyle?: ToolSurfaceStyle;
 }

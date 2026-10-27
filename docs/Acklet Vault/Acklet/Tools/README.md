@@ -9,7 +9,7 @@ Welcome to the **Acklet Tools Documentation Hub**. This directory documents the 
 | Tool Name | Directory Path | Category | Primary Formats / Focus | Status |
 | :--- | :--- | :--- | :--- | :--- |
 | **Online Clipboard** | [Online-Clipboard/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/Online-Clipboard/README.md) | Ephemeral Cross-Device Transfer & Sync | Text, Links, Images, Files, E2EE, ZIP | **Production Ready** |
-| **QR Generator** | [QR-Generator/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/QR-Generator/README.md) | Client-Side QR Code Studio & Customizer | Text, URL, Email, Phone, PNG, Custom Styling | **Phase 1 In Planning** |
+| **QR Generator** | [QR-Generator/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/QR-Generator/README.md) | Client-Side QR Code Studio & Customizer | Text, URL, Email, Phone, PNG, Custom Styling | **Production Ready (Phase 1)** |
 | **DataLens** | [data-lens/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/data-lens/README.md) | Structured Data Workbench & Inspector | JSON, YAML, XML, CSV, TOML, cURL | **Production Ready** |
 | **AirVault** | [airvault/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/README.md) | Cross-Device Clipboard & Sync Platform | Text, Code, URLs, Images, Files, E2EE | **Production Ready** |
 
@@ -40,7 +40,7 @@ All tools adhere to the standard 4-subfolder structure defined in [DOCUMENTATION
 **QR Generator by Acklet** is a lightweight, privacy-first utility tool for creating, customizing, and downloading QR codes entirely within the client browser with real-time feedback and emerald styling.
 
 - **Primary URL**: `http://qr.localhost:4200` / `https://qr.acklet.com`
-- **Component Root**: `client/apps/tool-qr-generator/` (Phase 1 Target)
+- **Component Root**: [client/apps/tool-qr-generator/](file:///Users/ayaz/Acklet/client/apps/tool-qr-generator/)
 - **Documentation Root**: [QR-Generator/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/QR-Generator/README.md)
 
 ---

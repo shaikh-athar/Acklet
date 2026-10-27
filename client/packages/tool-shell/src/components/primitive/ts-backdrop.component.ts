@@ -34,12 +34,12 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
       z-index: -1;
       contain: strict;
       overflow: hidden;
-      background-color: var(--ts-page-bg, var(--page-bg, #F7F8F8));
+      background-color: var(--ts-page-bg, var(--page-bg, #F8FAFC));
     }
 
     :host-context([data-theme="dark"]),
     [data-theme="dark"] :host {
-      background-color: var(--ts-page-bg, var(--page-bg, #0F1011));
+      background-color: var(--ts-page-bg, var(--page-bg, #0B1120));
     }
 
     /* ── Main .ts-bg: corner glows stacked as gradients (Top-Left emphasized) ─── */
@@ -53,17 +53,17 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
       /* Dark mode: Top-left subtle ambient glow, gentle tints on all other corners */
       background:
         radial-gradient(ellipse 52% 46% at 0% 0%,
-          color-mix(in oklab, var(--accent, #2DD4BF) 16%, transparent) 0%,
-          color-mix(in oklab, var(--accent, #2DD4BF)  8%, transparent) 40%,
+          color-mix(in oklab, var(--accent, #3B82F6) 16%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #3B82F6)  8%, transparent) 40%,
           transparent 70%),
         radial-gradient(ellipse 46% 40% at 100% 0%,
-          color-mix(in oklab, var(--accent, #2DD4BF) 10%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #3B82F6) 10%, transparent) 0%,
           transparent 70%),
         radial-gradient(ellipse 48% 42% at 0% 100%,
-          color-mix(in oklab, var(--accent, #2DD4BF)  9%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #3B82F6)  9%, transparent) 0%,
           transparent 70%),
         radial-gradient(ellipse 46% 40% at 100% 100%,
-          color-mix(in oklab, var(--accent, #2DD4BF)  8%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #3B82F6)  8%, transparent) 0%,
           transparent 70%);
     }
 
@@ -72,17 +72,17 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
     [data-theme="light"] .ts-bg {
       background:
         radial-gradient(ellipse 52% 46% at 0% 0%,
-          color-mix(in oklab, var(--accent, #0D9488) 20%, transparent) 0%,
-          color-mix(in oklab, var(--accent, #0D9488) 10%, transparent) 40%,
+          color-mix(in oklab, var(--accent, #2563EB) 20%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #2563EB) 10%, transparent) 40%,
           transparent 70%),
         radial-gradient(ellipse 46% 40% at 100% 0%,
-          color-mix(in oklab, var(--accent, #0D9488) 14%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #2563EB) 14%, transparent) 0%,
           transparent 70%),
         radial-gradient(ellipse 48% 42% at 0% 100%,
-          color-mix(in oklab, var(--accent, #0D9488) 12%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #2563EB) 12%, transparent) 0%,
           transparent 70%),
         radial-gradient(ellipse 46% 40% at 100% 100%,
-          color-mix(in oklab, var(--accent, #0D9488) 10%, transparent) 0%,
+          color-mix(in oklab, var(--accent, #2563EB) 10%, transparent) 0%,
           transparent 70%);
     }
 
@@ -92,8 +92,8 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
       inset: 0;
       pointer-events: none;
       background-image:
-        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #5EEAD4)) 7%, transparent) 1px, transparent 1px),
-        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #5EEAD4)) 7%, transparent) 1px, transparent 1px);
+        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #60A5FA)) 7%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #60A5FA)) 7%, transparent) 1px, transparent 1px);
       background-size: 24px 24px;
       background-position: 0 0;
       -webkit-mask-image: radial-gradient(ellipse 120% 100% at 0% 0%, #000 0%, rgba(0,0,0,0.5) 50%, transparent 100%);
@@ -103,8 +103,8 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
     :host-context([data-theme="light"]) .ts-bg-grid,
     [data-theme="light"] .ts-bg-grid {
       background-image:
-        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #0F766E)) 6%, transparent) 1px, transparent 1px),
-        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #0F766E)) 6%, transparent) 1px, transparent 1px);
+        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #1D4ED8)) 6%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #1D4ED8)) 6%, transparent) 1px, transparent 1px);
     }
 
     /* ── Pointer glow spot (blurred radial) ───────────────────── */
@@ -119,14 +119,14 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
       will-change: transform;
       transition: opacity 300ms ease;
       background: radial-gradient(circle closest-side,
-        color-mix(in oklab, var(--ts-lift, var(--accent, #5EEAD4)) 22%, transparent),
+        color-mix(in oklab, var(--ts-lift, var(--accent, #60A5FA)) 22%, transparent),
         transparent 100%);
     }
 
     :host-context([data-theme="light"]) .ts-bg-spot-glow,
     [data-theme="light"] .ts-bg-spot-glow {
       background: radial-gradient(circle closest-side,
-        color-mix(in oklab, var(--ts-lift, var(--accent, #0F766E)) 40%, transparent),
+        color-mix(in oklab, var(--ts-lift, var(--accent, #2563EB)) 40%, transparent),
         transparent 100%);
     }
 
@@ -142,8 +142,8 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
       will-change: transform;
       transition: opacity 300ms ease;
       background-image:
-        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #5EEAD4)) 30%, transparent) 1px, transparent 1px),
-        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #5EEAD4)) 30%, transparent) 1px, transparent 1px);
+        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #60A5FA)) 30%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #60A5FA)) 30%, transparent) 1px, transparent 1px);
       background-size: 32px 32px;
       -webkit-mask-image: radial-gradient(circle closest-side, #000, transparent 100%);
               mask-image: radial-gradient(circle closest-side, #000, transparent 100%);
@@ -152,8 +152,8 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
     :host-context([data-theme="light"]) .ts-bg-spot-grid,
     [data-theme="light"] .ts-bg-spot-grid {
       background-image:
-        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #0F766E)) 26%, transparent) 1px, transparent 1px),
-        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #0F766E)) 26%, transparent) 1px, transparent 1px);
+        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #1D4ED8)) 26%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #1D4ED8)) 26%, transparent) 1px, transparent 1px);
     }
 
     /* ── Responsive: under 768px, 24px grid ──────────────────── */

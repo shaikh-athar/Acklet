@@ -165,6 +165,26 @@ html[data-theme="dark"],
   --border: var(--ts-surface-raised-border);
   --border-accent: #FCFCFC;
 
+  /* Semantic Surface & Accent Tokens (Dark Mode: Deep Navy Base) */
+  --surface-base: #0B1120;
+  --surface-1: #111A2E;
+  --surface-2: #16233D;
+  --surface-3: #1E2D4A;
+  --bg-canvas: var(--page-bg);
+  --bg-surface: var(--surface-1);
+  --bg-elevated: var(--surface-2);
+  --bg-surface-canvas: var(--page-bg);
+  --bg-surface-default: var(--surface-1);
+  --bg-surface-elevated: var(--surface-2);
+  --bg-surface-subtle: rgba(255, 255, 255, 0.04);
+  --bg-surface-hover: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.20);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --tool-accent: var(--accent);
+  --tool-accent-soft: var(--accent-soft);
+  --tool-accent-border: var(--accent-border);
+  --tool-accent-glow: var(--accent-glow);
+
   --text: #FCFCFC;
   --text-2: #B3B3B8;
   --text-3: #8E8E93;
@@ -305,6 +325,26 @@ html[data-theme="light"],
   --surface-active: rgba(15, 23, 42, 0.05);
   --border: var(--ts-surface-raised-border);
   --border-accent: #09090B;
+
+  /* Semantic Surface & Accent Tokens (Light Mode: Clean Minimal) */
+  --surface-base: #F8FAFC;
+  --surface-1: #FFFFFF;
+  --surface-2: #F1F5F9;
+  --surface-3: #E2E8F0;
+  --bg-canvas: var(--page-bg);
+  --bg-surface: var(--surface-1);
+  --bg-elevated: var(--surface-2);
+  --bg-surface-canvas: var(--page-bg);
+  --bg-surface-default: var(--surface-1);
+  --bg-surface-elevated: var(--surface-2);
+  --bg-surface-subtle: rgba(15, 23, 42, 0.04);
+  --bg-surface-hover: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.18);
+  --border-subtle: rgba(15, 23, 42, 0.06);
+  --tool-accent: var(--accent);
+  --tool-accent-soft: var(--accent-soft);
+  --tool-accent-border: var(--accent-border);
+  --tool-accent-glow: var(--accent-glow);
 
   --text: #09090B;
   --text-2: #52525B;
@@ -497,6 +537,98 @@ html[data-theme="light"],
   --accent: #2DD4BF;
   --accent-ink: #04211E;
   --accent-strong: #0F766E;
+  --on-accent: var(--accent-ink);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--accent-ink);
+  --tool-brand-accent: var(--accent);
+}
+
+/* Emerald Palette (QR Generator & Studio):
+   light: accent #10B981, ink #022C22, strong #047857
+   dark:  accent #10B981, ink #022C22, strong #34D399
+*/
+[data-accent="emerald"],
+.ts-root[data-accent="emerald"],
+[data-theme="dark"][data-accent="emerald"],
+.ts-root[data-theme="dark"][data-accent="emerald"],
+[data-theme="dark"] [data-accent="emerald"],
+.ts-root[data-theme="dark"] [data-accent="emerald"] {
+  --accent: #10B981;
+  --accent-ink: #022C22;
+  --accent-strong: #34D399;
+  --accent-2-glow: rgba(16, 185, 129, 0.25);
+  --accent-2-glow-dark: rgba(16, 185, 129, 0.12);
+  --on-accent: var(--accent-ink);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--accent-ink);
+  --tool-brand-accent: var(--accent);
+}
+
+[data-theme="light"][data-accent="emerald"],
+.ts-root[data-theme="light"][data-accent="emerald"],
+[data-theme="light"] [data-accent="emerald"],
+.ts-root[data-theme="light"] [data-accent="emerald"] {
+  --accent: #10B981;
+  --accent-ink: #022C22;
+  --accent-strong: #047857;
+  --accent-2-glow: rgba(16, 185, 129, 0.25);
+  --accent-2-glow-dark: rgba(16, 185, 129, 0.12);
+  --on-accent: var(--accent-ink);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--accent-ink);
+  --tool-brand-accent: var(--accent);
+}
+
+/* Blue Palette (QR Generator & Modern Minimal):
+   light: accent #2563EB, ink #FFFFFF, strong #1D4ED8
+   dark:  accent #3B82F6, ink #FFFFFF, strong #60A5FA
+*/
+[data-accent="blue"],
+.ts-root[data-accent="blue"],
+[data-theme="dark"][data-accent="blue"],
+.ts-root[data-theme="dark"][data-accent="blue"],
+[data-theme="dark"] [data-accent="blue"],
+.ts-root[data-theme="dark"] [data-accent="blue"] {
+  --page-bg: #0B1120;
+  --ts-page-bg: #0B1120;
+  --accent: #3B82F6;
+  --accent-ink: #FFFFFF;
+  --accent-strong: #60A5FA;
+  --accent-soft: rgba(59, 130, 246, 0.12);
+  --accent-border: rgba(59, 130, 246, 0.25);
+  --accent-glow: rgba(59, 130, 246, 0.20);
+  --accent-2-glow: rgba(59, 130, 246, 0.20);
+  --accent-2-glow-dark: rgba(59, 130, 246, 0.12);
+  --border-accent: #3B82F6;
+  --tool-accent: #3B82F6;
+  --tool-accent-soft: rgba(59, 130, 246, 0.12);
+  --tool-accent-border: rgba(59, 130, 246, 0.25);
+  --tool-accent-glow: rgba(59, 130, 246, 0.20);
+  --on-accent: var(--accent-ink);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--accent-ink);
+  --tool-brand-accent: var(--accent);
+}
+
+[data-theme="light"][data-accent="blue"],
+.ts-root[data-theme="light"][data-accent="blue"],
+[data-theme="light"] [data-accent="blue"],
+.ts-root[data-theme="light"] [data-accent="blue"] {
+  --page-bg: #F8FAFC;
+  --ts-page-bg: #F8FAFC;
+  --accent: #2563EB;
+  --accent-ink: #FFFFFF;
+  --accent-strong: #1D4ED8;
+  --accent-soft: rgba(37, 99, 235, 0.08);
+  --accent-border: rgba(37, 99, 235, 0.20);
+  --accent-glow: rgba(37, 99, 235, 0.15);
+  --accent-2-glow: rgba(37, 99, 235, 0.15);
+  --accent-2-glow-dark: rgba(37, 99, 235, 0.08);
+  --border-accent: #2563EB;
+  --tool-accent: #2563EB;
+  --tool-accent-soft: rgba(37, 99, 235, 0.08);
+  --tool-accent-border: rgba(37, 99, 235, 0.20);
+  --tool-accent-glow: rgba(37, 99, 235, 0.15);
   --on-accent: var(--accent-ink);
   --ts-accent: var(--accent);
   --ts-accent-contrast: var(--accent-ink);

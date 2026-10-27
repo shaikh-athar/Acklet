@@ -1,203 +1,93 @@
 ---
 tool: QR Generator
-phase: 1
-last-updated: 2026-10-20
-status: Building
+phase: 3
+last-updated: 2026-10-21
+status: Complete
 ---
 
-# Component Tree
+# QR Generator — Component Tree & UI Architecture
 
-## Architecture
+This document describes the Angular component hierarchy, state flow, and modal overlay architecture for the QR Generator tool.
+
+---
+
+## 1. Component Hierarchy
 
 ```text
 QRGeneratorComponent (standalone: true)
-  State: currentOptions, qrDataUrl, metadata, isGenerating
-  ├── InputPanelComponent (standalone: true)
-  │   @Input(): none
-  │   @Output(): (contentChange), (typeChange)
-  │   └── Textarea + Type Dropdown + Preset Buttons
+  State: selectedType, content, size, foregroundColor, backgroundColor, errorCorrection,
+         frameOptions, dotsOptions, cornersOptions, logoOptions, dynamicDrawerOpen, batchModalOpen
   │
-  └── Two-Column Grid (responsive)
-      ├── Column 1 (Left)
-      │   ├── PreviewPanelComponent (standalone: true)
-      │   │   @Input(): qrDataUrl, metadata, isLoading
-      │   │   ├── QRCanvasComponent (standalone: true)
-      │   │   │   @Input(): qrDataUrl, isLoading
-      │   │   │   └── <img> + Loading Skeleton + Placeholder
-      │   │   │
-      │   │   └── MetadataDisplayComponent (standalone: true)
-      │   │       @Input(): metadata
-      │   │       └── Info Grid + Progress Bar
-      │   │
-      │
-      └── Column 2 (Right)
-          ├── CustomizationPanelComponent (standalone: true)
-          │   @Input(): options
-          │   @Output(): (optionsChange)
-          │   │
-          │   ├── ColorCustomizerComponent (standalone: true)
-          │   │   @Input(): foregroundColor, backgroundColor
-          │   │   @Output(): (colorChange)
-          │   │   └── Two Color Pickers + Contrast Check + Preview
-          │   │
-          │   ├── SizeSliderComponent (standalone: true)
-          │   │   @Input(): size
-          │   │   @Output(): (sizeChange)
-          │   │   └── Range Slider + Preset Buttons
-          │   │
-          │   └── ErrorCorrectionSelectorComponent (standalone: true)
-          │       @Input(): errorCorrection
-          │       @Output(): (ecChange)
-          │       └── Dropdown + Tooltip
-          │
-          └── OutputPanelComponent (standalone: true)
-              @Input(): qrDataUrl, isLoading
-              │
-              └── DownloadButtonComponent (standalone: true)
-                  @Input(): qrDataUrl, isLoading
-                  └── Download Button + Download Logic
-```
-
-## Data Flow
-
-### On Content Change
-```text
-User types in textarea
-  ↓
-InputPanelComponent.contentChange.emit(content)
-  ↓
-QRGeneratorComponent.onContentChange(content)
-  ├─ Update: currentOptions.content = content
-  ├─ Call: generateQR()
-  └─ Service: QRGeneratorService.generateQR(currentOptions)
-      └─ Returns: qrDataUrl (Data URL PNG)
-  ├─ Update: qrDataUrl = result
-  ├─ Call: getMetadata()
-  └─ Update: metadata = result
-  ↓
-PreviewPanelComponent receives new @Input qrDataUrl
-  ↓
-QRCanvasComponent receives new @Input qrDataUrl
-  ↓
-Template updates <img [src]="qrDataUrl">
-  ↓
-User sees updated QR code
-```
-
-### On Customization Change
-```text
-User adjusts color/size/EC
-  ↓
-CustomizationPanel subcomponent.emit(change)
-  ↓
-QRGeneratorComponent.onOptionsChange(partial)
-  ├─ Merge: currentOptions = {...currentOptions, ...partial}
-  └─ Call: generateQR() [same as above]
-  ↓
-[Same flow as content change]
-```
-
-### On Download
-```text
-User clicks Download button
-  ↓
-DownloadButtonComponent.downloadQR()
-  ├─ Create: <a> element
-  ├─ Set: href = qrDataUrl, download = "qr-code-{timestamp}.png"
-  ├─ Trigger: link.click()
-  └─ Clean up: remove <a> element
-  ↓
-Browser downloads PNG file
-```
-
-## Key Points
-
-- **No state in child components**: All state in QRGeneratorComponent
-- **Dumb presentation components**: PreviewPanel, OutputPanel only render; no logic
-- **Smart orchestrator**: QRGeneratorComponent owns state, calls services, emits events
-- **Services have no state**: Pure functions (generateQR, getMetadata)
-- **Responsive grid**: CSS Grid with 2 columns (desktop) → 1 column (mobile)
-
-## Folder Structure in Code
-
-```text
-src/app/tools/qr-generator/
-├── qr-generator.component.ts
-├── qr-generator.component.html
-├── qr-generator.component.scss
-├── qr-generator.component.spec.ts
-├── components/
-│   ├── input-panel/
-│   │   ├── input-panel.component.ts
-│   │   ├── input-panel.component.html
-│   │   ├── input-panel.component.scss
-│   │
-│   ├── preview-panel/
-│   │   ├── preview-panel.component.ts
-│   │   ├── preview-panel.component.html
-│   │   ├── preview-panel.component.scss
-│   │   ├── qr-canvas/
-│   │   │   ├── qr-canvas.component.ts
-│   │   │   ├── qr-canvas.component.html
-│   │   │   ├── qr-canvas.component.scss
-│   │   │
-│   │   └── metadata-display/
-│   │       ├── metadata-display.component.ts
-│   │       ├── metadata-display.component.html
-│   │       ├── metadata-display.component.scss
-│   │
-│   ├── customization-panel/
-│   │   ├── customization-panel.component.ts
-│   │   ├── customization-panel.component.html
-│   │   ├── customization-panel.component.scss
-│   │   ├── color-customizer/
-│   │   │   ├── color-customizer.component.ts
-│   │   │   ├── color-customizer.component.html
-│   │   │   ├── color-customizer.component.scss
-│   │   │
-│   │   ├── size-slider/
-│   │   │   ├── size-slider.component.ts
-│   │   │   ├── size-slider.component.html
-│   │   │   ├── size-slider.component.scss
-│   │   │
-│   │   └── error-correction-selector/
-│   │       ├── error-correction-selector.component.ts
-│   │       ├── error-correction-selector.component.html
-│   │       ├── error-correction-selector.component.scss
-│   │
-│   └── output-panel/
-│       ├── output-panel.component.ts
-│       ├── output-panel.component.html
-│       ├── output-panel.component.scss
-│       └── download-button/
-│           ├── download-button.component.ts
-│           ├── download-button.component.html
-│           ├── download-button.component.scss
-│
-├── services/
-│   ├── qr-generator.service.ts
-│   ├── qr-generator.service.spec.ts
-│   ├── color-validator.service.ts
-│   └── color-validator.service.spec.ts
-│
-└── models/
-    └── qr-options.model.ts
+  ├── Header Actions Area
+  │   ├── Dynamic QRs Drawer Trigger Button (Pill badge showing active count)
+  │   └── Batch Generate Trigger Button
+  │
+  ├── Two-Column Responsive Workspace Grid
+  │   ├── Column 1 (Left: Studio Panel ~55%)
+  │   │   ├── Studio Header
+  │   │   │   ├── Unified Type Picker Track (5 Quick Chips: URL, Text, Wi-Fi, vCard, Email)
+  │   │   │   ├── Accessible More Dropdown Popover (7 Extended Types: Phone, SMS, Geo, Event, Social, App, Crypto)
+  │   │   │   ├── Sample Example Loader Trigger
+  │   │   │   └── Consolidated Studio Tabs (Content | Design | Settings)
+  │   │   │
+  │   │   ├── Tab 1: Content
+  │   │   │   └── InputPanelComponent (standalone: true)
+  │   │   │       ├── Dedicated Structured Form Controls (8px grid standardization)
+  │   │   │       ├── Progressive Disclosure (<details class="more-options"> for UTMs, MECARD, Wi-Fi EAP)
+  │   │   │       └── Dynamic Three-State Status Line (Ready, Capacity Warning >80%, Error with Fix Link)
+  │   │   │
+  │   │   ├── Tab 2: Design
+  │   │   │   ├── Segmented Sub-Navigation (Colors | Shapes | Logo | Frame)
+  │   │   │   ├── Sub-Tab Colors: ColorCustomizerComponent (Hex, Pickers, WCAG Contrast Guard)
+  │   │   │   ├── Sub-Tab Shapes: DesignCustomizerComponent (Dot Matrix, Corner Locators, Presets)
+  │   │   │   ├── Sub-Tab Logo: DesignCustomizerComponent (Upload, SVG presets, Scaling/Margin)
+  │   │   │   └── Sub-Tab Frame: DesignCustomizerComponent (CTA Banners, Colors, Frames)
+  │   │   │
+  │   │   └── Tab 3: Settings
+  │   │       ├── ErrorCorrectionSelectorComponent (L, M recommended, Q, H)
+  │   │       ├── SizeSliderComponent (100–2000px slider + preset chips)
+  │   │       └── Collapsed Technical Details Disclosure (<details>)
+  │   │           ├── MetadataDisplayComponent (Matrix Version, Capacity limits, Usage %)
+  │   │           └── Encoded RFC Payload Code Block with 1-click clipboard copy
+  │   │
+  │   └── Column 2 (Right: Live Preview & Action Bar ~45%)
+  │       └── PreviewPanelComponent (standalone: true)
+  │           ├── Vector SVG / Canvas Stage Container with decorative frame rendering
+  │           ├── Test Scannability Action Button (jsQR Camera-Grade Verifier Badge)
+  │           ├── Primary Action Bar: Split Download PNG / JPEG Dropdown + Dedicated Quick SVG Vector Button
+  │           └── Drawer & Modal Controls: History Drawer, Batch Modal, Dynamic QRs Drawer
+  │
+  ├── Modals & Overlays (Dynamic / State-driven)
+  │   ├── QrDynamicManagerComponent (standalone: true)
+  │   │   [isOpen] (close)
+  │   │   ├── Managed QRs List with live scan counts and status pills
+  │   │   ├── Inline Destination URL Editor
+  │   │   ├── Pause / Resume Toggles
+  │   │   ├── Scan Analytics Modal (Daily trends, device, country breakdown)
+  │   │   └── New Dynamic QR Creator (Website, PDF, Menu, Coupon, vCard, Multi-URL with file upload)
+  │   │
+  │   └── BatchGeneratorComponent (standalone: true)
+  │       [isOpen] (close)
+  │       ├── CSV File Dropzone & Raw Text Paste Parser
+  │       ├── "Load Sample CSV" Demo Action
+  │       ├── Asynchronous Batch Generation Pipeline with Progress Bar (X of Y)
+  │       ├── Interactive Preview Grid with Single-Item PNG Download & Copy
+  │       └── One-Click "Download ZIP Archive" Button (JSZip)
 ```
 
 ---
 
-## Standalone Components
+## 2. Dedicated Standalone Routes
 
-All components use `standalone: true`. Import dependencies explicitly in each component's `imports` array.
-
-Example:
-```typescript
-@Component({
-  selector: 'app-input-panel',
-  standalone: true,
-  imports: [CommonModule, FormsModule, MyChildComponent],
-  template: `...`
-})
+```text
+LandingViewerComponent (Route: /tools/qr-generator/view/:code)
+  ├── Authentication Gate (PIN / Passcode input for protected QRs)
+  ├── Paused Notice Screen (Friendly alert when shortlink is paused)
+  ├── Expired Notice Screen (Alert when link TTL has lapsed)
+  └── Hosted Content Views:
+      ├── PDF Document Viewer (Title, size, description, preview frame, download CTA)
+      ├── Restaurant / Cafe Menu (Sections, items, prices, dietary badges: vegan/vegetarian/gluten-free/spicy)
+      ├── Promo Coupon Card (Discount badge, promo code copy, expiry countdown, checkout CTA)
+      ├── Digital Business Card (Contact info, social links, one-click Save Contact .vcf generator)
+      └── Multi-URL Link-in-Bio Hub (Avatar, bio, list of outbound social links)
 ```
-
-No NgModule required.

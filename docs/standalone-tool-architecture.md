@@ -40,3 +40,8 @@ useTool(): void {
 ```
 
 This opens `http://localhost:4200/tools/app/<slug>` in a new browser tab, launching the pure, standalone tool application without any Acklet platform header or footer.
+
+## Related Documentation & Guidelines
+- [responsive-design-system.md](./responsive-design-system.md) - Device classes, mobile state flows, and responsive primitives.
+- [ui-design-system.md](./ui-design-system.md) - Design tokens, Spartan UI primitives, and glass constraints.
+- [performance-optimization.md](./performance-optimization.md) - Debounce pipelines, virtual keyboard evasion, and GPU acceleration.

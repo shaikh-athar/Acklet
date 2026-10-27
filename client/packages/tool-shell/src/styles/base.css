@@ -132,7 +132,7 @@ html[data-theme="light"] body:has(.ts-root),
     color var(--ts-dur-fast, 150ms) var(--ts-ease);
 }
 
-.ts-root button:hover,
+.ts-root button:not([data-variant="primary"]):not(.split-primary-btn):not(.split-arrow-btn):not(.guided-next-btn):not(.btn-primary):not([class*="primary"]):not([class*="accent"]):hover,
 .ts-root .ts-btn:hover,
 .ts-root .ts-icon-btn:hover,
 .ts-root .ts-action-btn:hover {
@@ -140,7 +140,7 @@ html[data-theme="light"] body:has(.ts-root),
   outline: none !important;
 }
 
-.ts-root button:active,
+.ts-root button:not([data-variant="primary"]):not(.split-primary-btn):not(.split-arrow-btn):not(.guided-next-btn):not(.btn-primary):not([class*="primary"]):not([class*="accent"]):active,
 .ts-root .ts-btn:active,
 .ts-root .ts-icon-btn:active,
 .ts-root .ts-action-btn:active {

@@ -1,10 +1,15 @@
-import { Component, input, computed, signal, OnInit, isDevMode, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, computed, signal, inject, OnInit, isDevMode, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ToolRegistryItem } from '@acklet/tool-registry';
+import { ToolRegistryItem, resolveToolAccent } from '@acklet/tool-registry';
 import { getToolUrl, getToolsHubUrl } from '@acklet/shared';
+import { ToolSidebarService } from '../../services/tool-sidebar.service';
+import { ToolThemeService } from '../../services/tool-theme.service';
 import { TsIconComponent } from '../icon/ts-icon.component';
 import { TsToolTileComponent } from '../primitive/ts-tool-tile.component';
 import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
+
+export const FAVORITES_KEY = 'acklet.tools.favorites';
+export const RECENT_KEY = 'acklet.tools.recent';
 
 @Component({
   selector: 'ts-tool-list',
@@ -31,6 +36,9 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
                   [tsTooltip]="isRail() ? (tool.category + ' / ' + tool.name) : ''"
                   tooltipPosition="right"
                   [attr.aria-label]="tool.name"
+                  [style.--row-accent]="getToolAccent(tool)"
+                  [style.--row-accent-soft]="getToolAccentSoft(tool)"
+                  (click)="onToolSelect()"
                 >
                   @if (treeMarker() === 'dot' && !isRail()) {
                     <span class="ts-hollow-dot" aria-hidden="true"></span>
@@ -49,6 +57,100 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
           </ul>
         </div>
       } @else {
+        <!-- Saved / Favorites Section (if any favorited tools) -->
+        @if (!isRail() && favoriteTools().length > 0) {
+          <div class="ts-special-section">
+            <button 
+              type="button" 
+              class="ts-group-header-btn ts-special-header-btn"
+              (click)="toggleFavoritesOpen()"
+              [attr.aria-expanded]="isFavoritesOpen()"
+            >
+              <div class="ts-group-header-left">
+                <ts-icon name="star" [size]="18" class="ts-special-cat-icon ts-star-icon" />
+                <span class="ts-group-title">Favorites</span>
+                <span class="ts-count-pill">{{ favoriteTools().length }}</span>
+              </div>
+              <ts-icon 
+                name="chevron-right" 
+                [size]="14" 
+                class="ts-chevron-icon"
+                [class.is-expanded]="isFavoritesOpen()"
+                [class.is-collapsed]="!isFavoritesOpen()"
+              />
+            </button>
+
+            @if (isFavoritesOpen()) {
+              <ul class="ts-tools-group-items ts-tree-sub-menu" role="list">
+                @for (fav of favoriteTools(); track fav.slug) {
+                  <li role="listitem">
+                    <a 
+                      [href]="getToolUrl(fav.slug)" 
+                      class="ts-tool-item" 
+                      [class.active]="fav.slug === currentSlug()"
+                      [attr.aria-current]="fav.slug === currentSlug() ? 'page' : null"
+                      [attr.aria-label]="fav.name"
+                      [style.--row-accent]="getToolAccent(fav)"
+                      [style.--row-accent-soft]="getToolAccentSoft(fav)"
+                      (click)="onToolSelect()"
+                    >
+                      <ts-tool-tile [icon]="fav.icon" [name]="fav.name" [size]="20" [flat]="true" />
+                      <span class="ts-tool-name">{{ fav.name }}</span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        }
+
+        <!-- Recent Tools Section (if any recently visited tools) -->
+        @if (!isRail() && recentTools().length > 0) {
+          <div class="ts-special-section">
+            <button 
+              type="button" 
+              class="ts-group-header-btn ts-special-header-btn"
+              (click)="toggleRecentOpen()"
+              [attr.aria-expanded]="isRecentOpen()"
+            >
+              <div class="ts-group-header-left">
+                <ts-icon name="clock" [size]="18" class="ts-special-cat-icon ts-clock-icon" />
+                <span class="ts-group-title">Recent</span>
+                <span class="ts-count-pill">{{ recentTools().length }}</span>
+              </div>
+              <ts-icon 
+                name="chevron-right" 
+                [size]="14" 
+                class="ts-chevron-icon"
+                [class.is-expanded]="isRecentOpen()"
+                [class.is-collapsed]="!isRecentOpen()"
+              />
+            </button>
+
+            @if (isRecentOpen()) {
+              <ul class="ts-tools-group-items ts-tree-sub-menu" role="list">
+                @for (rec of recentTools(); track rec.slug) {
+                  <li role="listitem">
+                    <a 
+                      [href]="getToolUrl(rec.slug)" 
+                      class="ts-tool-item" 
+                      [class.active]="rec.slug === currentSlug()"
+                      [attr.aria-current]="rec.slug === currentSlug() ? 'page' : null"
+                      [attr.aria-label]="rec.name"
+                      [style.--row-accent]="getToolAccent(rec)"
+                      [style.--row-accent-soft]="getToolAccentSoft(rec)"
+                      (click)="onToolSelect()"
+                    >
+                      <ts-tool-tile [icon]="rec.icon" [name]="rec.name" [size]="20" [flat]="true" />
+                      <span class="ts-tool-name">{{ rec.name }}</span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        }
+
         <!-- Section Label: Categories -->
         @if (!isRail()) {
           <div class="ts-categories-label">Categories</div>
@@ -92,6 +194,9 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
                         [tsTooltip]="group.category + ' / ' + tool.name"
                         tooltipPosition="right"
                         [attr.aria-label]="tool.name"
+                        [style.--row-accent]="getToolAccent(tool)"
+                        [style.--row-accent-soft]="getToolAccentSoft(tool)"
+                        (click)="onToolSelect()"
                       >
                         <ts-tool-tile [icon]="tool.icon" [name]="tool.name" [size]="20" [flat]="true" />
                       </a>
@@ -118,6 +223,9 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
                             [class.active]="tool.slug === currentSlug()"
                             [attr.aria-current]="tool.slug === currentSlug() ? 'page' : null"
                             [attr.aria-label]="tool.name"
+                            [style.--row-accent]="getToolAccent(tool)"
+                            [style.--row-accent-soft]="getToolAccentSoft(tool)"
+                            (click)="onToolSelect()"
                           >
                             @if (treeMarker() === 'dot') {
                               <span class="ts-hollow-dot" aria-hidden="true"></span>
@@ -136,6 +244,7 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
                           <a 
                             [href]="hubUrl + '?tab=' + encodeCategory(group.category)" 
                             class="ts-tool-item ts-view-all-item"
+                            (click)="onToolSelect()"
                           >
                             <span class="ts-view-all-text">View all</span>
                           </a>
@@ -167,6 +276,44 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       gap: 16px;
       padding: 0;
       background: transparent;
+    }
+
+    .ts-special-section {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 6px;
+    }
+
+    .ts-special-header-btn {
+      margin-bottom: 2px;
+    }
+
+    .ts-special-cat-icon {
+      flex-shrink: 0;
+    }
+
+    .ts-star-icon {
+      color: #F59E0B;
+    }
+
+    .ts-clock-icon {
+      color: #3B82F6;
+    }
+
+    .ts-count-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--ts-surface-inset, rgba(255, 255, 255, 0.08));
+      color: var(--text-3, #71717A);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      margin-left: 6px;
     }
 
     .ts-categories-label {
@@ -387,10 +534,10 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
         color: var(--text, #09090B);
       }
       .ts-tool-item:hover ts-tool-tile {
-        color: var(--accent-strong, #111111);
+        color: var(--row-accent, var(--accent-strong, #111111));
       }
       .ts-tool-item:hover .ts-hollow-dot {
-        border-color: var(--accent-strong, #111111);
+        border-color: var(--row-accent, var(--accent-strong, #111111));
       }
     }
 
@@ -399,17 +546,17 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
     }
 
     .ts-tool-item.active {
-      background: var(--ts-row-active, rgba(15, 23, 42, 0.07));
+      background: var(--row-accent-soft, var(--accent-soft, var(--ts-row-active, rgba(15, 23, 42, 0.07))));
       color: var(--text, #09090B);
       font-weight: 500;
     }
 
     .ts-tool-item.active ts-tool-tile {
-      color: var(--accent-strong, #111111);
+      color: var(--row-accent, var(--accent-strong, #111111));
     }
 
     .ts-tool-item.active .ts-hollow-dot {
-      border-color: var(--accent-strong, #111111);
+      border-color: var(--row-accent, var(--accent-strong, #111111));
     }
 
     :host-context([data-theme="dark"]) .ts-tool-item {
@@ -417,11 +564,12 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
     }
 
     :host-context([data-theme="dark"]) .ts-tool-item.active {
+      background: var(--row-accent-soft, var(--accent-soft, rgba(255, 255, 255, 0.08)));
       color: var(--text, #FCFCFC);
     }
 
     .ts-tool-item:focus-visible {
-      outline: 2px solid var(--accent-strong) !important;
+      outline: 2px solid var(--row-accent, var(--accent-strong)) !important;
       outline-offset: 1px;
     }
 
@@ -447,7 +595,7 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: var(--accent);
+      background: var(--row-accent, var(--accent));
       flex-shrink: 0;
     }
 
@@ -503,6 +651,9 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
   `]
 })
 export class TsToolListComponent implements OnInit {
+  private readonly sidebarService = inject(ToolSidebarService, { optional: true });
+  private readonly themeService = inject(ToolThemeService);
+
   readonly tools = input<ToolRegistryItem[]>([]);
   readonly currentSlug = input<string>('');
   readonly isRail = input<boolean>(false);
@@ -511,7 +662,75 @@ export class TsToolListComponent implements OnInit {
   readonly getToolUrl = getToolUrl;
   readonly hubUrl = getToolsHubUrl();
 
+  getToolAccent(tool: ToolRegistryItem): string {
+    const mode = this.themeService.effectiveTheme();
+    return resolveToolAccent(tool, mode).base;
+  }
+
+  getToolAccentSoft(tool: ToolRegistryItem): string {
+    const mode = this.themeService.effectiveTheme();
+    return resolveToolAccent(tool, mode).soft;
+  }
+
+  onToolSelect(): void {
+    this.sidebarService?.closeMobileDrawer();
+  }
+
   readonly treeMarker = signal<'icon' | 'dot'>('icon');
+
+  readonly favoriteSlugs = signal<string[]>([]);
+  readonly recentSlugs = signal<string[]>([]);
+  readonly isFavoritesOpen = signal<boolean>(true);
+  readonly isRecentOpen = signal<boolean>(true);
+
+  toggleFavoritesOpen(): void {
+    this.isFavoritesOpen.update(v => !v);
+  }
+
+  toggleRecentOpen(): void {
+    this.isRecentOpen.update(v => !v);
+  }
+
+  readonly favoriteTools = computed<ToolRegistryItem[]>(() => {
+    const slugs = new Set(this.favoriteSlugs());
+    return this.tools().filter(t => slugs.has(t.slug));
+  });
+
+  readonly recentTools = computed<ToolRegistryItem[]>(() => {
+    const current = this.currentSlug();
+    const map = new Map(this.tools().map(t => [t.slug, t]));
+    return this.recentSlugs()
+      .filter(s => s !== current)
+      .map(s => map.get(s))
+      .filter((t): t is ToolRegistryItem => !!t)
+      .slice(0, 4);
+  });
+
+  private loadFavorites(): void {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = window.localStorage.getItem(FAVORITES_KEY);
+        if (raw) {
+          this.favoriteSlugs.set(JSON.parse(raw));
+        }
+      }
+    } catch {}
+  }
+
+  private loadAndTrackRecents(): void {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = window.localStorage.getItem(RECENT_KEY);
+        let list: string[] = raw ? JSON.parse(raw) : [];
+        const current = this.currentSlug();
+        if (current) {
+          list = [current, ...list.filter(s => s !== current)].slice(0, 8);
+          window.localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+        }
+        this.recentSlugs.set(list);
+      }
+    } catch {}
+  }
 
   categoryIcon(category: string): string {
     const norm = (category || '').toLowerCase();
@@ -558,6 +777,17 @@ export class TsToolListComponent implements OnInit {
       next.delete(currentCat);
       return next;
     });
+
+    this.loadFavorites();
+    this.loadAndTrackRecents();
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', (e) => {
+        if (e.key === FAVORITES_KEY) {
+          this.loadFavorites();
+        }
+      });
+    }
   }
 
   toggleCategory(category: string): void {

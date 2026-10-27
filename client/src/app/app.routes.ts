@@ -4,6 +4,42 @@ import { authGuard, publisherGuard, adminGuard } from './core/auth/auth.guard';
 import { ToolsRedirectComponent } from './pages/tools-redirect/tools-redirect';
 
 export const routes: Routes = [
+  // --- Standalone Tool Applications (Pure Tool UI with ts-shell, No Platform Shell) ---
+  {
+    path: 'qr',
+    loadComponent: () => import('../../apps/tool-qr-generator/src/app/app.component').then(m => m.AppComponent),
+    title: 'QR Code Generator — Acklet'
+  },
+  { path: 'qr-generator', redirectTo: 'qr', pathMatch: 'full' },
+  {
+    path: 'tools/qr-generator',
+    loadComponent: () => import('../../apps/tool-qr-generator/src/app/app.component').then(m => m.AppComponent),
+    title: 'QR Code Generator — Acklet'
+  },
+  {
+    path: 'tools/qr-generator/view/:code',
+    loadComponent: () => import('../../apps/tool-qr-generator/src/components/landing-viewer/landing-viewer.component').then(m => m.QrLandingViewerComponent),
+    title: 'QR Destination — Acklet'
+  },
+  {
+    path: 'tools/qr-generator/notes/:code',
+    loadComponent: () => import('../../apps/tool-qr-generator/src/components/notes-viewer/notes-viewer.component').then(m => m.QrNotesViewerComponent),
+    title: 'Shared Note — Acklet'
+  },
+  {
+    path: 'notes/:code',
+    loadComponent: () => import('../../apps/tool-qr-generator/src/components/notes-viewer/notes-viewer.component').then(m => m.QrNotesViewerComponent),
+    title: 'Shared Note — Acklet'
+  },
+  { path: 'tools/qr', redirectTo: 'tools/qr-generator', pathMatch: 'full' },
+  {
+    path: 'tools/clipboard',
+    loadComponent: () => import('../../apps/tool-online-clipboard/src/app/app.component').then(m => m.AppComponent),
+    title: 'Online Clipboard — Acklet'
+  },
+  { path: 'tools/online-clipboard', redirectTo: 'tools/clipboard', pathMatch: 'full' },
+  { path: 'tools/app/airvault', redirectTo: 'tools/clipboard', pathMatch: 'full' },
+
   // --- Public Pages under main header/navbar layout ---
   {
     path: '',

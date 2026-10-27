@@ -76,7 +76,16 @@
           },
           "defaultConfiguration": "development",
           "options": {
-            "port": 4200
+            "port": 4200,
+            "proxyConfig": "proxy.conf.json",
+            "allowedHosts": [
+              "melvin-operose-disconsolately.ngrok-free.dev",
+              ".ngrok-free.dev",
+              ".ngrok-free.app",
+              ".ngrok.io",
+              "localhost",
+              ".localhost"
+            ]
           }
         }
       }
@@ -116,6 +125,54 @@
                   "with": "apps/tool-online-clipboard/src/environments/environment.prod.ts"
                 }
               ],
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "1.5MB",
+                  "maximumError": "2MB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        }
+      }
+    },
+    "tool-qr-generator": {
+      "projectType": "application",
+      "schematics": {},
+      "root": "apps/tool-qr-generator",
+      "sourceRoot": "apps/tool-qr-generator/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "apps/tool-qr-generator/src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
+            ],
+            "styles": [
+              "apps/tool-qr-generator/src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "qrcode",
+              "lottie-web",
+              "dijkstrajs"
+            ]
+          },
+          "configurations": {
+            "production": {
               "budgets": [
                 {
                   "type": "initial",

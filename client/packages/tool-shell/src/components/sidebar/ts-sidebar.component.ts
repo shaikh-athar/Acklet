@@ -1,89 +1,76 @@
-import { Component, input, inject, signal, computed, HostListener, ElementRef, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, inject, signal, computed, effect, HostListener, ElementRef, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolRegistryItem } from '@acklet/tool-registry';
 import { getToolsHubUrl, getPortalUrl } from '@acklet/shared';
 import { ToolSidebarService } from '../../services/tool-sidebar.service';
+import { SidebarStateService } from '../../services/sidebar-state.service';
 import { TsIconComponent } from '../icon/ts-icon.component';
-import { TsToolListComponent } from './ts-tool-list.component';
+import { TsToolListComponent, FAVORITES_KEY } from './ts-tool-list.component';
 import { TsSearchComponent } from '../search/ts-search.component';
 import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
-import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
+import { ToolSettingsService } from '../../services/tool-settings.service';
+import { DrawerGestureService } from '../../services/drawer-gesture.service';
 
 @Component({
   selector: 'ts-sidebar',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '[class.is-pinned]': 'sidebarState.isPinned()',
+    '[class.is-peek]': 'sidebarState.isPeek()',
+    '[class.is-hidden]': 'sidebarState.isHidden()',
+    '[class.is-mobile-open]': 'sidebarService.isMobileDrawerOpen()',
+    '[attr.data-mode]': 'sidebarState.mode()'
+  },
   imports: [
     CommonModule,
     TsIconComponent,
     TsToolListComponent,
     TsSearchComponent,
-    TsTooltipDirective,
-    TsToolDetailsComponent
+    TsTooltipDirective
   ],
   template: `
-    <!-- Desktop Left Sidebar (Floating Card) -->
+    <!-- Desktop Left Sidebar (Floating / Pinned Card) -->
     <aside
       class="ts-sidebar-card hide-mobile"
-      [class.is-collapsed]="sidebarService.isCollapsed()"
-      [class.is-dragging]="sidebarService.isDragging()"
-      [style.width.px]="sidebarService.isCollapsed() ? 72 : sidebarService.width()"
+      [class.is-pinned]="sidebarState.isPinned()"
+      [class.is-peek]="sidebarState.isPeek()"
+      [class.is-hidden]="sidebarState.isHidden()"
+      [attr.aria-hidden]="sidebarState.isHidden()"
+      [inert]="sidebarState.isHidden()"
+      [style.width.px]="sidebarWidth()"
       aria-label="Tool Navigation Directory"
     >
       <div class="ts-sidebar-inner">
-        <!-- 1. Top Action Rows (Open) or Rail Top Actions (Collapsed) -->
+        <!-- 1. Top Action Rows: All tools + Search tools -->
         <div class="ts-sidebar-top-actions">
-          @if (!sidebarService.isCollapsed()) {
-            <!-- Row 1: grid icon + All tools -->
-            <a [href]="hubUrl" class="ts-action-row" title="Browse all tools" aria-label="Browse all tools">
-              <ts-icon name="grid" [size]="20" class="ts-action-row-icon" />
-              <span class="ts-action-row-label">All tools</span>
-            </a>
+          <!-- Row 1: grid icon + All tools -->
+          <a [href]="hubUrl" class="ts-action-row" title="Browse all tools" aria-label="Browse all tools">
+            <ts-icon name="grid" [size]="20" class="ts-action-row-icon" />
+            <span class="ts-action-row-label">All tools</span>
+          </a>
 
-            <!-- Row 2: search icon + Search tools OR Inline ts-search -->
-            @if (showInlineSearch()) {
-              <div class="ts-sidebar-search-container">
-                <ts-search 
-                  #searchInput
-                  [value]="searchQuery()" 
-                  (valueChange)="searchQuery.set($event)" 
-                  (keydown)="onSearchKeydown($event)"
-                />
-              </div>
-            } @else {
-              <button 
-                type="button" 
-                class="ts-action-row ts-action-search-btn"
-                (click)="openSearch()"
-                aria-label="Search tools"
-              >
-                <ts-icon name="search" [size]="20" class="ts-action-row-icon" />
-                <span class="ts-action-row-label">Search tools</span>
-              </button>
-            }
-          } @else {
-            <!-- Rail Top Buttons -->
-            <div class="ts-rail-top-column">
-              <a 
-                [href]="hubUrl" 
-                class="ts-rail-action-btn" 
-                tsTooltip="All tools" 
-                tooltipPosition="right" 
-                aria-label="All tools"
-              >
-                <ts-icon name="grid" [size]="20" />
-              </a>
-              <button 
-                type="button" 
-                class="ts-rail-action-btn"
-                (click)="openSearchFromRail()"
-                tsTooltip="Search tools"
-                tooltipPosition="right"
-                aria-label="Search tools"
-              >
-                <ts-icon name="search" [size]="20" />
-              </button>
+          <!-- Row 2: search icon + Search tools OR Inline ts-search -->
+          @if (showInlineSearch()) {
+            <div class="ts-sidebar-search-container">
+              <ts-search 
+                #searchInput
+                [value]="searchQuery()" 
+                (valueChange)="searchQuery.set($event)" 
+                (keydown)="onSearchKeydown($event)"
+              />
             </div>
+          } @else {
+            <button 
+              type="button" 
+              class="ts-action-row ts-action-search-btn"
+              (click)="openSearch()"
+              aria-label="Search tools"
+            >
+              <ts-icon name="search" [size]="20" class="ts-action-row-icon" />
+              <span class="ts-action-row-label">Search tools</span>
+              <kbd class="ts-search-kbd">⌘K</kbd>
+            </button>
           }
         </div>
 
@@ -92,65 +79,33 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
           <ts-tool-list 
             [tools]="tools()" 
             [currentSlug]="currentSlug()" 
-            [isRail]="sidebarService.isCollapsed()"
+            [isRail]="false"
             [searchQuery]="searchQuery()"
           />
 
-          <!-- Embedded Tool Details inside Aside Sidebar -->
-          @if (!sidebarService.isCollapsed() && tool()) {
-            <div class="ts-sidebar-details-container">
-              <ts-tool-details [tool]="tool()" />
-            </div>
-          }
         </div>
 
-        <!-- 3. Pinned Bottom Bar: Help (left) + Collapse/Expand (right) -->
+        <!-- 3. Pinned Bottom Bar: Help (left) + Settings (right) -->
         <div class="ts-sidebar-pinned-footer">
-          @if (!sidebarService.isCollapsed()) {
-            <a 
-              [href]="portalUrl + '/community/help'" 
-              class="ts-footer-btn" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              tsTooltip="Help & Support" 
-              aria-label="Help & Support"
-            >
-              <ts-icon name="help-circle" [size]="20" />
-            </a>
-            <button 
-              type="button" 
-              class="ts-footer-btn" 
-              (click)="sidebarService.toggleCollapse()" 
-              tsTooltip="Collapse sidebar" 
-              aria-label="Collapse sidebar"
-            >
-              <ts-icon name="panel-left-close" [size]="20" />
-            </button>
-          } @else {
-            <div class="ts-rail-footer-column">
-              <a 
-                [href]="portalUrl + '/community/help'" 
-                class="ts-rail-action-btn" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                tsTooltip="Help" 
-                tooltipPosition="right" 
-                aria-label="Help"
-              >
-                <ts-icon name="help-circle" [size]="20" />
-              </a>
-              <button 
-                type="button" 
-                class="ts-rail-action-btn"
-                (click)="sidebarService.toggleCollapse()"
-                tsTooltip="Expand sidebar"
-                tooltipPosition="right"
-                aria-label="Expand sidebar"
-              >
-                <ts-icon name="panel-left-open" [size]="20" />
-              </button>
-            </div>
-          }
+          <a 
+            [href]="portalUrl + '/community/help'" 
+            class="ts-footer-btn" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            tsTooltip="Help & Support" 
+            aria-label="Help & Support"
+          >
+            <ts-icon name="help-circle" [size]="18" />
+          </a>
+          <button
+            type="button"
+            class="ts-footer-btn ts-settings-footer-btn"
+            (click)="toggleSettings()"
+            tsTooltip="Settings"
+            aria-label="Settings"
+          >
+            <ts-icon name="settings" [size]="18" />
+          </button>
         </div>
       </div>
     </aside>
@@ -161,6 +116,9 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
         class="ts-mobile-sheet-backdrop" 
         (click)="sidebarService.closeMobileDrawer()" 
         (keydown)="onBackdropKeydown($event)"
+        (pointerdown)="onBackdropPointerDown($event)"
+        (pointermove)="onBackdropPointerMove($event)"
+        (pointerup)="onBackdropPointerUp($event)"
         role="dialog" 
         aria-modal="true" 
         aria-label="Navigation Menu"
@@ -168,88 +126,92 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
         <aside 
           class="ts-mobile-sheet-panel" 
           (click)="$event.stopPropagation()"
+          (pointerdown)="onPanelPointerDown($event)"
+          (pointermove)="onPanelPointerMove($event)"
+          (pointerup)="onPanelPointerUp($event)"
+          (touchstart)="onTouchStart($event)"
+          (touchmove)="onTouchMove($event)"
+          (touchend)="onTouchEnd($event)"
+          [style.transform]="touchTranslateX()"
         >
           <div class="ts-sheet-header">
-            <a [href]="hubUrl" class="ts-brand-link">
+            <a [href]="hubUrl" class="ts-brand-link" (click)="sidebarService.closeMobileDrawer()">
               <ts-icon name="zap" [size]="18" />
               <span class="ts-brand-wordmark">Acklet Tools</span>
             </a>
             <button 
               type="button" 
               class="ts-sheet-close-btn"
-              (click)="sidebarService.closeMobileDrawer()"
+              (click)="onCloseButtonClick($event)"
               aria-label="Close menu"
             >
               <ts-icon name="x" [size]="18" />
             </button>
-          </div>
+          </div>          <!-- Updated Mobile/Tablet Sidebar matching Desktop Card Design -->
+          <div class="ts-sidebar-inner ts-mobile-sidebar-inner">
+            <!-- 1. Top Action Rows: All tools + Search tools -->
+            <div class="ts-sidebar-top-actions">
+              <a [href]="hubUrl" class="ts-action-row" (click)="sidebarService.closeMobileDrawer()" title="Browse all tools" aria-label="Browse all tools">
+                <ts-icon name="grid" [size]="20" class="ts-action-row-icon" />
+                <span class="ts-action-row-label">All tools</span>
+              </a>
 
-          <!-- Section Links for this tool (on mobile) -->
-          @if (sectionLinks().length > 0) {
-            <div class="ts-sheet-sections">
-              <div class="ts-sheet-section-title">This Tool</div>
-              <div class="ts-sheet-section-pills">
-                @for (sec of sectionLinks(); track sec.id) {
-                  <button 
-                    type="button" 
-                    class="ts-sheet-section-pill"
-                    (click)="scrollToSection($event, sec.id)"
-                  >
-                    {{ sec.label }}
-                  </button>
-                }
-              </div>
+              @if (showInlineSearch()) {
+                <div class="ts-sidebar-search-container">
+                  <ts-search 
+                    #searchInputMobile
+                    [value]="searchQuery()" 
+                    (valueChange)="searchQuery.set($event)" 
+                    (keydown)="onSearchKeydown($event)"
+                  />
+                </div>
+              } @else {
+                <button 
+                  type="button" 
+                  class="ts-action-row ts-action-search-btn"
+                  (click)="openSearch()"
+                  aria-label="Search tools"
+                >
+                  <ts-icon name="search" [size]="20" class="ts-action-row-icon" />
+                  <span class="ts-action-row-label">Search tools</span>
+                  <kbd class="ts-search-kbd">⌘K</kbd>
+                </button>
+              }
             </div>
-          }
 
-          <!-- Mobile Actions (Share & Save under 480px) -->
-          <div class="ts-sheet-mobile-actions">
-            <button 
-              type="button" 
-              class="ts-sheet-action-btn"
-              (click)="copyShareLink()"
-            >
-              <ts-icon [name]="copiedLink() ? 'check' : 'link'" [size]="16" />
-              <span>{{ copiedLink() ? 'Link copied' : 'Share tool' }}</span>
-            </button>
-            <button 
-              type="button" 
-              class="ts-sheet-action-btn"
-              [class.is-favorited]="isFavorited()"
-              (click)="toggleFavorite()"
-            >
-              <ts-icon name="star" [size]="16" [class.ts-sheet-star-icon]="isFavorited()" />
-              <span>{{ isFavorited() ? 'Saved to favorites' : 'Save to favorites' }}</span>
-            </button>
-          </div>
+            <!-- 2. Nav Area: Scrolls Internally with same ts-tool-list -->
+            <div class="ts-sidebar-scroll-body">
+              <ts-tool-list 
+                [tools]="tools()" 
+                [currentSlug]="currentSlug()" 
+                [isRail]="false"
+                [searchQuery]="searchQuery()"
+              />
+            </div>
 
-          <!-- Mobile Search Row -->
-          <div class="ts-sidebar-search-row">
-            <ts-search [value]="searchQuery()" (valueChange)="searchQuery.set($event)" />
-          </div>
-
-          <!-- Mobile Sheet Scroll Body with same ts-tool-list -->
-          <div class="ts-sidebar-scroll-body">
-            <ts-tool-list 
-              [tools]="tools()" 
-              [currentSlug]="currentSlug()" 
-              [isRail]="false"
-              [searchQuery]="searchQuery()"
-            />
-
-            <!-- Embedded Tool Details inside Mobile Drawer -->
-            @if (tool()) {
-              <div class="ts-sidebar-details-container">
-                <ts-tool-details [tool]="tool()" />
-              </div>
-            }
-          </div>
-
-          <div class="ts-sidebar-pinned-footer">
-            <a [href]="hubUrl" class="ts-footer-link">
-              <ts-icon name="grid" [size]="14" />
-              <span>All tools</span>
-            </a>
+            <!-- 3. Pinned Bottom Bar: Help (left) + Settings (right) -->
+            <div class="ts-sidebar-pinned-footer">
+              <a 
+                [href]="portalUrl + '/community/help'" 
+                class="ts-footer-btn" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                tsTooltip="Help & Support" 
+                aria-label="Help & Support"
+                (click)="onHelpClick($event)"
+              >
+                <ts-icon name="help-circle" [size]="18" />
+              </a>
+              <button
+                type="button"
+                class="ts-footer-btn ts-settings-footer-btn"
+                (click)="onSettingsClick($event)"
+                tsTooltip="Settings"
+                aria-label="Settings"
+              >
+                <ts-icon name="settings" [size]="18" />
+              </button>
+            </div>
           </div>
         </aside>
       </div>
@@ -260,11 +222,38 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
       display: block;
       height: 100%;
       min-height: 0;
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: var(--sidebar-width, 272px);
+      z-index: 50;
+      pointer-events: none;
+      transition: width 240ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    :host(.is-pinned) {
+      position: relative;
+      left: auto;
+      top: auto;
+      bottom: auto;
+      width: 100%;
+      z-index: 10;
+      pointer-events: auto;
+    }
+
+    :host(.is-peek) {
+      pointer-events: auto;
+    }
+
+    :host(.is-mobile-open) {
+      pointer-events: auto !important;
     }
 
     .ts-sidebar-card {
       position: relative;
       height: 100%;
+      width: 100%;
       /* Glass card: gradient fill, blur, edge ring, shadow */
       background: linear-gradient(
         180deg,
@@ -281,11 +270,56 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
       box-sizing: border-box;
       min-width: 0;
       min-height: 0;
-      transition: width 200ms var(--ts-ease-out),
-                  background var(--ts-dur-hover, 220ms) var(--ts-ease);
       user-select: none;
       z-index: var(--ts-z-chrome, 10);
       transform: translateZ(0);
+      transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 240ms ease-out,
+                  box-shadow 240ms ease,
+                  background var(--ts-dur-hover, 220ms) var(--ts-ease);
+    }
+
+    :host(.is-hidden) .ts-sidebar-card {
+      transform: translateX(calc(-100% - 24px));
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    :host(.is-peek) .ts-sidebar-card {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: auto;
+      box-shadow: var(--ts-edge), 0 20px 48px -12px rgba(0, 0, 0, 0.5), var(--ts-shadow);
+    }
+
+    :host(.is-pinned) .ts-sidebar-card {
+      transform: none;
+      opacity: 1;
+      pointer-events: auto;
+      box-shadow: var(--ts-edge), var(--ts-shadow);
+    }
+
+    :host(.is-peek) .ts-sidebar-top-actions {
+      animation: tsStaggerIn 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation-delay: 40ms;
+    }
+    :host(.is-peek) .ts-sidebar-scroll-body {
+      animation: tsStaggerIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation-delay: 80ms;
+    }
+    :host(.is-peek) .ts-sidebar-pinned-footer {
+      animation: tsStaggerIn 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation-delay: 120ms;
+    }
+    @keyframes tsStaggerIn {
+      from {
+        opacity: 0;
+        transform: translateX(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
     }
 
     .ts-sidebar-inner {
@@ -378,6 +412,28 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
       height: 36px;
       display: flex;
       align-items: center;
+    }
+
+    .ts-search-kbd {
+      margin-left: auto;
+      font-family: var(--font-mono, ui-monospace, monospace);
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1;
+      padding: 3px 6px;
+      border-radius: 6px;
+      background: var(--ts-kbd-bg, rgba(15, 23, 42, 0.05));
+      color: var(--text-3, #8E8E93);
+      border: 1px solid var(--border, rgba(15, 23, 42, 0.08));
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+      user-select: none;
+      pointer-events: none;
+    }
+
+    :host-context([data-theme="dark"]) .ts-search-kbd {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.1);
+      color: var(--text-3, #71717A);
     }
 
     /* Rail top/footer icon columns */
@@ -493,6 +549,7 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
       color: var(--text-2, #52525B);
       cursor: pointer;
       text-decoration: none;
+      pointer-events: auto !important;
       transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
                   color var(--ts-dur-fast, 150ms) var(--ts-ease),
                   transform var(--ts-dur-press, 150ms) var(--ts-ease);
@@ -516,6 +573,19 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
 
     :host-context([data-theme="dark"]) .ts-footer-btn {
       color: var(--text-2, #B3B3B8);
+    }
+
+    .ts-hover-toggle-btn.is-hover-disabled {
+      color: var(--text-3, #A1A1AA);
+      opacity: 0.6;
+    }
+
+    .ts-hover-toggle-btn:not(.is-hover-disabled) {
+      color: var(--accent-strong, #111111);
+    }
+
+    :host-context([data-theme="dark"]) .ts-hover-toggle-btn:not(.is-hover-disabled) {
+      color: var(--accent-brand, #38BDF8);
     }
 
     .ts-footer-link {
@@ -567,26 +637,51 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
     .ts-mobile-sheet-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.75);
+      background: rgba(0, 0, 0, 0.45);
       backdrop-filter: blur(4px);
-      z-index: var(--ts-z-overlay, 40);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: var(--ts-z-overlay, 100);
       display: flex;
       justify-content: flex-start;
       animation: tsFadeIn 150ms ease-out;
+      touch-action: pan-y;
+      pointer-events: auto !important;
     }
 
     .ts-mobile-sheet-panel {
-      width: 85vw;
+      width: 86vw;
       max-width: 320px;
-      height: 100%;
-      background: var(--ts-overlay-bg);
-      -webkit-backdrop-filter: var(--ts-overlay-filter);
-      backdrop-filter: var(--ts-overlay-filter);
-      border-right: 1px solid var(--ts-overlay-border);
+      height: calc(100% - 20px);
+      margin: 10px;
+      border-radius: var(--shell-radius, 20px);
+      background: var(--bg-card, var(--card, #ffffff));
+      color: var(--text, #18181b);
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
       display: flex;
       flex-direction: column;
-      box-shadow: var(--ts-overlay-shadow, 0 10px 25px rgba(0, 0, 0, 0.2));
+      box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border, rgba(0, 0, 0, 0.08));
       animation: tsSlideIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
+      touch-action: pan-y;
+      will-change: transform;
+      overflow: hidden;
+      z-index: 101;
+      pointer-events: auto !important;
+    }
+
+    :host-context([data-theme="dark"]) .ts-mobile-sheet-panel,
+    [data-theme="dark"] .ts-mobile-sheet-panel {
+      background: var(--bg-card, var(--surface-1, #18181b));
+      color: var(--text, #fcfcfc);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border, rgba(255, 255, 255, 0.08));
+    }
+
+    .ts-mobile-sidebar-inner {
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
     .ts-sheet-header {
@@ -631,6 +726,7 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
       outline: none;
       color: var(--text-muted, #71717A);
       cursor: pointer;
+      pointer-events: auto !important;
       transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
                   color var(--ts-dur-fast, 150ms) var(--ts-ease);
     }
@@ -761,9 +857,13 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
     }
 
     @media (prefers-reduced-motion: reduce) {
+      :host,
       .ts-sidebar-card,
       .ts-mobile-sheet-backdrop,
-      .ts-mobile-sheet-panel {
+      .ts-mobile-sheet-panel,
+      :host(.is-peek) .ts-sidebar-top-actions,
+      :host(.is-peek) .ts-sidebar-scroll-body,
+      :host(.is-peek) .ts-sidebar-pinned-footer {
         transition: none !important;
         animation: none !important;
       }
@@ -772,6 +872,8 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
     @media (max-width: 1023px) {
       :host {
         display: contents !important;
+        position: static !important;
+        pointer-events: auto !important;
       }
       .hide-mobile {
         display: none !important;
@@ -779,14 +881,21 @@ import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
     }
   `]
 })
-export class TsSidebarComponent {
+export class TsSidebarComponent implements OnDestroy {
   readonly tools = input.required<ToolRegistryItem[]>();
   readonly tool = input<ToolRegistryItem | null>(null);
   readonly currentSlug = input<string>('');
 
+  readonly sidebarState = inject(SidebarStateService);
   readonly sidebarService = inject(ToolSidebarService);
+  readonly settingsService = inject(ToolSettingsService);
+  readonly sidebarWidth = computed(() => this.sidebarService.width());
   readonly portalUrl = getPortalUrl();
   readonly hubUrl = getToolsHubUrl();
+
+  toggleSettings(): void {
+    this.settingsService.toggle();
+  }
 
   readonly showInlineSearch = signal<boolean>(false);
   readonly searchQuery = signal<string>('');
@@ -808,6 +917,22 @@ export class TsSidebarComponent {
     this.openSearch();
   }
 
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeydown(event: KeyboardEvent): void {
+    if ((event.metaKey || event.ctrlKey) && (event.key === 'k' || event.key === 'K')) {
+      const target = event.target as HTMLElement | null;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+      if (isInput && target?.closest('.ts-sidebar-search-container')) {
+        return;
+      }
+      event.preventDefault();
+      if (this.sidebarState.isHidden()) {
+        this.sidebarState.peekOpen();
+      }
+      this.openSearch();
+    }
+  }
+
   onSearchKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       this.searchQuery.set('');
@@ -824,8 +949,201 @@ export class TsSidebarComponent {
     }).catch(() => { });
   }
 
+  private readonly drawerGesture = inject(DrawerGestureService);
+
+  // Touch & pointer swipe to dismiss mobile drawer (follows finger, respects thresholds)
+  private readonly internalTouchTranslate = signal<string | null>(null);
+  readonly touchTranslateX = computed<string | null>(() => {
+    const gestureOffset = this.drawerGesture.dragTranslateX();
+    if (gestureOffset !== null) {
+      return `translateX(${gestureOffset}px)`;
+    }
+    return this.internalTouchTranslate();
+  });
+
+  private touchStartX = 0;
+  private touchStartY = 0;
+  private isSwiping = false;
+
+  onCloseButtonClick(e: Event): void {
+    e.stopPropagation();
+    e.preventDefault();
+    this.sidebarService.closeMobileDrawer();
+  }
+
+  onSettingsClick(e: Event): void {
+    e.stopPropagation();
+    e.preventDefault();
+    this.sidebarService.closeMobileDrawer();
+    this.settingsService.open();
+  }
+
+  onHelpClick(e: MouseEvent): void {
+    e.stopPropagation();
+    this.sidebarService.closeMobileDrawer();
+    if (typeof window !== 'undefined') {
+      window.open(this.portalUrl + '/community/help', '_blank', 'noopener,noreferrer');
+    }
+  }
+
+  onPanelPointerDown(e: PointerEvent): void {
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      this.drawerGesture.startSwipeLeft(e.clientX, e.clientY, e.target as HTMLElement);
+    }
+  }
+
+  onPanelPointerMove(e: PointerEvent): void {
+    if ((e.pointerType === 'touch' || e.pointerType === 'pen') && this.drawerGesture.isDragging()) {
+      this.drawerGesture.moveSwipe(e.clientX, e.clientY, true);
+    }
+  }
+
+  onPanelPointerUp(e: PointerEvent): void {
+    if ((e.pointerType === 'touch' || e.pointerType === 'pen') && this.drawerGesture.isDragging()) {
+      const action = this.drawerGesture.endSwipe(true);
+      if (action === 'close') {
+        this.sidebarService.closeMobileDrawer();
+      }
+    }
+  }
+
+  onBackdropPointerDown(e: PointerEvent): void {
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      this.drawerGesture.startSwipeLeft(e.clientX, e.clientY, e.target as HTMLElement);
+    }
+  }
+
+  onBackdropPointerMove(e: PointerEvent): void {
+    if ((e.pointerType === 'touch' || e.pointerType === 'pen') && this.drawerGesture.isDragging()) {
+      this.drawerGesture.moveSwipe(e.clientX, e.clientY, true);
+    }
+  }
+
+  onBackdropPointerUp(e: PointerEvent): void {
+    if ((e.pointerType === 'touch' || e.pointerType === 'pen') && this.drawerGesture.isDragging()) {
+      const action = this.drawerGesture.endSwipe(true);
+      if (action === 'close') {
+        this.sidebarService.closeMobileDrawer();
+      }
+    }
+  }
+
+  onTouchStart(e: TouchEvent): void {
+    if (e.touches.length !== 1) return;
+    this.touchStartX = e.touches[0].clientX;
+    this.touchStartY = e.touches[0].clientY;
+    this.isSwiping = false;
+    this.drawerGesture.startSwipeLeft(this.touchStartX, this.touchStartY, e.target as HTMLElement);
+  }
+
+  onTouchMove(e: TouchEvent): void {
+    if (e.touches.length !== 1) return;
+    const clientX = e.touches[0].clientX;
+    const clientY = e.touches[0].clientY;
+    const deltaX = clientX - this.touchStartX;
+    const deltaY = clientY - this.touchStartY;
+
+    if (deltaX < 0 && Math.abs(deltaX) > Math.abs(deltaY) * 1.05) {
+      this.isSwiping = true;
+      this.internalTouchTranslate.set(`translateX(${deltaX}px)`);
+      this.drawerGesture.moveSwipe(clientX, clientY, true);
+    }
+  }
+
+  onTouchEnd(e: TouchEvent): void {
+    const currentX = e.changedTouches[0]?.clientX ?? 0;
+    const deltaX = currentX - this.touchStartX;
+    let shouldClose = false;
+
+    if (this.drawerGesture.isDragging()) {
+      const action = this.drawerGesture.endSwipe(true);
+      if (action === 'close') {
+        shouldClose = true;
+      }
+    }
+
+    if (!shouldClose && (this.isSwiping || deltaX < -35)) {
+      if (deltaX < -35) {
+        shouldClose = true;
+      }
+    }
+
+    this.internalTouchTranslate.set(null);
+    this.isSwiping = false;
+
+    if (shouldClose) {
+      this.sidebarService.closeMobileDrawer();
+    }
+  }
+
+  constructor() {
+    effect(() => {
+      this.tool();
+      this.currentSlug();
+      this.loadFavoriteState();
+    });
+
+    effect(() => {
+      const open = this.sidebarService.isMobileDrawerOpen();
+      this.sidebarState.setMobileOpen(open);
+      if (typeof document !== 'undefined') {
+        if (open) {
+          document.body.style.overflow = 'hidden';
+          setTimeout(() => {
+            const closeBtn = document.querySelector('.ts-sheet-close-btn') as HTMLButtonElement | null;
+            closeBtn?.focus();
+          }, 60);
+        } else {
+          document.body.style.overflow = '';
+        }
+      }
+    });
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', () => this.loadFavoriteState());
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = '';
+    }
+  }
+
+  private loadFavoriteState(): void {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const slug = this.tool()?.slug || this.currentSlug();
+        if (!slug) {
+          this.isFavorited.set(false);
+          return;
+        }
+        const raw = window.localStorage.getItem(FAVORITES_KEY);
+        const list: string[] = raw ? JSON.parse(raw) : [];
+        this.isFavorited.set(list.includes(slug));
+      }
+    } catch {}
+  }
+
   toggleFavorite(): void {
-    this.isFavorited.update(v => !v);
+    const next = !this.isFavorited();
+    this.isFavorited.set(next);
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const slug = this.tool()?.slug || this.currentSlug();
+        if (slug) {
+          const raw = window.localStorage.getItem(FAVORITES_KEY);
+          let list: string[] = raw ? JSON.parse(raw) : [];
+          if (next) {
+            if (!list.includes(slug)) list.push(slug);
+          } else {
+            list = list.filter(s => s !== slug);
+          }
+          window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(list));
+          window.dispatchEvent(new Event('storage'));
+        }
+      }
+    } catch {}
   }
 
   readonly sectionLinks = computed<{ id: string; label: string }[]>(() => {
@@ -911,8 +1229,8 @@ export class TsSidebarComponent {
     if (this.sidebarService.isMobileDrawerOpen()) {
       this.sidebarService.closeMobileDrawer();
     }
-    if (!this.sidebarService.isCollapsed()) {
-      this.sidebarService.isCollapsed.set(true);
+    if (this.sidebarState.isPeek()) {
+      this.sidebarState.peekClose();
     }
   }
 

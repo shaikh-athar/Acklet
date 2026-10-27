@@ -40,7 +40,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(requestHandler)
-                .ignoringRequestMatchers("/api/v1/auth/**", "/api/v1/github/webhooks", "/.well-known/**", "/api/v1/publish/**", "/api/v1/clipboard/**")
+                .ignoringRequestMatchers("/api/v1/auth/**", "/api/v1/github/webhooks", "/.well-known/**", "/api/v1/publish/**", "/api/v1/clipboard/**", "/api/v1/qr/**", "/api/v1/qr-links/**", "/q/**", "/qr", "/qr/**")
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
@@ -50,6 +50,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 // Public online clipboard endpoints (anonymous cross-device sharing)
                 .requestMatchers("/api/v1/clipboard/**").permitAll()
+                // Public dynamic QR short links & anonymous QR generation
+                .requestMatchers("/q/**", "/qr", "/qr/**").permitAll()
+                .requestMatchers("/api/v1/qr/**").permitAll()
+                .requestMatchers("/api/v1/qr-links/**").permitAll()
                 // Public tools retrieval
                 .requestMatchers(HttpMethod.GET, "/api/v1/tools/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
@@ -67,7 +71,7 @@ public class SecurityConfig {
             .headers(headers -> headers
                 .frameOptions(frame -> frame.deny())
                 .contentTypeOptions(contentType -> {})
-                .referrerPolicy(referrer -> referrer.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                .referrerPolicy(referrer -> referrer.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
                 .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000))
                 .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:8080 https://accounts.google.com https://challenges.cloudflare.com"))
                 .permissionsPolicy(permissions -> permissions.policy("camera=(), microphone=(), geolocation=()"))
@@ -83,8 +87,8 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "X-Correlation-ID", "X-XSRF-TOKEN", "X-Turnstile-Token", "X-Owner-Token"));
-        configuration.setExposedHeaders(List.of("Authorization", "X-Correlation-ID", "X-XSRF-TOKEN", "Retry-After", "X-Owner-Token"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "X-Correlation-ID", "X-XSRF-TOKEN", "X-Turnstile-Token", "X-Owner-Token", "X-Manage-Token"));
+        configuration.setExposedHeaders(List.of("Authorization", "X-Correlation-ID", "X-XSRF-TOKEN", "Retry-After", "X-Owner-Token", "X-Manage-Token"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

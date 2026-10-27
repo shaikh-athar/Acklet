@@ -14,16 +14,21 @@ import {
   AfterViewInit,
   NgZone,
   ChangeDetectionStrategy,
-  effect
+  effect,
+  HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolSidebarService } from '../../services/tool-sidebar.service';
+import { SidebarStateService } from '../../services/sidebar-state.service';
+import { ToolSettingsService } from '../../services/tool-settings.service';
+import { ToolThemeService } from '../../services/tool-theme.service';
 import { getToolsHubUrl, getPortalUrl } from '@acklet/shared';
 import { ToolRegistryItem } from '@acklet/tool-registry';
 import { TsIconComponent } from '../icon/ts-icon.component';
 import { TsThemeToggleComponent } from '../theme/ts-theme-toggle.component';
 import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
 import { HlmKbdImports } from '../../helm/kbd';
+import { FAVORITES_KEY } from '../sidebar/ts-tool-list.component';
 
 export interface SectionNavLink {
   id: string;
@@ -47,21 +52,9 @@ export interface SectionNavLink {
       <!-- Left Zone: Logo / Name + Current Tool Chip Breadcrumb   -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div class="ts-zone-left">
-        @if (showSidebar()) {
-          <button 
-            type="button" 
-            class="ts-mobile-menu-btn" 
-            (click)="sidebarService.toggleMobileDrawer()"
-            aria-label="Toggle navigation menu"
-            tsTooltip="Toggle menu"
-          >
-            <ts-icon name="menu" [size]="18" />
-          </button>
-        }
-
         <!-- Acklet Tools Brand Link to Tools Hub -->
         <a [href]="hubUrl" class="ts-brand-link" title="Acklet Tools Hub">
-          <ts-icon name="zap" [size]="24" class="ts-brand-mark" />
+          <ts-icon name="zap" [size]="22" class="ts-brand-mark" />
           <span class="ts-brand-wordmark">Acklet</span>
         </a>
 
@@ -105,7 +98,7 @@ export interface SectionNavLink {
       </nav>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- Right Zone: Share, Save, Theme Toggle (Order: Share, Save, Theme) -->
+      <!-- Right Zone: Share, Save, Theme Toggle, Tools Drawer   -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div class="ts-zone-right">
         <!-- Share / Copy Link Button -->
@@ -132,29 +125,35 @@ export interface SectionNavLink {
         >
           <div class="ts-star-stage" aria-hidden="true">
             <svg class="ts-nav-star-svg" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <defs>
-                <linearGradient id="tsStarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#F59E0B" />
-                  <stop offset="50%" stop-color="#10B981" />
-                  <stop offset="100%" stop-color="#06B6D4" />
-                </linearGradient>
-              </defs>
               <polygon 
                 points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
-                [attr.fill]="isFavorited() ? 'url(#tsStarGradient)' : 'transparent'"
-                [attr.stroke]="isFavorited() ? 'url(#tsStarGradient)' : 'currentColor'"
+                [attr.fill]="isFavorited() ? 'currentColor' : 'transparent'"
+                stroke="currentColor"
               />
             </svg>
-            <svg class="ts-star-sparkle sp-1" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="#F59E0B"/></svg>
-            <svg class="ts-star-sparkle sp-2" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="#10B981"/></svg>
-            <svg class="ts-star-sparkle sp-3" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="#06B6D4"/></svg>
-            <svg class="ts-star-sparkle sp-4" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="#FBBF24"/></svg>
+            <svg class="ts-star-sparkle sp-1" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="currentColor"/></svg>
+            <svg class="ts-star-sparkle sp-2" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="currentColor"/></svg>
+            <svg class="ts-star-sparkle sp-3" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="currentColor"/></svg>
+            <svg class="ts-star-sparkle sp-4" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="currentColor"/></svg>
           </div>
           <span class="ts-action-label hide-below-1100">{{ isFavorited() ? 'Saved' : 'Save' }}</span>
         </button>
 
-        <!-- ONE Single Theme Toggle -->
+        <!-- ONE Single Theme Toggle (Desktop Only; moved to Navigation Sheet on Mobile/Tablet) -->
         <ts-theme-toggle />
+
+        <!-- Navigation Menu Button (4 circles grid) -->
+        <button
+          type="button"
+          class="ts-tools-grid-btn"
+          [class.active]="isNavMenuOpen()"
+          (click)="toggleNavMenu($event)"
+          [attr.aria-expanded]="isNavMenuOpen()"
+          aria-label="Navigation menu"
+          tsTooltip="Navigation"
+        >
+          <ts-icon name="layout-grid-circles" [size]="18" />
+        </button>
 
         <!-- Optional Primary Action Button if configured -->
         @if (showPrimaryAction()) {
@@ -169,6 +168,116 @@ export interface SectionNavLink {
         }
       </div>
     </header>
+
+    <!-- Navigation Menu: Tablet Anchored Popover / Mobile Clean Sheet -->
+    @if (isNavMenuOpen()) {
+      <div 
+        class="ts-nav-backdrop" 
+        (click)="closeNavMenu()" 
+        aria-hidden="true"
+      ></div>
+
+      <nav 
+        class="ts-nav-panel slide-fade-up" 
+        role="dialog" 
+        aria-modal="true" 
+        aria-label="Navigation menu"
+        (click)="$event.stopPropagation()"
+      >
+        <!-- Mobile Sheet Handle & Header (Visible on phone) -->
+        <div class="ts-nav-sheet-header">
+          <div class="ts-nav-sheet-handle" aria-hidden="true"></div>
+          <div class="ts-nav-sheet-title-row">
+            <span class="ts-nav-sheet-title">Navigation</span>
+            <button 
+              type="button" 
+              class="ts-nav-sheet-close-btn" 
+              (click)="closeNavMenu()"
+              aria-label="Close navigation menu"
+            >
+              <ts-icon name="x" [size]="18" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Section Navigation Links -->
+        <div class="ts-nav-panel-links" role="menu">
+          @for (link of sectionLinks(); track link.id) {
+            <button 
+              type="button" 
+              role="menuitem"
+              class="ts-nav-panel-item" 
+              [class.active]="activeSection() === link.id"
+              (click)="onNavMenuItemClick($event, link.id)"
+            >
+              <span class="ts-nav-item-text">{{ link.label }}</span>
+              @if (activeSection() === link.id) {
+                <span class="ts-nav-item-active-pill">Active</span>
+              }
+            </button>
+          }
+        </div>
+
+        <div class="ts-nav-panel-divider" role="separator"></div>
+
+        <!-- Secondary Actions: Share & Save Tool & Acklet Tools -->
+        <div class="ts-nav-panel-actions">
+          <button 
+            type="button" 
+            role="menuitem"
+            class="ts-nav-panel-item ts-nav-action-row" 
+            (click)="onNavShareClick()"
+          >
+            <ts-icon [name]="copiedLink() ? 'check' : 'link'" [size]="18" class="ts-nav-action-icon" />
+            <span class="ts-nav-item-text">{{ copiedLink() ? 'Link Copied!' : 'Share Tool' }}</span>
+          </button>
+
+          <button 
+            type="button" 
+            role="menuitem"
+            class="ts-nav-panel-item ts-nav-action-row" 
+            [class.is-favorited]="isFavorited()"
+            (click)="onNavSaveClick()"
+          >
+            <ts-icon name="star" [size]="18" class="ts-nav-action-icon" [class.is-fav]="isFavorited()" />
+            <span class="ts-nav-item-text">{{ isFavorited() ? 'Saved to Favorites' : 'Save Tool' }}</span>
+          </button>
+
+          @if (showSidebar()) {
+            <button 
+              type="button" 
+              role="menuitem"
+              class="ts-nav-panel-item ts-nav-action-row" 
+              (click)="openToolsDrawerFromNav()"
+            >
+              <ts-icon name="grid" [size]="18" class="ts-nav-action-icon" />
+              <span class="ts-nav-item-text">Acklet Tools</span>
+            </button>
+          }
+        </div>
+
+        <div class="ts-nav-panel-divider" role="separator"></div>
+
+        <!-- Dark / Light Theme Toggle in Navigation Sheet -->
+        <div class="ts-nav-theme-row" (click)="toggleTheme()" role="menuitem">
+          <div class="ts-nav-theme-left">
+            <ts-icon [name]="isDark() ? 'moon' : 'sun'" [size]="18" class="ts-nav-action-icon" />
+            <span class="ts-nav-item-text">{{ isDark() ? 'Dark Mode' : 'Light Mode' }}</span>
+          </div>
+          <button
+            type="button"
+            class="ts-nav-theme-toggle-switch"
+            [class.is-dark]="isDark()"
+            (click)="$event.stopPropagation(); toggleTheme()"
+            role="switch"
+            [attr.aria-checked]="isDark()"
+            aria-label="Toggle dark mode"
+          >
+            <span class="ts-nav-switch-knob"></span>
+          </button>
+        </div>
+      </nav>
+    }
   `,
   styles: [`
     :host {
@@ -198,8 +307,7 @@ export interface SectionNavLink {
       user-select: none;
       box-sizing: border-box;
       min-width: 0;
-      overflow: hidden;
-      transform: translateZ(0);
+      overflow: visible;
       transition: background var(--ts-dur-base, 200ms) var(--ts-ease),
                   box-shadow var(--ts-dur-base, 200ms) var(--ts-ease);
     }
@@ -248,7 +356,7 @@ export interface SectionNavLink {
     }
 
     .ts-brand-link:hover {
-      opacity: 0.85;
+      opacity: 0.95;
     }
 
     .ts-brand-mark {
@@ -256,9 +364,16 @@ export interface SectionNavLink {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 24px;
-      height: 24px;
+      width: 22px;
+      height: 22px;
       flex-shrink: 0;
+      transition: transform var(--ts-dur-fast, 150ms) var(--ts-ease),
+                  color var(--ts-dur-fast, 150ms) var(--ts-ease);
+    }
+
+    .ts-brand-link:hover .ts-brand-mark {
+      transform: scale(1.1);
+      color: var(--accent);
     }
 
     .ts-brand-wordmark {
@@ -433,6 +548,343 @@ export interface SectionNavLink {
       outline-offset: 2px;
     }
 
+    /* Tools Drawer Grid Button on Right - Only visible on small screen */
+    .ts-tools-grid-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      min-height: 40px;
+      border-radius: var(--ts-radius-control, 12px);
+      background: transparent;
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+      color: var(--text-muted, #71717a);
+      cursor: pointer;
+      outline: none;
+      transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, transform 100ms ease;
+    }
+
+    :host-context([data-theme="dark"]) .ts-tools-grid-btn {
+      border-color: var(--border, rgba(255, 255, 255, 0.1));
+      color: var(--text-muted, #a1a1aa);
+    }
+
+    .ts-tools-grid-btn:hover,
+    .ts-tools-grid-btn.active {
+      background: var(--ts-row-hover, rgba(15, 23, 42, 0.04));
+      color: var(--accent, #2563eb);
+      border-color: var(--border, rgba(0, 0, 0, 0.15));
+    }
+
+    :host-context([data-theme="dark"]) .ts-tools-grid-btn:hover,
+    :host-context([data-theme="dark"]) .ts-tools-grid-btn.active {
+      background: var(--ts-row-hover, rgba(255, 255, 255, 0.06));
+      color: var(--accent, #60a5fa);
+      border-color: var(--border, rgba(255, 255, 255, 0.18));
+    }
+
+    .ts-tools-grid-btn:active {
+      transform: scale(0.97);
+    }
+
+    .ts-tools-grid-btn:focus-visible {
+      outline: 2px solid var(--ts-focus-ring) !important;
+      outline-offset: 2px;
+    }
+
+    /* Navigation Menu Backdrop & Panel (Tablet Anchored Popover / Mobile Clean Sheet) */
+    .ts-nav-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 998;
+      animation: tsFadeIn 150ms ease-out;
+    }
+
+    .ts-nav-panel {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 16px;
+      width: 250px;
+      border-radius: 16px;
+      background: var(--bg-card, var(--card, #ffffff));
+      color: var(--text, #09090b);
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+      box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--border, rgba(0, 0, 0, 0.06));
+      z-index: 999;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      box-sizing: border-box;
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-panel {
+      background: var(--bg-card, var(--surface-1, #18181b));
+      color: var(--text, #fcfcfc);
+      border-color: var(--border, rgba(255, 255, 255, 0.12));
+      box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border, rgba(255, 255, 255, 0.08));
+    }
+
+    .ts-nav-sheet-header {
+      display: none;
+    }
+
+    .ts-nav-panel-links,
+    .ts-nav-panel-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      width: 100%;
+    }
+
+    .ts-nav-panel-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-height: 44px;
+      height: 44px;
+      padding: 0 14px;
+      border-radius: 10px;
+      border: none;
+      background: transparent;
+      color: var(--text, #18181b);
+      font-family: var(--font-body, "Nunito", sans-serif);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: background-color 150ms ease, color 150ms ease;
+      user-select: none;
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-panel-item {
+      color: var(--text, #f1f5f9);
+    }
+
+    .ts-nav-panel-item:hover {
+      background: var(--surface-hover, rgba(15, 23, 42, 0.05));
+      color: var(--accent, #2563eb);
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-panel-item:hover {
+      background: var(--surface-hover, rgba(255, 255, 255, 0.08));
+      color: var(--accent, #3b82f6);
+    }
+
+    .ts-nav-panel-item.active {
+      background: var(--accent-soft, rgba(37, 99, 235, 0.1));
+      color: var(--accent-strong, var(--accent, #1d4ed8));
+      font-weight: 700;
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-panel-item.active {
+      background: var(--accent-soft, rgba(59, 130, 246, 0.16));
+      color: var(--accent-strong, var(--accent, #60a5fa));
+    }
+
+    .ts-nav-item-active-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      background: var(--accent, #111111);
+      color: var(--accent-ink, #ffffff);
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-item-active-pill {
+      background: var(--accent, #60a5fa);
+      color: #000000;
+    }
+
+    .ts-nav-action-row {
+      justify-content: flex-start;
+      gap: 12px;
+    }
+
+    .ts-nav-action-icon {
+      flex-shrink: 0;
+      color: var(--text-muted, #71717a);
+    }
+
+    .ts-nav-action-icon.is-fav {
+      color: #eab308;
+      fill: #eab308;
+    }
+
+    .ts-nav-panel-divider {
+      height: 1px;
+      background: var(--border, rgba(0, 0, 0, 0.08));
+      margin: 4px 6px;
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-panel-divider {
+      background: var(--border, rgba(255, 255, 255, 0.1));
+    }
+
+    /* Dark/Light Theme Row in Navigation Sheet */
+    .ts-nav-theme-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-height: 44px;
+      height: 44px;
+      padding: 0 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      user-select: none;
+      box-sizing: border-box;
+      transition: background-color 150ms ease;
+    }
+
+    .ts-nav-theme-row:hover {
+      background: var(--surface-hover, rgba(15, 23, 42, 0.05));
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-theme-row:hover {
+      background: var(--surface-hover, rgba(255, 255, 255, 0.08));
+    }
+
+    .ts-nav-theme-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text, #18181b);
+      font-family: var(--font-body, "Nunito", sans-serif);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-theme-left {
+      color: var(--text, #f1f5f9);
+    }
+
+    .ts-nav-theme-toggle-switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      width: 44px;
+      height: 24px;
+      min-width: 44px;
+      min-height: 24px;
+      border-radius: 9999px;
+      background: var(--border, rgba(15, 23, 42, 0.18));
+      border: none;
+      padding: 2px;
+      cursor: pointer;
+      outline: none;
+      box-sizing: border-box;
+      transition: background-color 200ms ease;
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-theme-toggle-switch {
+      background: var(--border, rgba(255, 255, 255, 0.18));
+    }
+
+    .ts-nav-theme-toggle-switch.is-dark {
+      background: var(--accent, #3b82f6);
+    }
+
+    .ts-nav-switch-knob {
+      display: block;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      transform: translateX(0);
+    }
+
+    .ts-nav-theme-toggle-switch.is-dark .ts-nav-switch-knob {
+      transform: translateX(20px);
+    }
+
+    /* Mobile Sheet Layout for Navigation Menu (<768px) */
+    @media (max-width: 767px) {
+      .ts-nav-panel {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        top: auto;
+        width: 100%;
+        max-width: 100%;
+        border-radius: 20px 20px 0 0;
+        padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px;
+        box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.25);
+        animation: tsSlideUp 200ms cubic-bezier(0.16, 1, 0.3, 1);
+        max-height: 82vh;
+        overflow-y: auto;
+      }
+
+      .ts-nav-sheet-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        padding-bottom: 8px;
+        margin-bottom: 4px;
+        border-bottom: 1px solid var(--border, rgba(0, 0, 0, 0.06));
+      }
+
+      :host-context([data-theme="dark"]) .ts-nav-sheet-header {
+        border-bottom-color: var(--border, rgba(255, 255, 255, 0.08));
+      }
+
+      .ts-nav-sheet-handle {
+        width: 36px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--border, rgba(0, 0, 0, 0.2));
+        margin-bottom: 10px;
+      }
+
+      :host-context([data-theme="dark"]) .ts-nav-sheet-handle {
+        background: var(--border, rgba(255, 255, 255, 0.2));
+      }
+
+      .ts-nav-sheet-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+      }
+
+      .ts-nav-sheet-title {
+        font-family: var(--font-heading, "Nunito", sans-serif);
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text);
+      }
+
+      .ts-nav-sheet-close-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+        border-radius: 10px;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+      }
+    }
+
+    @keyframes tsSlideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
     /* Enhanced Light Theme Navbar Focus & Capsule Track */
     :host-context([data-theme="light"]) .ts-nav-links-track,
     :host-context(:not([data-theme="dark"])) .ts-nav-links-track {
@@ -444,8 +896,8 @@ export interface SectionNavLink {
     :host-context([data-theme="light"]) .ts-nav-active-pill,
     :host-context(:not([data-theme="dark"])) .ts-nav-active-pill {
       background: #FFFFFF;
-      border: 1px solid var(--accent-border, rgba(15, 118, 110, 0.22));
-      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.09), 0 0 0 1px rgba(15, 118, 110, 0.08);
+      border: 1px solid var(--accent-border, rgba(37, 99, 235, 0.22));
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.09), 0 0 0 1px var(--accent-border, rgba(37, 99, 235, 0.08));
     }
 
     :host-context([data-theme="light"]) .ts-nav-link-btn,
@@ -462,7 +914,7 @@ export interface SectionNavLink {
 
     :host-context([data-theme="light"]) .ts-nav-link-btn.active,
     :host-context(:not([data-theme="dark"])) .ts-nav-link-btn.active {
-      color: var(--accent, #0F766E);
+      color: var(--accent-strong, var(--accent, #1D4ED8));
       font-weight: 700;
       letter-spacing: -0.01em;
     }
@@ -475,9 +927,9 @@ export interface SectionNavLink {
     }
 
     :host-context([data-theme="dark"]) .ts-nav-active-pill {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid var(--accent-border, rgba(45, 212, 191, 0.3));
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 8px -2px var(--accent-glow, rgba(45, 212, 191, 0.2));
+      background: var(--accent-soft, rgba(59, 130, 246, 0.16));
+      border: 1px solid var(--accent-border, rgba(59, 130, 246, 0.35));
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 8px -2px var(--accent-glow, rgba(59, 130, 246, 0.25));
     }
 
     :host-context([data-theme="dark"]) .ts-nav-link-btn {
@@ -491,8 +943,8 @@ export interface SectionNavLink {
     }
 
     :host-context([data-theme="dark"]) .ts-nav-link-btn.active {
-      color: #2DD4BF;
-      font-weight: 600;
+      color: var(--accent-strong, var(--accent, #60A5FA));
+      font-weight: 700;
       letter-spacing: -0.01em;
     }
 
@@ -521,18 +973,30 @@ export interface SectionNavLink {
     }
 
     .ts-save-btn.is-favorited {
-      color: var(--accent, #0F766E);
+      background: linear-gradient(135deg, var(--accent, #0284C7) 0%, color-mix(in srgb, var(--accent, #0284C7) 70%, #2563EB) 100%) !important;
+      border-color: color-mix(in srgb, var(--accent, #0284C7) 90%, #ffffff) !important;
+      color: #ffffff !important;
+      box-shadow: 0 3px 12px color-mix(in srgb, var(--accent, #0284C7) 45%, transparent);
+    }
+
+    .ts-save-btn.is-favorited:hover {
+      background: linear-gradient(135deg, color-mix(in srgb, var(--accent, #0284C7) 90%, #000) 0%, color-mix(in srgb, var(--accent, #0284C7) 75%, #1D4ED8) 100%) !important;
+      color: #ffffff !important;
     }
 
     .ts-save-btn.is-favorited .ts-nav-star-svg {
-      filter: drop-shadow(0 2px 8px rgba(16, 185, 129, 0.4));
+      color: #ffffff !important;
+      fill: #ffffff !important;
+      stroke: #ffffff !important;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
     }
 
     .ts-save-btn.is-favorited .ts-action-label {
-      background: linear-gradient(135deg, #F59E0B 0%, #10B981 50%, #06B6D4 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: #ffffff !important;
+      background: none !important;
+      -webkit-text-fill-color: initial !important;
       font-weight: 700;
+      letter-spacing: -0.01em;
     }
 
     @keyframes tsStarPop {
@@ -633,24 +1097,42 @@ export interface SectionNavLink {
     }
 
     /* Responsive Breakpoints */
-    @media (max-width: 1023px) {
-      .ts-mobile-menu-btn {
-        display: inline-flex;
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
-        min-height: 44px;
-      }
-      .ts-zone-center {
-        display: none;
-      }
+    /* Medium screens (Tablet 768px - 1023px): Keep center navigation & theme toggle visible with tuned compact spacing */
+    @media (min-width: 768px) and (max-width: 1023px) {
       .ts-topbar-card {
-        grid-template-columns: 1fr auto;
+        padding: 0 12px;
+      }
+      .ts-zone-left {
+        gap: 8px;
+      }
+      .ts-tool-chip {
+        max-width: 140px;
+      }
+      .ts-nav-link-btn {
+        padding: 5px 10px;
+        font-size: 13px;
+      }
+      .ts-zone-right {
+        gap: 8px;
+      }
+      .ts-tools-grid-btn {
+        display: none !important;
       }
     }
 
+    /* Small screens (Mobile <768px): Hide center navigation & theme toggle, show 4-circles navigation drawer button */
     @media (max-width: 767px) {
+      .ts-tools-grid-btn {
+        display: inline-flex !important;
+      }
+      ts-theme-toggle {
+        display: none !important;
+      }
+      .ts-zone-center {
+        display: none !important;
+      }
       .ts-topbar-card {
+        grid-template-columns: 1fr auto;
         height: 56px;
         padding: 0 8px;
         border-radius: 16px;
@@ -706,11 +1188,17 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly tabChange = output<string>();
   readonly openCommandPalette = output<void>();
   readonly aboutClick = output<void>();
+  readonly dynamicLinksClick = output<void>();
 
   readonly sidebarService = inject(ToolSidebarService);
+  readonly sidebarState = inject(SidebarStateService);
+  readonly settingsService = inject(ToolSettingsService);
+  readonly themeService = inject(ToolThemeService, { optional: true });
   readonly portalUrl = getPortalUrl();
   readonly hubUrl = getToolsHubUrl();
   private readonly zone = inject(NgZone);
+
+  readonly isDark = computed(() => this.themeService?.effectiveTheme() === 'dark');
 
   readonly navTrack = viewChild<ElementRef<HTMLElement>>('navTrack');
   readonly navLinkBtns = viewChildren<ElementRef<HTMLAnchorElement>>('navLinkBtns');
@@ -721,6 +1209,93 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly isIndicatorReady = signal<boolean>(false);
   readonly copiedLink = signal<boolean>(false);
   readonly isFavorited = signal<boolean>(false);
+
+  private readonly elementRef = inject(ElementRef);
+  readonly isNavMenuOpen = signal<boolean>(false);
+
+  toggleNavMenu(event?: MouseEvent): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.isNavMenuOpen.update(v => !v);
+  }
+
+  closeNavMenu(): void {
+    this.isNavMenuOpen.set(false);
+  }
+
+  toggleTheme(): void {
+    this.themeService?.toggleTheme();
+  }
+
+  openToolsDrawerFromNav(): void {
+    this.closeNavMenu();
+    this.sidebarService.openMobileDrawer();
+  }
+
+  toggleToolsDrawer(event?: MouseEvent): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.sidebarService.toggleMobileDrawer();
+  }
+
+  onNavMenuItemClick(event: MouseEvent, sectionId: string): void {
+    this.closeNavMenu();
+    if (sectionId === 'dynamic') {
+      this.activeSection.set('dynamic');
+      this.dynamicLinksClick.emit();
+      this.tabChange.emit('dynamic');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('acklet:switch-tab', { detail: 'dynamic' }));
+      }
+      return;
+    }
+    if (sectionId === 'tool') {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('acklet:switch-tab', { detail: 'tool' }));
+      }
+    }
+    this.scrollToSection(event, sectionId);
+  }
+
+  onNavShareClick(): void {
+    this.closeNavMenu();
+    this.shareTool();
+  }
+
+  onNavSaveClick(): void {
+    this.toggleFavorite();
+  }
+
+  shareTool(): void {
+    if (typeof window === 'undefined') return;
+    const url = window.location.href.split('#')[0];
+    const title = this.tool()?.name || 'Acklet Tool';
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator.share({ title, url }).catch(() => {});
+    } else {
+      this.copyShareLink();
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (this.isNavMenuOpen()) {
+      const target = event.target as HTMLElement;
+      if (!this.elementRef.nativeElement.querySelector('.ts-nav-panel')?.contains(target) &&
+          !this.elementRef.nativeElement.querySelector('.ts-tools-grid-btn')?.contains(target)) {
+        this.closeNavMenu();
+      }
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.isNavMenuOpen()) {
+      this.closeNavMenu();
+    }
+  }
 
   copyShareLink(): void {
     if (typeof window === 'undefined' || typeof navigator === 'undefined') return;
@@ -733,6 +1308,21 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly isCelebrating = signal<boolean>(false);
 
+  private loadFavoriteState(): void {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const slug = this.tool()?.slug;
+        if (!slug) {
+          this.isFavorited.set(false);
+          return;
+        }
+        const raw = window.localStorage.getItem(FAVORITES_KEY);
+        const list: string[] = raw ? JSON.parse(raw) : [];
+        this.isFavorited.set(list.includes(slug));
+      }
+    } catch {}
+  }
+
   toggleFavorite(): void {
     const next = !this.isFavorited();
     this.isFavorited.set(next);
@@ -740,6 +1330,22 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
       this.isCelebrating.set(true);
       setTimeout(() => this.isCelebrating.set(false), 850);
     }
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const slug = this.tool()?.slug;
+        if (slug) {
+          const raw = window.localStorage.getItem(FAVORITES_KEY);
+          let list: string[] = raw ? JSON.parse(raw) : [];
+          if (next) {
+            if (!list.includes(slug)) list.push(slug);
+          } else {
+            list = list.filter(s => s !== slug);
+          }
+          window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(list));
+          window.dispatchEvent(new Event('storage'));
+        }
+      }
+    } catch {}
   }
 
   private intersectionObserver?: IntersectionObserver;
@@ -747,6 +1353,11 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   private scrollContainerEl?: HTMLElement | null;
 
   constructor() {
+    effect(() => {
+      this.tool();
+      this.loadFavoriteState();
+    });
+
     effect(() => {
       const links = this.sectionLinks();
       if (links.length > 0 && typeof window !== 'undefined') {
@@ -756,6 +1367,10 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
         }, 150);
       }
     });
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', () => this.loadFavoriteState());
+    }
   }
 
   // Build section links from tool definition
@@ -829,9 +1444,21 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (typeof document === 'undefined') return;
 
+    if (sectionId === 'dynamic') {
+      this.dynamicLinksClick.emit();
+      this.tabChange.emit('dynamic');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('acklet:switch-tab', { detail: 'dynamic' }));
+      }
+      return;
+    }
+
     const scrollContainer = (document.querySelector('.ts-main-scroll-container') || document.getElementById('main-content')) as HTMLElement | null;
 
     if (sectionId === 'tool') {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('acklet:switch-tab', { detail: 'tool' }));
+      }
       if (scrollContainer) {
         scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
       } else {

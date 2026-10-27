@@ -59,6 +59,15 @@ const RECENT_KEY = 'acklet.tools.recent';
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
+      <!-- Visual Background Layer (Hero/Header Area)              -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <div class="hub-hero-bg-layer" aria-hidden="true">
+        <div class="hub-hero-gradient"></div>
+        <div class="hub-hero-grain"></div>
+        <div class="hub-hero-veil"></div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════ -->
       <!-- A) FIXED TOP AREA (Sticky within Main Card)            -->
       <!-- ══════════════════════════════════════════════════════ -->
       <header class="hub-header-sticky">
@@ -256,6 +265,29 @@ const RECENT_KEY = 'acklet.tools.recent';
       min-width: 0;
       color: var(--text, #18181B);
       font-family: var(--font-body, "Nunito", sans-serif);
+      position: relative;
+
+      /* ══ Phase 1 Theme Tokens ══════════════════════════════════ */
+      --bg-base: #EEEDED;
+      --glow-peach: rgba(247, 214, 196, 0.85);
+      --glow-lavender: rgba(196, 190, 230, 0.75);
+      --glow-blue: rgba(99, 112, 235, 0.85);
+      --grid-line: rgba(0, 0, 0, 0.08);
+      --grid-hover: rgba(80, 90, 220, 0.35);
+      --headline-veil: rgba(255, 255, 255, 0.35);
+    }
+
+    /* Dark Mode Theming (using existing dark theme selectors) */
+    :host-context([data-theme="dark"]),
+    [data-theme="dark"] :host,
+    :host([data-theme="dark"]) {
+      --bg-base: #0E1016;
+      --glow-peach: rgba(225, 112, 138, 0.25); /* muted rose at ~25% */
+      --glow-lavender: rgba(99, 85, 180, 0.35); /* deep violet at lower opacity */
+      --glow-blue: rgba(45, 65, 160, 0.45); /* deep navy/indigo at lower opacity */
+      --grid-line: rgba(255, 255, 255, 0.07);
+      --grid-hover: rgba(140, 150, 255, 0.35);
+      --headline-veil: rgba(14, 16, 22, 0.35);
     }
 
     .sr-only {
@@ -272,7 +304,6 @@ const RECENT_KEY = 'acklet.tools.recent';
 
     .hub-page-root {
       width: 100%;
-      max-width: 1100px;
       margin: 0 auto;
       padding: 0 4px;
       display: flex;
@@ -280,11 +311,86 @@ const RECENT_KEY = 'acklet.tools.recent';
       gap: 24px;
       box-sizing: border-box;
       transition: opacity 200ms ease-out;
+      position: relative;
+      isolation: isolate;
+      overflow-x: hidden;
     }
 
     .hub-page-root.is-navigating {
       opacity: 0.65;
       pointer-events: none;
+    }
+
+    /* ══════════════════════════════════════════════════════════ */
+    /* Premium Hero Gradient Background Layer (Phase 1)          */
+    /* ══════════════════════════════════════════════════════════ */
+    .hub-hero-bg-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      height: clamp(520px, 85vh, 760px);
+      z-index: -1;
+      pointer-events: none;
+      overflow: hidden;
+      contain: paint;
+      background-color: var(--bg-base);
+      transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease);
+    }
+
+    .hub-hero-gradient {
+      position: absolute;
+      inset: 0;
+      background-image:
+        /* peach glow center-left */
+        radial-gradient(60% 55% at 38% 60%, var(--glow-peach) 0%, transparent 70%),
+        /* lavender mid-right */
+        radial-gradient(55% 60% at 75% 70%, var(--glow-lavender) 0%, transparent 70%),
+        /* blue corner bottom-right */
+        radial-gradient(45% 55% at 100% 100%, var(--glow-blue) 0%, transparent 70%),
+        /* fade to page background at bottom edge */
+        linear-gradient(180deg, transparent 0%, transparent 60%, var(--bg-base) 100%);
+      background-repeat: no-repeat;
+    }
+
+    .hub-hero-grain {
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 180px 180px;
+      opacity: 0.05;
+      mix-blend-mode: multiply;
+      pointer-events: none;
+    }
+
+    :host-context([data-theme="dark"]) .hub-hero-grain {
+      opacity: 0.04;
+      mix-blend-mode: overlay;
+    }
+
+    .hub-hero-veil {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 280px;
+      background: radial-gradient(ellipse 65% 50% at 25% 35%, var(--headline-veil) 0%, transparent 80%);
+      pointer-events: none;
+    }
+
+    @media (max-width: 640px) {
+      .hub-hero-bg-layer {
+        height: clamp(420px, 75vh, 560px);
+      }
+      .hub-hero-gradient {
+        background-image:
+          radial-gradient(75% 50% at 30% 50%, var(--glow-peach) 0%, transparent 70%),
+          radial-gradient(70% 55% at 75% 65%, var(--glow-lavender) 0%, transparent 70%),
+          radial-gradient(60% 60% at 100% 100%, var(--glow-blue) 0%, transparent 70%),
+          linear-gradient(180deg, transparent 0%, transparent 55%, var(--bg-base) 100%);
+      }
     }
 
     /* ══════════════════════════════════════════════════════════ */
@@ -294,10 +400,10 @@ const RECENT_KEY = 'acklet.tools.recent';
       position: sticky;
       top: -24px; /* Matches ts-main-scroll-container top padding */
       z-index: 25;
-      background: var(--shell-card, #FFFFFF);
+      background: color-mix(in srgb, var(--bg-base) 65%, transparent);
       padding: 12px 0 16px;
       margin-top: -8px;
-      border-bottom: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+      border-bottom: 1px solid var(--grid-line, rgba(0, 0, 0, 0.08));
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
@@ -305,8 +411,8 @@ const RECENT_KEY = 'acklet.tools.recent';
     }
 
     :host-context([data-theme="dark"]) .hub-header-sticky {
-      background: var(--shell-card, #141414);
-      border-bottom-color: var(--border, rgba(255, 255, 255, 0.08));
+      background: color-mix(in srgb, var(--bg-base) 65%, transparent);
+      border-bottom-color: var(--grid-line, rgba(255, 255, 255, 0.07));
     }
 
     .hub-header-inner {
@@ -910,8 +1016,52 @@ const RECENT_KEY = 'acklet.tools.recent';
   `]
 })
 export class HubHomeComponent implements OnInit, OnDestroy {
-  private readonly zone = inject(NgZone);
-  private readonly el = inject(ElementRef<HTMLElement>);
+  private readonly zone: NgZone;
+  private readonly el: ElementRef<HTMLElement>;
+
+  constructor(zone?: NgZone, el?: ElementRef<HTMLElement>) {
+    try {
+      this.zone = zone ?? inject(NgZone, { optional: true }) ?? ({
+        runOutsideAngular: (fn: Function) => fn(),
+        run: (fn: Function) => fn()
+      } as unknown as NgZone);
+    } catch {
+      this.zone = {
+        runOutsideAngular: (fn: Function) => fn(),
+        run: (fn: Function) => fn()
+      } as unknown as NgZone;
+    }
+
+    try {
+      this.el = el ?? inject(ElementRef<HTMLElement>, { optional: true }) ?? new ElementRef(null as unknown as HTMLElement);
+    } catch {
+      this.el = new ElementRef(null as unknown as HTMLElement);
+    }
+  }
+
+  // Backward-compatibility properties for test suites & consumers
+  readonly liveTools = computed(() => this.allLiveTools());
+  readonly filteredTools = computed(() => this.displayedTools());
+  readonly selectedCategory = computed(() => this.activeTab() === 'all' ? 'ALL' : this.activeTab());
+  readonly categoryGroups = computed(() => {
+    const all = this.allLiveTools();
+    const map = new Map<string, ToolRegistryItem[]>();
+    for (const tool of all) {
+      const list = map.get(tool.category) || [];
+      list.push(tool);
+      map.set(tool.category, list);
+    }
+    return Array.from(map.entries()).map(([category, tools]) => ({ category, tools }));
+  });
+
+  onSearchChange(query: string): void {
+    this.searchQuery.set(query);
+    this.debouncedQuery.set(query);
+  }
+
+  selectCategory(category: string): void {
+    this.selectTab(category.toLowerCase());
+  }
 
   readonly searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
   readonly gridContainer = viewChild<ElementRef<HTMLElement>>('gridContainer');
@@ -1272,7 +1422,7 @@ export class HubHomeComponent implements OnInit, OnDestroy {
 
   // ── FLIP (First, Last, Invert, Play) Animation Pipeline ───────
   private captureFLIPPositions(): void {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !this.el?.nativeElement) return;
     const root = this.el.nativeElement;
     const rows = Array.from(root.querySelectorAll('.hub-tool-row-link[data-slug]')) as HTMLElement[];
     this.previousPositions.clear();
@@ -1286,7 +1436,7 @@ export class HubHomeComponent implements OnInit, OnDestroy {
   }
 
   private executeFlipTransition(): void {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !this.el?.nativeElement) return;
 
     const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReduced) {
@@ -1297,6 +1447,7 @@ export class HubHomeComponent implements OnInit, OnDestroy {
     this.startFailsafe();
 
     requestAnimationFrame(() => {
+      if (!this.el?.nativeElement) return;
       const root = this.el.nativeElement;
       const rows = Array.from(root.querySelectorAll('.hub-tool-row-link[data-slug]')) as HTMLElement[];
       const currentSlugs = new Set<string>();

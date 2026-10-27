@@ -1,9 +1,11 @@
-import { Component, input, output, signal, computed, inject, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, viewChild, isDevMode, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, signal, computed, inject, HostListener, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, viewChild, isDevMode, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolRegistryItem, getAllTools } from '@acklet/tool-registry';
 import { ToolShellConfig, ToolTab } from '../../models/tool-shell.models';
 import { ToolSidebarService } from '../../services/tool-sidebar.service';
+import { SidebarStateService, FIRST_HINT_KEY, readCookie, writeCookie, resolveCookieDomain } from '../../services/sidebar-state.service';
 import { ToolThemeService } from '../../services/tool-theme.service';
+import { ToolThemeProviderService } from '../../services/tool-theme-provider.service';
 import { ToolCapsuleService } from '../../services/tool-capsule.service';
 import { TsTopbarComponent } from '../topbar/ts-topbar.component';
 import { TsSidebarComponent } from '../sidebar/ts-sidebar.component';
@@ -19,6 +21,8 @@ import { TsIconComponent } from '../icon/ts-icon.component';
 import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
 import { RevealDirective, TsRevealDirective } from '../../directives/reveal.directive';
 import { PerfFlagsService } from '../../services/perf-flags.service';
+import { TsSettingsModalComponent } from '../settings/ts-settings-modal.component';
+import { DrawerGestureService } from '../../services/drawer-gesture.service';
 
 @Component({
   selector: 'ts-shell, lib-tool-layout',
@@ -35,14 +39,17 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
     TsToolContentComponent,
     TsIconComponent,
     TsTooltipDirective,
-    RevealDirective
+    RevealDirective,
+    TsSettingsModalComponent
   ],
   template: `
     <div 
       class="ts-root" 
+      [attr.data-tool]="tool()?.slug || 'default'"
       [attr.data-theme]="themeService.effectiveTheme()"
       [attr.data-accent]="tool()?.accent || 'neutral'"
       [attr.data-surface]="effectiveSurface()"
+      [style]="computedThemeStyles()"
     >
       
       <!-- Skip to main content accessibility link -->
@@ -50,6 +57,30 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
 
       <!-- Background Ambient Glow (Contained within viewport, non-scrolling) -->
       <ts-backdrop [accentHue]="tool()?.accentHue ?? null" />
+
+      <!-- Far-left Hot Zone for Peek Reveal (Hidden when pinned or on touch) -->
+      @if (showSidebar() && !sidebarState.isPinned() && sidebarState.canHover() && sidebarState.isHoverEnabled()) {
+        <div 
+          class="ts-sidebar-hotzone"
+          [class.is-glowing]="isHotzoneHovered()"
+          (mouseenter)="onHotzoneEnter()"
+          (mouseleave)="onHotzoneLeave()"
+          aria-hidden="true"
+        >
+          <div class="ts-sidebar-hotzone-indicator"></div>
+        </div>
+      }
+
+      <!-- First-Visit Left Edge Hint (pulses once, auto-dismisses, cookie-backed) -->
+      @if (showFirstHint()) {
+        <div class="ts-sidebar-edge-hint" role="status" aria-live="polite">
+          <span class="ts-hint-dot" aria-hidden="true"></span>
+          <span class="ts-hint-text">Hover edge or press <kbd class="ts-hint-kbd">⌘B</kbd> for tools</span>
+          <button type="button" class="ts-hint-close-btn" (click)="dismissFirstHint()" aria-label="Dismiss hint">
+            <ts-icon name="x" [size]="12" />
+          </button>
+        </div>
+      }
 
       <!-- Three-Card CSS Grid Shell (Fills 100dvh exactly) -->
       <div class="ts-shell-grid" [class.no-sidebar]="!showSidebar()" [class.no-topbar]="!showTopbar()">
@@ -71,11 +102,13 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
           </div>
         }
 
-        <!-- Bottom Row: SIDEBAR Card (272px / 72px) + MAIN CONTENT Card (1fr) -->
+        <!-- Bottom Row: SIDEBAR Card (272px) + MAIN CONTENT Card (1fr) -->
         <div 
           class="ts-bottom-row-grid" 
-          [class.no-sidebar]="!showSidebar()"
-          [style.--sidebar-current-width.px]="sidebarService.isCollapsed() ? 72 : sidebarService.width()"
+          [class.no-sidebar]="!showSidebar() || !sidebarState.isPinned()"
+          [class.is-pinned]="sidebarState.isPinned()"
+          [class.is-peek]="sidebarState.isPeek()"
+          [style.--sidebar-current-width.px]="sidebarWidth()"
         >
           <!-- 2. Left Card: SIDEBAR (Scrolls internally) -->
           @if (showSidebar()) {
@@ -83,6 +116,8 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
               [tools]="allTools()" 
               [tool]="tool()"
               [currentSlug]="tool()?.slug || ''"
+              (mouseenter)="onSidebarPointerEnter()"
+              (mouseleave)="onSidebarPointerLeave()"
             />
           }
 
@@ -108,11 +143,6 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
                     <ng-content />
                   </div>
                 </div>
-              </div>
-
-              <!-- 4. BELOW the grid, full width: About, How to use, FAQ, Related -->
-              <div class="ts-content-below-grid ts-entry-content">
-                <ts-tool-content [tool]="tool()" />
               </div>
 
               <!-- 4. BELOW the grid, full width: About, How to use, FAQ, Related -->
@@ -168,6 +198,9 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
         [tools]="allTools()" 
         (close)="showCommandPalette.set(false)"
       />
+
+      <!-- Global Shell Settings Modal -->
+      <ts-settings-modal />
 
     </div>
   `,
@@ -272,20 +305,7 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
       --fx-glow-2: color-mix(in srgb, var(--accent-light) 22%, transparent);
       --fx-highlight: rgba(255, 255, 255, 0.80);
     }
-
-    .ts-root[data-accent="teal"] {
-      --accent: #2DD4BF;
-      --accent-ink: #042F2B;
-      --accent-soft: #10302D;
-      --accent-border: #1F4A45;
-    }
-
-    .ts-root[data-theme="light"][data-accent="teal"] {
-      --accent: #0F766E;
-      --accent-ink: #FFFFFF;
-      --accent-soft: #cbf1ecff;
-      --accent-border: #9dfef1ff;
-    }
+    /* Dynamic per-tool theme tokens (--accent, --tool-accent, --font-*) are injected at host via ToolThemeProviderService */
 
     .ts-root {
       width: 100vw;
@@ -348,21 +368,170 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
       height: var(--header-height, 64px);
     }
 
-    /* Bottom Row Grid: Sidebar (272px / 72px) + Main Content Card (minmax(0, 1fr)) */
+    /* Bottom Row Grid: Sidebar (272px) + Main Content Card (minmax(0, 1fr)) */
     .ts-bottom-row-grid {
       display: grid;
-      grid-template-columns: var(--sidebar-current-width, 72px) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1fr);
       gap: var(--shell-gap, 12px);
       width: 100%;
       height: 100%;
       min-height: 0;
       min-width: 0;
+      position: relative;
       overflow: hidden;
-      transition: grid-template-columns 220ms ease-out;
+      transition: grid-template-columns 240ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .ts-bottom-row-grid.is-pinned {
+      grid-template-columns: var(--sidebar-current-width, 272px) minmax(0, 1fr);
     }
 
     .ts-bottom-row-grid.no-sidebar {
       grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* Far-left Hot Zone for Peek Hover Reveal */
+    .ts-sidebar-hotzone {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 14px;
+      z-index: 65;
+      pointer-events: auto;
+      cursor: e-resize;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    .ts-sidebar-hotzone-indicator {
+      position: absolute;
+      left: 2px;
+      top: 50%;
+      transform: translateY(-50%) scaleY(0.7);
+      width: 3px;
+      height: 48px;
+      border-radius: 9999px;
+      background: var(--accent);
+      opacity: 0;
+      transition: opacity 150ms ease, transform 150ms ease;
+      pointer-events: none;
+    }
+
+    .ts-sidebar-hotzone:hover .ts-sidebar-hotzone-indicator,
+    .ts-sidebar-hotzone.is-glowing .ts-sidebar-hotzone-indicator {
+      opacity: 0.8;
+      transform: translateY(-50%) scaleY(1);
+    }
+
+    @media (max-width: 1023px) {
+      .ts-sidebar-hotzone {
+        display: none !important;
+      }
+    }
+
+    /* First-Visit Left Edge Hint */
+    .ts-sidebar-edge-hint {
+      position: fixed;
+      left: 16px;
+      top: calc(var(--shell-padding, 12px) + var(--header-height, 64px) + 16px);
+      z-index: 60;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      background: var(--surface, #141416);
+      color: var(--text, #FCFCFC);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), var(--ts-edge);
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 1;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      animation: tsHintSlideIn 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      user-select: none;
+    }
+
+    .ts-hint-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 9999px;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      animation: tsDotPulse 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    .ts-hint-text {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .ts-hint-kbd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--ts-surface-inset, rgba(255, 255, 255, 0.08));
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      color: var(--text);
+    }
+
+    .ts-hint-close-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      margin-left: 2px;
+      border: none;
+      background: transparent;
+      color: var(--text-3, #8E8E93);
+      cursor: pointer;
+      border-radius: 4px;
+      transition: color 150ms ease;
+    }
+
+    .ts-hint-close-btn:hover {
+      color: var(--text);
+    }
+
+    @keyframes tsHintSlideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-12px) scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+      }
+    }
+
+    @keyframes tsDotPulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.4;
+        transform: scale(0.85);
+      }
+    }
+
+    @media (max-width: 1023px) {
+      .ts-sidebar-edge-hint {
+        display: none !important;
+      }
     }
 
     /* Accessibility visually-hidden utility */
@@ -616,6 +785,15 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
       box-shadow: none !important;
     }
 
+    .ts-tool-card-surface.full-bleed > * {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      flex: 1 1 0%;
+      display: flex;
+      flex-direction: column;
+    }
+
     /* Cleanly hide duplicate header & trust chips if present in tool child template */
     ::ng-deep .ts-tool-card-surface .tool-header-block,
     ::ng-deep .ts-tool-card-surface .trust-chips-row {
@@ -692,10 +870,14 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
     }
 
     @media (prefers-reduced-motion: reduce) {
+      .ts-bottom-row-grid,
+      .ts-main-content-card,
+      .ts-sidebar-hotzone-indicator,
       .ts-entry-panel,
       .ts-entry-rail,
       .ts-entry-content {
         animation: none !important;
+        transition: none !important;
         opacity: 1 !important;
         transform: none !important;
       }
@@ -713,8 +895,14 @@ import { PerfFlagsService } from '../../services/perf-flags.service';
         display: contents !important;
       }
       .ts-bottom-row-grid,
+      .ts-bottom-row-grid.is-pinned,
       .ts-bottom-row-grid.no-sidebar {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
+      }
+      .ts-sidebar-hotzone,
+      .ts-sidebar-hotzone-indicator,
+      .ts-sidebar-edge-hint {
+        display: none !important;
       }
     }
 
@@ -766,11 +954,187 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly showAboutPanel = signal<boolean>(false);
   readonly showBackToTool = signal<boolean>(false);
   readonly sidebarService = inject(ToolSidebarService);
+  readonly sidebarState = inject(SidebarStateService);
+  readonly sidebarWidth = computed(() => this.sidebarService.width());
   readonly themeService = inject(ToolThemeService);
+  private readonly themeProvider = inject(ToolThemeProviderService);
   private readonly capsuleService = inject(ToolCapsuleService);
   private readonly perfFlags = inject(PerfFlagsService);
   private readonly ngZone = inject(NgZone);
   private scrollListener: (() => void) | null = null;
+
+  readonly computedThemeStyles = computed(() => {
+    return this.themeProvider.resolveThemeTokens(this.tool(), this.themeService.effectiveTheme());
+  });
+
+  readonly isHotzoneHovered = signal<boolean>(false);
+  private hotzoneIntentTimer: ReturnType<typeof setTimeout> | null = null;
+  private peekGraceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  readonly showFirstHint = signal<boolean>(false);
+  private hintDismissTimer: ReturnType<typeof setTimeout> | null = null;
+
+  dismissFirstHint(): void {
+    if (!this.showFirstHint()) return;
+    this.showFirstHint.set(false);
+    if (this.hintDismissTimer) {
+      clearTimeout(this.hintDismissTimer);
+      this.hintDismissTimer = null;
+    }
+    const domain = resolveCookieDomain(typeof window !== 'undefined' ? window.location.hostname : '');
+    writeCookie(FIRST_HINT_KEY, 'true', domain);
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(FIRST_HINT_KEY, 'true');
+      }
+    } catch {}
+  }
+
+  onHotzoneEnter(): void {
+    if (this.sidebarState.isPinned() || !this.sidebarState.canHover() || !this.sidebarState.isHoverEnabled()) {
+      return;
+    }
+    this.dismissFirstHint();
+    this.isHotzoneHovered.set(true);
+    this.clearPeekGraceTimer();
+
+    this.hotzoneIntentTimer = setTimeout(() => {
+      this.sidebarState.peekOpen();
+    }, 100);
+  }
+
+  onHotzoneLeave(): void {
+    this.isHotzoneHovered.set(false);
+    if (this.hotzoneIntentTimer) {
+      clearTimeout(this.hotzoneIntentTimer);
+      this.hotzoneIntentTimer = null;
+    }
+    if (this.sidebarState.isPeek()) {
+      this.startPeekGraceTimer();
+    }
+  }
+
+  onSidebarPointerEnter(): void {
+    this.clearPeekGraceTimer();
+  }
+
+  onSidebarPointerLeave(): void {
+    if (this.sidebarState.isPeek()) {
+      this.startPeekGraceTimer();
+    }
+  }
+
+  private startPeekGraceTimer(): void {
+    this.clearPeekGraceTimer();
+    this.peekGraceTimer = setTimeout(() => {
+      this.sidebarState.peekClose();
+    }, 250);
+  }
+
+  private clearPeekGraceTimer(): void {
+    if (this.peekGraceTimer) {
+      clearTimeout(this.peekGraceTimer);
+      this.peekGraceTimer = null;
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (this.sidebarState.isPeek()) {
+      const target = event.target as HTMLElement | null;
+      if (target && !target.closest('ts-sidebar') && !target.closest('.ts-sidebar-hotzone')) {
+        this.clearPeekGraceTimer();
+        this.sidebarState.peekClose();
+      }
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey(): void {
+    if (this.sidebarState.isPeek()) {
+      this.clearPeekGraceTimer();
+      this.sidebarState.peekClose();
+    }
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onGlobalKeydown(event: KeyboardEvent): void {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'b') {
+      const activeEl = typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null;
+      const isInput = activeEl && (
+        activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA' ||
+        activeEl.isContentEditable
+      );
+      if (!isInput && this.showSidebar()) {
+        event.preventDefault();
+        this.dismissFirstHint();
+        this.sidebarState.toggle();
+      }
+    }
+  }
+
+  private readonly drawerGesture = inject(DrawerGestureService);
+
+  // Pointer & Touch Swipe Gesture for Mobile / Tablet to reveal sidebar on touch devices
+  @HostListener('pointerdown', ['$event'])
+  onShellPointerDown(e: PointerEvent): void {
+    if (!this.showSidebar() || e.pointerType !== 'touch' || this.sidebarService.isMobileDrawerOpen()) {
+      return;
+    }
+    const started = this.drawerGesture.startSwipeRight(e.clientX, e.clientY, e.target as HTMLElement);
+    if (started) {
+      this.sidebarService.isMobileDrawerOpen.set(true);
+    }
+  }
+
+  @HostListener('pointermove', ['$event'])
+  onShellPointerMove(e: PointerEvent): void {
+    if (e.pointerType === 'touch' && this.drawerGesture.isDragging()) {
+      this.drawerGesture.moveSwipe(e.clientX, e.clientY, false);
+    }
+  }
+
+  @HostListener('pointerup', ['$event'])
+  @HostListener('pointercancel', ['$event'])
+  onShellPointerUp(e: PointerEvent): void {
+    if (e.pointerType === 'touch' && this.drawerGesture.isDragging()) {
+      const action = this.drawerGesture.endSwipe(false);
+      if (action !== 'open') {
+        this.sidebarService.closeMobileDrawer();
+      }
+    }
+  }
+
+  @HostListener('touchstart', ['$event'])
+  onShellTouchStart(e: TouchEvent): void {
+    if (!this.showSidebar() || e.touches.length !== 1 || this.sidebarService.isMobileDrawerOpen()) {
+      return;
+    }
+    const touch = e.touches[0];
+    const started = this.drawerGesture.startSwipeRight(touch.clientX, touch.clientY, e.target as HTMLElement);
+    if (started) {
+      this.sidebarService.isMobileDrawerOpen.set(true);
+    }
+  }
+
+  @HostListener('touchmove', ['$event'])
+  onShellTouchMove(e: TouchEvent): void {
+    if (e.touches.length !== 1 || !this.drawerGesture.isDragging()) return;
+    const touch = e.touches[0];
+    this.drawerGesture.moveSwipe(touch.clientX, touch.clientY, false);
+  }
+
+  @HostListener('touchend', ['$event'])
+  @HostListener('touchcancel', ['$event'])
+  onShellTouchEnd(e: TouchEvent): void {
+    if (this.drawerGesture.isDragging()) {
+      const action = this.drawerGesture.endSwipe(false);
+      if (action !== 'open') {
+        this.sidebarService.closeMobileDrawer();
+      }
+    }
+  }
 
   readonly internalActiveTab = signal<string>('');
   private readonly devSurfaceOverride = signal<'clear' | 'frost' | 'tinted' | 'solid' | null>(null);
@@ -791,6 +1155,15 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
         if (surfParam === 'clear' || surfParam === 'frost' || surfParam === 'solid' || surfParam === 'tinted') {
           this.devSurfaceOverride.set(surfParam as 'clear' | 'frost' | 'solid' | 'tinted');
         }
+      }
+
+      // Check first-visit left edge hint
+      const hintSeen = readCookie(FIRST_HINT_KEY) || (window.localStorage ? window.localStorage.getItem(FIRST_HINT_KEY) : null);
+      if (!hintSeen && !this.sidebarState.isPinned() && this.sidebarState.canHover()) {
+        this.showFirstHint.set(true);
+        this.hintDismissTimer = setTimeout(() => {
+          this.dismissFirstHint();
+        }, 5000);
       }
 
       // Safety failsafe: After 1s, force all entrance elements visible
@@ -837,6 +1210,18 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.hintDismissTimer) {
+      clearTimeout(this.hintDismissTimer);
+      this.hintDismissTimer = null;
+    }
+    if (this.hotzoneIntentTimer) {
+      clearTimeout(this.hotzoneIntentTimer);
+      this.hotzoneIntentTimer = null;
+    }
+    if (this.peekGraceTimer) {
+      clearTimeout(this.peekGraceTimer);
+      this.peekGraceTimer = null;
+    }
     const sc = this.scrollContainer()?.nativeElement;
     if (sc && this.scrollListener) {
       sc.removeEventListener('scroll', this.scrollListener);
