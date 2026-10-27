@@ -166,5 +166,14 @@ describe('TsTopbarComponent - Responsive Navigation & Drawer Roles', () => {
       expect(styles).toContain('min-height: 44px');
       expect(styles).toContain('border-radius: 20px 20px 0 0');
     });
+
+    it('keeps navigation visible on medium devices (768px - 1023px) and restricts 4-circle button to small screens', () => {
+      const cmp = (TsTopbarComponent as any)['\u0275cmp'];
+      expect(cmp).toBeDefined();
+      const styles = cmp.styles?.join(' ') || '';
+      expect(styles).toContain('@media (min-width: 768px) and (max-width: 1023px)');
+      expect(styles).toContain('.ts-tools-grid-btn');
+      expect(styles).toContain('display: none !important');
+    });
   });
 });

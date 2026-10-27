@@ -1097,7 +1097,31 @@ export interface SectionNavLink {
     }
 
     /* Responsive Breakpoints */
-    @media (max-width: 1023px) {
+    /* Medium screens (Tablet 768px - 1023px): Keep center navigation & theme toggle visible with tuned compact spacing */
+    @media (min-width: 768px) and (max-width: 1023px) {
+      .ts-topbar-card {
+        padding: 0 12px;
+      }
+      .ts-zone-left {
+        gap: 8px;
+      }
+      .ts-tool-chip {
+        max-width: 140px;
+      }
+      .ts-nav-link-btn {
+        padding: 5px 10px;
+        font-size: 13px;
+      }
+      .ts-zone-right {
+        gap: 8px;
+      }
+      .ts-tools-grid-btn {
+        display: none !important;
+      }
+    }
+
+    /* Small screens (Mobile <768px): Hide center navigation & theme toggle, show 4-circles navigation drawer button */
+    @media (max-width: 767px) {
       .ts-tools-grid-btn {
         display: inline-flex !important;
       }
@@ -1105,15 +1129,10 @@ export interface SectionNavLink {
         display: none !important;
       }
       .ts-zone-center {
-        display: none;
+        display: none !important;
       }
       .ts-topbar-card {
         grid-template-columns: 1fr auto;
-      }
-    }
-
-    @media (max-width: 767px) {
-      .ts-topbar-card {
         height: 56px;
         padding: 0 8px;
         border-radius: 16px;

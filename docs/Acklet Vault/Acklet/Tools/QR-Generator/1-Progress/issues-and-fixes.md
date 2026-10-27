@@ -812,14 +812,31 @@ When scanning generated QR codes on iOS and Android devices, native camera scann
 3. **Updated Test Suites**:
    - Updated [location-input.component.spec.ts](file:///Users/ayaz/Acklet/client/apps/tool-qr-generator/src/components/location-input/location-input.component.spec.ts) and [qr-generator.service.spec.ts](file:///Users/ayaz/Acklet/client/apps/tool-qr-generator/src/services/qr-generator.service.spec.ts) to verify direct location link encoding and validation.
 
+
+---
+
+## Bug #29: Navigation Bar Invisibility on Medium Devices (Tablets, iPad Mini 768px - 1023px)
+
+**Found**: 2026-10-27, Responsive Inspection on Medium Device Viewport (iPad Mini 768x1024)
+
+**Description**:
+On medium screen devices (tablet viewports between 768px and 1023px, such as the iPad Mini at 768x1024), the topbar navigation links (`.ts-zone-center`: "Tool", "About", "How to use", "FAQ", "Related") and the theme toggle were hidden, leaving an unsightly empty expanse across the middle of the navbar. Simultaneously, the 4-circle navigation drawer trigger button (`.ts-tools-grid-btn`) was rendered on tablet viewports despite being requested strictly for small screens (< 768px).
+
+**Root Causes**:
+In [ts-topbar.component.ts](file:///Users/ayaz/Acklet/client/packages/tool-shell/src/components/topbar/ts-topbar.component.ts), the responsive breakpoint was set to `@media (max-width: 1023px)`. This prematurely hid `.ts-zone-center` (`display: none`) and `ts-theme-toggle` (`display: none !important`), forcing `.ts-topbar-card` into a 2-column layout (`1fr auto`) and displaying `.ts-tools-grid-btn` on all tablets up to 1023px width.
+
+**Fix Applied**:
+1. In [ts-topbar.component.ts](file:///Users/ayaz/Acklet/client/packages/tool-shell/src/components/topbar/ts-topbar.component.ts):
+   - Restricted the navigation-hiding and 4-circle drawer trigger button strictly to small screens: `@media (max-width: 767px)`.
+   - Added a dedicated medium screen breakpoint `@media (min-width: 768px) and (max-width: 1023px)`:
+     - Keeps `.ts-zone-center` and `ts-theme-toggle` visible in the navbar.
+     - Sets `.ts-tools-grid-btn { display: none !important; }`.
+     - Tunes `.ts-topbar-card` padding (`0 12px`), `.ts-tool-chip` max width (`140px`), and `.ts-nav-link-btn` padding (`5px 10px`) and font size (`13px`) for comfortable breathing room without horizontal clipping on 768px tablets.
+2. In [ts-topbar.component.spec.ts](file:///Users/ayaz/Acklet/client/packages/tool-shell/src/components/topbar/ts-topbar.component.spec.ts):
+   - Added unit test asserting that medium screen query `@media (min-width: 768px) and (max-width: 1023px)` preserves navigation and hides `.ts-tools-grid-btn`.
+
 **Testing & Verification**:
-- Unit tests: `npx vitest run apps/tool-qr-generator/src/components/location-input/location-input.component.spec.ts apps/tool-qr-generator/src/services/qr-generator.service.spec.ts` (54/54 tests passed).
-- Tier A verification: `node scripts/verify.mjs -A` passed (10.47s).
+- Unit tests: `npx vitest run packages/tool-shell/src/components/topbar/ts-topbar.component.spec.ts` (13/13 passed).
+- Responsive tests: `npx vitest run apps/tool-qr-generator/src/qr-generator-responsive.spec.ts` (22/22 passed).
+- Tier A verification: `node scripts/verify.mjs -A` passed.
 - Working tree remains uncommitted per developer guidelines.
-
-
-
-
-
-
-
