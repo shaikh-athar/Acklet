@@ -56,6 +56,7 @@ export class QRHistoryService {
    */
   addItem(item: {
     type: QRHistoryItem['type'];
+    name?: string;
     content: string;
     formattedPayload: string;
     dataUrl: string;
@@ -71,6 +72,7 @@ export class QRHistoryService {
     const newItem: QRHistoryItem = {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       createdAt: Date.now(),
+      name: item.name,
       type: item.type,
       content: item.content,
       formattedPayload: item.formattedPayload,

@@ -33,7 +33,7 @@ describe('LocationInputComponent', () => {
     expect(component.activeMode()).toBe('link');
   });
 
-  it('extracts coordinates from standard Google Maps URL and builds geo URI', () => {
+  it('encodes location link directly without requiring lat/long', () => {
     let lastEmitted: LocationInputValue | null = null;
     component.valueChange.subscribe(val => {
       lastEmitted = val;
@@ -41,13 +41,10 @@ describe('LocationInputComponent', () => {
 
     component.onUrlChange('https://www.google.com/maps/@37.774929,-122.419416,15z');
 
-    expect(component.detectedCoords()).toEqual({
-      latitude: 37.774929,
-      longitude: -122.419416
-    });
     expect(component.validation().isValid).toBe(true);
-    expect(component.validation().payload).toBe('geo:37.774929,-122.419416');
+    expect(component.validation().payload).toBe('https://www.google.com/maps/@37.774929,-122.419416,15z');
     expect(lastEmitted?.isValid).toBe(true);
+    expect(lastEmitted?.payload).toBe('https://www.google.com/maps/@37.774929,-122.419416,15z');
   });
 
   it('extracts coordinates from Google Maps data parameter (!3d, !4d)', () => {

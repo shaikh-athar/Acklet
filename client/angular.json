@@ -76,7 +76,16 @@
           },
           "defaultConfiguration": "development",
           "options": {
-            "port": 4200
+            "port": 4200,
+            "proxyConfig": "proxy.conf.json",
+            "allowedHosts": [
+              "melvin-operose-disconsolately.ngrok-free.dev",
+              ".ngrok-free.dev",
+              ".ngrok-free.app",
+              ".ngrok.io",
+              "localhost",
+              ".localhost"
+            ]
           }
         }
       }

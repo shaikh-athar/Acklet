@@ -168,7 +168,7 @@ describe('InputPanelComponent', () => {
       });
 
       expect(component.smsData.phone).toBe('+14155552671');
-      expect(emittedPayload).toContain('SMSTO:+14155552671:Hello Acklet');
+      expect(emittedPayload).toContain('sms:+14155552671?body=Hello%20Acklet');
     });
 
     it('updates vcardData phone when vcard phone changes', () => {
@@ -240,6 +240,14 @@ describe('InputPanelComponent', () => {
       });
     });
 
+    it('emits removeSocialCenterIcon output when user chooses to remove center icon', () => {
+      let emitted = false;
+      component.removeSocialCenterIcon.subscribe(() => (emitted = true));
+
+      component.onRemoveSocialCenterIcon();
+      expect(emitted).toBe(true);
+    });
+
     it('normalizes iOS app store input and flags non-store URLs', () => {
       let emittedPayload: string | null = null;
       component.contentChange.subscribe(c => (emittedPayload = c));
@@ -266,6 +274,79 @@ describe('InputPanelComponent', () => {
       // 2. Non-store domain
       component.onAndroidAppInputChange('https://github.com/acklet');
       expect(component.appAndroidError()).toContain('not a Google Play Store link');
+    });
+
+    it('handles Plain Text live counter, byte cap warnings, and line ending normalization', () => {
+      const setSignalInput = (inputSig: any, val: any) => {
+        const sym = Object.getOwnPropertySymbols(inputSig)[0];
+        const node = inputSig[sym];
+        node.applyValueToInputSignal(node, val);
+      };
+
+      setSignalInput(component.selectedType, 'text');
+
+      // 1. Line ending normalization
+      let emitted: string | null = null;
+      component.contentChange.subscribe(c => (emitted = c));
+      component.onContentInput('Hello\r\nWorld\rAgain');
+      expect(emitted).toBe('Hello\nWorld\nAgain');
+
+      // 2. Under limit counts
+      setSignalInput(component.content, 'Hello World');
+      expect(component.textCharCount()).toBe(11);
+      expect(component.textByteCount()).toBe(11);
+      expect(component.textCharCountFormatted()).toBe('11');
+      expect(component.isTextOverCharLimit()).toBe(false);
+      expect(component.isByteCapHitFirst()).toBe(false);
+      expect(component.isTextLargeHint()).toBe(false);
+
+      // 3. Hint above ~800 bytes
+      const largeAscii = 'A'.repeat(850);
+      setSignalInput(component.content, largeAscii);
+      expect(component.textByteCount()).toBe(850);
+      expect(component.isTextLargeHint()).toBe(true);
+
+      // 4. Over character limit (5,001 chars)
+      const overChar = 'A'.repeat(5001);
+      setSignalInput(component.content, overChar);
+      expect(component.isTextOverCharLimit()).toBe(true);
+      expect(component.isByteCapHitFirst()).toBe(false);
+
+      // 5. Byte cap hit first (Hindi / non-English multi-byte text under 5,000 chars but > 10,000 bytes)
+      const hindiOverCap = 'न'.repeat(3500); // 3,500 chars, ~10,500 bytes
+      setSignalInput(component.content, hindiOverCap);
+      expect(component.textCharCount()).toBe(3500);
+      expect(component.textByteCount()).toBe(10500);
+      expect(component.isTextOverCharLimit()).toBe(false);
+      expect(component.isByteCapHitFirst()).toBe(true);
+
+      // 6. isByteCapLimiting flag for Hindi / multi-byte non-English text
+      const hindiSmall = 'नमस्ते भारत '.repeat(10); // ~120 chars, ~330 bytes (> 120 * 1.5)
+      setSignalInput(component.content, hindiSmall);
+      expect(component.isByteCapLimiting()).toBe(true);
+    });
+
+    it('enforces character and byte limits when typing in onContentInput', () => {
+      const setSignalInput = (inputSig: any, val: any) => {
+        const sym = Object.getOwnPropertySymbols(inputSig)[0];
+        const node = inputSig[sym];
+        node.applyValueToInputSignal(node, val);
+      };
+
+      setSignalInput(component.selectedType, 'text');
+
+      let emittedContent = '';
+      component.contentChange.subscribe(c => (emittedContent = c));
+
+      // Over 5,000 characters is clamped
+      const overLength = 'B'.repeat(5500);
+      component.onContentInput(overLength);
+      expect(emittedContent.length).toBe(5000);
+
+      // Multi-byte text over 10,000 bytes is clamped
+      const overBytesHindi = 'न'.repeat(4000); // 4,000 chars = 12,000 bytes
+      component.onContentInput(overBytesHindi);
+      expect(new TextEncoder().encode(emittedContent).length).toBeLessThanOrEqual(10000);
     });
   });
 });

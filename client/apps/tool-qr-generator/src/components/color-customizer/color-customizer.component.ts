@@ -5,27 +5,45 @@ import {
   output,
   computed,
   inject,
-  signal,
   ChangeDetectionStrategy
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ColorValidatorService } from '../../services/color-validator.service';
 import { QrGradientOptions, DEFAULT_GRADIENT_OPTIONS } from '../../models/qr-generator.models';
-import { TsIconComponent, HlmBadge } from '@acklet/tool-shell';
+import { TsIconComponent } from '@acklet/tool-shell';
 
-interface ColorPresetPair {
+export interface PremiumPalette {
+  id: string;
   name: string;
   fg: string;
   bg: string;
+  category: 'classic' | 'dark-premium';
+  contrastRatio: number;
+  hasLowContrast: boolean;
+  safeThumbnail?: SafeHtml;
+  fgStart?: string;
+  fgEnd?: string;
 }
 
-interface GradientPreset {
+export interface ColorPresetPair {
+  id: string;
+  name: string;
+  fg: string;
+  bg: string;
+  safeThumbnail?: SafeHtml;
+}
+
+export interface GradientPreset {
+  id: string;
   name: string;
   type: 'linear' | 'radial';
   rotation: number;
   color1: string;
   color2: string;
+  bg: string;
+  safeThumbnail?: SafeHtml;
 }
 
 @Component({
@@ -35,6 +53,7 @@ interface GradientPreset {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="color-customizer-root">
+      <!-- Section Header with Swap Button -->
       <div class="customizer-header">
         <label class="customizer-label">
           <ts-icon name="palette" class="section-icon" />
@@ -51,326 +70,163 @@ interface GradientPreset {
         </button>
       </div>
 
-      <!-- Segmented Mode Selectors for Foreground & Background -->
+      <!-- Solid Foreground & Background Color Targets -->
       <div class="color-targets-grid">
         <!-- Target 1: Foreground Modules -->
         <div class="color-target-card">
           <div class="target-card-header">
             <span class="target-title">Foreground Modules</span>
-            <div class="mode-segmented-pill">
-              <button
-                type="button"
-                class="seg-pill-btn"
-                [class.active]="!foregroundGradient().enabled"
-                (click)="toggleFgGradient(false)"
-              >
-                Solid
-              </button>
-              <button
-                type="button"
-                class="seg-pill-btn"
-                [class.active]="foregroundGradient().enabled"
-                (click)="toggleFgGradient(true)"
-              >
-                Gradient
-              </button>
-            </div>
           </div>
-
-          @if (!foregroundGradient().enabled) {
-            <!-- Solid FG Picker -->
-            <div class="picker-input-row slide-fade-up">
-              <input
-                type="color"
-                class="native-color-picker"
-                [value]="foregroundColor()"
-                (change)="onFgPickerChange($event)"
-                aria-label="Foreground color picker"
-              />
-              <input
-                type="text"
-                class="hex-text-input"
-                [ngModel]="foregroundColor()"
-                (ngModelChange)="onFgTextChange($event)"
-                placeholder="#000000"
-                maxlength="7"
-                aria-label="Foreground hex code"
-              />
-            </div>
-          } @else {
-            <!-- Gradient FG Controls -->
-            <div class="gradient-controls-box slide-fade-up">
-              <div class="gradient-dual-pickers">
-                <div class="grad-picker-col">
-                  <span class="grad-label">Start Color</span>
-                  <div class="picker-input-row">
-                    <input
-                      type="color"
-                      class="native-color-picker"
-                      [value]="foregroundGradient().color1"
-                      (input)="onFgGradColor1($any($event.target).value)"
-                    />
-                    <input
-                      type="text"
-                      class="hex-text-input"
-                      [value]="foregroundGradient().color1"
-                      (change)="onFgGradColor1($any($event.target).value)"
-                      maxlength="7"
-                    />
-                  </div>
-                </div>
-
-                <div class="grad-picker-col">
-                  <span class="grad-label">End Color</span>
-                  <div class="picker-input-row">
-                    <input
-                      type="color"
-                      class="native-color-picker"
-                      [value]="foregroundGradient().color2"
-                      (input)="onFgGradColor2($any($event.target).value)"
-                    />
-                    <input
-                      type="text"
-                      class="hex-text-input"
-                      [value]="foregroundGradient().color2"
-                      (change)="onFgGradColor2($any($event.target).value)"
-                      maxlength="7"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- Gradient Type & Angle Controls -->
-              <div class="grad-params-row">
-                <div class="grad-type-toggle">
-                  <button
-                    type="button"
-                    class="grad-type-btn"
-                    [class.active]="foregroundGradient().type === 'linear'"
-                    (click)="setFgGradType('linear')"
-                  >
-                    Linear
-                  </button>
-                  <button
-                    type="button"
-                    class="grad-type-btn"
-                    [class.active]="foregroundGradient().type === 'radial'"
-                    (click)="setFgGradType('radial')"
-                  >
-                    Radial
-                  </button>
-                </div>
-
-                @if (foregroundGradient().type === 'linear') {
-                  <div class="grad-angle-control">
-                    <span class="angle-label">{{ foregroundGradient().rotation }}°</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="360"
-                      step="5"
-                      class="angle-slider"
-                      [value]="foregroundGradient().rotation"
-                      (input)="onFgGradAngle($any($event.target).value)"
-                      aria-label="Foreground gradient angle"
-                    />
-                  </div>
-                }
-              </div>
-            </div>
-          }
+          <div class="picker-input-row">
+            <input
+              type="color"
+              class="native-color-picker"
+              [value]="foregroundColor()"
+              (change)="onFgPickerChange($event)"
+              aria-label="Foreground color picker"
+            />
+            <input
+              type="text"
+              class="hex-text-input"
+              [ngModel]="foregroundColor()"
+              (ngModelChange)="onFgTextChange($event)"
+              placeholder="#000000"
+              maxlength="7"
+              aria-label="Foreground hex code"
+            />
+          </div>
         </div>
 
         <!-- Target 2: Background Canvas -->
         <div class="color-target-card">
           <div class="target-card-header">
             <span class="target-title">Background Canvas</span>
-            <div class="mode-segmented-pill">
-              <button
-                type="button"
-                class="seg-pill-btn"
-                [class.active]="!backgroundGradient().enabled"
-                (click)="toggleBgGradient(false)"
-              >
-                Solid
-              </button>
-              <button
-                type="button"
-                class="seg-pill-btn"
-                [class.active]="backgroundGradient().enabled"
-                (click)="toggleBgGradient(true)"
-              >
-                Gradient
-              </button>
-            </div>
           </div>
-
-          @if (!backgroundGradient().enabled) {
-            <!-- Solid BG Picker -->
-            <div class="picker-input-row slide-fade-up">
-              <input
-                type="color"
-                class="native-color-picker"
-                [value]="backgroundColor()"
-                (change)="onBgPickerChange($event)"
-                aria-label="Background color picker"
-              />
-              <input
-                type="text"
-                class="hex-text-input"
-                [ngModel]="backgroundColor()"
-                (ngModelChange)="onBgTextChange($event)"
-                placeholder="#FFFFFF"
-                maxlength="7"
-                aria-label="Background hex code"
-              />
-            </div>
-          } @else {
-            <!-- Gradient BG Controls -->
-            <div class="gradient-controls-box slide-fade-up">
-              <div class="gradient-dual-pickers">
-                <div class="grad-picker-col">
-                  <span class="grad-label">Start Color</span>
-                  <div class="picker-input-row">
-                    <input
-                      type="color"
-                      class="native-color-picker"
-                      [value]="backgroundGradient().color1"
-                      (input)="onBgGradColor1($any($event.target).value)"
-                    />
-                    <input
-                      type="text"
-                      class="hex-text-input"
-                      [value]="backgroundGradient().color1"
-                      (change)="onBgGradColor1($any($event.target).value)"
-                      maxlength="7"
-                    />
-                  </div>
-                </div>
-
-                <div class="grad-picker-col">
-                  <span class="grad-label">End Color</span>
-                  <div class="picker-input-row">
-                    <input
-                      type="color"
-                      class="native-color-picker"
-                      [value]="backgroundGradient().color2"
-                      (input)="onBgGradColor2($any($event.target).value)"
-                    />
-                    <input
-                      type="text"
-                      class="hex-text-input"
-                      [value]="backgroundGradient().color2"
-                      (change)="onBgGradColor2($any($event.target).value)"
-                      maxlength="7"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- Gradient Type & Angle Controls -->
-              <div class="grad-params-row">
-                <div class="grad-type-toggle">
-                  <button
-                    type="button"
-                    class="grad-type-btn"
-                    [class.active]="backgroundGradient().type === 'linear'"
-                    (click)="setBgGradType('linear')"
-                  >
-                    Linear
-                  </button>
-                  <button
-                    type="button"
-                    class="grad-type-btn"
-                    [class.active]="backgroundGradient().type === 'radial'"
-                    (click)="setBgGradType('radial')"
-                  >
-                    Radial
-                  </button>
-                </div>
-
-                @if (backgroundGradient().type === 'linear') {
-                  <div class="grad-angle-control">
-                    <span class="angle-label">{{ backgroundGradient().rotation }}°</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="360"
-                      step="5"
-                      class="angle-slider"
-                      [value]="backgroundGradient().rotation"
-                      (input)="onBgGradAngle($any($event.target).value)"
-                      aria-label="Background gradient angle"
-                    />
-                  </div>
-                }
-              </div>
-            </div>
-          }
+          <div class="picker-input-row">
+            <input
+              type="color"
+              class="native-color-picker"
+              [value]="backgroundColor()"
+              (change)="onBgPickerChange($event)"
+              aria-label="Background color picker"
+            />
+            <input
+              type="text"
+              class="hex-text-input"
+              [ngModel]="backgroundColor()"
+              (ngModelChange)="onBgTextChange($event)"
+              placeholder="#FFFFFF"
+              maxlength="7"
+              aria-label="Background hex code"
+            />
+          </div>
         </div>
       </div>
 
-      <!-- Quick Color Palette Presets -->
-      <div class="color-presets-row">
-        <span class="presets-caption">Presets:</span>
-        @for (preset of presets; track preset.name) {
-          <button
-            type="button"
-            class="preset-pair-btn"
-            [class.active]="!foregroundGradient().enabled && !backgroundGradient().enabled && foregroundColor() === preset.fg && backgroundColor() === preset.bg"
-            (click)="applyPreset(preset)"
-          >
-            <span class="preset-swatch">
-              <span class="swatch-half" [style.backgroundColor]="preset.fg"></span>
-              <span class="swatch-half" [style.backgroundColor]="preset.bg"></span>
-            </span>
-            <span class="preset-title">{{ preset.name }}</span>
-          </button>
-        }
+      <!-- Quick Color Palette Presets with Live Dummy QR Previews -->
+      <div class="color-section-group">
+        <!-- Group 1: Classic and Light -->
+        <div class="palette-category-block">
+          <div class="section-sub-header">
+            <span class="presets-caption">Classic and Light ({{ classicPalettes.length }})</span>
+          </div>
+          <div class="palettes-grid" role="region" aria-label="Classic and Light color palette presets">
+            @for (palette of classicPalettes; track palette.id) {
+              <button
+                type="button"
+                class="palette-card"
+                [class.active]="isPaletteActive(palette)"
+                [class.disabled]="palette.hasLowContrast"
+                [disabled]="palette.hasLowContrast"
+                (click)="applyPalette(palette)"
+                [title]="palette.name + ' (' + palette.fg + ' on ' + palette.bg + ')'"
+                [attr.aria-label]="palette.name + ' palette: ' + palette.fg + ' on ' + palette.bg"
+              >
+                <div class="palette-preview-wrap" [innerHTML]="palette.safeThumbnail"></div>
+                <span class="palette-title">{{ palette.name }}</span>
+                @if (isPaletteActive(palette)) {
+                  <div class="palette-check-badge" aria-label="Selected">
+                    <ts-icon name="check" class="check-pip-icon" />
+                  </div>
+                }
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Group 2: Dark premium -->
+        <div class="palette-category-block">
+          <div class="section-sub-header">
+            <div class="category-title-wrap">
+              <span class="presets-caption">Dark premium</span>
+              <span class="dark-tag-pill">Dark premium</span>
+            </div>
+          </div>
+          <div class="palettes-grid" role="region" aria-label="Dark premium color palette presets">
+            @for (palette of darkPremiumPalettes; track palette.id) {
+              <button
+                type="button"
+                class="palette-card"
+                [class.active]="isPaletteActive(palette)"
+                [class.disabled]="palette.hasLowContrast"
+                [disabled]="palette.hasLowContrast"
+                (click)="applyPalette(palette)"
+                [title]="palette.name + ' (' + palette.fg + ' on ' + palette.bg + ')'"
+                [attr.aria-label]="palette.name + ' palette: ' + palette.fg + ' on ' + palette.bg"
+              >
+                <div class="palette-preview-wrap" [innerHTML]="palette.safeThumbnail"></div>
+                <span class="palette-title">{{ palette.name }}</span>
+                @if (isPaletteActive(palette)) {
+                  <div class="palette-check-badge" aria-label="Selected">
+                    <ts-icon name="check" class="check-pip-icon" />
+                  </div>
+                }
+              </button>
+            }
+          </div>
+        </div>
       </div>
 
-      <!-- Quick Gradient Presets -->
-      <div class="color-presets-row">
-        <span class="presets-caption">Gradient Themes:</span>
-        @for (gPreset of gradientPresets; track gPreset.name) {
-          <button
-            type="button"
-            class="preset-pair-btn"
-            (click)="applyGradientTheme(gPreset)"
-            [title]="gPreset.name + ' gradient preset'"
-          >
-            <span
-              class="preset-swatch gradient-swatch"
-              [style.background]="'linear-gradient(' + gPreset.rotation + 'deg, ' + gPreset.color1 + ', ' + gPreset.color2 + ')'"
-            ></span>
-            <span class="preset-title">{{ gPreset.name }}</span>
-          </button>
-        }
-      </div>
+      <!-- Inverted Code Info Note for Dark Premium -->
+      @if (isDarkPremiumActive()) {
+        <div class="inverted-info-row slide-fade-up" role="note">
+          <ts-icon name="info" class="info-icon" />
+          <span class="info-text">Inverted code: works on most modern phones; test before printing.</span>
+        </div>
+      }
 
-      <!-- Clean Scanner Reliability Indicator (No confusing raw ratios or sample text) -->
+      <!-- Clean Scanner Reliability Indicator -->
       @if (contrast().hasLowContrast) {
         <div class="warning-alert-row slide-fade-up" role="alert">
           <ts-icon name="alert-triangle" class="alert-icon" />
           <span class="warning-text">
-            Low scanner contrast: Ensure modules are clearly distinct from the background for faster camera scanning.
+            Low scanner contrast ({{ contrast().ratio.toFixed(1) }}:1): Ensure modules are clearly distinct from the background for faster camera scanning.
           </span>
         </div>
       } @else {
         <div class="contrast-ok-row slide-fade-up">
           <ts-icon name="check-circle" class="check-icon" />
-          <span class="ok-text">Optimal Contrast: High scan reliability across all mobile cameras</span>
+          <span class="ok-text">Optimal Contrast ({{ contrast().ratio.toFixed(1) }}:1): High scan reliability across all mobile cameras</span>
         </div>
       }
     </div>
   `,
   styles: [`
+    :host {
+      display: block;
+      width: 100%;
+      flex: 1 0 auto;
+      min-height: min-content;
+      box-sizing: border-box;
+    }
+
     .color-customizer-root {
       display: flex;
       flex-direction: column;
       gap: 14px;
       width: 100%;
       box-sizing: border-box;
+      padding-bottom: 8px;
     }
 
     .customizer-header {
@@ -452,33 +308,6 @@ interface GradientPreset {
       letter-spacing: -0.01em;
     }
 
-    /* Segmented Mode Pill (Solid | Gradient) */
-    .mode-segmented-pill {
-      display: inline-flex;
-      background: var(--surface-3, rgba(0, 0, 0, 0.3));
-      padding: 2px;
-      border-radius: 6px;
-      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-    }
-
-    .seg-pill-btn {
-      padding: 2px 7px;
-      border-radius: 4px;
-      border: none;
-      background: transparent;
-      color: var(--text-3, rgba(255, 255, 255, 0.6));
-      font-size: 10.5px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .seg-pill-btn.active {
-      background: var(--tool-accent, #3b82f6);
-      color: #ffffff;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    }
-
     .picker-input-row {
       display: flex;
       align-items: center;
@@ -487,6 +316,12 @@ interface GradientPreset {
       border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
       border-radius: 8px;
       padding: 3px 6px 3px 3px;
+    }
+
+    :host-context([data-theme="light"]) .picker-input-row,
+    [data-theme="light"] .picker-input-row {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
     }
 
     .native-color-picker {
@@ -520,193 +355,240 @@ interface GradientPreset {
       text-transform: uppercase;
     }
 
-    /* Gradient Controls Box */
-    .gradient-controls-box {
+    :host-context([data-theme="light"]) .hex-text-input,
+    [data-theme="light"] .hex-text-input {
+      color: #0F172A;
+    }
+
+    /* Color Palettes Section */
+    .color-section-group {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .palette-category-block {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      width: 100%;
-      min-width: 0;
     }
 
-    .gradient-dual-pickers {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-    }
-
-    .grad-picker-col {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      min-width: 0;
-    }
-
-    .grad-label {
-      font-size: 10px;
-      color: var(--text-3, rgba(255, 255, 255, 0.5));
-      font-weight: 500;
-    }
-
-    .grad-params-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding-top: 2px;
-      width: 100%;
-      box-sizing: border-box;
-      min-width: 0;
-    }
-
-    .grad-type-toggle {
-      display: inline-flex;
-      background: var(--surface-3, rgba(0, 0, 0, 0.25));
-      padding: 2px;
-      border-radius: 6px;
-      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-      flex-shrink: 0;
-    }
-
-    .grad-type-btn {
-      padding: 2px 7px;
-      border-radius: 4px;
-      border: none;
-      background: transparent;
-      color: var(--text-3, rgba(255, 255, 255, 0.6));
-      font-size: 10px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .grad-type-btn.active {
-      background: var(--surface-1, rgba(255, 255, 255, 0.14));
-      color: var(--text, #ffffff);
-    }
-
-    .grad-angle-control {
+    .category-title-wrap {
       display: flex;
       align-items: center;
       gap: 8px;
-      flex: 1 1 auto;
-      min-width: 0;
-      max-width: 130px;
-    }
-
-    .angle-label {
-      font-family: var(--ts-font-mono, monospace);
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--tool-accent, #60a5fa);
-      min-width: 36px;
-      text-align: right;
-      white-space: nowrap;
-      flex-shrink: 0;
-      line-height: 1;
-    }
-
-    .angle-slider {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 100%;
-      min-width: 0;
-      height: 4px;
-      background: var(--surface-active, rgba(125, 125, 125, 0.25));
-      border-radius: 9999px;
-      outline: none;
-      cursor: pointer;
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    .angle-slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: var(--tool-accent, #3b82f6);
-      border: 2px solid #ffffff;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-      cursor: pointer;
-      transition: transform 0.1s ease;
-    }
-
-    .angle-slider::-webkit-slider-thumb:hover {
-      transform: scale(1.15);
-    }
-
-    .angle-slider::-moz-range-thumb {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: var(--tool-accent, #3b82f6);
-      border: 2px solid #ffffff;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-      cursor: pointer;
-    }
-
-    /* Color Presets */
-    .color-presets-row {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 5px;
-      font-size: 11px;
     }
 
     .presets-caption {
-      color: var(--text-3, rgba(255, 255, 255, 0.5));
-      margin-right: 4px;
       font-size: 11px;
+      font-weight: 700;
+      color: var(--text-2, rgba(255, 255, 255, 0.75));
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    :host-context([data-theme="light"]) .presets-caption,
+    [data-theme="light"] .presets-caption {
+      color: #475569;
+    }
+
+    .dark-tag-pill {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-2, rgba(255, 255, 255, 0.8));
+      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
+    :host-context([data-theme="light"]) .dark-tag-pill,
+    [data-theme="light"] .dark-tag-pill {
+      background: #E2E8F0;
+      color: #1E293B;
+      border-color: #CBD5E1;
+    }
+
+    .palettes-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+    }
+
+    @media (max-width: 900px) {
+      .palettes-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 520px) {
+      .palettes-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .palette-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 5px;
+      border-radius: 9px;
+      background: var(--surface-2, rgba(255, 255, 255, 0.03));
+      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+      position: relative;
+      text-align: center;
+      min-width: 0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .palette-card:hover:not(:disabled) {
+      background: var(--surface-3, rgba(255, 255, 255, 0.05));
+      border-color: var(--border, rgba(255, 255, 255, 0.16));
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    .palette-card.disabled,
+    .palette-card:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    :host-context([data-theme="light"]) .palette-card,
+    [data-theme="light"] .palette-card {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    :host-context([data-theme="light"]) .palette-card:hover:not(:disabled),
+    [data-theme="light"] .palette-card:hover:not(:disabled) {
+      background: #F8FAFC;
+      border-color: #CBD5E1;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .palette-card.active {
+      background: var(--surface-2, rgba(255, 255, 255, 0.08));
+      border-color: var(--tool-accent, #3b82f6);
+      box-shadow: 0 0 0 1.5px var(--tool-accent, #3b82f6), 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    :host-context([data-theme="light"]) .palette-card.active,
+    [data-theme="light"] .palette-card.active {
+      background: #F0F9FF;
+      border-color: #0284C7;
+      box-shadow: 0 0 0 1.5px #0284C7, 0 2px 6px rgba(2, 132, 199, 0.1);
+    }
+
+    .palette-preview-wrap {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
+    }
+
+    :host-context([data-theme="light"]) .palette-preview-wrap,
+    [data-theme="light"] .palette-preview-wrap {
+      border-color: rgba(0, 0, 0, 0.1);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .palette-title {
+      font-size: 11px;
+      font-weight: 550;
+      color: var(--text-2, rgba(255, 255, 255, 0.85));
+      line-height: 1.25;
+      text-align: center;
+      white-space: normal;
+      word-break: normal;
+      overflow: visible;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      min-height: 28px;
+      max-width: 100%;
+    }
+
+    :host-context([data-theme="light"]) .palette-title,
+    [data-theme="light"] .palette-title {
+      color: #334155;
+    }
+
+    .palette-card.active .palette-title {
+      color: var(--accent-strong, #60a5fa);
+      font-weight: 650;
+    }
+
+    :host-context([data-theme="light"]) .palette-card.active .palette-title {
+      color: #0284C7;
+    }
+
+    .palette-check-badge {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: var(--tool-accent, #3b82f6);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    }
+
+    :host-context([data-theme="light"]) .palette-check-badge,
+    [data-theme="light"] .palette-check-badge {
+      background: #0284C7;
+    }
+
+    .check-pip-icon {
+      width: 9px;
+      height: 9px;
+    }
+
+    /* Inverted Info Row for Dark Premium */
+    .inverted-info-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      font-size: 11.5px;
+      color: #60a5fa;
       font-weight: 500;
     }
 
-    .preset-pair-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 4px 8px;
-      border-radius: 6px;
-      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-      background: var(--surface-2, rgba(255, 255, 255, 0.04));
-      color: var(--text-2, rgba(255, 255, 255, 0.75));
-      cursor: pointer;
-      font-size: 11px;
-      transition: all 0.15s ease;
+    :host-context([data-theme="light"]) .inverted-info-row,
+    [data-theme="light"] .inverted-info-row {
+      background: #EFF6FF;
+      border-color: #BFDBFE;
+      color: #1D4ED8;
     }
 
-    .preset-pair-btn:hover {
-      background: var(--surface-3, rgba(255, 255, 255, 0.08));
-      border-color: var(--accent-border, rgba(59, 130, 246, 0.4));
-      color: var(--text, #fcfcfc);
-    }
-
-    .preset-pair-btn.active {
-      border-color: var(--tool-accent, #3b82f6);
-      background: var(--tool-accent-soft, rgba(59, 130, 246, 0.12));
-      color: var(--tool-accent, #60a5fa);
-      font-weight: 600;
-    }
-
-    .preset-swatch {
-      width: 14px;
-      height: 14px;
-      border-radius: 3px;
-      display: inline-flex;
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .gradient-swatch {
-      border-radius: 3px;
-    }
-
-    .swatch-half {
-      width: 50%;
-      height: 100%;
+    .info-icon {
+      width: 15px;
+      height: 15px;
+      color: currentColor;
+      flex-shrink: 0;
     }
 
     /* Clean Scanner Status Alerts */
@@ -767,6 +649,7 @@ interface GradientPreset {
   `]
 })
 export class ColorCustomizerComponent {
+  private readonly sanitizer = inject(DomSanitizer);
   private readonly colorValidator = inject(ColorValidatorService);
 
   readonly foregroundColor = input<string>('#000000');
@@ -779,24 +662,69 @@ export class ColorCustomizerComponent {
   readonly foregroundGradientChange = output<QrGradientOptions>();
   readonly backgroundGradientChange = output<QrGradientOptions>();
 
-  readonly presets: ColorPresetPair[] = [
-    { name: 'Classic', fg: '#000000', bg: '#FFFFFF' },
-    { name: 'Tool Signature', fg: '#0284C7', bg: '#F0F9FF' },
-    { name: 'Deep Midnight', fg: '#0F172A', bg: '#F8FAFC' },
-    { name: 'Dark Mode', fg: '#F8FAFC', bg: '#0F172A' }
+  private generateMiniQrSvg(fg: string, bg: string): SafeHtml {
+    const raw = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" width="100%" height="100%"><rect width="25" height="25" rx="3.5" fill="${bg}"/><g fill="${fg}"><path fill-rule="evenodd" d="M2,2 h7 v7 h-7 z M3,3 v5 h5 v-5 z M4,4 h3 v3 h-3 z"/><path fill-rule="evenodd" d="M16,2 h7 v7 h-7 z M17,3 v5 h5 v-5 z M18,4 h3 v3 h-3 z"/><path fill-rule="evenodd" d="M2,16 h7 v7 h-7 z M3,17 v5 h5 v-5 z M4,18 h3 v3 h-3 z"/><rect x="10" y="5" width="1" height="1"/><rect x="12" y="5" width="1" height="1"/><rect x="14" y="5" width="1" height="1"/><rect x="5" y="10" width="1" height="1"/><rect x="5" y="12" width="1" height="1"/><rect x="5" y="14" width="1" height="1"/><rect x="10" y="2" width="1.2" height="1.2" rx="0.2"/><rect x="13" y="3" width="1.2" height="1.2" rx="0.2"/><rect x="10" y="8" width="1.2" height="1.2" rx="0.2"/><rect x="12" y="10" width="1.2" height="1.2" rx="0.2"/><rect x="14" y="8" width="1.2" height="1.2" rx="0.2"/><rect x="10" y="13" width="1.2" height="1.2" rx="0.2"/><rect x="14" y="12" width="1.2" height="1.2" rx="0.2"/><rect x="11" y="16" width="1.2" height="1.2" rx="0.2"/><rect x="13" y="18" width="1.2" height="1.2" rx="0.2"/><rect x="15" y="16" width="1.2" height="1.2" rx="0.2"/><rect x="18" y="10" width="1.2" height="1.2" rx="0.2"/><rect x="20" y="13" width="1.2" height="1.2" rx="0.2"/><rect x="17" y="18" width="1.2" height="1.2" rx="0.2"/><rect x="21" y="17" width="1.2" height="1.2" rx="0.2"/><rect x="19" y="21" width="1.2" height="1.2" rx="0.2"/><rect x="10" y="21" width="1.2" height="1.2" rx="0.2"/><rect x="2" y="11" width="1.2" height="1.2" rx="0.2"/></g></svg>`;
+
+    return this.sanitizer.bypassSecurityTrustHtml(raw);
+  }
+
+  readonly rawPalettes = [
+    { id: 'ivory-ink', name: 'Ivory Ink', fg: '#111827', bg: '#FAF8F5', category: 'classic' as const, fgStart: '#111827', fgEnd: '#1F2937' },
+    { id: 'midnight-navy', name: 'Midnight Navy', fg: '#0B1F3A', bg: '#F7F9FC', category: 'classic' as const, fgStart: '#0B1F3A', fgEnd: '#1E3A5F' },
+    { id: 'champagne-gold', name: 'Champagne Gold', fg: '#5C4A1E', bg: '#FBF8F1', category: 'classic' as const, fgStart: '#5C4A1E', fgEnd: '#7A5E22' },
+    { id: 'forest-emerald', name: 'Forest Emerald', fg: '#064E3B', bg: '#F4F8F6', category: 'classic' as const, fgStart: '#064E3B', fgEnd: '#0F766E' },
+    { id: 'burgundy-wine', name: 'Burgundy Wine', fg: '#4A0E1F', bg: '#FBF6F6', category: 'classic' as const, fgStart: '#4A0E1F', fgEnd: '#7F1D3A' },
+    { id: 'graphite-slate', name: 'Graphite Slate', fg: '#1F2328', bg: '#F5F6F8', category: 'classic' as const, fgStart: '#1F2328', fgEnd: '#475467' },
+    { id: 'deep-indigo', name: 'Deep Indigo', fg: '#1E1B4B', bg: '#F8F8FD', category: 'classic' as const, fgStart: '#1E1B4B', fgEnd: '#3730A3' },
+    { id: 'rosewood', name: 'Rosewood', fg: '#5B2A33', bg: '#FAF5F4', category: 'classic' as const, fgStart: '#5B2A33', fgEnd: '#8C4A55' },
+    { id: 'ocean-teal', name: 'Ocean Teal', fg: '#0C4A6E', bg: '#F3F9FB', category: 'classic' as const, fgStart: '#0C4A6E', fgEnd: '#0E7490' },
+    { id: 'bronze-copper', name: 'Bronze Copper', fg: '#4A2C17', bg: '#FAF6F1', category: 'classic' as const, fgStart: '#4A2C17', fgEnd: '#8A4B22' },
+    { id: 'obsidian-gold', name: 'Obsidian Gold', fg: '#E7C873', bg: '#111214', category: 'dark-premium' as const, fgStart: '#E7C873', fgEnd: '#C9A24B' },
+    { id: 'charcoal-pearl', name: 'Charcoal Pearl', fg: '#F3F4F6', bg: '#1A1C20', category: 'dark-premium' as const, fgStart: '#F3F4F6', fgEnd: '#D1D5DB' }
   ];
 
-  readonly gradientPresets: GradientPreset[] = [
-    { name: 'Ocean Blue', type: 'linear', rotation: 45, color1: '#0284C7', color2: '#2563EB' },
-    { name: 'Sunset Glow', type: 'linear', rotation: 90, color1: '#F59E0B', color2: '#EF4444' },
-    { name: 'Emerald Forest', type: 'linear', rotation: 45, color1: '#059669', color2: '#10B981' },
-    { name: 'Purple Dawn', type: 'linear', rotation: 135, color1: '#8B5CF6', color2: '#EC4899' },
-    { name: 'Neon Cyber', type: 'linear', rotation: 180, color1: '#06B6D4', color2: '#3B82F6' }
-  ];
+  readonly premiumPalettes: PremiumPalette[] = this.rawPalettes.map(p => {
+    const contrastRatio = this.colorValidator.contrastRatio(p.fg, p.bg);
+    return {
+      ...p,
+      contrastRatio,
+      hasLowContrast: contrastRatio < 4.5,
+      safeThumbnail: this.generateMiniQrSvg(p.fg, p.bg)
+    };
+  });
+
+  readonly classicPalettes: PremiumPalette[] = this.premiumPalettes.filter(p => p.category === 'classic');
+  readonly darkPremiumPalettes: PremiumPalette[] = this.premiumPalettes.filter(p => p.category === 'dark-premium');
+
+  // Backwards compatibility aliases
+  readonly solidPalettes: any[] = this.premiumPalettes;
+  readonly presets: any[] = this.premiumPalettes;
+  readonly gradPalettes: any[] = [];
 
   readonly contrast = computed(() => {
     return this.colorValidator.checkContrast(this.foregroundColor(), this.backgroundColor());
   });
+
+  readonly isDarkPremiumActive = computed(() => {
+    return this.darkPremiumPalettes.some(p => this.isPaletteActive(p));
+  });
+
+  isPaletteActive(palette: PremiumPalette): boolean {
+    return (
+      !this.foregroundGradient().enabled &&
+      !this.backgroundGradient().enabled &&
+      this.foregroundColor().toLowerCase() === palette.fg.toLowerCase() &&
+      this.backgroundColor().toLowerCase() === palette.bg.toLowerCase()
+    );
+  }
+
+  isSolidPresetActive(preset: any): boolean {
+    return this.isPaletteActive(preset);
+  }
+
+  isGradientPresetActive(gPreset: any): boolean {
+    return false;
+  }
 
   onFgPickerChange(event: Event): void {
     const val = (event.target as HTMLInputElement).value;
@@ -824,94 +752,49 @@ export class ColorCustomizerComponent {
     }
   }
 
-  toggleFgGradient(enabled: boolean): void {
-    const cur = this.foregroundGradient();
-    this.foregroundGradientChange.emit({
-      ...cur,
-      enabled
-    });
-  }
-
-  toggleBgGradient(enabled: boolean): void {
-    const cur = this.backgroundGradient();
-    this.backgroundGradientChange.emit({
-      ...cur,
-      enabled
-    });
-  }
-
-  setFgGradType(type: 'linear' | 'radial'): void {
-    const cur = this.foregroundGradient();
-    this.foregroundGradientChange.emit({ ...cur, type });
-  }
-
-  setBgGradType(type: 'linear' | 'radial'): void {
-    const cur = this.backgroundGradient();
-    this.backgroundGradientChange.emit({ ...cur, type });
-  }
-
-  onFgGradColor1(color1: string): void {
-    const cur = this.foregroundGradient();
-    this.foregroundGradientChange.emit({ ...cur, color1 });
-  }
-
-  onFgGradColor2(color2: string): void {
-    const cur = this.foregroundGradient();
-    this.foregroundGradientChange.emit({ ...cur, color2 });
-  }
-
-  onBgGradColor1(color1: string): void {
-    const cur = this.backgroundGradient();
-    this.backgroundGradientChange.emit({ ...cur, color1 });
-  }
-
-  onBgGradColor2(color2: string): void {
-    const cur = this.backgroundGradient();
-    this.backgroundGradientChange.emit({ ...cur, color2 });
-  }
-
-  onFgGradAngle(angle: number | string): void {
-    const cur = this.foregroundGradient();
-    this.foregroundGradientChange.emit({ ...cur, rotation: Number(angle) });
-  }
-
-  onBgGradAngle(angle: number | string): void {
-    const cur = this.backgroundGradient();
-    this.backgroundGradientChange.emit({ ...cur, rotation: Number(angle) });
-  }
-
   swapColors(): void {
-    // If gradient is active, swap gradient colors
-    if (this.foregroundGradient().enabled) {
-      const cur = this.foregroundGradient();
-      this.foregroundGradientChange.emit({
-        ...cur,
-        color1: cur.color2,
-        color2: cur.color1
-      });
-      return;
-    }
-
     const curFg = this.foregroundColor();
     const curBg = this.backgroundColor();
     this.foregroundColorChange.emit(curBg);
     this.backgroundColorChange.emit(curFg);
   }
 
-  applyPreset(preset: ColorPresetPair): void {
-    this.toggleFgGradient(false);
-    this.toggleBgGradient(false);
-    this.foregroundColorChange.emit(preset.fg);
-    this.backgroundColorChange.emit(preset.bg);
+  applyPalette(palette: PremiumPalette): void {
+    if (palette.hasLowContrast) {
+      return;
+    }
+
+    // Ensure any gradient mode is cleanly turned off
+    this.foregroundGradientChange.emit({
+      ...DEFAULT_GRADIENT_OPTIONS,
+      enabled: false
+    });
+    this.backgroundGradientChange.emit({
+      ...DEFAULT_GRADIENT_OPTIONS,
+      enabled: false
+    });
+
+    this.foregroundColorChange.emit(palette.fg);
+    this.backgroundColorChange.emit(palette.bg);
   }
 
-  applyGradientTheme(gPreset: GradientPreset): void {
-    this.foregroundGradientChange.emit({
-      enabled: true,
-      type: gPreset.type,
-      rotation: gPreset.rotation,
-      color1: gPreset.color1,
-      color2: gPreset.color2
-    });
+  applyPreset(preset: any): void {
+    if ('fg' in preset) {
+      this.applyPalette(preset);
+    } else if ('fgStart' in preset) {
+      this.applyPalette({
+        id: preset.id,
+        name: preset.name,
+        fg: preset.fgStart,
+        bg: preset.bg,
+        category: preset.category || 'classic',
+        contrastRatio: 21,
+        hasLowContrast: false
+      });
+    }
+  }
+
+  applyGradientTheme(gPreset: any): void {
+    // No-op for gradient theme since gradients have been removed
   }
 }

@@ -11,15 +11,21 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/q")
 @RequiredArgsConstructor
 @Slf4j
 public class QrRedirectController {
 
     private final QrResolutionService resolutionService;
 
-    @GetMapping("/{code}")
-    public ResponseEntity<Void> resolve(@PathVariable String code, HttpServletRequest request) {
+    @GetMapping("/q/{code}")
+    public ResponseEntity<?> resolve(@PathVariable String code, HttpServletRequest request) {
         return resolutionService.resolveShortlink(code, request);
+    }
+
+    @GetMapping({"/qr", "/qr/**"})
+    public ResponseEntity<Void> redirectToQrTool() {
+        return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
+                .header(org.springframework.http.HttpHeaders.LOCATION, "/tools/qr-generator")
+                .build();
     }
 }

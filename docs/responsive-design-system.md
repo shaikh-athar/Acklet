@@ -59,6 +59,23 @@ Docked or floating bottom action bar:
 - **Touch Target Enforcements**: Enforces minimum $44 \times 44$px touch targets for nested buttons.
 - **Safe Area Padding**: Adds bottom safe-area insets (`calc(12px + env(safe-area-inset-bottom))`).
 
+### 3.4 `DrawerGestureService` (`DrawerGestureService`)
+Touch & pointer gesture engine for mobile and tablet touch devices:
+- **Edge Swipe Detection**: Swipe-right from left edge zone ($16\text{px} \le \text{clientX} \le 48\text{px}$) opens the tools drawer. The $0-15\text{px}$ zone is reserved to completely evade iOS Safari system back-swipe conflict.
+- **Dismiss Swipe**: Swipe-left on the drawer panel or scrim dismisses the drawer with natural finger tracking (`transform: translateX(...)`).
+- **Dismiss Target Exclusion**: Uses dedicated `isTargetExcludedForDismiss(target)` to exclude only text inputs and sliders (`input:not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, select, [role="slider"], [type="range"], .slider, [data-no-swipe]`), ensuring touches starting on links, category buttons, or drawer scrollable surfaces cleanly initiate swipe-to-dismiss.
+- **Thresholds**: Snaps open or closed based on distance ($\ge 80\text{px}$ open, $\le -50\text{px}$ close) or swipe velocity ($\ge 0.4\text{px/ms}$).
+- **Accessibility & Motion**: Respects `prefers-reduced-motion` and leaves visible close buttons as the primary trigger.
+
+### 3.5 Topbar Navigation & Mobile Sheet Architecture
+- **Navigation Button (4 Circles, Top Right)**: Triggers the tool navigation sheet (`toggleNavMenu()`), displaying:
+  - Tool Sections (`Tool` [Active], `Dynamic Links` [if supported], `About`, `How to use`, `FAQ`, `Related`).
+  - Action Rows (`Share Tool`, `Save Tool`, `Acklet Tools` drawer trigger).
+  - Integrated Dark/Light Theme Mode switch (`.ts-nav-theme-row`).
+- **Clean Mobile Topbar**: The 3-line hamburger menu is removed, and `<ts-theme-toggle>` is hidden from the topbar on viewports $\le 1023\text{px}$, leaving a clean, spacious navbar with the Acklet brand mark on the left and the 4-circles menu button on the right.
+- **Ghost Click Prevention**: The tools drawer close button (`.ts-sheet-close-btn`) intercepts `$event.stopPropagation()` and `$event.preventDefault()` across `click`, `pointerdown`, and `touchstart` to prevent event bleeding through to underlying topbar elements upon dismiss.
+- **Opaque Surfaces & Scrim**: The tools drawer and navigation bottom sheet are opaque content card surfaces (`var(--bg-card)`) with dual-theme border and shadow, resting above a moderate scrim (`rgba(0, 0, 0, 0.45)` with `blur(4px)`). This guarantees WCAG AA contrast ($4.5:1$ text, $3:1$ icons) in both Light and Dark themes.
+
 ### 3.4 `AdaptiveDropdownComponent` (`<ts-adaptive-dropdown>`)
 Hybrid menu that automatically adapts to the user's device:
 - On **Desktop & Tablet Landscape**: Renders an accessible floating popover menu.

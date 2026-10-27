@@ -31,8 +31,8 @@ status: Complete
 | **QR-F18** | Dynamic QR Passcode Gate | Optional client-side PIN/passcode verification before unlocking private hosted content | **Implemented** |
 | **QR-F19** | Decorative Frames & CTA Borders | Vector frames (Bottom Banner, Top Header, Polaroid, Badge Pill, Chat Bubble) with custom CTA captions | **Implemented** |
 | **QR-F20** | Batch QR Code Generation | Client-side bulk generation from CSV or text list with live progress and ZIP archive download | **Implemented** |
-| **QR-F21** | Overall Shape Engine | 12 geometric overall shapes (Circle, Heart, Star, Hexagon, Diamond, Shield, Drop, Speech Bubble, Badge, Ticket) across Around, Badge, and Trim modes | **Implemented** |
-| **QR-F22** | Brand Name & Brand Artwork | Custom brand typography (8 Google Fonts, up to 12 chars), client-side verified image silhouettes (PNG/JPEG/SVG <= 2MB), and 3 placements | **Implemented** |
+| **QR-F21** | Overall Shape Engine | 12 geometric overall shapes (Circle, Heart, Star, Hexagon, Diamond, Shield, Drop, Speech Bubble, Badge, Ticket) across Around, Badge, and Trim modes | **Removed** |
+| **QR-F22** | Brand Name & Brand Artwork | Custom brand typography (8 Google Fonts), client-side verified image silhouettes, and brand tab customizer | **Removed** |
 | **QR-F23** | Calm Scan Confidence & Auto-Fix | Calm scan confidence rating chip (High, Medium, Low), one-click automatic fix, and ready-made presets | **Implemented** |
 
 ---
@@ -44,13 +44,27 @@ status: Complete
 - **User Interaction**:
   - Selecting content type via tab buttons updates placeholder text, character limits, and validation rules.
   - Typing in the multi-line textarea updates character count in real time.
+  - **Plain Text Limits & Live Counter**:
+    - Max 2,000 characters and 2,300 UTF-8 bytes cap (enforced using `TextEncoder`).
+    - Live counter: `{{ textCharCountFormatted() }} / 2,000 characters`.
+    - Warning banner if byte cap is hit first (Hindi, emojis, multi-byte text): *"Non-English text uses more space"*.
+    - Error banner if character limit is exceeded: *"Maximum is 2,000 characters"*.
+    - Scannability hint above ~800 bytes: *"Large codes are harder to scan. Try Notes link mode."*.
+  - **Plain Text Two Modes**:
+    - **Direct text** (default): Encodes raw normalized text directly into the QR code with Error Correction held at level `M`. Helper text: *"After scanning, tap Copy or Share and choose Notes. Opening a notes app automatically is not possible with plain QR codes."*
+    - **Hosted short-link text mode** (`POST /api/v1/qr-links`): Automatically engaged or manually selected when text exceeds scannability threshold (300 chars, up to 20,000 chars).
+      - Encodes a compact short URL (`/q/{code}`) into the QR matrix, keeping QR density light and scannable.
+      - "Create-then-generate" flow ensures QR is only displayed after the backend confirms link persistence.
+      - Resolves to a clean, mobile-first responsive HTML viewer page with "Copy", "Share / Save to Notes" (Web Share API with fallback to copy), and "Download .txt" controls.
+      - Explanatory note: *"Hint: Tap 'Share / Save to Notes' to pick Apple Notes, Google Keep, or any notepad app."*
+      - Offline/network failure fallback: Renders static high-density QR if payload <= 1500 chars with an inline warning and "Retry" action. Otherwise displays clear error state with "Retry".
 - **Processing Flow**:
   1. Content is validated against the active type (`text`, `url`, `email`, `phone`, `sms`, `wifi`, `geo`, `event`, `vcard`, `social`, `app`, `crypto`).
   2. If invalid, an inline error is displayed below the textarea and QR generation is paused.
   3. If valid, payload formatter prepends appropriate protocol (`mailto:`, `tel:`, `smsto:`, `WIFI:`, `geo:`, etc.) or formats raw URL/text.
 - **Edge Cases**:
   - Whitespace-only input: Clears error and renders the empty state placeholder.
-  - Multi-line text: Preserves CRLF line breaks for standard text mode.
+  - Multi-line text: Normalizes CRLF and CR line breaks to standard `\n` without data loss.
 
 ### QR-F02: Type-Aware Fast Presets
 - **Purpose**: Quick sample workflows for fast testing and demonstration.
@@ -135,12 +149,17 @@ status: Complete
   - Exact payload string match comparison against active content.
   - Diagnostic warnings for unreadable matrix, low contrast, or excessive density.
 
-### QR-F12: Hosted Dynamic QR Code Short Links
-- **Purpose**: Short URLs (`/q/{code}`) hosted by Spring Boot 3.4.1 that can be redirected to any destination URL without requiring re-printing of physical QR codes.
-- **Implementation**:
-  - Base62 6-character random slugs with collision check (`Base62.java`) or custom user slugs (3-32 chars).
+### QR-F12: Hosted Short Links & Dynamic QR Codes
+- **Purpose**: Short URLs (`/q/{code}`) hosted by Spring Boot 3.4.1 for long URLs, long text, and managed dynamic QR codes.
+- **Hosted Short Links (`POST /api/v1/qr-links`)**:
+  - Automatically requested when URLs exceed 120 characters or text exceeds 300 characters.
+  - Base62 6-character random slugs with reserved word validation and case-sensitive collision protection.
+  - URL payloads return **HTTP 302 Found** (`Location: <target>`, `no-cache`, `no-referrer`, `noindex`). Strictly validates target scheme to `http` or `https` (rejects `javascript:`, `data:`, `file:`).
+  - TEXT payloads return **HTTP 200 OK** directly serving a fast, responsive mobile HTML viewer with strict CSP (`default-src 'none'`), XSS escaping, UTF-8 BOM download, Copy button, and "Share / Save to Notes" (Web Share API).
+  - Unknown codes return friendly **HTTP 404** HTML pages without stack traces; expired/deleted codes return **HTTP 410 Gone**.
+- **Managed Dynamic Codes**:
   - Status management: `ACTIVE`, `PAUSED` (renders paused notice), `EXPIRED` (renders expiration notice).
-  - Redirection: HTTP 302 Found for direct links (never 301, preventing permanent proxy cache), HTTP 307 Temporary Redirect for hosted landing page types or password verification.
+  - Redirection: HTTP 302 Found for direct links, HTTP 307 Temporary Redirect for hosted landing page types or password verification.
 
 ### QR-F13: Anonymous Manage Key Authorization
 - **Purpose**: Allow users to edit their dynamic QR codes without forcing mandatory account creation or logins.
@@ -226,19 +245,14 @@ status: Complete
   - `Badge`: Encapsulates the complete QR code inside a solid shaped vector SVG badge with high-contrast border and padding.
   - `Trim`: Soft-crops outer non-reserved data modules within a strict 12% error-correction allowance and automatically elevates recovery to Level H (30%). Real finder locators (top-left, top-right, bottom-left) remain 100% untouched.
 
-### QR-F22: Brand Name & Brand Image Artwork
-- **Purpose**: Infuse brand identity into the QR code client-side without compromising camera readability.
-- **Brand Name**: Encodes up to 12 characters in 8 Google fonts (Outfit, Inter, Montserrat, Playfair Display, Space Grotesk, Plus Jakarta Sans, Bebas Neue, Caveat) across 3 placements:
-  - `In the code`: Tone-maps modules over the text mask using WCAG AA compliant contrast.
-  - `Around the code`: Styles modules in the perimeter silhouette field to highlight letter forms.
-  - `Banner`: Adds a vector pill banner beneath the code with bold, uppercase brand text.
-- **Brand Image**: Client-side validated (magic-byte checks for PNG, JPEG, SVG up to 2MB) in-memory thresholding generating decorative module masks.
+### QR-F22: Brand Name & Brand Image Artwork (Removed)
+- **Status**: Removed. The Brand tab, BrandCustomizerComponent, and brand mask rendering engine have been removed to keep the Customize Design interface clean and focused on Frame, Shape, Logo, and Color.
 
 ### QR-F23: Calm Scan Confidence & Auto-Fix
 - **Purpose**: Provide reassurance about real-world camera readability with actionable one-click resolution.
 - **Confidence Rating**: Evaluates decoder passes and luminance dynamic range into High, Medium, or Low confidence.
 - **Fix Automatically**: Single-click button that automatically elevates error correction to Level H, adjusts shape density to Safe/Balanced, and sharpens contrast to guarantee instantaneous camera recognition.
-- **Examples Menu**: Quick-load presets for Circle Badge, Heart Silhouette, Brand Name "Acklet", and Standard Sample.
+- **Examples Menu**: Quick-load presets for Circle Badge, Heart Silhouette, and Standard Sample.
 
 ---
 

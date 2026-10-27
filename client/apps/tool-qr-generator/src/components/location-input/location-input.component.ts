@@ -45,7 +45,7 @@ export interface LocationInputValue {
           role="tab"
           [attr.aria-selected]="activeMode() === 'link'"
         >
-          <ts-icon name="map" class="toggle-icon" />
+          <ts-icon name="map-pinned" class="toggle-icon" />
           <span>Map Link</span>
         </button>
         <button
@@ -67,25 +67,15 @@ export interface LocationInputValue {
           <div class="field-row">
             <div class="field-header">
               <label for="loc-map-url" class="field-label">Google Maps, Apple Maps, or OpenStreetMap link</label>
-              <button
-                type="button"
-                class="quick-gps-btn"
-                (click)="useCurrentLocation()"
-                [disabled]="isLocating()"
-                title="Detect your current GPS location"
-              >
-                <ts-icon name="navigation" class="gps-icon" [class.spinning]="isLocating()" />
-                <span>{{ isLocating() ? 'Locating...' : 'Use my location' }}</span>
-              </button>
             </div>
 
             <div class="input-with-icon">
-              <ts-icon name="link-2" class="input-leading-icon" />
+              <ts-icon name="map-pinned" class="input-leading-icon" />
               <input
                 id="loc-map-url"
                 type="url"
                 class="field-input with-leading-icon"
-                placeholder="Paste link e.g. https://maps.google.com/?q=37.7749,-122.4194"
+                placeholder="Paste link e.g. https://maps.google.com/?q=... or https://maps.app.goo.gl/..."
                 [ngModel]="mapUrl()"
                 (ngModelChange)="onUrlChange($event)"
               />
@@ -98,15 +88,15 @@ export interface LocationInputValue {
           </div>
 
           <!-- Detected Feedback Badge -->
-          @if (detectedCoords()) {
+          @if (mapUrl() && validation().isValid) {
             <div class="detected-coords-pill">
               <ts-icon name="check-circle" class="pill-icon success" />
-              <span>Location detected: <strong>{{ detectedCoords()!.latitude.toFixed(5) }}, {{ detectedCoords()!.longitude.toFixed(5) }}</strong></span>
+              <span>Location link ready. Scans will redirect directly to this link.</span>
             </div>
-          } @else if (isShortLink()) {
-            <div class="detected-coords-pill note">
-              <ts-icon name="info" class="pill-icon info" />
-              <span>Short link detected. Scans will open the map directly on phones.</span>
+          } @else if (mapUrl() && validation().error) {
+            <div class="detected-coords-pill note error">
+              <ts-icon name="alert-circle" class="pill-icon error" />
+              <span>{{ validation().error }}</span>
             </div>
           }
 
@@ -135,7 +125,7 @@ export interface LocationInputValue {
               (click)="useCurrentLocation()"
               [disabled]="isLocating()"
             >
-              <ts-icon name="navigation" class="gps-icon" [class.spinning]="isLocating()" />
+              <ts-icon name="locate-fixed" class="gps-icon" [class.spinning]="isLocating()" />
               <span>{{ isLocating() ? 'Detecting GPS...' : 'Use my location' }}</span>
             </button>
           </div>
@@ -552,33 +542,22 @@ export class LocationInputComponent implements OnInit {
         return { isValid: false, payload: '' };
       }
 
-      // If coordinates detected from URL, create RFC 5870 Geo URI
-      const coords = this.detectedCoords();
-      if (coords) {
-        const payload = buildGeoPayload({
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          label: label || undefined,
-          provider: 'geo'
-        });
-        return { isValid: true, payload };
+      // If user provides a location link, encode link directly (no lat/long required)
+      let fullUrl = url;
+      if (!/^https?:\/\//i.test(fullUrl) && !fullUrl.startsWith('geo:')) {
+        fullUrl = `https://${fullUrl}`;
       }
 
-      // If short link or standard maps link without explicit coords, encode link directly
-      if (/^https?:\/\//i.test(url) || url.startsWith('geo:')) {
-        return { isValid: true, payload: url };
+      try {
+        new URL(fullUrl);
+        return { isValid: true, payload: fullUrl };
+      } catch {
+        return {
+          isValid: false,
+          error: 'Please enter a valid location URL.',
+          payload: ''
+        };
       }
-
-      // If bare domain or path, prefix https://
-      if (url.includes('.') && !url.includes(' ')) {
-        return { isValid: true, payload: `https://${url}` };
-      }
-
-      return {
-        isValid: false,
-        error: 'Please enter a valid map link or switch to Coordinates mode.',
-        payload: ''
-      };
     } else {
       // Coordinates mode
       const lat = this.latitude();

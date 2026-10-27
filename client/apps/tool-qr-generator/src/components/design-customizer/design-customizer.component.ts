@@ -35,6 +35,8 @@ export interface LogoPreset {
   name: string;
   icon: string;
   dataUrl: string | null;
+  innerSvg?: string;
+  safeThumbnail?: SafeHtml;
 }
 
 const PRESET_LOGOS: LogoPreset[] = [
@@ -42,40 +44,38 @@ const PRESET_LOGOS: LogoPreset[] = [
     id: 'none',
     name: 'None',
     icon: 'x',
-    dataUrl: null
+    dataUrl: null,
+    innerSvg: ''
   },
   {
     id: 'wifi',
     name: 'Wi-Fi',
     icon: 'wifi',
+    innerSvg: '<path d="M5 12.55a11 11 0 0 1 14.08 0" stroke="#3b82f6" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M1.42 9a16 16 0 0 1 21.16 0" stroke="#3b82f6" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0" stroke="#3b82f6" stroke-width="2.5" fill="none" stroke-linecap="round"/><circle cx="12" cy="20" r="1.5" fill="#3b82f6"/>',
     dataUrl:
       'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>'
-  },
-  {
-    id: 'phone',
-    name: 'Phone',
-    icon: 'phone',
-    dataUrl:
-      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%2310b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>'
-  },
-  {
-    id: 'mail',
-    name: 'Email',
-    icon: 'mail',
-    dataUrl:
-      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%238b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>'
   },
   {
     id: 'link',
     name: 'Link',
     icon: 'link',
+    innerSvg: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="#3b82f6" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="#3b82f6" stroke-width="2" fill="none" stroke-linecap="round"/>',
     dataUrl:
       'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'
+  },
+  {
+    id: 'check',
+    name: 'Verified',
+    icon: 'check',
+    innerSvg: '<path d="M20 6 9 17l-5-5" stroke="#10b981" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+    dataUrl:
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%2310b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
   },
   {
     id: 'star',
     name: 'Star',
     icon: 'star',
+    innerSvg: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="#f59e0b" stroke="#f59e0b" stroke-width="1.5"/>',
     dataUrl:
       'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23f59e0b" stroke="%23f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'
   },
@@ -83,15 +83,89 @@ const PRESET_LOGOS: LogoPreset[] = [
     id: 'heart',
     name: 'Heart',
     icon: 'heart',
+    innerSvg: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" fill="#ef4444" stroke="#ef4444" stroke-width="1.5"/>',
     dataUrl:
       'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23ef4444" stroke="%23ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>'
   },
   {
-    id: 'check',
-    name: 'Verified',
-    icon: 'check',
+    id: 'mail',
+    name: 'Email',
+    icon: 'mail',
+    innerSvg: '<rect width="20" height="16" x="2" y="4" rx="2" stroke="#8b5cf6" stroke-width="2" fill="none"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" stroke="#8b5cf6" stroke-width="2" fill="none"/>',
     dataUrl:
-      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%2310b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%238b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>'
+  },
+  {
+    id: 'phone',
+    name: 'Phone',
+    icon: 'phone',
+    innerSvg: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" stroke="#10b981" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+    dataUrl:
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%2310b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>'
+  },
+  {
+    id: 'whatsapp',
+    name: 'WhatsApp',
+    icon: 'message-circle',
+    innerSvg: '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" fill="#25D366"/><path d="M16 14.5c-.3.8-.9 1.4-1.7 1.6-.7.2-1.7.1-3.5-.7-2.3-1.1-3.8-3.5-3.9-3.7-.1-.2-.9-1.2-.9-2.3 0-1.1.6-1.6.8-1.8.2-.2.5-.3.8-.3h.6c.2 0 .4 0 .5.4.2.5.7 1.7.7 1.8.1.1.1.3 0 .5-.1.2-.2.3-.3.4l-.5.6c-.1.1-.2.2-.1.4.2.4.9 1.5 2 2.1 1.4.8 2.1.9 2.4.8.3-.1.7-.8.9-1.1.2-.3.4-.3.6-.2.2.1 1.4.7 1.6.8.2.1.4.2.4.3 0 .2 0 .9-.3 1.3z" fill="#ffffff"/>',
+    dataUrl:
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" fill="%2325D366"/><path d="M16 14.5c-.3.8-.9 1.4-1.7 1.6-.7.2-1.7.1-3.5-.7-2.3-1.1-3.8-3.5-3.9-3.7-.1-.2-.9-1.2-.9-2.3 0-1.1.6-1.6.8-1.8.2-.2.5-.3.8-.3h.6c.2 0 .4 0 .5.4.2.5.7 1.7.7 1.8.1.1.1.3 0 .5-.1.2-.2.3-.3.4l-.5.6c-.1.1-.2.2-.1.4.2.4.9 1.5 2 2.1 1.4.8 2.1.9 2.4.8.3-.1.7-.8.9-1.1.2-.3.4-.3.6-.2.2.1 1.4.7 1.6.8.2.1.4.2.4.3 0 .2 0 .9-.3 1.3z" fill="%23ffffff"/></svg>'
+  },
+  {
+    id: 'instagram',
+    name: 'Instagram',
+    icon: 'camera',
+    innerSvg: '<rect x="2" y="2" width="20" height="20" rx="5" fill="none" stroke="#E1306C" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="#E1306C" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C"/>',
+    dataUrl:
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" fill="none" stroke="%23E1306C" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="%23E1306C" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="%23E1306C"/></svg>'
+  },
+  {
+    id: 'x',
+    name: 'X (Twitter)',
+    icon: 'twitter',
+    innerSvg: '<path fill="#0F1419" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>',
+    dataUrl:
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%230F1419" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>'
+  },
+  {
+    id: 'linkedin',
+    name: 'LinkedIn',
+    icon: 'linkedin',
+    innerSvg: '<path fill="#0A66C2" d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>',
+    dataUrl:
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%230A66C2" d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/></svg>'
+  },
+  {
+    id: 'youtube',
+    name: 'YouTube',
+    icon: 'video',
+    innerSvg: '<path fill="#FF0000" d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon fill="#ffffff" points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>',
+    dataUrl:
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23FF0000" d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon fill="%23ffffff" points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>'
+  },
+  {
+    id: 'github',
+    name: 'GitHub',
+    icon: 'github',
+    innerSvg: '<path fill="#24292F" fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>',
+    dataUrl:
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%2324292F" fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>'
+  },
+  {
+    id: 'apple',
+    name: 'Apple',
+    icon: 'smartphone',
+    innerSvg: '<path fill="#000000" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.89c.62-.75 1.04-1.8 0.93-2.85-.9.04-1.99.6-2.63 1.35-.57.65-1.06 1.72-.93 2.74 1 .08 2.01-.49 2.63-1.24z"/>',
+    dataUrl:
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23000000" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.89c.62-.75 1.04-1.8 0.93-2.85-.9.04-1.99.6-2.63 1.35-.57.65-1.06 1.72-.93 2.74 1 .08 2.01-.49 2.63-1.24z"/></svg>'
+  },
+  {
+    id: 'bitcoin',
+    name: 'Bitcoin',
+    icon: 'dollar-sign',
+    innerSvg: '<path fill="#F7931A" d="M15.75 10.15c.67-.62 1.05-1.5 1.05-2.5 0-2.02-1.53-3.65-3.6-3.65V2h-2v2H9V2H7v2H4v2h2v12H4v2h3v2h2v-2h2.2v2h2v-2c2.6 0 4.6-1.8 4.6-4.15 0-1.5-.75-2.8-1.85-3.7zM9 6h4.2c1.1 0 1.95.8 1.95 1.8 0 1-.85 1.8-1.95 1.8H9V6zm4.8 12H9v-4h4.8c1.2 0 2.1.85 2.1 2s-.9 2-2.1 2z"/>',
+    dataUrl:
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23F7931A" d="M15.75 10.15c.67-.62 1.05-1.5 1.05-2.5 0-2.02-1.53-3.65-3.6-3.65V2h-2v2H9V2H7v2H4v2h2v12H4v2h3v2h2v-2h2.2v2h2v-2c2.6 0 4.6-1.8 4.6-4.15 0-1.5-.75-2.8-1.85-3.7zM9 6h4.2c1.1 0 1.95.8 1.95 1.8 0 1-.85 1.8-1.95 1.8H9V6zm4.8 12H9v-4h4.8c1.2 0 2.1.85 2.1 2s-.9 2-2.1 2z"/></svg>'
   }
 ];
 
@@ -218,155 +292,6 @@ const PRESET_LOGOS: LogoPreset[] = [
       <!-- 2. SHAPES SECTION                          -->
       <!-- ========================================== -->
       @if (activeSection() === 'all' || activeSection() === 'shapes') {
-        <!-- Overall Shape (Silhouette, Badge, Trim) -->
-        <div class="design-section">
-          <label class="design-section-label">
-            <span>Overall Shape</span>
-            <span class="selection-indicator">{{ currentShapeDef().name }}</span>
-          </label>
-
-          <!-- Horizontal Visual Shape Carousel Track -->
-          <div class="visual-gallery-wrapper">
-            <button
-              type="button"
-              class="gallery-scroll-arrow left"
-              (click)="scrollGallery(shapeTrack, -180)"
-              aria-label="Scroll shapes left"
-              title="Previous shapes"
-            >
-              <ts-icon name="chevron-left" />
-            </button>
-
-            <div #shapeTrack class="visual-gallery-track custom-scrollbar" tabindex="0" role="region" aria-label="Overall shape options">
-              @for (shp of shapeList; track shp.id) {
-                <button
-                  type="button"
-                  class="shape-thumb-card"
-                  [class.active]="artShape().shape === shp.id"
-                  (click)="onSelectShape(shp.id)"
-                  [title]="shp.name + ' — ' + shp.description"
-                  [attr.aria-label]="shp.name + ' overall shape'"
-                >
-                  <div class="shape-thumb-svg-wrap" [innerHTML]="shp.safeThumbnail"></div>
-                  <span class="shape-thumb-name">{{ shp.name }}</span>
-                  @if (artShape().shape === shp.id) {
-                    <div class="active-indicator-pip"></div>
-                  }
-                </button>
-              }
-            </div>
-
-            <button
-              type="button"
-              class="gallery-scroll-arrow right"
-              (click)="scrollGallery(shapeTrack, 180)"
-              aria-label="Scroll shapes right"
-              title="Next shapes"
-            >
-              <ts-icon name="chevron-right" />
-            </button>
-          </div>
-
-          <!-- Controls for selected shape (Mode, Strength, Fade) -->
-          @if (artShape().shape !== 'square') {
-            <div class="shape-controls-card slide-fade-up">
-              <!-- Mode Selection (Around | Badge | Trim corners) -->
-              <div class="shape-mode-group">
-                <span class="sub-picker-label">Shape Mode</span>
-                <div class="segmented-control" role="radiogroup" aria-label="Shape Mode">
-                  <button
-                    type="button"
-                    class="seg-btn"
-                    [class.active]="artShape().mode === 'around'"
-                    (click)="onSelectMode('around')"
-                    title="Decorative silhouette field surrounding the QR code"
-                  >
-                    <span>Around</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="seg-btn"
-                    [class.active]="artShape().mode === 'badge'"
-                    (click)="onSelectMode('badge')"
-                    title="QR code set inside a solid shaped badge container"
-                  >
-                    <span>Badge</span>
-                  </button>
-                  @if (currentShapeDef().supportsTrim) {
-                    <button
-                      type="button"
-                      class="seg-btn"
-                      [class.active]="artShape().mode === 'trim'"
-                      (click)="onSelectMode('trim')"
-                      title="Soft-crop outer corners while staying scannable"
-                    >
-                      <span>Trim corners</span>
-                    </button>
-                  }
-                </div>
-              </div>
-
-              <!-- Style Strength Control: Safe | Balanced | Bold -->
-              <div class="shape-strength-group">
-                <div class="strength-header">
-                  <span class="sub-picker-label">Style Strength</span>
-                  <span class="strength-hint">
-                    @switch (artShape().strength) {
-                      @case ('safe') { Subtle art, easiest scanning }
-                      @case ('balanced') { Recommended balance of style & scan speed }
-                      @case ('bold') { Rich, dense silhouette design }
-                    }
-                  </span>
-                </div>
-                <div class="segmented-control" role="radiogroup" aria-label="Style Strength">
-                  <button
-                    type="button"
-                    class="seg-btn"
-                    [class.active]="artShape().strength === 'safe'"
-                    (click)="onSelectStrength('safe')"
-                  >
-                    <span>Safe</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="seg-btn"
-                    [class.active]="artShape().strength === 'balanced'"
-                    (click)="onSelectStrength('balanced')"
-                  >
-                    <span>Balanced</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="seg-btn"
-                    [class.active]="artShape().strength === 'bold'"
-                    (click)="onSelectStrength('bold')"
-                  >
-                    <span>Bold</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Subtle Edge Fade Toggle (Around mode only) -->
-              @if (artShape().mode === 'around') {
-                <div class="fade-edges-row">
-                  <label class="toggle-checkbox-label">
-                    <input
-                      type="checkbox"
-                      class="native-checkbox"
-                      [checked]="artShape().fadeEdges"
-                      (change)="onToggleFadeEdges()"
-                    />
-                    <span class="toggle-text">Fade toward shape edge</span>
-                  </label>
-                  <span class="fade-hint">Gently softens outer silhouette dots</span>
-                </div>
-              }
-            </div>
-          }
-        </div>
-
-        <hr class="design-divider" />
-
         <!-- Quick Design Presets -->
         <div class="design-section">
           <label class="design-section-label">
@@ -649,23 +574,89 @@ const PRESET_LOGOS: LogoPreset[] = [
             }
           </div>
 
-          <!-- Expanded Logo Presets (WiFi, Phone, Mail, Link, Star, Heart, Verified, None) -->
-          <div class="presets-row">
-            <span class="preset-label">Presets:</span>
-            @for (preset of logoPresets; track preset.id) {
-              <button
-                type="button"
-                class="preset-chip"
-                [class.active]="(preset.dataUrl === null && !logo()) || (logo() === preset.dataUrl)"
-                (click)="applyLogoPreset(preset.dataUrl)"
-                [title]="'Logo preset: ' + preset.name"
-                [attr.aria-label]="'Select ' + preset.name + ' logo preset'"
-              >
-                <ts-icon [name]="preset.icon" class="preset-icon" />
-                <span>{{ preset.name }}</span>
-              </button>
-            }
+          <!-- Visual Logo Presets Grid (Each logo superimposed on dummy QR) -->
+          <div class="logo-presets-section">
+            <span class="sub-picker-label">Brand & Utility Icons ({{ logoPresets.length }})</span>
+            <div class="logo-grid" role="region" aria-label="Logo and branding presets">
+              @for (preset of logoPresets; track preset.id) {
+                <button
+                  type="button"
+                  class="logo-thumb-card"
+                  [class.active]="isLogoPresetActive(preset)"
+                  (click)="applyLogoPreset(preset.dataUrl)"
+                  [title]="'Logo preset: ' + preset.name"
+                  [attr.aria-label]="'Select ' + preset.name + ' logo preset'"
+                >
+                  <div class="logo-preview-wrap" [innerHTML]="preset.safeThumbnail"></div>
+                  <span class="logo-thumb-name">{{ preset.name }}</span>
+                  @if (isLogoPresetActive(preset)) {
+                    <div class="logo-active-pip"></div>
+                  }
+                </button>
+              }
+            </div>
           </div>
+
+          <!-- Active Logo Controls (Prominently visible immediately when logo is selected) -->
+          @if (logo()) {
+            <div class="active-logo-card slide-fade-up">
+              <div class="logo-preview-row">
+                <div class="thumbnail-wrapper">
+                  <img [src]="logo()" alt="Logo preview thumbnail" class="logo-thumbnail" />
+                </div>
+                <div class="logo-info">
+                  <span class="logo-status-title">Custom Logo Embedded</span>
+                  <span class="logo-status-sub">Centered with transparent background</span>
+                </div>
+                <button
+                  type="button"
+                  class="remove-logo-btn"
+                  (click)="removeLogo()"
+                  title="Remove embedded logo"
+                  aria-label="Remove embedded logo"
+                >
+                  <ts-icon name="trash-2" class="remove-icon" />
+                  <span>Remove</span>
+                </button>
+              </div>
+
+              <!-- Size Slider -->
+              <div class="logo-slider-group">
+                <div class="slider-header">
+                  <span class="slider-label">Logo Size</span>
+                  <span class="slider-val">{{ (logoSize() * 100).toFixed(0) }}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="0.40"
+                  step="0.01"
+                  class="range-slider"
+                  [value]="logoSize()"
+                  (input)="onLogoSizeChange($event)"
+                  aria-label="Logo size scale slider"
+                />
+              </div>
+
+              <!-- Margin Slider -->
+              <div class="logo-slider-group">
+                <div class="slider-header">
+                  <span class="slider-label">Safety Margin Buffer</span>
+                  <span class="slider-val">{{ logoMargin() }}px</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="8"
+                  step="1"
+                  class="range-slider"
+                  [value]="logoMargin()"
+                  (input)="onLogoMarginChange($event)"
+                  aria-label="Logo margin buffer slider"
+                />
+              </div>
+            </div>
+          }
 
           <!-- Upload Dropzone (if no logo or to change) -->
           <div
@@ -700,67 +691,6 @@ const PRESET_LOGOS: LogoPreset[] = [
               <span>{{ uploadError() }}</span>
             </p>
           }
-
-          <!-- Active Logo Controls -->
-          @if (logo()) {
-            <div class="active-logo-card slide-fade-up">
-              <div class="logo-preview-row">
-                <div class="thumbnail-wrapper">
-                  <img [src]="logo()" alt="Logo preview thumbnail" class="logo-thumbnail" />
-                </div>
-                <div class="logo-info">
-                  <span class="logo-status-title">Custom Logo Embedded</span>
-                  <span class="logo-status-sub">Centered with automatic white safety buffer</span>
-                </div>
-                <button
-                  type="button"
-                  class="remove-logo-btn"
-                  (click)="removeLogo()"
-                  title="Remove embedded logo"
-                  aria-label="Remove embedded logo"
-                >
-                  <ts-icon name="trash-2" class="remove-icon" />
-                  <span>Remove</span>
-                </button>
-              </div>
-
-              <!-- Size Slider -->
-              <div class="logo-slider-group">
-                <div class="slider-header">
-                  <span class="slider-label">Logo Size</span>
-                  <span class="slider-val">{{ (logoSize() * 100).toFixed(0) }}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.1"
-                  max="0.45"
-                  step="0.01"
-                  class="range-slider"
-                  [value]="logoSize()"
-                  (input)="onLogoSizeChange($event)"
-                  aria-label="Logo size scale slider"
-                />
-              </div>
-
-              <!-- Margin Slider -->
-              <div class="logo-slider-group">
-                <div class="slider-header">
-                  <span class="slider-label">Safety Margin Buffer</span>
-                  <span class="slider-val">{{ logoMargin() }}px</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="12"
-                  step="1"
-                  class="range-slider"
-                  [value]="logoMargin()"
-                  (input)="onLogoMarginChange($event)"
-                  aria-label="Logo margin buffer slider"
-                />
-              </div>
-            </div>
-          }
         </div>
       }
     </div>
@@ -770,8 +700,8 @@ const PRESET_LOGOS: LogoPreset[] = [
       display: flex;
       flex-direction: column;
       width: 100%;
-      flex: 1 1 auto;
-      min-height: 0;
+      flex: 1 0 auto;
+      min-height: min-content;
       box-sizing: border-box;
     }
 
@@ -780,8 +710,9 @@ const PRESET_LOGOS: LogoPreset[] = [
       flex-direction: column;
       gap: 16px;
       width: 100%;
-      flex: 1 1 auto;
+      flex: 1 0 auto;
       min-height: min-content;
+      padding-bottom: 8px;
     }
 
     .design-section {
@@ -896,52 +827,6 @@ const PRESET_LOGOS: LogoPreset[] = [
       text-overflow: ellipsis;
     }
 
-    /* Visual Gallery (Horizontal Scroll Track with Arrow Controls) */
-    .visual-gallery-wrapper {
-      position: relative;
-      display: flex;
-      align-items: center;
-      width: 100%;
-      gap: 4px;
-    }
-
-    .gallery-scroll-arrow {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 24px;
-      height: 38px;
-      border-radius: 6px;
-      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-      background: var(--surface-2, rgba(255, 255, 255, 0.04));
-      color: var(--text-muted, rgba(255, 255, 255, 0.5));
-      cursor: pointer;
-      flex-shrink: 0;
-      transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
-    }
-
-    .gallery-scroll-arrow:hover {
-      background: var(--surface-3, rgba(255, 255, 255, 0.12));
-      color: var(--text, #ffffff);
-      border-color: var(--border-strong, rgba(255, 255, 255, 0.2));
-    }
-
-    .gallery-scroll-arrow:focus-visible {
-      outline: 2px solid var(--tool-accent, #3b82f6);
-      outline-offset: 1px;
-    }
-
-    .visual-gallery-track {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      overflow-x: auto;
-      padding: 4px 2px;
-      scroll-behavior: smooth;
-      flex: 1 1 0%;
-      min-width: 0;
-      -webkit-overflow-scrolling: touch;
-    }
 
     /* Decorative Frames Grid (5-6 per row, no horizontal scrolling) */
     .frames-grid {
@@ -1032,170 +917,44 @@ const PRESET_LOGOS: LogoPreset[] = [
       object-fit: contain;
     }
 
-    /* Overall Shape Thumbnails & Controls */
-    .shape-thumb-card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      width: 72px;
-      height: 72px;
-      padding: 6px 4px 4px 4px;
-      border-radius: 10px;
-      background: var(--surface-2, rgba(255, 255, 255, 0.04));
-      border: 1.5px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-      color: var(--text-2, rgba(255, 255, 255, 0.75));
-      cursor: pointer;
-      flex-shrink: 0;
-      position: relative;
-      transition: all 150ms ease;
-      box-sizing: border-box;
-      gap: 4px;
-    }
 
-    .shape-thumb-card:hover {
-      background: var(--surface-3, rgba(255, 255, 255, 0.08));
-      border-color: var(--tool-accent-border, rgba(59, 130, 246, 0.4));
-      transform: translateY(-1px);
-    }
-
-    .shape-thumb-card.active {
-      background: var(--tool-accent-soft, rgba(59, 130, 246, 0.12));
-      border-color: var(--tool-accent, #3b82f6);
-      color: var(--tool-accent, #60a5fa);
-      box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
-    }
-
-    .shape-thumb-card:focus-visible {
-      outline: 2px solid var(--tool-accent, #3b82f6);
-      outline-offset: 1px;
-    }
-
-    .shape-thumb-svg-wrap {
-      width: 30px;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
-    }
-
-    .shape-thumb-name {
-      font-size: 10.5px;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 64px;
-    }
-
-    .shape-controls-card {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      padding: 12px;
-      background: var(--surface-2, rgba(255, 255, 255, 0.03));
-      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-      border-radius: 10px;
-    }
-
-    .shape-mode-group,
-    .shape-strength-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .segmented-control {
-      display: flex;
-      align-items: center;
-      background: var(--surface-1, rgba(0, 0, 0, 0.25));
-      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-      border-radius: 8px;
-      padding: 2.5px;
-      gap: 2.5px;
-    }
-
-    .seg-btn {
-      flex: 1;
-      padding: 6px 10px;
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--text-2, rgba(255, 255, 255, 0.7));
-      background: transparent;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      text-align: center;
-      transition: background 150ms ease, color 150ms ease;
-    }
-
-    .seg-btn:hover {
-      color: var(--text, #ffffff);
-      background: var(--surface-2, rgba(255, 255, 255, 0.06));
-    }
-
-    .seg-btn.active {
-      background: var(--tool-accent, #3b82f6);
-      color: #ffffff;
-      font-weight: 600;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-    }
-
-    .strength-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-    }
-
-    .strength-hint {
-      font-size: 11px;
-      color: var(--text-muted, rgba(255, 255, 255, 0.5));
-    }
-
-    .fade-edges-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-top: 6px;
-      border-top: 1px dashed var(--border-subtle, rgba(255, 255, 255, 0.08));
-    }
-
-    .toggle-checkbox-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      font-size: 12px;
-      color: var(--text, #ffffff);
-    }
-
-    .native-checkbox {
-      width: 16px;
-      height: 16px;
-      accent-color: var(--tool-accent, #3b82f6);
-      cursor: pointer;
-    }
-
-    .fade-hint {
-      font-size: 11px;
-      color: var(--text-muted, rgba(255, 255, 255, 0.5));
-    }
-
-    /* Real Shape Glyph Grid & Larger Responsive Chips */
+    /* Real Shape Glyph Grid (5-6 per row, slightly bigger items, no horizontal scroll) */
     .glyph-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+      grid-template-columns: repeat(6, 1fr);
       gap: 8px;
       width: 100%;
+      box-sizing: border-box;
+    }
+
+    @media (max-width: 768px) {
+      .glyph-grid {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .glyph-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .glyph-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
     }
 
     .glyph-chip-btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      min-width: 48px;
-      height: 56px;
+      width: 100%;
+      min-width: 0;
+      height: 60px;
       border-radius: 12px;
       background: var(--surface-2, rgba(255, 255, 255, 0.04));
       border: 1.5px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
@@ -1226,8 +985,8 @@ const PRESET_LOGOS: LogoPreset[] = [
     }
 
     .chip-shape-svg {
-      width: 28px;
-      height: 28px;
+      width: 30px;
+      height: 30px;
       flex-shrink: 0;
       color: currentColor;
     }
@@ -1291,6 +1050,14 @@ const PRESET_LOGOS: LogoPreset[] = [
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
+      margin-top: 4px;
+    }
+
+    @media (max-width: 480px) {
+      .corner-pickers-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
     }
 
     .corner-picker-group {
@@ -1476,6 +1243,166 @@ const PRESET_LOGOS: LogoPreset[] = [
       line-height: 1.35;
     }
 
+    /* Logo Presets Grid */
+    .logo-presets-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .logo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+      gap: 8px;
+    }
+
+    .logo-thumb-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 5px;
+      border-radius: 9px;
+      background: var(--surface-2, rgba(255, 255, 255, 0.03));
+      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+      cursor: pointer;
+      transition: all 0.15s ease;
+      position: relative;
+      text-align: center;
+      min-width: 0;
+    }
+
+    .logo-thumb-card:hover {
+      background: var(--surface-3, rgba(255, 255, 255, 0.07));
+      border-color: var(--accent-border, rgba(59, 130, 246, 0.35));
+      transform: translateY(-1px);
+    }
+
+    .logo-thumb-card.active {
+      background: var(--accent-soft, rgba(59, 130, 246, 0.12));
+      border-color: var(--accent-border, rgba(59, 130, 246, 0.6));
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+    }
+
+    :host-context([data-theme="light"]) .logo-thumb-card,
+    [data-theme="light"] .logo-thumb-card {
+      background: #F8FAFC;
+      border-color: #E2E8F0;
+    }
+
+    :host-context([data-theme="light"]) .logo-thumb-card:hover,
+    [data-theme="light"] .logo-thumb-card:hover {
+      background: #F1F5F9;
+      border-color: #93C5FD;
+    }
+
+    :host-context([data-theme="light"]) .logo-thumb-card.active,
+    [data-theme="light"] .logo-thumb-card.active {
+      background: #EFF6FF;
+      border-color: #3B82F6;
+      box-shadow: 0 0 8px rgba(37, 99, 235, 0.15);
+    }
+
+    .logo-preview-wrap {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
+    }
+
+    :host-context([data-theme="light"]) .logo-preview-wrap,
+    [data-theme="light"] .logo-preview-wrap {
+      border-color: rgba(0, 0, 0, 0.1);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .logo-thumb-name {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-2, rgba(255, 255, 255, 0.8));
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    :host-context([data-theme="light"]) .logo-thumb-name,
+    [data-theme="light"] .logo-thumb-name {
+      color: #334155;
+    }
+
+    .logo-thumb-card.active .logo-thumb-name {
+      color: var(--accent-strong, #60a5fa);
+      font-weight: 700;
+    }
+
+    :host-context([data-theme="light"]) .logo-thumb-card.active .logo-thumb-name {
+      color: #2563EB;
+    }
+
+    :host-context([data-theme="light"]) .frame-thumb-card,
+    [data-theme="light"] .frame-thumb-card,
+    :host-context([data-theme="light"]) .shape-thumb-card,
+    [data-theme="light"] .shape-thumb-card,
+    :host-context([data-theme="light"]) .glyph-chip-btn,
+    [data-theme="light"] .glyph-chip-btn {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+      color: #334155;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    :host-context([data-theme="light"]) .frame-thumb-card:hover,
+    [data-theme="light"] .frame-thumb-card:hover,
+    :host-context([data-theme="light"]) .shape-thumb-card:hover,
+    [data-theme="light"] .shape-thumb-card:hover,
+    :host-context([data-theme="light"]) .glyph-chip-btn:hover,
+    [data-theme="light"] .glyph-chip-btn:hover {
+      background: #F8FAFC;
+      border-color: #93C5FD;
+      color: #0F172A;
+    }
+
+    :host-context([data-theme="light"]) .frame-thumb-card.active,
+    [data-theme="light"] .frame-thumb-card.active,
+    :host-context([data-theme="light"]) .shape-thumb-card.active,
+    [data-theme="light"] .shape-thumb-card.active,
+    :host-context([data-theme="light"]) .glyph-chip-btn.active,
+    [data-theme="light"] .glyph-chip-btn.active {
+      background: #EFF6FF;
+      border-color: #3B82F6;
+      color: #1D4ED8;
+      box-shadow: 0 0 0 1px #3B82F6, 0 2px 6px rgba(59, 130, 246, 0.15);
+    }
+
+    :host-context([data-theme="light"]) .shape-thumb-name,
+    [data-theme="light"] .shape-thumb-name {
+      color: #475569;
+    }
+
+    :host-context([data-theme="light"]) .shape-thumb-card.active .shape-thumb-name,
+    [data-theme="light"] .shape-thumb-card.active .shape-thumb-name {
+      color: #1D4ED8;
+    }
+
+    .logo-active-pip {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--tool-accent, #3b82f6);
+      box-shadow: 0 0 6px var(--tool-accent, #3b82f6);
+    }
+
     /* Logo Dropzone */
     .logo-dropzone {
       display: flex;
@@ -1483,14 +1410,14 @@ const PRESET_LOGOS: LogoPreset[] = [
       align-items: center;
       justify-content: center;
       gap: 12px;
-      padding: 32px 20px;
+      padding: 20px 16px;
       background: var(--surface-2, rgba(0, 0, 0, 0.2));
       border: 1.5px dashed var(--border, rgba(255, 255, 255, 0.15));
       border-radius: 12px;
       cursor: pointer;
       transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
       flex: 1 1 auto;
-      min-height: 200px;
+      min-height: 110px;
       text-align: center;
     }
 
@@ -1755,7 +1682,28 @@ export class DesignCustomizerComponent {
   readonly linkCornerColors = signal<boolean>(true);
   readonly isDragging = signal<boolean>(false);
   readonly uploadError = signal<string | null>(null);
-  readonly logoPresets = PRESET_LOGOS;
+  private generateLogoThumbnail(preset: LogoPreset): SafeHtml {
+    const baseModules = `<rect width="28" height="28" rx="4" fill="#FFFFFF"/><g fill="#1E293B"><path fill-rule="evenodd" d="M2,2 h7 v7 h-7 z M3.2,3.2 v4.6 h4.6 v-4.6 z M4.4,4.4 h2.2 v2.2 h-2.2 z"/><path fill-rule="evenodd" d="M19,2 h7 v7 h-7 z M20.2,3.2 v4.6 h4.6 v-4.6 z M21.4,4.4 h2.2 v2.2 h-2.2 z"/><path fill-rule="evenodd" d="M2,19 h7 v7 h-7 z M3.2,20.2 v4.6 h4.6 v-4.6 z M4.4,21.4 h2.2 v2.2 h-2.2 z"/><rect x="11" y="3" width="1.3" height="1.3" rx="0.3"/><rect x="14" y="3" width="1.3" height="1.3" rx="0.3"/><rect x="11" y="6" width="1.3" height="1.3" rx="0.3"/><rect x="14" y="6" width="1.3" height="1.3" rx="0.3"/><rect x="3" y="11" width="1.3" height="1.3" rx="0.3"/><rect x="6" y="11" width="1.3" height="1.3" rx="0.3"/><rect x="3" y="14" width="1.3" height="1.3" rx="0.3"/><rect x="6" y="14" width="1.3" height="1.3" rx="0.3"/><rect x="21" y="11" width="1.3" height="1.3" rx="0.3"/><rect x="24" y="11" width="1.3" height="1.3" rx="0.3"/><rect x="21" y="14" width="1.3" height="1.3" rx="0.3"/><rect x="24" y="14" width="1.3" height="1.3" rx="0.3"/><rect x="11" y="21" width="1.3" height="1.3" rx="0.3"/><rect x="14" y="21" width="1.3" height="1.3" rx="0.3"/><rect x="11" y="24" width="1.3" height="1.3" rx="0.3"/><rect x="14" y="24" width="1.3" height="1.3" rx="0.3"/></g>`;
+
+    if (preset.id === 'none') {
+      const centerModules = `<g fill="#1E293B"><rect x="11" y="11" width="2.4" height="2.4" rx="0.4"/><rect x="14.6" y="11" width="2.4" height="2.4" rx="0.4"/><rect x="11" y="14.6" width="2.4" height="2.4" rx="0.4"/><rect x="14.6" y="14.6" width="2.4" height="2.4" rx="0.4"/></g>`;
+      return this.sanitizer.bypassSecurityTrustHtml(
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="100%" height="100%">${baseModules}${centerModules}</svg>`
+      );
+    }
+
+    const badge = `<rect x="8" y="8" width="12" height="12" rx="3" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="0.75"/>`;
+    const iconEmbed = `<g transform="translate(9.5, 9.5) scale(0.375)">${preset.innerSvg || ''}</g>`;
+
+    return this.sanitizer.bypassSecurityTrustHtml(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="100%" height="100%">${baseModules}${badge}${iconEmbed}</svg>`
+    );
+  }
+
+  readonly logoPresets: Array<LogoPreset & { safeThumbnail: SafeHtml }> = PRESET_LOGOS.map(p => ({
+    ...p,
+    safeThumbnail: this.generateLogoThumbnail(p)
+  }));
 
   readonly frameList: Array<QrFrameDefinition & { safeThumbnail: SafeHtml }> = QR_FRAME_TEMPLATES.map(tpl => {
     const rawSvg = tpl.id === 'none'
@@ -1783,9 +1731,6 @@ export class DesignCustomizerComponent {
     { type: 'square', label: 'Square' },
     { type: 'dots', label: 'Dots' },
     { type: 'rounded', label: 'Rounded' },
-    { type: 'extra-rounded', label: 'Pills' },
-    { type: 'classy', label: 'Leaf' },
-    { type: 'classy-rounded', label: 'Soft Leaf' },
     { type: 'diamond', label: 'Diamond' },
     { type: 'star', label: 'Star' },
     { type: 'heart', label: 'Heart' },
@@ -1797,20 +1742,13 @@ export class DesignCustomizerComponent {
     { type: 'square', label: 'Square' },
     { type: 'extra-rounded', label: 'Rounded' },
     { type: 'dot', label: 'Circle' },
-    { type: 'classy', label: 'Leaf' },
-    { type: 'classy-rounded', label: 'Soft Leaf' },
-    { type: 'rounded', label: 'Smooth' },
-    { type: 'pinch', label: 'Pinch' },
-    { type: 'shield', label: 'Shield' }
+    { type: 'rounded', label: 'Smooth' }
   ];
 
   readonly cornerDotOptions: { type: QrCornerDotType; label: string }[] = [
     { type: 'square', label: 'Square' },
     { type: 'dot', label: 'Circle' },
     { type: 'rounded', label: 'Smooth' },
-    { type: 'extra-rounded', label: 'Pill' },
-    { type: 'classy', label: 'Leaf' },
-    { type: 'classy-rounded', label: 'Soft Leaf' },
     { type: 'diamond', label: 'Diamond' },
     { type: 'star', label: 'Star' },
     { type: 'heart', label: 'Heart' },
@@ -1899,6 +1837,13 @@ export class DesignCustomizerComponent {
     }
   }
 
+  isLogoPresetActive(preset: LogoPreset): boolean {
+    if (preset.id === 'none') {
+      return !this.logo();
+    }
+    return this.logo() === preset.dataUrl;
+  }
+
   applyLogoPreset(dataUrl: string | null): void {
     this.uploadError.set(null);
     this.logoChange.emit(dataUrl);
@@ -1963,39 +1908,5 @@ export class DesignCustomizerComponent {
       this.uploadError.set('Failed to read image file.');
     };
     reader.readAsDataURL(file);
-  }
-
-  onSelectShape(shapeId: QrOverallShape): void {
-    const def = getQrShapeById(shapeId);
-    let nextMode = this.artShape().mode;
-    if (nextMode === 'trim' && !def.supportsTrim) {
-      nextMode = 'around';
-    }
-    this.artShapeChange.emit({
-      ...this.artShape(),
-      shape: shapeId,
-      mode: nextMode
-    });
-  }
-
-  onSelectMode(mode: QrShapeMode): void {
-    this.artShapeChange.emit({
-      ...this.artShape(),
-      mode
-    });
-  }
-
-  onSelectStrength(strength: QrStyleStrength): void {
-    this.artShapeChange.emit({
-      ...this.artShape(),
-      strength
-    });
-  }
-
-  onToggleFadeEdges(): void {
-    this.artShapeChange.emit({
-      ...this.artShape(),
-      fadeEdges: !this.artShape().fadeEdges
-    });
   }
 }

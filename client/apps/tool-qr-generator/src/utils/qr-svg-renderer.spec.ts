@@ -8,7 +8,6 @@ import {
 } from './qr-svg-renderer';
 import { QR_ART_SHAPES, getQrShapeById } from './qr-shapes.data';
 import { QrOverallShape, QrShapeMode, QrStyleStrength } from '../models/qr-generator.models';
-import { validateBrandImageFile, BRAND_FONTS } from './qr-brand-mask.util';
 
 describe('QR Art In-House Vector Renderer & Shape Engine', () => {
   describe('Luminance and Contrast Mathematics', () => {
@@ -209,112 +208,6 @@ describe('QR Art In-House Vector Renderer & Shape Engine', () => {
 
       expect(result.svgString).toContain('id="qr-embedded-logo"');
       expect(result.svgString).toContain('<image href="data:image/svg+xml;utf8,&lt;svg&gt;&lt;/svg&gt;"');
-    });
-  });
-
-  describe('Brand Art & Magic-Byte Validation', () => {
-    const samplePayload = 'https://acklet.dev';
-
-    it('contains all 8 curated Google brand fonts', () => {
-      expect(BRAND_FONTS.length).toBe(8);
-      const fontIds = BRAND_FONTS.map(f => f.id);
-      expect(fontIds).toContain('Outfit');
-      expect(fontIds).toContain('Inter');
-      expect(fontIds).toContain('Montserrat');
-      expect(fontIds).toContain('Playfair Display');
-      expect(fontIds).toContain('Space Grotesk');
-      expect(fontIds).toContain('Plus Jakarta Sans');
-      expect(fontIds).toContain('Bebas Neue');
-      expect(fontIds).toContain('Caveat');
-    });
-
-    it('renders Brand Name vector banner below QR with chosen font and uppercase text', () => {
-      const result = renderQrToSvg(samplePayload, {
-        brand: {
-          enabled: true,
-          mode: 'name',
-          text: 'Acklet',
-          font: 'Outfit',
-          color: '#0284c7',
-          placement: 'banner'
-        }
-      });
-
-      expect(result.svgString).toContain('id="qr-brand-banner"');
-      expect(result.svgString).toContain('ACKLET');
-      expect(result.svgString).toContain("font-family=\"'Outfit'");
-      expect(result.svgString).toContain('fill="#0284c7"');
-    });
-
-    it('renders Brand Name in-code mode without corrupting finder patterns', () => {
-      const result = renderQrToSvg(samplePayload, {
-        brand: {
-          enabled: true,
-          mode: 'name',
-          text: 'Acklet',
-          font: 'Inter',
-          color: '#0ea5e9',
-          placement: 'in-code'
-        }
-      });
-
-      expect(result.svgString).toContain('id="qr-core-modules"');
-      expect(result.svgString).toContain('id="qr-finder-patterns"');
-      expect(result.matrixSize).toBeGreaterThan(0);
-    });
-
-    it('renders Brand Name around-code mode in decorative field', () => {
-      const result = renderQrToSvg(samplePayload, {
-        artShape: {
-          shape: 'circle',
-          mode: 'around',
-          strength: 'balanced'
-        },
-        brand: {
-          enabled: true,
-          mode: 'name',
-          text: 'Acklet',
-          font: 'Outfit',
-          color: '#0284c7',
-          placement: 'around-code'
-        }
-      });
-
-      expect(result.svgString).toContain('id="qr-art-silhouette"');
-      expect(result.svgString).toContain('id="qr-core-modules"');
-      expect(result.svgString).toContain('id="qr-finder-patterns"');
-    });
-
-    it('validates client-side file magic bytes for PNG and JPEG files', async () => {
-      // Valid PNG header (8 bytes)
-      const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-      const pngBlob = new Blob([pngBytes], { type: 'image/png' });
-      const pngFile = new File([pngBlob], 'logo.png', { type: 'image/png' });
-      const pngRes = await validateBrandImageFile(pngFile);
-      expect(pngRes.isValid).toBe(true);
-
-      // Valid JPEG header (3 bytes)
-      const jpgBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
-      const jpgBlob = new Blob([jpgBytes], { type: 'image/jpeg' });
-      const jpgFile = new File([jpgBlob], 'logo.jpg', { type: 'image/jpeg' });
-      const jpgRes = await validateBrandImageFile(jpgFile);
-      expect(jpgRes.isValid).toBe(true);
-    });
-
-    it('rejects files exceeding 2MB maximum limit', async () => {
-      const largeBlob = new Blob([new Uint8Array(2 * 1024 * 1024 + 100)]);
-      const largeFile = new File([largeBlob], 'huge.png', { type: 'image/png' });
-      const res = await validateBrandImageFile(largeFile);
-      expect(res.isValid).toBe(false);
-      expect(res.error).toContain('2MB');
-    });
-
-    it('rejects invalid/unsupported file types (e.g. executable/text)', async () => {
-      const textBlob = new Blob(['Not an image binary'], { type: 'text/plain' });
-      const textFile = new File([textBlob], 'sample.txt', { type: 'text/plain' });
-      const res = await validateBrandImageFile(textFile);
-      expect(res.isValid).toBe(false);
-      expect(res.error).toContain('Unsupported image format');
     });
   });
 });

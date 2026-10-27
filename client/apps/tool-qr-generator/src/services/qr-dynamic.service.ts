@@ -11,9 +11,9 @@ import {
   QrScanAnalytics,
   UpdateDynamicQrPayload
 } from '../models/qr-generator.models';
+import { getQrApiUrl } from './qr-api.util';
 
 const MANAGED_STORAGE_KEY = 'acklet_dynamic_qr_managed_v1';
-const API_BASE = '/api/v1/qr';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -26,6 +26,10 @@ interface ApiResponse<T> {
 })
 export class QrDynamicService {
   private readonly http: HttpClient;
+
+  get apiBase(): string {
+    return getQrApiUrl('/api/v1/qr');
+  }
 
   readonly managedItems = signal<ManagedDynamicQrItem[]>([]);
   readonly isCreating = signal<boolean>(false);
@@ -75,7 +79,7 @@ export class QrDynamicService {
 
     try {
       const res = await firstValueFrom(
-        this.http.post<ApiResponse<DynamicQrCode>>(`${API_BASE}/create`, payload)
+        this.http.post<ApiResponse<DynamicQrCode>>(`${this.apiBase}/create`, payload)
       );
 
       const created = res.data;
@@ -114,7 +118,7 @@ export class QrDynamicService {
    */
   async getManagedDetails(manageKey: string): Promise<DynamicQrCode> {
     const res = await firstValueFrom(
-      this.http.get<ApiResponse<DynamicQrCode>>(`${API_BASE}/manage/${manageKey}`)
+      this.http.get<ApiResponse<DynamicQrCode>>(`${this.apiBase}/manage/${manageKey}`)
     );
     const data = res.data;
 
@@ -142,7 +146,7 @@ export class QrDynamicService {
    */
   async updateDynamicQr(manageKey: string, payload: UpdateDynamicQrPayload): Promise<DynamicQrCode> {
     const res = await firstValueFrom(
-      this.http.put<ApiResponse<DynamicQrCode>>(`${API_BASE}/manage/${manageKey}`, payload)
+      this.http.put<ApiResponse<DynamicQrCode>>(`${this.apiBase}/manage/${manageKey}`, payload)
     );
     const data = res.data;
 
@@ -171,7 +175,7 @@ export class QrDynamicService {
     const endpoint = isPaused ? 'resume' : 'pause';
 
     const res = await firstValueFrom(
-      this.http.post<ApiResponse<DynamicQrCode>>(`${API_BASE}/manage/${manageKey}/${endpoint}`, {})
+      this.http.post<ApiResponse<DynamicQrCode>>(`${this.apiBase}/manage/${manageKey}/${endpoint}`, {})
     );
     const data = res.data;
 
@@ -195,7 +199,7 @@ export class QrDynamicService {
    */
   async loadAnalytics(manageKey: string): Promise<QrScanAnalytics> {
     const res = await firstValueFrom(
-      this.http.get<ApiResponse<QrScanAnalytics>>(`${API_BASE}/manage/${manageKey}/analytics`)
+      this.http.get<ApiResponse<QrScanAnalytics>>(`${this.apiBase}/manage/${manageKey}/analytics`)
     );
     this.activeAnalytics.set(res.data);
     return res.data;
@@ -209,7 +213,7 @@ export class QrDynamicService {
     formData.append('file', file);
 
     const res = await firstValueFrom(
-      this.http.post<ApiResponse<DynamicQrAsset>>(`${API_BASE}/manage/${manageKey}/upload-asset`, formData)
+      this.http.post<ApiResponse<DynamicQrAsset>>(`${this.apiBase}/manage/${manageKey}/upload-asset`, formData)
     );
     return res.data;
   }
@@ -219,7 +223,7 @@ export class QrDynamicService {
    */
   async getPublicInfo(code: string): Promise<QrPublicInfoDto> {
     const res = await firstValueFrom(
-      this.http.get<ApiResponse<QrPublicInfoDto>>(`${API_BASE}/public/${code}`)
+      this.http.get<ApiResponse<QrPublicInfoDto>>(`${this.apiBase}/public/${code}`)
     );
     return res.data;
   }
@@ -229,7 +233,7 @@ export class QrDynamicService {
    */
   async verifyPassword(code: string, password: string): Promise<QrPublicInfoDto> {
     const res = await firstValueFrom(
-      this.http.post<ApiResponse<QrPublicInfoDto>>(`${API_BASE}/public/${code}/verify-password`, { password })
+      this.http.post<ApiResponse<QrPublicInfoDto>>(`${this.apiBase}/public/${code}/verify-password`, { password })
     );
     return res.data;
   }

@@ -42,7 +42,7 @@ import { TsIconComponent, HlmBadge } from '@acklet/tool-shell';
       <!-- Section Header -->
       <div class="qr-card-header">
         <div class="header-title-group">
-          <ts-icon name="sliders" class="header-icon" />
+          <ts-icon name="palette" class="header-icon" />
           <h2 class="qr-card-title">Customization & Export Settings</h2>
         </div>
         <span hlmBadge variant="outline" class="qr-custom-badge">
@@ -72,7 +72,7 @@ import { TsIconComponent, HlmBadge } from '@acklet/tool-shell';
           (click)="activeTab.set('design')"
         >
           <ts-icon name="sparkles" class="tab-icon" />
-          <span>Shapes & Branding</span>
+          <span>Shapes & Design</span>
           @if (hasCustomDesign()) {
             <span class="active-dot"></span>
           }

@@ -31,6 +31,8 @@ import { ResponsiveService } from '../../services/responsive.service';
     :host {
       display: block;
       width: 100%;
+      margin-top: auto;
+      flex-shrink: 0;
     }
 
     .ts-sticky-action-bar {
@@ -39,7 +41,7 @@ import { ResponsiveService } from '../../services/responsive.service';
       left: 0;
       right: 0;
       z-index: 40;
-      background: var(--bg-canvas, #121214);
+      background: var(--bg-card, var(--surface-1, #18181b));
       border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
       padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px)) 14px;
       box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.25);
@@ -47,6 +49,7 @@ import { ResponsiveService } from '../../services/responsive.service';
       will-change: transform;
       contain: layout style;
       box-sizing: border-box;
+      border-radius: 16px;
     }
 
     .ts-sticky-action-bar.floating-mode {
@@ -70,8 +73,8 @@ import { ResponsiveService } from '../../services/responsive.service';
     :host-context([data-theme="light"]) .ts-sticky-action-bar,
     [data-theme="light"] .ts-sticky-action-bar {
       background: var(--bg-surface, #ffffff);
-      border-top-color: var(--border, #e2e8f0);
-      box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+      border-top-color: var(--border, rgba(15, 23, 42, 0.08));
+      box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
     }
 
     .action-bar-content {

@@ -104,6 +104,15 @@ describe('SocialLinkInputComponent & PlatformDetector', () => {
       });
       // Prompt should now be dismissed
       expect(component.showCenterIconPrompt()).toBe(false);
+
+      let removeEmitted = false;
+      component.removeCenterIcon.subscribe(() => {
+        removeEmitted = true;
+      });
+      component.triggerRemoveCenterIcon();
+      expect(removeEmitted).toBe(true);
+      // After removal, dismissed prompt is reset so it can be added again
+      expect(component.showCenterIconPrompt()).toBe(true);
     });
 
     it('supports custom platform fallback gracefully without errors', () => {

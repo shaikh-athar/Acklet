@@ -5,11 +5,13 @@ import { isToolsHubHostname, extractToolSlugFromHostname } from '@acklet/shared'
 ['acklet:repos', 'acklet:tools', 'acklet:store', 'acklet:collections'].forEach(k => localStorage.removeItem(k));
 
 const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+const pathname = typeof window !== 'undefined' ? window.location.pathname.toLowerCase().replace(/\/+$/, '') : '';
 const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
 const queryTool = urlParams?.get('tool')?.toLowerCase();
+const isQrPath = pathname === '/qr' || pathname === '/qr-generator';
 const toolSlug = extractToolSlugFromHostname(hostname) || (queryTool && ['clipboard', 'qr', 'qr-generator'].includes(queryTool) ? queryTool : null);
 
-if (isToolsHubHostname(hostname)) {
+if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools') {
   // Bootstrap Tools Hub (apps/tools-hub)
   import('../apps/tools-hub/src/app/app.component')
     .then(({ AppComponent }) => bootstrapApplication(AppComponent))
@@ -26,7 +28,7 @@ if (isToolsHubHostname(hostname)) {
       });
     })
     .catch((err) => console.error('[Tool Clipboard Bootstrap Error]', err));
-} else if (toolSlug === 'qr' || toolSlug === 'qr-generator') {
+} else if (toolSlug === 'qr' || toolSlug === 'qr-generator' || isQrPath) {
   // Bootstrap QR Generator tool (apps/tool-qr-generator)
   Promise.all([
     import('../apps/tool-qr-generator/src/app/app.component'),

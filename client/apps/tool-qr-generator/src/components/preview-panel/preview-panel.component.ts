@@ -19,9 +19,9 @@ import {
   QRVerificationResult
 } from '../../models/qr-generator.models';
 import { QRVerifierService } from '../../services/qr-verifier.service';
-import { ErrorCorrectionSelectorComponent } from '../error-correction-selector/error-correction-selector.component';
-import { SizeSliderComponent } from '../size-slider/size-slider.component';
-import { MetadataDisplayComponent } from '../metadata-display/metadata-display.component';
+import { QRGeneratorService } from '../../services/qr-generator.service';
+import { QrAssembleEffectComponent } from '../qr-assemble-effect/qr-assemble-effect.component';
+import { AdvancedModalComponent } from '../advanced-modal/advanced-modal.component';
 
 @Component({
   selector: 'app-qr-preview-panel',
@@ -29,9 +29,8 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
   imports: [
     CommonModule,
     TsIconComponent,
-    ErrorCorrectionSelectorComponent,
-    SizeSliderComponent,
-    MetadataDisplayComponent
+    QrAssembleEffectComponent,
+    AdvancedModalComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -41,11 +40,27 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
         <div class="preview-card-header">
           <div class="preview-header-left">
             <ts-icon name="qr-code" class="header-icon" />
-            <span class="preview-title">Live Preview</span>
-            @if (qrDataUrl() && !isGenerating()) {
-              <span class="preview-status-pill">
-                <span class="live-dot"></span> Ready
-              </span>
+            <div class="preview-title-block">
+              <span class="preview-title">{{ qrName() || 'Live Preview' }}</span>
+              @if (qrName()) {
+                <span class="preview-subtitle">Live Preview</span>
+              }
+            </div>
+            @if (qrDataUrl() && !isGenerating() && !isCreatingHostedLink()) {
+              <div class="header-status-badges fade-in-badges">
+                @if (isSmartLink()) {
+                  <span
+                    class="smart-link-chip"
+                    title="Long content is stored securely and the QR opens it. Short QR, easy to scan."
+                  >
+                    <ts-icon name="link" class="chip-icon" />
+                    <span>Smart link</span>
+                  </span>
+                }
+                <span class="preview-status-pill">
+                  <span class="live-dot"></span> Ready
+                </span>
+              </div>
             }
           </div>
 
@@ -66,202 +81,246 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
               }
             </button>
 
-            <!-- Overflow 3-dots Menu Button -->
-            <div class="overflow-menu-container">
-              <button
-                type="button"
-                class="header-icon-btn"
-                [class.active]="isOverflowMenuOpen()"
-                (click)="toggleOverflowMenu($event)"
-                title="More tools and settings"
-                aria-label="More tools and settings"
-                aria-haspopup="menu"
-              >
-                <ts-icon name="more-horizontal" />
-              </button>
 
-              @if (isOverflowMenuOpen()) {
-                <div class="overflow-menu slide-fade-up" role="menu">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="overflow-item"
-                    (click)="openBatchGenerator.emit(); isOverflowMenuOpen.set(false)"
-                  >
-                    <ts-icon name="layers" class="overflow-item-icon" />
-                    <span>Batch Generator</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="overflow-item"
-                    (click)="openDynamicManager.emit(); isOverflowMenuOpen.set(false)"
-                  >
-                    <ts-icon name="zap" class="overflow-item-icon" />
-                    <span>Dynamic Shortlinks</span>
-                    @if (dynamicCount() > 0) {
-                      <span class="overflow-badge">{{ dynamicCount() }}</span>
-                    }
-                  </button>
-                  <div class="overflow-divider"></div>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="overflow-item"
-                    (click)="isAdvancedOpen.set(true); isOverflowMenuOpen.set(false)"
-                  >
-                    <ts-icon name="sliders" class="overflow-item-icon" />
-                    <span>Advanced Settings</span>
-                  </button>
-                </div>
-              }
-            </div>
+            <!-- Advanced Settings button (settings icon) -->
+            <button
+              type="button"
+              class="header-icon-btn"
+              [class.active]="isAdvancedOpen()"
+              (click)="isAdvancedOpen.set(true)"
+              title="Advanced settings"
+              aria-label="Advanced settings"
+            >
+              <ts-icon name="settings" [size]="18" />
+            </button>
           </div>
         </div>
 
         <!-- Preview Stage Area (Fills Available Height with Zero Page Scroll) -->
         <div class="qr-stage-wrapper">
           <div class="qr-stage">
-            @if (error()) {
-              <div class="qr-state-box qr-error-state" role="alert">
-                <ts-icon name="alert-triangle" class="state-icon error-icon" />
-                <h3 class="state-title">Generation Error</h3>
-                <p class="state-desc">{{ error() }}</p>
-              </div>
-            } @else if (qrDataUrl()) {
-              <div class="qr-preview-stage-content">
-                <div class="qr-tile-wrapper" [class.is-generating]="isGenerating()" [attr.data-size-tier]="sizeTier()">
-                  <img
-                    [src]="qrDataUrl()"
-                    alt="Generated QR Code Preview"
-                    class="qr-tile-img"
-                    [class.reveal]="!isGenerating()"
-                  />
-                  @if (isGenerating()) {
-                    <div class="qr-scan-line-track" aria-hidden="true">
-                      <div class="qr-scan-line"></div>
+            <div class="qr-preview-stage-content">
+              @if (fallbackNotice() && qrDataUrl()) {
+                <div class="fallback-notice-banner slide-fade-up">
+                  <ts-icon name="info" [size]="14" class="notice-icon" />
+                  <span>{{ fallbackNotice() }}</span>
+                  <button type="button" class="fallback-retry-btn" (click)="retryClick.emit()">Retry</button>
+                </div>
+              }
+
+              @if (error() && !isCreatingHostedLink() && !isGenerating()) {
+                <div class="qr-tile-wrapper is-error" role="alert">
+                  <div class="qr-state-box qr-error-state">
+                    <ts-icon name="alert-triangle" class="state-icon error-icon" />
+                    <h3 class="state-title">Generation Error</h3>
+                    <p class="state-desc">{{ error() }}</p>
+                    <button type="button" class="retry-btn" (click)="retryClick.emit()">
+                      <ts-icon name="refresh-cw" [size]="14" />
+                      <span>Retry</span>
+                    </button>
+                  </div>
+                </div>
+              } @else {
+                <!-- Unified QR Tile: same footprint across Empty, Creating/Loading, and Ready -->
+                <div
+                  class="qr-tile-wrapper"
+                  [class.is-empty]="!qrDataUrl() && !isCreatingHostedLink() && !isGenerating()"
+                  [class.is-loading]="(isCreatingHostedLink() || isGenerating()) && !qrDataUrl()"
+                  [class.is-ready]="!!qrDataUrl()"
+                  [attr.data-size-tier]="sizeTier()"
+                >
+                  @if ((isCreatingHostedLink() || isGenerating()) && !qrDataUrl()) {
+                    <!-- Module-grid skeleton with sweeping laser scan line -->
+                    <div class="qr-skeleton-inner" aria-busy="true">
+                      <svg viewBox="0 0 200 200" class="skeleton-qr-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <!-- 3 Finder Patterns -->
+                        <rect x="10" y="10" width="52" height="52" rx="8" fill="none" class="finder-outer" stroke-width="6"/>
+                        <rect x="24" y="24" width="24" height="24" rx="4" class="finder-inner"/>
+
+                        <rect x="138" y="10" width="52" height="52" rx="8" fill="none" class="finder-outer" stroke-width="6"/>
+                        <rect x="152" y="24" width="24" height="24" rx="4" class="finder-inner"/>
+
+                        <rect x="10" y="138" width="52" height="52" rx="8" fill="none" class="finder-outer" stroke-width="6"/>
+                        <rect x="24" y="152" width="24" height="24" rx="4" class="finder-inner"/>
+
+                        <!-- Timing patterns -->
+                        <g class="skeleton-timing-modules">
+                          <rect x="68" y="24" width="8" height="8" rx="1.5"/>
+                          <rect x="84" y="24" width="8" height="8" rx="1.5"/>
+                          <rect x="100" y="24" width="8" height="8" rx="1.5"/>
+                          <rect x="116" y="24" width="8" height="8" rx="1.5"/>
+
+                          <rect x="24" y="68" width="8" height="8" rx="1.5"/>
+                          <rect x="24" y="84" width="8" height="8" rx="1.5"/>
+                          <rect x="24" y="100" width="8" height="8" rx="1.5"/>
+                          <rect x="24" y="116" width="8" height="8" rx="1.5"/>
+                        </g>
+
+                        <!-- Dense Shimmering Module Grid -->
+                        <g class="skeleton-grid-modules">
+                          <rect x="68" y="10" width="8" height="8" rx="1.5"/>
+                          <rect x="84" y="10" width="8" height="8" rx="1.5"/>
+                          <rect x="100" y="10" width="8" height="8" rx="1.5"/>
+                          <rect x="116" y="10" width="8" height="8" rx="1.5"/>
+                          <rect x="76" y="38" width="8" height="8" rx="1.5"/>
+                          <rect x="92" y="38" width="8" height="8" rx="1.5"/>
+                          <rect x="108" y="38" width="8" height="8" rx="1.5"/>
+                          <rect x="124" y="38" width="8" height="8" rx="1.5"/>
+                          <rect x="68" y="52" width="8" height="8" rx="1.5"/>
+                          <rect x="100" y="52" width="8" height="8" rx="1.5"/>
+                          <rect x="116" y="52" width="8" height="8" rx="1.5"/>
+
+                          <rect x="10" y="68" width="8" height="8" rx="1.5"/>
+                          <rect x="38" y="68" width="8" height="8" rx="1.5"/>
+                          <rect x="52" y="68" width="8" height="8" rx="1.5"/>
+                          <rect x="68" y="68" width="8" height="8" rx="1.5"/>
+                          <rect x="84" y="68" width="8" height="8" rx="1.5"/>
+                          <rect x="100" y="68" width="8" height="8" rx="1.5"/>
+                          <rect x="116" y="68" width="8" height="8" rx="1.5"/>
+                          <rect x="132" y="68" width="8" height="8" rx="1.5"/>
+                          <rect x="148" y="68" width="8" height="8" rx="1.5"/>
+                          <rect x="164" y="68" width="8" height="8" rx="1.5"/>
+                          <rect x="180" y="68" width="8" height="8" rx="1.5"/>
+
+                          <rect x="10" y="84" width="8" height="8" rx="1.5"/>
+                          <rect x="52" y="84" width="8" height="8" rx="1.5"/>
+                          <rect x="68" y="84" width="8" height="8" rx="1.5"/>
+                          <rect x="100" y="84" width="8" height="8" rx="1.5"/>
+                          <rect x="116" y="84" width="8" height="8" rx="1.5"/>
+                          <rect x="132" y="84" width="8" height="8" rx="1.5"/>
+                          <rect x="164" y="84" width="8" height="8" rx="1.5"/>
+                          <rect x="180" y="84" width="8" height="8" rx="1.5"/>
+
+                          <rect x="10" y="100" width="8" height="8" rx="1.5"/>
+                          <rect x="38" y="100" width="8" height="8" rx="1.5"/>
+                          <rect x="68" y="100" width="8" height="8" rx="1.5"/>
+                          <rect x="84" y="100" width="8" height="8" rx="1.5"/>
+                          <rect x="116" y="100" width="8" height="8" rx="1.5"/>
+                          <rect x="148" y="100" width="8" height="8" rx="1.5"/>
+                          <rect x="164" y="100" width="8" height="8" rx="1.5"/>
+                          <rect x="180" y="100" width="8" height="8" rx="1.5"/>
+
+                          <rect x="10" y="116" width="8" height="8" rx="1.5"/>
+                          <rect x="52" y="116" width="8" height="8" rx="1.5"/>
+                          <rect x="84" y="116" width="8" height="8" rx="1.5"/>
+                          <rect x="100" y="116" width="8" height="8" rx="1.5"/>
+                          <rect x="132" y="116" width="8" height="8" rx="1.5"/>
+                          <rect x="148" y="116" width="8" height="8" rx="1.5"/>
+                          <rect x="180" y="116" width="8" height="8" rx="1.5"/>
+
+                          <rect x="68" y="138" width="8" height="8" rx="1.5"/>
+                          <rect x="84" y="138" width="8" height="8" rx="1.5"/>
+                          <rect x="116" y="138" width="8" height="8" rx="1.5"/>
+                          <rect x="132" y="138" width="8" height="8" rx="1.5"/>
+                          <rect x="148" y="138" width="8" height="8" rx="1.5"/>
+                          <rect x="164" y="138" width="8" height="8" rx="1.5"/>
+                          <rect x="180" y="138" width="8" height="8" rx="1.5"/>
+
+                          <rect x="76" y="154" width="8" height="8" rx="1.5"/>
+                          <rect x="100" y="154" width="8" height="8" rx="1.5"/>
+                          <rect x="124" y="154" width="8" height="8" rx="1.5"/>
+                          <rect x="148" y="154" width="8" height="8" rx="1.5"/>
+                          <rect x="172" y="154" width="8" height="8" rx="1.5"/>
+
+                          <rect x="68" y="170" width="8" height="8" rx="1.5"/>
+                          <rect x="84" y="170" width="8" height="8" rx="1.5"/>
+                          <rect x="108" y="170" width="8" height="8" rx="1.5"/>
+                          <rect x="132" y="170" width="8" height="8" rx="1.5"/>
+                          <rect x="156" y="170" width="8" height="8" rx="1.5"/>
+                          <rect x="180" y="170" width="8" height="8" rx="1.5"/>
+
+                          <rect x="76" y="184" width="8" height="8" rx="1.5"/>
+                          <rect x="100" y="184" width="8" height="8" rx="1.5"/>
+                          <rect x="116" y="184" width="8" height="8" rx="1.5"/>
+                          <rect x="148" y="184" width="8" height="8" rx="1.5"/>
+                          <rect x="172" y="184" width="8" height="8" rx="1.5"/>
+                        </g>
+                      </svg>
+                      <div class="qr-scan-line-track" aria-hidden="true">
+                        <div class="qr-scan-line"></div>
+                      </div>
+                    </div>
+                  } @else if (qrDataUrl()) {
+                    <!-- Ready QR Code reveals in place -->
+                    <app-qr-assemble-effect
+                      [qrDataUrl]="qrDataUrl()"
+                      [isGenerating]="isGenerating()"
+                      [shouldAnimate]="shouldAnimateQR()"
+                      class="qr-assemble-wrapper"
+                    />
+                  } @else {
+                    <!-- Empty-first Placeholder Vector QR State -->
+                    <div class="placeholder-qr-card-inner" aria-hidden="true">
+                      <svg viewBox="0 0 200 200" class="placeholder-qr-svg" xmlns="http://www.w3.org/2000/svg">
+                        <!-- 3 Finder Patterns -->
+                        <rect x="10" y="10" width="52" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="6"/>
+                        <rect x="24" y="24" width="24" height="24" rx="4" fill="currentColor"/>
+
+                        <rect x="138" y="10" width="52" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="6"/>
+                        <rect x="152" y="24" width="24" height="24" rx="4" fill="currentColor"/>
+
+                        <rect x="10" y="138" width="52" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="6"/>
+                        <rect x="24" y="152" width="24" height="24" rx="4" fill="currentColor"/>
+
+                        <!-- Matrix Dot Grid -->
+                        <g fill="currentColor" opacity="0.85">
+                          <rect x="75" y="15" width="10" height="10" rx="2"/>
+                          <rect x="95" y="15" width="10" height="10" rx="2"/>
+                          <rect x="115" y="15" width="10" height="10" rx="2"/>
+                          <rect x="75" y="35" width="10" height="10" rx="2"/>
+                          <rect x="105" y="35" width="10" height="10" rx="2"/>
+                          <rect x="85" y="55" width="10" height="10" rx="2"/>
+                          <rect x="115" y="55" width="10" height="10" rx="2"/>
+
+                          <rect x="15" y="75" width="10" height="10" rx="2"/>
+                          <rect x="35" y="75" width="10" height="10" rx="2"/>
+                          <rect x="55" y="75" width="10" height="10" rx="2"/>
+                          <rect x="75" y="75" width="10" height="10" rx="2"/>
+                          <rect x="95" y="75" width="10" height="10" rx="2"/>
+                          <rect x="115" y="75" width="10" height="10" rx="2"/>
+                          <rect x="135" y="75" width="10" height="10" rx="2"/>
+                          <rect x="155" y="75" width="10" height="10" rx="2"/>
+                          <rect x="175" y="75" width="10" height="10" rx="2"/>
+
+                          <rect x="15" y="95" width="10" height="10" rx="2"/>
+                          <rect x="45" y="95" width="10" height="10" rx="2"/>
+                          <rect x="75" y="95" width="10" height="10" rx="2"/>
+                          <rect x="105" y="95" width="10" height="10" rx="2"/>
+                          <rect x="135" y="95" width="10" height="10" rx="2"/>
+                          <rect x="165" y="95" width="10" height="10" rx="2"/>
+
+                          <rect x="75" y="115" width="10" height="10" rx="2"/>
+                          <rect x="95" y="115" width="10" height="10" rx="2"/>
+                          <rect x="125" y="115" width="10" height="10" rx="2"/>
+                          <rect x="155" y="115" width="10" height="10" rx="2"/>
+
+                          <rect x="75" y="145" width="10" height="10" rx="2"/>
+                          <rect x="105" y="145" width="10" height="10" rx="2"/>
+                          <rect x="135" y="145" width="10" height="10" rx="2"/>
+                          <rect x="165" y="145" width="10" height="10" rx="2"/>
+                          <rect x="85" y="165" width="10" height="10" rx="2"/>
+                          <rect x="115" y="165" width="10" height="10" rx="2"/>
+                          <rect x="145" y="165" width="10" height="10" rx="2"/>
+                          <rect x="175" y="165" width="10" height="10" rx="2"/>
+                        </g>
+                      </svg>
+                      <div class="placeholder-sweep-beam"></div>
                     </div>
                   }
                 </div>
-              </div>
-            } @else if (isGenerating()) {
-              <div class="qr-state-box qr-skeleton-state" aria-busy="true">
-                <div class="skeleton-matrix-card">
-                  <div class="matrix-corner top-left"></div>
-                  <div class="matrix-corner top-right"></div>
-                  <div class="matrix-corner bottom-left"></div>
-                  <div class="qr-scan-line-track" aria-hidden="true">
-                    <div class="qr-scan-line"></div>
-                  </div>
-                </div>
-                <span class="skeleton-text">Generating QR code...</span>
-              </div>
-            } @else {
-              <!-- Empty-first Placeholder Vector QR State with Breathing Animation -->
-              <div class="qr-state-box qr-placeholder-state" aria-hidden="true">
-                <div class="placeholder-qr-card">
-                  <svg viewBox="0 0 200 200" width="180" height="180" class="placeholder-qr-svg" xmlns="http://www.w3.org/2000/svg">
-                    <!-- 3 Finder Patterns -->
-                    <rect x="10" y="10" width="52" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="6"/>
-                    <rect x="24" y="24" width="24" height="24" rx="4" fill="currentColor"/>
 
-                    <rect x="138" y="10" width="52" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="6"/>
-                    <rect x="152" y="24" width="24" height="24" rx="4" fill="currentColor"/>
-
-                    <rect x="10" y="138" width="52" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="6"/>
-                    <rect x="24" y="152" width="24" height="24" rx="4" fill="currentColor"/>
-
-                    <!-- Matrix Dot Grid -->
-                    <g fill="currentColor" opacity="0.85">
-                      <rect x="75" y="15" width="10" height="10" rx="2"/>
-                      <rect x="95" y="15" width="10" height="10" rx="2"/>
-                      <rect x="115" y="15" width="10" height="10" rx="2"/>
-                      <rect x="75" y="35" width="10" height="10" rx="2"/>
-                      <rect x="105" y="35" width="10" height="10" rx="2"/>
-                      <rect x="85" y="55" width="10" height="10" rx="2"/>
-                      <rect x="115" y="55" width="10" height="10" rx="2"/>
-
-                      <rect x="15" y="75" width="10" height="10" rx="2"/>
-                      <rect x="35" y="75" width="10" height="10" rx="2"/>
-                      <rect x="55" y="75" width="10" height="10" rx="2"/>
-                      <rect x="75" y="75" width="10" height="10" rx="2"/>
-                      <rect x="95" y="75" width="10" height="10" rx="2"/>
-                      <rect x="115" y="75" width="10" height="10" rx="2"/>
-                      <rect x="135" y="75" width="10" height="10" rx="2"/>
-                      <rect x="155" y="75" width="10" height="10" rx="2"/>
-                      <rect x="175" y="75" width="10" height="10" rx="2"/>
-
-                      <rect x="15" y="95" width="10" height="10" rx="2"/>
-                      <rect x="45" y="95" width="10" height="10" rx="2"/>
-                      <rect x="75" y="95" width="10" height="10" rx="2"/>
-                      <rect x="105" y="95" width="10" height="10" rx="2"/>
-                      <rect x="135" y="95" width="10" height="10" rx="2"/>
-                      <rect x="165" y="95" width="10" height="10" rx="2"/>
-
-                      <rect x="75" y="115" width="10" height="10" rx="2"/>
-                      <rect x="95" y="115" width="10" height="10" rx="2"/>
-                      <rect x="125" y="115" width="10" height="10" rx="2"/>
-                      <rect x="155" y="115" width="10" height="10" rx="2"/>
-
-                      <rect x="75" y="145" width="10" height="10" rx="2"/>
-                      <rect x="105" y="145" width="10" height="10" rx="2"/>
-                      <rect x="135" y="145" width="10" height="10" rx="2"/>
-                      <rect x="165" y="145" width="10" height="10" rx="2"/>
-                      <rect x="85" y="165" width="10" height="10" rx="2"/>
-                      <rect x="115" y="165" width="10" height="10" rx="2"/>
-                      <rect x="145" y="165" width="10" height="10" rx="2"/>
-                      <rect x="175" y="165" width="10" height="10" rx="2"/>
-                    </g>
-                  </svg>
-                  <div class="placeholder-sweep-beam"></div>
-                </div>
-                <p class="placeholder-caption">Your QR code will appear here</p>
-                <button
-                  type="button"
-                  class="placeholder-sample-btn"
-                  (click)="loadSampleClick.emit()"
-                  title="Try a pre-configured example QR code"
-                >
-                  <ts-icon name="sparkles" class="sample-btn-icon" />
-                  <span>Try an Example</span>
-                </button>
-              </div>
-            }
-
-            <!-- Calm Scan Confidence Bar (High / Medium / Low with Auto-Fix) -->
-            @if (qrDataUrl() && verification(); as result) {
-              <div class="scan-confidence-bar slide-fade-up">
-                <div
-                  class="confidence-chip"
-                  [class.confidence-high]="result.confidence === 'high'"
-                  [class.confidence-medium]="result.confidence === 'medium'"
-                  [class.confidence-low]="result.confidence === 'low'"
-                >
-                  @if (result.confidence === 'high') {
-                    <ts-icon name="check-circle" class="confidence-icon" />
-                    <span class="confidence-text">Scan Confidence: High</span>
-                  } @else if (result.confidence === 'medium') {
-                    <ts-icon name="alert-circle" class="confidence-icon" />
-                    <span class="confidence-text">Scan Confidence: Medium</span>
-                  } @else {
-                    <ts-icon name="alert-triangle" class="confidence-icon" />
-                    <span class="confidence-text">Scan Confidence: Low</span>
+                <!-- Status text below tile: reserved height to prevent vertical jitter -->
+                <div class="qr-status-caption-zone">
+                  @if (isCreatingHostedLink()) {
+                    <span class="skeleton-text animate-fade-in">Creating link...</span>
+                  } @else if (isGenerating()) {
+                    <span class="skeleton-text animate-fade-in">Generating QR code...</span>
+                  } @else if (!qrDataUrl()) {
+                    <p class="placeholder-caption">Your QR code will appear here</p>
                   }
                 </div>
-
-                @if (result.confidence === 'medium' || result.confidence === 'low' || result.fixAvailable || !result.isScannable) {
-                  <button
-                    type="button"
-                    class="auto-fix-btn"
-                    (click)="autoFixClick.emit()"
-                    title="Optimize contrast and error recovery for guaranteed scanning"
-                  >
-                    <ts-icon name="sparkles" class="fix-icon" />
-                    <span>Fix automatically</span>
-                  </button>
-                }
-              </div>
-            }
+              }
+            </div>
           </div>
         </div>
 
@@ -316,6 +375,13 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
                       <span class="menu-item-desc">Direct paste into Figma, docs, chats</span>
                     </div>
                   </button>
+                  <button type="button" role="menuitem" class="split-menu-item" (click)="onShare(); isFormatMenuOpen.set(false)">
+                    <ts-icon name="share-2" />
+                    <div class="menu-item-info">
+                      <span class="menu-item-name">Share QR Code</span>
+                      <span class="menu-item-desc">Share via system apps or copy</span>
+                    </div>
+                  </button>
                   <div class="print-recommendation-note">
                     <ts-icon name="info" class="print-icon" />
                     <span>Recommended print size: &ge; 3.5 &times; 3.5 cm (1.4 &times; 1.4 in) for guaranteed camera readability.</span>
@@ -336,6 +402,19 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
               <ts-icon name="file-code" class="btn-icon" />
               <span>SVG</span>
             </button>
+
+            <!-- Quick Share Button -->
+            <button
+              type="button"
+              class="quick-share-btn"
+              [disabled]="!qrDataUrl() || isGenerating()"
+              (click)="onShare()"
+              [title]="!qrDataUrl() ? 'Enter content to share' : (copiedShare() ? 'Link / image copied!' : 'Share QR code')"
+              aria-label="Share QR code"
+            >
+              <ts-icon [name]="copiedShare() ? 'check' : 'share-2'" class="btn-icon" />
+              <span>{{ copiedShare() ? 'Copied' : 'Share' }}</span>
+            </button>
           </div>
 
           <!-- Clean Footer Note -->
@@ -344,57 +423,25 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
           </div>
         </div>
 
-        <!-- Advanced Technical Settings Modal Dialog -->
-        @if (isAdvancedOpen()) {
-          <div class="advanced-modal-overlay" (click)="isAdvancedOpen.set(false)" (keydown.escape)="isAdvancedOpen.set(false)">
-            <div class="advanced-modal-card slide-fade-up" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Advanced Technical Settings">
-              <div class="modal-header">
-                <div class="modal-title-group">
-                  <ts-icon name="sliders" class="modal-title-icon" />
-                  <h3 class="modal-title">Advanced Settings</h3>
-                </div>
-                <button type="button" class="modal-close-btn" (click)="isAdvancedOpen.set(false)" aria-label="Close advanced settings">
-                  <ts-icon name="x" />
-                </button>
-              </div>
-
-              <div class="modal-body custom-scrollbar">
-                <app-error-correction-selector
-                  [errorCorrection]="errorCorrection()"
-                  (errorCorrectionChange)="errorCorrectionChange.emit($event)"
-                />
-                <app-size-slider
-                  [size]="size()"
-                  (sizeChange)="sizeChange.emit($event)"
-                />
-                @if (metadata(); as meta) {
-                  <app-qr-metadata-display
-                    [metadata]="meta"
-                    [errorCorrection]="errorCorrection()"
-                  />
-                }
-                @if (formattedPayload()) {
-                  <div class="technical-raw-payload">
-                    <div class="payload-header">
-                      <span class="payload-label">Encoded RFC Payload</span>
-                      <button
-                        type="button"
-                        class="payload-copy-btn"
-                        (click)="copyPayloadToClipboard()"
-                        [title]="copiedPayload() ? 'Copied!' : 'Copy encoded payload'"
-                        [attr.aria-label]="copiedPayload() ? 'Copied encoded payload' : 'Copy encoded RFC payload'"
-                      >
-                        <ts-icon [name]="copiedPayload() ? 'check' : 'copy'" class="copy-icon" />
-                        <span>{{ copiedPayload() ? 'Copied' : 'Copy' }}</span>
-                      </button>
-                    </div>
-                    <pre class="payload-code-block"><code>{{ formattedPayload() }}</code></pre>
-                  </div>
-                }
-              </div>
-            </div>
-          </div>
-        }
+        <!-- Advanced Technical Settings Sectioned Modal -->
+        <app-qr-advanced-modal
+          [isOpen]="isAdvancedOpen()"
+          [errorCorrection]="errorCorrection()"
+          [isAutoEc]="isAutoEc()"
+          [autoEcReason]="autoEcReason()"
+          [size]="size()"
+          [margin]="margin()"
+          [isSmartLink]="isSmartLink()"
+          [metadata]="metadata()"
+          [formattedPayload]="formattedPayload()"
+          (close)="isAdvancedOpen.set(false)"
+          (errorCorrectionChange)="errorCorrectionChange.emit($event)"
+          (isAutoEcChange)="isAutoEcChange.emit($event)"
+          (sizeChange)="sizeChange.emit($event)"
+          (marginChange)="marginChange.emit($event)"
+          (resetDefaults)="resetDefaults.emit()"
+          (openDynamicLinks)="openDynamicLinks.emit()"
+        />
 
         <!-- History Popover/Drawer Overlay -->
         @if (isHistoryOpen()) {
@@ -438,6 +485,9 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
                       </div>
                       <div class="history-item-meta-info">
                         <div class="history-item-top">
+                          @if (item.name) {
+                            <span class="history-item-name" [title]="item.name">{{ item.name }}</span>
+                          }
                           <span class="history-badge">{{ item.type }}</span>
                           <span class="history-timestamp">{{ formatTime(item.createdAt) }}</span>
                         </div>
@@ -514,10 +564,28 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
       height: 18px;
     }
 
+    .preview-title-block {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      line-height: 1.15;
+    }
+
     .preview-title {
       font-size: 13.5px;
       font-weight: 700;
       color: var(--text, #fcfcfc);
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .preview-subtitle {
+      font-size: 10.5px;
+      font-weight: 500;
+      color: var(--text-muted, #94a3b8);
+      letter-spacing: 0.2px;
     }
 
     .preview-status-pill {
@@ -531,6 +599,27 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
       background: var(--tool-accent-soft, rgba(59, 130, 246, 0.12));
       color: var(--tool-accent, #60a5fa);
       border: 1px solid var(--tool-accent-border, rgba(59, 130, 246, 0.25));
+    }
+
+    .smart-link-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--tool-accent-soft, rgba(59, 130, 246, 0.12));
+      color: var(--tool-accent, #3b82f6);
+      border: 1px solid var(--tool-accent-border, rgba(59, 130, 246, 0.3));
+      cursor: help;
+      user-select: none;
+      transition: all 0.15s ease;
+    }
+
+    .smart-link-chip .chip-icon {
+      width: 12px;
+      height: 12px;
     }
 
     .live-dot {
@@ -700,6 +789,8 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
       max-height: calc(100% - 28px);
       max-width: 100%;
       aspect-ratio: 1 / 1;
+      height: 100%;
+      width: auto;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -711,6 +802,30 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
       position: relative;
       overflow: hidden;
       transition: opacity 180ms ease, padding 180ms ease;
+    }
+
+    .qr-tile-wrapper.is-empty {
+      background: var(--surface-1, rgba(255, 255, 255, 0.04));
+      border: 1.5px dashed var(--border-strong, rgba(255, 255, 255, 0.18));
+      box-shadow: none;
+    }
+    :host-context([data-theme="light"]) .qr-tile-wrapper.is-empty,
+    [data-theme="light"] .qr-tile-wrapper.is-empty {
+      background: rgba(0, 0, 0, 0.02);
+      border-color: rgba(0, 0, 0, 0.14);
+    }
+
+    .qr-tile-wrapper.is-loading,
+    .qr-tile-wrapper.is-ready {
+      background: #ffffff;
+      border: none;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .qr-tile-wrapper.is-error {
+      background: var(--surface-1, rgba(255, 255, 255, 0.04));
+      border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.18));
+      box-shadow: none;
     }
 
     .qr-tile-wrapper.is-generating {
@@ -843,43 +958,162 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
       }
     }
 
-    /* Skeleton Matrix Box for initial generation */
-    .skeleton-matrix-card {
-      width: 180px;
-      height: 180px;
-      position: relative;
-      background: var(--surface-1, rgba(255, 255, 255, 0.04));
-      border: 1px dashed var(--border-strong, rgba(255, 255, 255, 0.18));
-      border-radius: 12px;
-      overflow: hidden;
+    /* Module-grid Skeleton for loading state */
+    .qr-skeleton-inner {
+      width: 100%;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 8px;
+      position: relative;
+      animation: crossfadeScaleIn 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      will-change: transform, opacity;
     }
 
-    .matrix-corner {
-      position: absolute;
-      width: 28px;
-      height: 28px;
-      border: 3px solid var(--tool-accent, #3b82f6);
-      border-radius: 4px;
-      opacity: 0.6;
+    .skeleton-qr-svg {
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
     }
 
-    .matrix-corner.top-left {
-      top: 12px;
-      left: 12px;
+    .skeleton-qr-svg .finder-outer {
+      stroke: var(--tool-accent, #3b82f6);
+      opacity: 0.85;
     }
 
-    .matrix-corner.top-right {
-      top: 12px;
-      right: 12px;
+    .skeleton-qr-svg .finder-inner {
+      fill: var(--tool-accent, #3b82f6);
+      opacity: 0.85;
     }
 
-    .matrix-corner.bottom-left {
-      bottom: 12px;
-      left: 12px;
+    .skeleton-timing-modules rect {
+      fill: #94a3b8;
+      opacity: 0.65;
+    }
+
+    .skeleton-grid-modules rect {
+      fill: #94a3b8;
+      animation: moduleShimmer 1.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes moduleShimmer {
+      0% {
+        opacity: 0.2;
+      }
+      50% {
+        opacity: 0.6;
+      }
+      100% {
+        opacity: 0.25;
+      }
+    }
+
+    .qr-assemble-wrapper {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .qr-tile-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      image-rendering: pixelated;
+      will-change: transform, opacity;
+    }
+
+    .placeholder-qr-card-inner {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      animation: crossfadeScaleIn 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      will-change: transform, opacity;
+    }
+
+    @keyframes crossfadeScaleIn {
+      0% {
+        opacity: 0;
+        transform: scale(0.96);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes revealInPlace {
+      0% {
+        opacity: 0;
+        transform: scale(0.97);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .fade-in-badges {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      animation: badgesFadeIn 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      will-change: opacity, transform;
+    }
+
+    @keyframes badgesFadeIn {
+      0% {
+        opacity: 0;
+        transform: translateY(-2px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .qr-status-caption-zone {
+      height: 20px;
+      min-height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .animate-fade-in {
+      animation: fadeInText 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes fadeInText {
+      0% {
+        opacity: 0;
+        transform: translateY(2px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .qr-skeleton-inner,
+      .qr-assemble-wrapper,
+      .qr-tile-img.reveal-in-place,
+      .placeholder-qr-card-inner,
+      .fade-in-badges,
+      .animate-fade-in,
+      .qr-scan-line,
+      .skeleton-grid-modules rect {
+        animation: none !important;
+        transform: none !important;
+        opacity: 1 !important;
+      }
     }
 
     /* States inside stage */
@@ -930,6 +1164,80 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
       font-size: 12px;
       color: var(--text-muted, var(--text-3, rgba(255, 255, 255, 0.6)));
       line-height: 1.4;
+    }
+
+    .retry-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      background: var(--tool-accent, #2563eb);
+      color: #ffffff;
+      border: 1px solid var(--tool-accent, #2563eb);
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+
+    .retry-btn:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }
+
+    .fallback-notice-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding: 7px 12px;
+      border-radius: 8px;
+      background: var(--surface-2, rgba(255, 255, 255, 0.06));
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      font-size: 11.5px;
+      color: var(--text-muted, #94a3b8);
+      line-height: 1.35;
+      max-width: 320px;
+      text-align: left;
+    }
+
+    .fallback-notice-banner .notice-icon {
+      color: var(--tool-accent, #3b82f6);
+      flex-shrink: 0;
+    }
+
+    .fallback-retry-btn {
+      margin-left: auto;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--surface-3, rgba(255, 255, 255, 0.1));
+      color: var(--text, #fcfcfc);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .fallback-retry-btn:hover {
+      background: var(--tool-accent, #3b82f6);
+      color: #ffffff;
+    }
+
+    .dev-warning-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 8px;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: rgba(234, 179, 8, 0.12);
+      border: 1px solid rgba(234, 179, 8, 0.35);
+      color: #eab308;
+      font-size: 11px;
+      font-weight: 600;
     }
 
     .empty-sample-btn {
@@ -1078,120 +1386,6 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
       font-weight: 500;
     }
 
-    /* Calm Scan Confidence Bar & Auto-Fix Action */
-    .scan-confidence-bar {
-      position: absolute;
-      bottom: 10px;
-      left: 12px;
-      right: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 6px 12px;
-      border-radius: 9999px;
-      background: var(--bg-surface, var(--surface-1, #1e2027));
-      border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-      backdrop-filter: blur(10px);
-      z-index: 20;
-      transition: all 300ms cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .confidence-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11.5px;
-      font-weight: 600;
-      letter-spacing: 0.01em;
-      padding: 3px 8px;
-      border-radius: 9999px;
-    }
-
-    .confidence-chip.confidence-high {
-      background: rgba(16, 185, 129, 0.14);
-      color: #059669;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-    :host-context([data-theme="dark"]) .confidence-chip.confidence-high {
-      background: rgba(16, 185, 129, 0.18);
-      color: #34d399;
-      border-color: rgba(52, 211, 153, 0.35);
-    }
-
-    .confidence-chip.confidence-medium {
-      background: rgba(245, 158, 11, 0.14);
-      color: #d97706;
-      border: 1px solid rgba(245, 158, 11, 0.3);
-    }
-    :host-context([data-theme="dark"]) .confidence-chip.confidence-medium {
-      background: rgba(245, 158, 11, 0.18);
-      color: #fbbf24;
-      border-color: rgba(251, 191, 36, 0.35);
-    }
-
-    .confidence-chip.confidence-low {
-      background: rgba(239, 68, 68, 0.14);
-      color: #dc2626;
-      border: 1px solid rgba(239, 68, 68, 0.3);
-    }
-    :host-context([data-theme="dark"]) .confidence-chip.confidence-low {
-      background: rgba(239, 68, 68, 0.18);
-      color: #f87171;
-      border-color: rgba(248, 113, 113, 0.35);
-    }
-
-    .confidence-icon {
-      width: 14px;
-      height: 14px;
-      flex-shrink: 0;
-    }
-
-    .confidence-text {
-      font-size: 11px;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-
-    .auto-fix-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 4px 10px;
-      border-radius: 9999px;
-      font-size: 11px;
-      font-weight: 600;
-      background: var(--accent-surface, rgba(2, 132, 199, 0.12));
-      color: var(--accent-primary, #0284c7);
-      border: 1px solid var(--accent-border, rgba(2, 132, 199, 0.3));
-      cursor: pointer;
-      transition: all 200ms ease;
-    }
-
-    .auto-fix-btn:hover {
-      background: var(--accent-primary, #0284c7);
-      color: #ffffff;
-      transform: translateY(-0.5px);
-    }
-
-    .auto-fix-btn:active {
-      transform: translateY(0);
-    }
-
-    .fix-icon {
-      width: 12px;
-      height: 12px;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .scan-confidence-bar,
-      .auto-fix-btn {
-        transition: none !important;
-        animation: none !important;
-      }
-    }
-
     /* Bottom Action Bar */
     .preview-action-bar {
       display: flex;
@@ -1225,7 +1419,7 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
       flex: 1 1 0%;
       height: 38px;
       padding: 0 14px;
-      border-radius: 9px 0 0 9px;
+      border-radius: 14px 0 0 14px;
       border: 1px solid var(--tool-accent, #3b82f6);
       border-right: none;
       background: var(--tool-accent, #3b82f6) !important;
@@ -1255,7 +1449,7 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
       justify-content: center;
       width: 34px;
       height: 38px;
-      border-radius: 0 9px 9px 0;
+      border-radius: 0 14px 14px 0;
       border: 1px solid var(--tool-accent, #3b82f6);
       border-left: 1px solid rgba(255, 255, 255, 0.25);
       background: var(--tool-accent, #3b82f6) !important;
@@ -1364,15 +1558,16 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
       color: var(--accent-primary, #0284c7);
     }
 
-    /* Quick SVG Vector Export Button */
-    .quick-svg-btn {
+    /* Quick SVG Vector Export & Share Buttons */
+    .quick-svg-btn,
+    .quick-share-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 5px;
       height: 38px;
       padding: 0 12px;
-      border-radius: 9px;
+      border-radius: 14px;
       background: var(--surface-2, rgba(255, 255, 255, 0.04));
       border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
       color: var(--text-2, rgba(255, 255, 255, 0.8));
@@ -1383,13 +1578,15 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
       white-space: nowrap;
     }
 
-    .quick-svg-btn:hover:not(:disabled) {
+    .quick-svg-btn:hover:not(:disabled),
+    .quick-share-btn:hover:not(:disabled) {
       background: var(--surface-3, rgba(255, 255, 255, 0.08));
       color: var(--text, #fcfcfc);
       border-color: var(--accent-border, rgba(59, 130, 246, 0.4));
     }
 
-    .quick-svg-btn:disabled {
+    .quick-svg-btn:disabled,
+    .quick-share-btn:disabled {
       opacity: 0.45;
       cursor: not-allowed;
     }
@@ -1627,6 +1824,16 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
       display: flex;
       align-items: center;
       gap: 6px;
+    }
+
+    .history-item-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text, #fcfcfc);
+      max-width: 110px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .history-badge {
@@ -1869,16 +2076,27 @@ import { MetadataDisplayComponent } from '../metadata-display/metadata-display.c
   `]
 })
 export class PreviewPanelComponent {
+  readonly qrName = input<string>('');
   readonly qrDataUrl = input<string | null>(null);
+  readonly shouldAnimateQR = input<boolean>(false);
   readonly isGenerating = input<boolean>(false);
   readonly error = input<string | null>(null);
   readonly formattedPayload = input<string>('');
+  readonly encodedPayload = input<string | null>(null);
   readonly content = input<string>('');
   readonly metadata = input<QRMetadata | null>(null);
   readonly size = input<number>(512);
   readonly errorCorrection = input<ErrorCorrectionLevel>('M');
+  readonly margin = input<number>(4);
+  readonly isAutoEc = input<boolean>(true);
+  readonly autoEcReason = input<string | undefined>(undefined);
   readonly historyItems = input<QRHistoryItem[]>([]);
   readonly dynamicCount = input<number>(0);
+  readonly isSmartLink = input<boolean>(false);
+  readonly isCreatingHostedLink = input<boolean>(false);
+  readonly fallbackNotice = input<string | null>(null);
+  readonly isDevAddressWarning = input<boolean>(false);
+  readonly retryClick = output<void>();
 
   readonly sizeTier = computed<'sm' | 'md' | 'lg' | 'xl'>(() => {
     const s = this.size();
@@ -1892,11 +2110,14 @@ export class PreviewPanelComponent {
   readonly restoreItem = output<QRHistoryItem>();
   readonly clearHistory = output<void>();
   readonly openDynamicManager = output<void>();
-  readonly openBatchGenerator = output<void>();
   readonly loadSampleClick = output<void>();
   readonly autoFixClick = output<void>();
   readonly sizeChange = output<number>();
   readonly errorCorrectionChange = output<ErrorCorrectionLevel>();
+  readonly marginChange = output<number>();
+  readonly isAutoEcChange = output<boolean>();
+  readonly resetDefaults = output<void>();
+  readonly openDynamicLinks = output<void>();
 
   readonly isPayloadExpanded = signal<boolean>(false);
   readonly isFormatMenuOpen = signal<boolean>(false);
@@ -1904,10 +2125,12 @@ export class PreviewPanelComponent {
   readonly isOverflowMenuOpen = signal<boolean>(false);
   readonly isAdvancedOpen = signal<boolean>(false);
   readonly copiedImage = signal<boolean>(false);
+  readonly copiedShare = signal<boolean>(false);
   readonly copiedPayload = signal<boolean>(false);
   readonly copiedContent = signal<boolean>(false);
 
   private verifier = inject(QRVerifierService);
+  private qrService = inject(QRGeneratorService, { optional: true });
   readonly verification = signal<QRVerificationResult | null>(null);
   readonly isVerifying = signal<boolean>(false);
 
@@ -1915,8 +2138,8 @@ export class PreviewPanelComponent {
     try {
       effect(() => {
         const url = this.qrDataUrl();
-        const payload = this.formattedPayload();
-        if (url && payload && !this.isGenerating()) {
+        const payload = this.encodedPayload() || this.formattedPayload();
+        if (url && payload && !this.isGenerating() && !this.isCreatingHostedLink()) {
           this.runSilentVerification(url, payload);
         } else {
           this.verification.set(null);
@@ -1928,11 +2151,14 @@ export class PreviewPanelComponent {
   }
 
   private async runSilentVerification(url: string, payload: string): Promise<void> {
+    this.isVerifying.set(true);
     try {
       const res = await this.verifier.verifyScannability(url, payload);
       this.verification.set(res);
     } catch {
       // Silent verification failure is non-fatal
+    } finally {
+      this.isVerifying.set(false);
     }
   }
 
@@ -1956,20 +2182,33 @@ export class PreviewPanelComponent {
     const url = this.qrDataUrl();
     if (!url || this.isVerifying()) return;
     this.isVerifying.set(true);
+    const payload = this.encodedPayload() || this.formattedPayload();
     try {
-      const res = await this.verifier.verifyScannability(url, this.formattedPayload());
+      const res = await this.verifier.verifyScannability(url, payload);
       this.verification.set(res);
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Verification failed.';
       this.verification.set({
         isScannable: false,
-        expectedPayload: this.formattedPayload(),
+        expectedPayload: payload,
         match: false,
         message: errorMsg
       });
     } finally {
       this.isVerifying.set(false);
     }
+  }
+
+  getConfidenceCause(result: QRVerificationResult): string {
+    if (result.reason) return result.reason;
+    if (!result.isScannable) return 'Matrix density or low contrast obscures locators';
+    if (result.confidence === 'low') return 'Dense payload or reduced module contrast';
+    return 'Moderate contrast or complex shapes';
+  }
+
+  getConfidenceTip(result: QRVerificationResult): string {
+    if (result.tip) return result.tip;
+    return 'Click "Fix automatically" for high-contrast optimization';
   }
 
   onDownload(format: ExportFormat = 'png'): void {
@@ -1982,19 +2221,16 @@ export class PreviewPanelComponent {
     if (!dataUrl) return;
 
     try {
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
+      const blob = this.qrService
+        ? await this.qrService.svgToPngBlob(dataUrl, 2)
+        : await (await fetch(dataUrl)).blob();
       await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type || 'image/png']: blob })
+        new ClipboardItem({ 'image/png': blob })
       ]);
       this.copiedImage.set(true);
       setTimeout(() => this.copiedImage.set(false), 2000);
-    } catch {
-      try {
-        await navigator.clipboard.writeText(dataUrl);
-        this.copiedImage.set(true);
-        setTimeout(() => this.copiedImage.set(false), 2000);
-      } catch {}
+    } catch (err) {
+      console.warn('[PreviewPanel] Failed to copy PNG image to clipboard:', err);
     }
   }
 
@@ -2016,6 +2252,36 @@ export class PreviewPanelComponent {
       this.copiedContent.set(true);
       setTimeout(() => this.copiedContent.set(false), 2000);
     } catch {}
+  }
+
+  async onShare(): Promise<void> {
+    const dataUrl = this.qrDataUrl();
+    if (!dataUrl || this.isGenerating()) return;
+
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        const blob = this.qrService
+          ? await this.qrService.svgToPngBlob(dataUrl, 2)
+          : await (await fetch(dataUrl)).blob();
+        const file = new File([blob], `qr-code-${Date.now()}.png`, { type: 'image/png' });
+
+        const canShareFiles = typeof navigator.canShare === 'function' ? navigator.canShare({ files: [file] }) : true;
+        if (canShareFiles) {
+          await navigator.share({
+            files: [file]
+          });
+          return;
+        }
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return;
+        console.warn('[PreviewPanel] Web Share failed, falling back to PNG download:', err);
+      }
+    }
+
+    // Fallback: download PNG file with proper color, frame, and QR
+    this.onDownload('png');
+    this.copiedShare.set(true);
+    setTimeout(() => this.copiedShare.set(false), 2000);
   }
 
   formatTime(timestamp: number): string {

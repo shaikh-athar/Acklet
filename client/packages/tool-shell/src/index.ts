@@ -77,6 +77,7 @@ export * from './components/adaptive-dropdown/adaptive-dropdown.component';
 
 // Interaction & Gestures
 export * from './services/haptic.service';
+export * from './services/drawer-gesture.service';
 export * from './directives/ts-long-press.directive';
 export * from './directives/ts-double-tap.directive';
 

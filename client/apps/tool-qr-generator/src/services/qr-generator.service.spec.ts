@@ -41,28 +41,44 @@ describe('QRGeneratorService', () => {
       expect(service.formatPayload('https://acklet.com/tools', 'url')).toBe('https://acklet.com/tools');
     });
 
-    it('formats email with mailto: prefix correctly', () => {
+    it('formats email with mailto: prefix and URL-encoded query parameters', () => {
       expect(service.formatPayload('test@example.com', 'email')).toBe('mailto:test@example.com');
       expect(service.formatPayload('mailto:already@example.com', 'email')).toBe('mailto:already@example.com');
+      expect(service.formatPayload('mailto:user@example.com?subject=Hello World&body=Test Message', 'email'))
+        .toBe('mailto:user@example.com?subject=Hello%20World&body=Test%20Message');
     });
 
     it('formats phone numbers with tel: prefix and strips punctuation', () => {
       expect(service.formatPayload('+1 (415) 555-2671', 'phone')).toBe('tel:+14155552671');
       expect(service.formatPayload('415-555-0199', 'phone')).toBe('tel:4155550199');
       expect(service.formatPayload('tel:+442071234567', 'phone')).toBe('tel:+442071234567');
+      expect(service.formatPayload('tel: +91 98765 43210', 'phone')).toBe('tel:+919876543210');
     });
 
-    it('formats SMS with SMSTO: prefix', () => {
-      expect(service.formatPayload('+14155552671', 'sms')).toBe('SMSTO:+14155552671:');
-      expect(service.formatPayload('smsto:+14155552671:hello', 'sms')).toBe('SMSTO:+14155552671:hello');
+    it('formats SMS with RFC 5724 sms: prefix and URL-encoded body', () => {
+      expect(service.formatPayload('+14155552671', 'sms')).toBe('sms:+14155552671');
+      expect(service.formatPayload('smsto:+14155552671:hello', 'sms')).toBe('sms:+14155552671?body=hello');
+      expect(service.formatPayload('+919876543210:Hello World', 'sms')).toBe('sms:+919876543210?body=Hello%20World');
     });
 
     it('formats WiFi with WIFI: prefix if raw', () => {
       expect(service.formatPayload('OfficeNet', 'wifi')).toBe('WIFI:S:OfficeNet;T:nopass;;');
     });
 
-    it('formats Geo with geo: prefix if raw', () => {
+    it('formats Geo with geo: prefix if raw coordinates, and preserves map location link directly', () => {
       expect(service.formatPayload('37.7749,-122.4194', 'geo')).toBe('geo:37.7749,-122.4194');
+      expect(service.formatPayload('https://maps.google.com/?q=Bangalore', 'geo')).toBe('https://maps.google.com/?q=Bangalore');
+      expect(service.formatPayload('https://maps.app.goo.gl/xyz123', 'geo')).toBe('https://maps.app.goo.gl/xyz123');
+    });
+
+    it('formats crypto addresses with bitcoin: or ethereum: prefix', () => {
+      expect(service.formatPayload('1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa', 'crypto')).toBe('bitcoin:1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa');
+      expect(service.formatPayload('0x742d35Cc6634C0532925a3b844Bc454e4438f44e', 'crypto')).toBe('ethereum:0x742d35Cc6634C0532925a3b844Bc454e4438f44e');
+    });
+
+    it('encodeContent() provides identical URI encoding to formatPayload()', () => {
+      expect(service.encodeContent('+919876543210', 'phone')).toBe('tel:+919876543210');
+      expect(service.encodeContent('+919876543210:Help Needed', 'sms')).toBe('sms:+919876543210?body=Help%20Needed');
     });
   });
 
@@ -149,11 +165,16 @@ describe('QRGeneratorService', () => {
       expect(res.error).toContain('empty');
     });
 
-    it('fails when content exceeds maximum character capacity of 2,953', () => {
-      const longText = 'A'.repeat(2954);
+    it('fails when plain text exceeds 5,000 characters or 10,000 bytes', () => {
+      const longText = 'A'.repeat(5001);
       const res = service.validateContent(longText, 'text');
       expect(res.isValid).toBe(false);
-      expect(res.error).toContain('2953 characters');
+      expect(res.error).toBe('Maximum is 5,000 characters.');
+
+      const hindiOverCap = 'न'.repeat(3500); // 3,500 chars * 3 bytes = 10,500 bytes > 10,000
+      const hindiRes = service.validateContent(hindiOverCap, 'text');
+      expect(hindiRes.isValid).toBe(false);
+      expect(hindiRes.error).toBe('Non-English text uses more space');
     });
 
     it('validates URLs correctly', () => {
@@ -192,6 +213,21 @@ describe('QRGeneratorService', () => {
     it('validates vCard contains at least a contact name', () => {
       expect(service.validateContent('BEGIN:VCARD\nVERSION:3.0\nFN:Alex Mercer\nEND:VCARD', 'vcard').isValid).toBe(true);
       expect(service.validateContent('BEGIN:VCARD\nVERSION:3.0\nEND:VCARD', 'vcard').isValid).toBe(false);
+    });
+
+    it('validates social links dynamically matching platform or auto-detecting domain', () => {
+      // 1. LinkedIn link with explicit platform
+      expect(service.validateContent('https://www.linkedin.com/in/athar-shaikh-b9035931b/', 'social', 'linkedin').isValid).toBe(true);
+      // 2. LinkedIn link with auto-detection (no explicit platform passed)
+      expect(service.validateContent('https://www.linkedin.com/in/athar-shaikh-b9035931b/', 'social').isValid).toBe(true);
+      // 3. Instagram link with explicit platform
+      expect(service.validateContent('https://instagram.com/acklet', 'social', 'instagram').isValid).toBe(true);
+      // 4. Handle input (not URL)
+      expect(service.validateContent('athar-shaikh', 'social', 'linkedin').isValid).toBe(true);
+      // 5. Mismatched domain should fail gracefully
+      const mismatch = service.validateContent('https://www.linkedin.com/in/test', 'social', 'instagram');
+      expect(mismatch.isValid).toBe(false);
+      expect(mismatch.error).toContain('INSTAGRAM');
     });
   });
 
@@ -417,7 +453,7 @@ describe('QRGeneratorService', () => {
     it('wraps with polaroid frame', () => {
       const result = service.wrapSvgWithFrame(sampleSvg, { style: 'polaroid', text: 'Artisan Bistro', color: '#18181b', textColor: '#18181b' }, 300, '#ffffff');
       expect(result).toContain('ARTISAN BISTRO');
-      expect(result).toContain('fill="#ffffff"');
+      expect(result).toContain('fill="none"');
     });
 
     it('wraps with badge-pill frame', () => {
@@ -430,19 +466,6 @@ describe('QRGeneratorService', () => {
       const result = service.wrapSvgWithFrame(sampleSvg, { style: 'chat-bubble', text: 'SAY HELLO', color: '#8b5cf6', textColor: '#ffffff' }, 300, '#ffffff');
       expect(result).toContain('SAY HELLO');
       expect(result).toContain('<polygon');
-    });
-  });
-
-  describe('generateBatchZip()', () => {
-    it('packages multiple items into a valid ZIP blob', async () => {
-      const items = [
-        { id: '1', title: 'Product Alpha', content: 'https://acklet.com/p1' },
-        { id: '2', title: 'Product Beta', content: 'https://acklet.com/p2' }
-      ];
-
-      const blob = await service.generateBatchZip(items, { type: 'text', size: 150 });
-      expect(blob).toBeInstanceOf(Blob);
-      expect(blob.size).toBeGreaterThan(0);
     });
   });
 });

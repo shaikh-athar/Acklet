@@ -21,12 +21,15 @@ import {
   EmailData,
   PhoneData,
   QrFrameOptions,
+  getDefaultCtaTextColor,
   QrDotType,
   QrCornerSquareType,
   QrCornerDotType
 } from '../models/qr-generator.models';
 import { QR_FRAME_TEMPLATES, renderVectorFrame } from '../models/qr-frames.data';
 import { renderQrToSvg } from '../utils/qr-svg-renderer';
+import { detectPlatformFromUrl } from '../utils/social-platforms.data';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import {
   buildWebsitePayload,
   validateWebsite,
@@ -51,7 +54,9 @@ import {
   buildAppPayload,
   validateApp,
   buildCryptoPayload,
-  validateCrypto
+  validateCrypto,
+  encodeURIComponentStrict,
+  parseMapCoordinates
 } from './qr-payload-builders';
 
 const MAX_QR_CHARACTERS = 2953;
@@ -212,81 +217,242 @@ export class QRGeneratorService {
   }
 
   /**
-   * Formats raw user input or structured data into an actionable QR payload scheme.
+   * Encodes raw user input or structured data into an actionable URI scheme
+   * recognized by mobile devices (iOS / Android) for native app dispatch.
+   *
+   * Formats:
+   * - Phone → tel:+919876543210
+   * - SMS → sms:+919876543210?body=text (RFC 5724)
+   * - Email → mailto:user@example.com (with query parameters URL-encoded)
+   * - URL → https://example.com
+   * - Wi-Fi → WIFI:T:WPA;S:NetworkName;P:Password;;
+   * - vCard → BEGIN:VCARD...END:VCARD (full RFC format)
+   * - Location → geo:12.9716,77.5946
+   * - Calendar → BEGIN:VCALENDAR...END:VCALENDAR (full iCal format)
+   * - Social → https://instagram.com/username
+   * - App Store → https://play.google.com/store/apps/details?id=...
+   * - Crypto → bitcoin:address or ethereum:address
+   * - Text → normalized NFC text
    */
-  formatPayload(content: string, type: ContentType): string {
-    const trimmed = content.trim();
+  encodeContent(content: string, type: ContentType): string {
+    const trimmed = (content || '').trim();
     if (!trimmed) return '';
 
-    // If content is already a valid formatted payload, return directly
-    if (/^smsto:/i.test(trimmed)) {
-      return trimmed.replace(/^smsto:/i, 'SMSTO:');
-    }
-    if (
-      /^https?:\/\//i.test(trimmed) ||
-      /^mailto:/i.test(trimmed) ||
-      /^tel:/i.test(trimmed) ||
-      /^sms:/i.test(trimmed) ||
-      /^wifi:/i.test(trimmed) ||
-      /^geo:/i.test(trimmed) ||
-      /^begin:vcard/i.test(trimmed) ||
-      /^begin:vcalendar/i.test(trimmed) ||
-      /^mecard:/i.test(trimmed) ||
-      /^bitcoin:/i.test(trimmed) ||
-      /^ethereum:/i.test(trimmed) ||
-      /^solana:/i.test(trimmed) ||
-      /^litecoin:/i.test(trimmed) ||
-      /^bitcoincash:/i.test(trimmed)
-    ) {
-      return trimmed;
-    }
-
     switch (type) {
-      case 'url':
-        return buildWebsitePayload({ url: trimmed });
-      case 'email':
-        return buildEmailPayload({ to: trimmed });
-      case 'phone':
-        return buildPhonePayload({ countryCode: '', number: trimmed });
-      case 'sms':
-        return buildSmsPayload({ phone: trimmed });
-      case 'wifi':
-        return buildWifiPayload({ ssid: trimmed, security: 'nopass' });
-      case 'geo': {
-        const parts = trimmed.split(',');
-        const lat = parseFloat(parts[0] || '0');
-        const lng = parseFloat(parts[1] || '0');
-        return buildGeoPayload({ latitude: lat, longitude: lng });
+      case 'phone': {
+        const raw = trimmed.replace(/^tel:/i, '').trim();
+        const hasPlus = raw.startsWith('+');
+        const digits = raw.replace(/\D/g, '');
+        if (!digits) return '';
+
+        const fullNumber = hasPlus ? `+${digits}` : `+${digits}`;
+        const parsed = parsePhoneNumberFromString(fullNumber);
+        if (parsed && parsed.isValid()) {
+          return `tel:${parsed.number}`;
+        }
+        return `tel:${hasPlus ? '+' : ''}${digits}`;
       }
-      case 'event':
+
+      case 'sms': {
+        let raw = trimmed;
+        let phonePart = '';
+        let messagePart = '';
+
+        if (/^smsto:/i.test(raw)) {
+          const withoutPrefix = raw.replace(/^smsto:/i, '').trim();
+          const firstColon = withoutPrefix.indexOf(':');
+          if (firstColon !== -1) {
+            phonePart = withoutPrefix.substring(0, firstColon).trim();
+            messagePart = withoutPrefix.substring(firstColon + 1).trim();
+          } else {
+            phonePart = withoutPrefix;
+          }
+        } else if (/^sms:/i.test(raw)) {
+          const withoutPrefix = raw.replace(/^sms:/i, '').trim();
+          const qIndex = withoutPrefix.indexOf('?');
+          if (qIndex !== -1) {
+            phonePart = withoutPrefix.substring(0, qIndex).trim();
+            const queryString = withoutPrefix.substring(qIndex + 1);
+            const params = new URLSearchParams(queryString);
+            messagePart = params.get('body') || params.get('message') || '';
+          } else {
+            phonePart = withoutPrefix;
+          }
+        } else if (raw.includes(':') && !raw.includes('://')) {
+          const firstColon = raw.indexOf(':');
+          phonePart = raw.substring(0, firstColon).trim();
+          messagePart = raw.substring(firstColon + 1).trim();
+        } else if (raw.includes('?')) {
+          const [phone, query] = raw.split('?');
+          phonePart = phone.trim();
+          const params = new URLSearchParams(query);
+          messagePart = params.get('body') || params.get('message') || '';
+        } else {
+          phonePart = raw;
+        }
+
+        const hasPlus = phonePart.startsWith('+');
+        const digits = phonePart.replace(/\D/g, '');
+        if (!digits) return '';
+
+        const cleanPhone = hasPlus ? `+${digits}` : digits;
+        if (messagePart) {
+          return `sms:${cleanPhone}?body=${encodeURIComponentStrict(messagePart)}`;
+        }
+        return `sms:${cleanPhone}`;
+      }
+
+      case 'email': {
+        let raw = trimmed.replace(/^mailto:/i, '').trim();
+        if (!raw) return '';
+
+        let toPart = raw;
+        let queryPart = '';
+        const qIndex = raw.indexOf('?');
+        if (qIndex !== -1) {
+          toPart = raw.substring(0, qIndex).trim();
+          queryPart = raw.substring(qIndex + 1);
+        }
+
+        if (!queryPart) {
+          return `mailto:${toPart}`;
+        }
+
+        const searchParams = new URLSearchParams(queryPart);
+        const encodedParams: string[] = [];
+
+        for (const [key, val] of searchParams.entries()) {
+          if (val.trim()) {
+            encodedParams.push(`${key}=${encodeURIComponentStrict(val.trim())}`);
+          }
+        }
+
+        return `mailto:${toPart}${encodedParams.length > 0 ? '?' + encodedParams.join('&') : ''}`;
+      }
+
+      case 'url': {
+        return buildWebsitePayload({ url: trimmed });
+      }
+
+      case 'wifi': {
+        if (/^wifi:/i.test(trimmed)) {
+          return trimmed.endsWith(';;') ? trimmed : (trimmed.endsWith(';') ? `${trimmed};` : `${trimmed};;`);
+        }
+        return buildWifiPayload({ ssid: trimmed, security: 'nopass' });
+      }
+
+      case 'geo': {
+        // If user provides a location link (Google Maps, Apple Maps, etc.),
+        // encode the link directly so scanners redirect to that location link.
+        // Lat and long are NOT required.
+        if (/^https?:\/\//i.test(trimmed)) {
+          return trimmed;
+        }
+
+        let raw = trimmed.replace(/^geo:/i, '').trim();
+        let label = '';
+        if (raw.includes('?')) {
+          const [coords, query] = raw.split('?');
+          raw = coords.trim();
+          const params = new URLSearchParams(query);
+          label = params.get('q') || '';
+        }
+
+        const parts = raw.split(',');
+        const lat = parseFloat(parts[0]?.trim() || '0');
+        const lng = parseFloat(parts[1]?.trim() || '0');
+
+        if (label) {
+          return `geo:${lat},${lng}?q=${encodeURIComponentStrict(label)}`;
+        }
+        return `geo:${lat},${lng}`;
+      }
+
+      case 'vcard': {
+        if (/^BEGIN:VCARD/i.test(trimmed) || /^MECARD:/i.test(trimmed)) {
+          return trimmed;
+        }
+        return buildVCardPayload({ firstName: trimmed });
+      }
+
+      case 'event': {
+        if (/^BEGIN:VCALENDAR/i.test(trimmed)) {
+          return trimmed;
+        }
         return buildEventPayload({
           title: trimmed,
           startDate: new Date().toISOString().split('T')[0],
           endDate: new Date().toISOString().split('T')[0],
           allDay: true
         });
-      case 'vcard':
-        return buildVCardPayload({ firstName: trimmed });
-      case 'social':
+      }
+
+      case 'social': {
+        if (/^https?:\/\//i.test(trimmed)) {
+          return trimmed;
+        }
         return buildSocialPayload({ platform: 'instagram', handleOrUrl: trimmed });
-      case 'app':
-        return buildAppPayload({ platform: 'ios', iosUrl: trimmed });
-      case 'crypto':
+      }
+
+      case 'app': {
+        if (/^https?:\/\//i.test(trimmed)) {
+          return trimmed;
+        }
+        return `https://${trimmed}`;
+      }
+
+      case 'crypto': {
+        if (/^(bitcoin|ethereum|solana|litecoin|bitcoincash):/i.test(trimmed)) {
+          return trimmed;
+        }
+        if (/^(?:0x)?[0-9a-fA-F]{40}$/.test(trimmed)) {
+          return buildCryptoPayload({ coin: 'ethereum', address: trimmed });
+        }
         return buildCryptoPayload({ coin: 'bitcoin', address: trimmed });
+      }
+
       case 'text':
-      default:
+      default: {
+        if (/^tel:/i.test(trimmed)) {
+          return this.encodeContent(trimmed, 'phone');
+        }
+        if (/^sms:/i.test(trimmed) || /^smsto:/i.test(trimmed)) {
+          return this.encodeContent(trimmed, 'sms');
+        }
+        if (/^mailto:/i.test(trimmed)) {
+          return this.encodeContent(trimmed, 'email');
+        }
+        if (/^geo:/i.test(trimmed)) {
+          return this.encodeContent(trimmed, 'geo');
+        }
+        if (/^wifi:/i.test(trimmed)) {
+          return this.encodeContent(trimmed, 'wifi');
+        }
         return buildTextPayload(trimmed);
+      }
     }
+  }
+
+  /**
+   * Formats raw user input or structured data into an actionable QR payload scheme.
+   * Delegates directly to encodeContent for unified RFC-compliant URI formatting.
+   */
+  formatPayload(content: string, type: ContentType): string {
+    return this.encodeContent(content, type);
   }
 
   /**
    * Validates content format and character limits before QR generation.
    */
-  validateContent(content: string, type: ContentType): QRValidationResult {
+  validateContent(content: string, type: ContentType, platform?: string): QRValidationResult {
     const trimmed = content.trim();
 
     if (!trimmed) {
       return { isValid: false, error: 'Content cannot be empty.' };
+    }
+
+    if (type === 'text') {
+      return validateText(content);
     }
 
     if (trimmed.length > MAX_QR_CHARACTERS) {
@@ -300,11 +466,11 @@ export class QRGeneratorService {
       case 'url':
         return validateWebsite({ url: trimmed });
       case 'email':
-        return validateEmail({ to: trimmed.replace(/^mailto:/i, '') });
+        return validateEmail({ to: trimmed.replace(/^mailto:/i, '').split('?')[0] });
       case 'phone':
         return validatePhone({ countryCode: '', number: trimmed.replace(/^tel:/i, '') });
       case 'sms':
-        return validateSms({ phone: trimmed.replace(/^smsto:/i, '').split(':')[0] });
+        return validateSms({ phone: trimmed.replace(/^smsto:/i, '').replace(/^sms:/i, '').split('?')[0].split(':')[0] });
       case 'wifi':
         if (/^wifi:/i.test(trimmed)) {
           const ssidMatch = trimmed.match(/S:([^;]+)/i);
@@ -325,6 +491,9 @@ export class QRGeneratorService {
         }
         return validateVCard({ firstName: trimmed });
       case 'geo': {
+        if (/^https?:\/\//i.test(trimmed)) {
+          return validateWebsite({ url: trimmed });
+        }
         if (/^geo:/i.test(trimmed)) {
           const cleanGeo = trimmed.replace(/^geo:/i, '').split('?')[0].trim();
           const [latStr, lngStr] = cleanGeo.split(',');
@@ -342,15 +511,20 @@ export class QRGeneratorService {
           startDate: '2026-10-20',
           allDay: true
         });
-      case 'social':
-        return validateSocial({ platform: 'instagram', handleOrUrl: trimmed });
+      case 'social': {
+        const detected = detectPlatformFromUrl(trimmed);
+        const effectivePlatform = platform || detected?.id || 'instagram';
+        if (effectivePlatform === 'custom') {
+          return /^https?:\/\//i.test(trimmed) ? validateWebsite({ url: trimmed }) : { isValid: true };
+        }
+        return validateSocial({ platform: effectivePlatform as any, handleOrUrl: trimmed });
+      }
       case 'app':
         return validateApp({ platform: 'ios', iosUrl: trimmed });
       case 'crypto':
-        return validateCrypto({ coin: 'bitcoin', address: trimmed.replace(/^bitcoin:/i, '').split('?')[0] });
-      case 'text':
+        return validateCrypto({ coin: 'bitcoin', address: trimmed.replace(/^(bitcoin|ethereum|solana|litecoin|bitcoincash):/i, '').split('?')[0] });
       default:
-        return validateText(trimmed);
+        return { isValid: true };
     }
   }
 
@@ -425,7 +599,7 @@ export class QRGeneratorService {
   ): string {
     const text = (frame.text || 'SCAN ME').toUpperCase();
     const frameColor = frame.color || '#3b82f6';
-    const textColor = frame.textColor || '#ffffff';
+    const textColor = frame.textColor || getDefaultCtaTextColor();
     const padding = 24;
 
     const escapeXml = (unsafe: string) =>
@@ -437,12 +611,14 @@ export class QRGeneratorService {
         .replace(/'/g, '&apos;');
 
     const cleanInner = innerSvgString.replace(/<\?xml[^>]*\?>/i, '').trim();
+    const viewBoxMatch = cleanInner.match(/viewBox=["']([^"']+)["']/i);
+    const innerViewBox = viewBoxMatch ? viewBoxMatch[1] : `0 0 ${qrSize} ${qrSize}`;
     const innerContent = cleanInner.replace(/^<svg[^>]*>/i, '').replace(/<\/svg>$/i, '');
 
     // Check modern vector templates first
     const template = QR_FRAME_TEMPLATES.find(t => t.id === frame.style);
     if (template && template.id !== 'none') {
-      return renderVectorFrame(template, innerContent, qrSize, frameColor, textColor, text);
+      return renderVectorFrame(template, innerContent, qrSize, frameColor, textColor, text, innerViewBox, bgColor);
     }
 
     switch (frame.style) {
@@ -454,9 +630,9 @@ export class QRGeneratorService {
         const qrY = padding;
         const bannerY = qrY + qrSize + 10;
 
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}">
+        return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}">
   <rect x="0" y="0" width="${totalW}" height="${totalH}" rx="16" ry="16" fill="${bgColor}" stroke="${frameColor}" stroke-width="4"/>
-  <svg x="${qrX}" y="${qrY}" width="${qrSize}" height="${qrSize}" viewBox="0 0 ${qrSize} ${qrSize}">
+  <svg x="${qrX}" y="${qrY}" width="${qrSize}" height="${qrSize}" viewBox="${innerViewBox}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     ${innerContent}
   </svg>
   <rect x="${padding}" y="${bannerY}" width="${qrSize}" height="${bannerH}" rx="8" ry="8" fill="${frameColor}"/>
@@ -471,11 +647,11 @@ export class QRGeneratorService {
         const qrY = padding + headerH + 10;
         const headerY = padding;
 
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}">
+        return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}">
   <rect x="0" y="0" width="${totalW}" height="${totalH}" rx="16" ry="16" fill="${bgColor}" stroke="${frameColor}" stroke-width="4"/>
   <rect x="${padding}" y="${headerY}" width="${qrSize}" height="${headerH}" rx="8" ry="8" fill="${frameColor}"/>
   <text x="${totalW / 2}" y="${headerY + (headerH / 2) + 6}" fill="${textColor}" font-family="system-ui, -apple-system, sans-serif" font-size="15" font-weight="700" letter-spacing="1" text-anchor="middle">${escapeXml(text)}</text>
-  <svg x="${qrX}" y="${qrY}" width="${qrSize}" height="${qrSize}" viewBox="0 0 ${qrSize} ${qrSize}">
+  <svg x="${qrX}" y="${qrY}" width="${qrSize}" height="${qrSize}" viewBox="${innerViewBox}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     ${innerContent}
   </svg>
 </svg>`;
@@ -487,9 +663,9 @@ export class QRGeneratorService {
         const qrX = padding;
         const qrY = padding;
 
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}">
+        return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}">
   <rect x="0" y="0" width="${totalW}" height="${totalH}" rx="8" ry="8" fill="#ffffff" stroke="#e4e4e7" stroke-width="2"/>
-  <svg x="${qrX}" y="${qrY}" width="${qrSize}" height="${qrSize}" viewBox="0 0 ${qrSize} ${qrSize}">
+  <svg x="${qrX}" y="${qrY}" width="${qrSize}" height="${qrSize}" viewBox="${innerViewBox}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     ${innerContent}
   </svg>
   <text x="${totalW / 2}" y="${qrY + qrSize + 44}" fill="${frameColor}" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="600" text-anchor="middle">${escapeXml(text)}</text>
@@ -505,9 +681,9 @@ export class QRGeneratorService {
         const badgeX = (totalW - badgeW) / 2;
         const badgeY = qrY + qrSize - (badgeH / 2) + 6;
 
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}">
+        return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}">
   <rect x="2" y="2" width="${totalW - 4}" height="${totalH - 4}" rx="24" ry="24" fill="${bgColor}" stroke="${frameColor}" stroke-width="4"/>
-  <svg x="${qrX}" y="${qrY - 4}" width="${qrSize}" height="${qrSize}" viewBox="0 0 ${qrSize} ${qrSize}">
+  <svg x="${qrX}" y="${qrY - 4}" width="${qrSize}" height="${qrSize}" viewBox="${innerViewBox}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     ${innerContent}
   </svg>
   <rect x="${badgeX}" y="${badgeY}" width="${badgeW}" height="${badgeH}" rx="${badgeH / 2}" ry="${badgeH / 2}" fill="${frameColor}"/>
@@ -522,11 +698,11 @@ export class QRGeneratorService {
         const qrY = padding;
         const bannerY = qrY + qrSize + 8;
 
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}">
+        return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}">
   <rect x="0" y="0" width="${totalW}" height="${totalH - 12}" rx="16" ry="16" fill="${bgColor}" stroke="${frameColor}" stroke-width="4"/>
   <polygon points="${totalW / 2 - 12},${totalH - 12} ${totalW / 2 + 12},${totalH - 12} ${totalW / 2},${totalH}" fill="${bgColor}" stroke="${frameColor}" stroke-width="4"/>
   <polygon points="${totalW / 2 - 9},${totalH - 14} ${totalW / 2 + 9},${totalH - 14} ${totalW / 2},${totalH - 3}" fill="${bgColor}"/>
-  <svg x="${qrX}" y="${qrY}" width="${qrSize}" height="${qrSize}" viewBox="0 0 ${qrSize} ${qrSize}">
+  <svg x="${qrX}" y="${qrY}" width="${qrSize}" height="${qrSize}" viewBox="${innerViewBox}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     ${innerContent}
   </svg>
   <rect x="${padding}" y="${bannerY}" width="${qrSize}" height="${bannerH}" rx="8" ry="8" fill="${frameColor}"/>
@@ -549,31 +725,63 @@ export class QRGeneratorService {
     if (typeof document === 'undefined') return;
 
     return new Promise((resolve, reject) => {
+      // 1. Parse intrinsic dimensions from SVG to avoid browser 300x150 fallback for percentage width/height
+      let svgW = 600;
+      let svgH = 600;
+      let processedDataUrl = svgDataUrl;
+
+      try {
+        const decodedSvg = decodeURIComponent(svgDataUrl.replace(/^data:image\/svg\+xml[^,]*,/, ''));
+        const vbMatch = decodedSvg.match(/viewBox=["']\s*([-\d.]+)\s+([-\d.]+)\s+([\d.]+)\s+([\d.]+)\s*["']/i);
+        if (vbMatch) {
+          svgW = parseFloat(vbMatch[3]) || 600;
+          svgH = parseFloat(vbMatch[4]) || 600;
+        } else {
+          const wMatch = decodedSvg.match(/\bwidth=["']([\d.]+)(?:px)?["']/i);
+          const hMatch = decodedSvg.match(/\bheight=["']([\d.]+)(?:px)?["']/i);
+          if (wMatch && hMatch) {
+            svgW = parseFloat(wMatch[1]) || 600;
+            svgH = parseFloat(hMatch[1]) || 600;
+          }
+        }
+
+        // If SVG has width="100%" or height="100%", inject explicit pixel dimensions
+        if (/width=["']100%["']/i.test(decodedSvg) || /height=["']100%["']/i.test(decodedSvg)) {
+          const fixedSvg = decodedSvg
+            .replace(/(<svg[^>]*\b)width=["'][^"']*["']/i, `$1width="${svgW}"`)
+            .replace(/(<svg[^>]*\b)height=["'][^"']*["']/i, `$1height="${svgH}"`);
+          processedDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(fixedSvg)}`;
+        }
+      } catch {
+        // Fallback to natural dimensions
+      }
+
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         try {
+          const rawW = svgW || img.naturalWidth || img.width || 600;
+          const rawH = svgH || img.naturalHeight || img.height || 600;
+          const scale = Math.max(1, Math.min(4, Math.round(2048 / Math.max(rawW, rawH))));
+          const outW = Math.round(rawW * scale);
+          const outH = Math.round(rawH * scale);
+
           const canvas = document.createElement('canvas');
-          const rawW = img.naturalWidth || img.width || 600;
-          const rawH = img.naturalHeight || img.height || 600;
-          const scale = Math.max(1, Math.min(4, Math.round(2048 / rawW)));
-          canvas.width = rawW * scale;
-          canvas.height = rawH * scale;
+          canvas.width = outW;
+          canvas.height = outH;
           const ctx = canvas.getContext('2d');
           if (!ctx) {
             reject(new Error('Canvas 2D context unavailable'));
             return;
           }
 
-          if (scale > 1) {
-            ctx.scale(scale, scale);
-          }
+          // Solid background fill (for both PNG and JPEG) ensures mobile cameras never scan against a dark/transparent background
+          const bgColor = this.lastOptions?.backgroundColor;
+          ctx.fillStyle = (bgColor && bgColor !== 'transparent') ? bgColor : '#ffffff';
+          ctx.fillRect(0, 0, outW, outH);
 
-          if (format === 'jpeg') {
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-          }
-          ctx.drawImage(img, 0, 0);
+          // Direct crisp drawing to full canvas bounds
+          ctx.drawImage(img, 0, 0, outW, outH);
 
           const mime = format === 'jpeg' ? 'image/jpeg' : 'image/png';
           const rasterDataUrl = canvas.toDataURL(mime, 0.95);
@@ -584,7 +792,7 @@ export class QRGeneratorService {
         }
       };
       img.onerror = () => reject(new Error('Failed to rasterize framed QR SVG'));
-      img.src = svgDataUrl;
+      img.src = processedDataUrl;
     });
   }
 
@@ -620,72 +828,92 @@ export class QRGeneratorService {
   }
 
   /**
-   * Generates a batch of QR codes and packages them into a single ZIP archive.
+   * Converts SVG data URL into a high-resolution PNG Blob for clipboard and file sharing.
    */
-  async generateBatchZip(
-    items: Array<{ id: string; title: string; content: string; type?: ContentType }>,
-    baseOptions: Partial<QROptions>,
-    onProgress?: (completed: number, total: number) => void
-  ): Promise<Blob> {
-    const JSZipModule = await import('jszip');
-    const JSZip = (JSZipModule as any).default || JSZipModule;
-    const zip = new JSZip();
-    const folder = zip.folder('acklet-qr-codes') || zip;
+  async svgToPngBlob(svgDataUrl: string, scaleMultiplier: number = 2): Promise<Blob> {
+    if (!svgDataUrl) {
+      throw new Error('No data URL provided');
+    }
 
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const itemType = item.type || baseOptions.type || 'text';
-      const itemOptions: Partial<QROptions> = {
-        ...baseOptions,
-        type: itemType,
-        content: item.content
-      };
-
-      const dataUrl = await this.generate(item.content, itemOptions);
-
-      let base64Data: string;
-      if (dataUrl.startsWith('data:image/svg+xml')) {
-        const pngDataUrl = await this.svgToPngDataUrl(dataUrl);
-        if (pngDataUrl.startsWith('data:image/svg+xml')) {
-          const rawSvg = decodeURIComponent(pngDataUrl.replace(/^data:image\/svg\+xml(?:;charset=[^,]+)?,/, ''));
-          base64Data = typeof btoa !== 'undefined'
-            ? btoa(unescape(encodeURIComponent(rawSvg)))
-            : Buffer.from(rawSvg).toString('base64');
-        } else {
-          base64Data = pngDataUrl.replace(/^data:image\/\w+;base64,/, '');
-        }
-      } else {
-        base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
-      }
-
-      const cleanTitle = (item.title || `qr-${i + 1}`)
-        .replace(/[^a-zA-Z0-9_-]/g, '_')
-        .substring(0, 50);
-
-      folder.file(`${String(i + 1).padStart(3, '0')}_${cleanTitle}.png`, base64Data, { base64: true });
-
-      if (onProgress) {
-        onProgress(i + 1, items.length);
+    if (svgDataUrl.startsWith('data:image/png') || svgDataUrl.startsWith('data:image/jpeg')) {
+      try {
+        const res = await fetch(svgDataUrl);
+        return await res.blob();
+      } catch {
+        return new Blob([svgDataUrl], { type: 'image/png' });
       }
     }
 
-    return zip.generateAsync({ type: 'blob' });
+    if (typeof document === 'undefined') {
+      try {
+        const res = await fetch(svgDataUrl);
+        return await res.blob();
+      } catch {
+        return new Blob([svgDataUrl], { type: 'image/png' });
+      }
+    }
+
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      let settled = false;
+
+      const fallback = async () => {
+        if (settled) return;
+        settled = true;
+        try {
+          const res = await fetch(svgDataUrl);
+          resolve(await res.blob());
+        } catch {
+          resolve(new Blob([svgDataUrl], { type: 'image/png' }));
+        }
+      };
+
+      const timer = setTimeout(fallback, 1200);
+
+      img.onload = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        try {
+          const rawW = img.naturalWidth || img.width || 600;
+          const rawH = img.naturalHeight || img.height || 600;
+          const scale = Math.max(1, Math.min(4, scaleMultiplier));
+          const outW = Math.round(rawW * scale);
+          const outH = Math.round(rawH * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = outW;
+          canvas.height = outH;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            fallback();
+            return;
+          }
+
+          const bgColor = this.lastOptions?.backgroundColor;
+          ctx.fillStyle = (bgColor && bgColor !== 'transparent') ? bgColor : '#ffffff';
+          ctx.fillRect(0, 0, outW, outH);
+          ctx.drawImage(img, 0, 0, outW, outH);
+
+          canvas.toBlob(blob => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              fallback();
+            }
+          }, 'image/png');
+        } catch {
+          fallback();
+        }
+      };
+      img.onerror = () => {
+        clearTimeout(timer);
+        fallback();
+      };
+      img.src = svgDataUrl;
+    });
   }
 
-  /**
-   * Triggers download of an arbitrary binary Blob file.
-   */
-  downloadBlob(blob: Blob, filename: string): void {
-    if (typeof document === 'undefined') return;
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-  }
 
   /**
    * Backward-compatible PNG download.
@@ -886,3 +1114,5 @@ export class QRGeneratorService {
     return svgString;
   }
 }
+
+export { QRGeneratorService as QrGeneratorService };

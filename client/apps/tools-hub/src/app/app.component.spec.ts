@@ -1,11 +1,21 @@
+// @vitest-environment jsdom
 // apps/tools-hub/src/app/app.component.spec.ts
 import '@angular/compiler';
 import { describe, it, expect } from 'vitest';
+import { createEnvironmentInjector, runInInjectionContext } from '@angular/core';
 import { HubHomeComponent } from '@acklet/tool-shell';
 
 describe('ToolsHub HubHomeComponent', () => {
+  function createHub(): HubHomeComponent {
+    const rootInjector = {
+      get: (_token: any, notFound?: any) => notFound
+    } as any;
+    const envInjector = createEnvironmentInjector([], rootInjector);
+    return runInInjectionContext(envInjector, () => new HubHomeComponent());
+  }
+
   it('should initialize and load live tools from registry', () => {
-    const hub = new HubHomeComponent();
+    const hub = createHub();
     expect(hub).toBeTruthy();
 
     const liveTools = hub.liveTools();
@@ -18,7 +28,7 @@ describe('ToolsHub HubHomeComponent', () => {
   });
 
   it('should filter tools by search query', () => {
-    const hub = new HubHomeComponent();
+    const hub = createHub();
     hub.onSearchChange('clipboard');
     expect(hub.filteredTools().length).toBe(1);
     expect(hub.filteredTools()[0].slug).toBe('clipboard');
@@ -28,9 +38,9 @@ describe('ToolsHub HubHomeComponent', () => {
   });
 
   it('should manage category selection and clear filters', () => {
-    const hub = new HubHomeComponent();
+    const hub = createHub();
     hub.selectCategory('Utilities');
-    expect(hub.selectedCategory()).toBe('Utilities');
+    expect(hub.selectedCategory()).toBe('utilities');
 
     hub.clearAllFilters();
     expect(hub.selectedCategory()).toBe('ALL');

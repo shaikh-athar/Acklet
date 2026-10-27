@@ -31,7 +31,16 @@ import {
 import { TsIconComponent } from '@acklet/tool-shell';
 import { QRGeneratorService } from '../../services/qr-generator.service';
 import { QrDynamicService } from '../../services/qr-dynamic.service';
-import { parseMapCoordinates, detectPotentialTextType } from '../../services/qr-payload-builders';
+import { SmartLinkService } from '../../services/smart-link.service';
+import {
+  parseMapCoordinates,
+  detectPotentialTextType,
+  countUtf8Bytes,
+  normalizeLineEndings,
+  MAX_TEXT_CHARS,
+  MAX_TEXT_BYTES,
+  LARGE_TEXT_BYTES_THRESHOLD
+} from '../../services/qr-payload-builders';
 import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.component';
 import { PhoneInputComponent, PhoneInputValue } from '../phone-input/phone-input.component';
 import { LocationInputComponent, LocationInputValue } from '../location-input/location-input.component';
@@ -142,7 +151,7 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
                 <div class="dynamic-qr-box">
                   <div class="dynamic-box-header">
                     <div class="dynamic-box-title">
-                      <ts-icon name="zap" [size]="18" class="dyn-icon" />
+                      <ts-icon name="graph-star" [size]="18" class="dyn-icon" />
                       <div>
                         <h4 class="dyn-heading">Convert to Hosted Dynamic QR</h4>
                         <p class="dyn-desc">Edit destination anytime without reprinting + privacy-friendly scan analytics.</p>
@@ -196,7 +205,7 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
                       [disabled]="!websiteData.url.trim() || isCreatingDynamic()"
                       (click)="createDynamicLink()"
                     >
-                      <ts-icon name="link-2" />
+                      <ts-icon name="graph-star" />
                       <span>{{ isCreatingDynamic() ? 'Creating Shortlink...' : 'Create Dynamic QR Shortlink' }}</span>
                     </button>
                   </div>
@@ -268,16 +277,48 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
             }
 
             <div class="qr-form-row">
-              <label for="qr-text-input" class="qr-sub-label">Text Content *</label>
+              <div class="text-input-header">
+                <label for="qr-text-input" class="qr-sub-label">Text Content *</label>
+                <span
+                  class="text-live-counter"
+                  [class.counter-warning]="isByteCapHitFirst()"
+                  [class.counter-danger]="isTextOverCharLimit()"
+                  aria-live="polite"
+                >
+                  {{ textCharCountFormatted() }} / 5,000 characters
+                  @if (isByteCapLimiting()) {
+                    <span class="counter-note">(non-English uses more storage)</span>
+                  }
+                </span>
+              </div>
               <textarea
                 id="qr-text-input"
                 class="qr-textarea"
+                dir="auto"
+                [class.has-error]="isTextOverCharLimit() || isByteCapHitFirst()"
                 rows="5"
                 [placeholder]="activeConfig().placeholder"
                 [ngModel]="content()"
                 (ngModelChange)="onContentInput($event)"
-                aria-describedby="qr-input-helper qr-input-error"
+                maxlength="5000"
+                aria-describedby="qr-input-helper qr-input-error qr-text-warning qr-text-error"
               ></textarea>
+
+              <!-- Warning if byte cap is hit first (Hindi, emoji, non-English) -->
+              @if (isByteCapHitFirst()) {
+                <div id="qr-text-warning" class="text-warning-pill slide-fade-in" role="alert">
+                  <ts-icon name="alert-triangle" class="status-pill-icon" />
+                  <span>Non-English text uses more space (limit: 10,000 bytes)</span>
+                </div>
+              }
+
+              <!-- Error if character limit is exceeded -->
+              @if (isTextOverCharLimit()) {
+                <div id="qr-text-error" class="text-error-pill slide-fade-in" role="alert">
+                  <ts-icon name="alert-circle" class="status-pill-icon" />
+                  <span>Maximum is 5,000 characters</span>
+                </div>
+              }
             </div>
           </div>
         }
@@ -323,6 +364,7 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
                   <textarea
                     id="email-body"
                     class="qr-textarea"
+                    dir="auto"
                     rows="3"
                     placeholder="Hello, I'd like to get more information about..."
                     [(ngModel)]="emailData.body"
@@ -394,6 +436,7 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
                   <textarea
                     id="sms-msg"
                     class="qr-textarea"
+                    dir="auto"
                     rows="3"
                     placeholder="Hello, I scanned your QR code..."
                     [(ngModel)]="smsData.message"
@@ -534,7 +577,7 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
               <span class="form-section-tip">Creates an RFC 5545 calendar event that adds to Apple Calendar & Google Calendar in 1 tap.</span>
               <button type="button" class="fill-example-btn" (click)="applyEventPreset()">
                 <ts-icon name="sparkles" />
-                <span>Fill example</span>
+                <span> Fill example</span>
               </button>
             </div>
 
@@ -666,6 +709,7 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
                   <textarea
                     id="event-desc"
                     class="qr-textarea"
+                    dir="auto"
                     rows="3"
                     placeholder="Keynote presentation, networking, and live demos."
                     [(ngModel)]="eventData.description"
@@ -741,7 +785,7 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
                     />
                   </div>
                   <div class="qr-form-row">
-                    <label for="vcard-org" class="qr-sub-label">Organization / Company</label>
+                    <label for="vcard-org" class="qr-sub-label">Org. / Company</label>
                     <input
                       id="vcard-org"
                       type="text"
@@ -813,8 +857,10 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
             <app-social-link-input
               [initialPlatform]="socialData.platform"
               [initialValue]="socialData.handleOrUrl"
+              [hasCenterIconActive]="hasCenterIconActive()"
               (valueChange)="onSocialInputValueChange($event)"
               (addCenterIcon)="onAddSocialCenterIcon($event)"
+              (removeCenterIcon)="onRemoveSocialCenterIcon()"
             />
           </div>
         }
@@ -997,11 +1043,6 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
                 </button>
               }
             </div>
-          } @else if (qrVersion() >= 10) {
-            <div class="status-line status-dense">
-              <span class="status-dot dense-dot"></span>
-              <span class="status-text">Long content makes the code busy. Shorter content scans more easily.</span>
-            </div>
           } @else {
             <div class="status-line status-ready">
               <span class="status-dot ready-dot"></span>
@@ -1010,28 +1051,21 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
           }
         </div>
 
-        <!-- Pinned Consumer Guided Actions Footer -->
-        <div class="content-guided-footer">
-          <button
-            type="button"
-            class="guided-next-btn"
-            (click)="switchTab.emit('design')"
-            title="Proceed to design & styling"
-          >
-            <span>Customize Design</span>
-            <ts-icon name="arrow-right" class="guided-btn-icon" />
-          </button>
-          <button
-            type="button"
-            class="guided-skip-btn"
-            [disabled]="!content().trim() || !!validationError()"
-            (click)="switchTab.emit('download')"
-            title="Skip styling and jump to download"
-          >
-            <span>Skip to Download</span>
-            <ts-icon name="download" class="skip-btn-icon" />
-          </button>
-        </div>
+
+        <!-- Pinned Consumer Guided Actions Footer (Desktop only) -->
+        @if (!isMobileFlow()) {
+          <div class="content-guided-footer">
+            <button
+              type="button"
+              class="guided-next-btn"
+              (click)="switchTab.emit('design')"
+              title="Proceed to design & styling"
+            >
+              <span>Customize Design</span>
+              <ts-icon name="arrow-right" class="guided-btn-icon" />
+            </button>
+          </div>
+        }
       </div>
     </div>
   `,
@@ -1305,8 +1339,28 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
       border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
       border-radius: 8px;
       background: var(--surface-2, rgba(255, 255, 255, 0.02));
-      overflow: hidden;
       transition: border-color 0.2s ease;
+      position: relative;
+    }
+
+    details.more-options:not([open]) {
+      overflow: hidden;
+    }
+
+    details.more-options[open] {
+      overflow: visible;
+      z-index: 25;
+    }
+
+    details.more-options[open]:has(.qr-select-container.is-open),
+    details.more-options[open]:has(app-qr-select .is-open) {
+      z-index: 100;
+    }
+
+    .qr-form-row:has(.is-open),
+    .qr-form-row:has(app-qr-select .qr-select-container.is-open) {
+      position: relative;
+      z-index: 100;
     }
 
     details.more-options summary {
@@ -1347,6 +1401,7 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
       display: flex;
       flex-direction: column;
       gap: 16px;
+      overflow: visible;
     }
 
     /* Status Line Under Input */
@@ -1406,8 +1461,14 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
       justify-content: space-between;
       gap: 12px;
       margin-top: 14px;
+      margin-bottom : 12px;
       padding-top: 14px;
       border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+    }
+
+    :host-context([data-theme="light"]) .content-guided-footer,
+    [data-theme="light"] .content-guided-footer {
+      border-top-color: var(--border, #E2E8F0);
     }
 
     .guided-next-btn {
@@ -1467,6 +1528,18 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
       color: var(--text, #FFFFFF);
       background: var(--surface-2, rgba(255, 255, 255, 0.06));
       border-color: var(--border, rgba(255, 255, 255, 0.12));
+    }
+
+    :host-context([data-theme="light"]) .guided-skip-btn,
+    [data-theme="light"] .guided-skip-btn {
+      color: var(--text-2, #52525B);
+    }
+
+    :host-context([data-theme="light"]) .guided-skip-btn:hover:not(:disabled),
+    [data-theme="light"] .guided-skip-btn:hover:not(:disabled) {
+      color: var(--text, #09090B);
+      background: var(--surface-2, #F1F5F9);
+      border-color: var(--border, #E2E8F0);
     }
 
     .guided-skip-btn:disabled {
@@ -1955,7 +2028,375 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
       }
     }
 
-    .invalid-input {
+    /* Plain Text Header & Live Counter */
+    .text-input-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .text-input-header .qr-sub-label {
+      margin-bottom: 0;
+    }
+
+    .text-live-counter {
+      font-size: 0.72rem;
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+      color: var(--text-muted, rgba(255, 255, 255, 0.55));
+      transition: color 0.15s ease;
+    }
+
+    :host-context([data-theme="light"]) .text-live-counter {
+      color: #64748b;
+    }
+
+    .text-live-counter.counter-warning {
+      color: #f59e0b;
+      font-weight: 600;
+    }
+
+    :host-context([data-theme="light"]) .text-live-counter.counter-warning {
+      color: #b45309;
+    }
+
+    .text-live-counter.counter-danger {
+      color: var(--destructive, #ef4444);
+      font-weight: 600;
+    }
+
+    :host-context([data-theme="light"]) .text-live-counter.counter-danger {
+      color: #dc2626;
+    }
+
+    /* Warning & Error Feedback Pills */
+    .text-warning-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 6px;
+      color: #fbbf24;
+      font-size: 0.75rem;
+      font-weight: 550;
+      margin-top: 6px;
+    }
+
+    :host-context([data-theme="light"]) .text-warning-pill {
+      background: #fffbeb;
+      border-color: #fde68a;
+      color: #92400e;
+    }
+
+    .text-error-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 6px;
+      color: #f87171;
+      font-size: 0.75rem;
+      font-weight: 550;
+      margin-top: 6px;
+    }
+
+    :host-context([data-theme="light"]) .text-error-pill {
+      background: #fef2f2;
+      border-color: #fecaca;
+      color: #b91c1c;
+    }
+
+    .status-pill-icon {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .text-scan-hint {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: var(--surface-2, rgba(255, 255, 255, 0.04));
+      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+      border-radius: 6px;
+      color: var(--text-2, rgba(255, 255, 255, 0.75));
+      font-size: 0.75rem;
+      font-weight: 450;
+      margin-top: 6px;
+    }
+
+    :host-context([data-theme="light"]) .text-scan-hint {
+      background: #f8fafc;
+      border-color: #e2e8f0;
+      color: #334155;
+    }
+
+    .text-scan-hint .hint-icon {
+      width: 14px;
+      height: 14px;
+      color: var(--tool-accent, #38bdf8);
+      flex-shrink: 0;
+    }
+
+    :host-context([data-theme="light"]) .text-scan-hint .hint-icon {
+      color: #0284c7;
+    }
+
+    /* Plain Text Mode Toggle */
+    .text-mode-container {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .text-mode-segmented-control {
+      display: flex;
+      background: var(--surface-2, rgba(255, 255, 255, 0.05));
+      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+    }
+
+    :host-context([data-theme="light"]) .text-mode-segmented-control {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+
+    .text-mode-btn {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 7px 12px;
+      font-size: 0.8125rem;
+      font-weight: 550;
+      color: var(--text-muted, rgba(255, 255, 255, 0.65));
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      min-height: 36px;
+    }
+
+    :host-context([data-theme="light"]) .text-mode-btn {
+      color: #64748b;
+    }
+
+    .text-mode-btn:hover:not(:disabled) {
+      color: var(--text-1, #ffffff);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    :host-context([data-theme="light"]) .text-mode-btn:hover:not(:disabled) {
+      color: #0f172a;
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .text-mode-btn.active {
+      background: var(--surface-1, #1e293b);
+      color: var(--tool-accent, #38bdf8);
+      font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    :host-context([data-theme="light"]) .text-mode-btn.active {
+      background: #ffffff;
+      color: #0284c7;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .text-mode-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .mode-btn-icon {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+    }
+
+    .text-mode-helper {
+      margin: 0;
+      font-size: 0.775rem;
+      line-height: 1.5;
+      color: var(--text-muted, rgba(255, 255, 255, 0.6));
+    }
+
+    :host-context([data-theme="light"]) .text-mode-helper {
+      color: #475467;
+    }
+
+    .text-clipboard-unavailable-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 6px;
+      color: #f87171;
+      font-size: 0.75rem;
+      font-weight: 550;
+    }
+
+    :host-context([data-theme="light"]) .text-clipboard-unavailable-pill {
+      background: #fef2f2;
+      border-color: #fecaca;
+      color: #b91c1c;
+    }
+
+    .notes-link-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px 12px;
+      background: var(--surface-2, rgba(255, 255, 255, 0.03));
+      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+      border-radius: 8px;
+    }
+
+    :host-context([data-theme="light"]) .notes-link-options {
+      background: #f8fafc;
+      border-color: #e2e8f0;
+    }
+
+    .notes-expiry-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .notes-expiry-row .qr-sub-label {
+      margin-bottom: 0;
+      font-size: 0.775rem;
+    }
+
+    .expiry-segmented-control {
+      display: inline-flex;
+      background: var(--surface-1, rgba(255, 255, 255, 0.06));
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }
+
+    :host-context([data-theme="light"]) .expiry-segmented-control {
+      background: #e2e8f0;
+    }
+
+    .expiry-pill {
+      border: none;
+      background: transparent;
+      color: var(--text-muted, rgba(255, 255, 255, 0.65));
+      font-size: 0.72rem;
+      font-weight: 550;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    :host-context([data-theme="light"]) .expiry-pill {
+      color: #475467;
+    }
+
+    .expiry-pill.active {
+      background: var(--surface-2, #334155);
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    :host-context([data-theme="light"]) .expiry-pill.active {
+      background: #ffffff;
+      color: #0f172a;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    }
+
+    .notes-privacy-note {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.725rem;
+      color: var(--text-muted, rgba(255, 255, 255, 0.6));
+    }
+
+    :host-context([data-theme="light"]) .notes-privacy-note {
+      color: #64748b;
+    }
+
+    .privacy-icon {
+      width: 12px;
+      height: 12px;
+      color: var(--tool-accent, #38bdf8);
+      flex-shrink: 0;
+    }
+
+    :host-context([data-theme="light"]) .privacy-icon {
+      color: #0284c7;
+    }
+
+    .notes-syncing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.725rem;
+      color: var(--tool-accent, #38bdf8);
+      font-weight: 500;
+    }
+
+    :host-context([data-theme="light"]) .notes-syncing-indicator {
+      color: #0284c7;
+    }
+
+    .spinner-tiny {
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(56, 189, 248, 0.2);
+      border-top-color: var(--tool-accent, #38bdf8);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    :host-context([data-theme="light"]) .spinner-tiny {
+      border-color: rgba(2, 132, 199, 0.2);
+      border-top-color: #0284c7;
+    }
+
+    .notes-created-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.725rem;
+      color: #34d399;
+      word-break: break-all;
+    }
+
+    :host-context([data-theme="light"]) .notes-created-pill {
+      color: #059669;
+    }
+
+    .notes-created-pill code {
+      font-family: var(--font-mono, monospace);
+      font-size: 0.7rem;
+      background: rgba(16, 185, 129, 0.1);
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+
+    .invalid-input,
+    .qr-textarea.has-error {
       border-color: var(--destructive, #ef4444) !important;
     }
 
@@ -1976,11 +2417,13 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
         min-height: 44px;
       }
     }
+
   `]
 })
 export class InputPanelComponent {
   private qrService: QRGeneratorService;
   readonly dynamicService: QrDynamicService;
+  readonly smartLinkService = inject(SmartLinkService);
 
   constructor(
     qrService?: QRGeneratorService,
@@ -1996,12 +2439,15 @@ export class InputPanelComponent {
   readonly isGenerating = input<boolean>(false);
   readonly qrVersion = input<number>(1);
   readonly capacityUsedPercent = input<number>(0);
+  readonly isMobileFlow = input<boolean>(false);
+  readonly hasCenterIconActive = input<boolean>(false);
 
   readonly typeChange = output<ContentType>();
   readonly contentChange = output<string>();
   readonly openDynamicManager = output<void>();
   readonly switchTab = output<'content' | 'design' | 'settings' | 'advanced' | string>();
   readonly addSocialCenterIcon = output<{ iconId: string; platformName: string }>();
+  readonly removeSocialCenterIcon = output<void>();
 
   readonly appIosError = signal<string>('');
   readonly appAndroidError = signal<string>('');
@@ -2027,6 +2473,48 @@ export class InputPanelComponent {
   readonly lastCreatedDynamic = signal<DynamicQrCode | null>(null);
 
   readonly dismissedTextNudge = signal<boolean>(false);
+
+  // Plain Text computed metrics & limits
+  readonly textCharCount = computed(() => {
+    return this.content() ? normalizeLineEndings(this.content()).length : 0;
+  });
+
+  readonly textByteCount = computed(() => {
+    return this.content() ? countUtf8Bytes(this.content()) : 0;
+  });
+
+  readonly textCharCountFormatted = computed(() => {
+    return this.textCharCount().toLocaleString('en-US');
+  });
+
+  readonly isTextOverCharLimit = computed(() => {
+    return this.selectedType() === 'text' && this.textCharCount() > MAX_TEXT_CHARS;
+  });
+
+  readonly isTextOverByteLimit = computed(() => {
+    return this.selectedType() === 'text' && this.textByteCount() > MAX_TEXT_BYTES;
+  });
+
+  readonly isByteCapHitFirst = computed(() => {
+    return this.selectedType() === 'text' && !this.isTextOverCharLimit() && this.isTextOverByteLimit();
+  });
+
+  readonly isByteCapLimiting = computed(() => {
+    return (
+      this.selectedType() === 'text' &&
+      this.textCharCount() > 10 &&
+      this.textByteCount() > this.textCharCount() * 1.5
+    );
+  });
+
+  readonly isTextLargeHint = computed(() => {
+    return (
+      this.selectedType() === 'text' &&
+      this.textByteCount() > LARGE_TEXT_BYTES_THRESHOLD &&
+      !this.isTextOverByteLimit() &&
+      !this.isTextOverCharLimit()
+    );
+  });
 
   readonly textTypeNudge = computed<{ type: 'url' | 'email' | 'phone'; targetLabel: string; message: string } | null>(() => {
     if (this.selectedType() !== 'text' || this.dismissedTextNudge()) {
@@ -2112,6 +2600,19 @@ export class InputPanelComponent {
       this.lastCreatedDynamic.set(created);
       this.websiteData.url = created.shortUrl;
       this.onWebsiteChange();
+
+      this.smartLinkService.saveStoredLink({
+        code: created.code,
+        manageToken: created.manageKey || '',
+        type: 'URL',
+        shortUrl: created.shortUrl,
+        createdAt: new Date().toISOString(),
+        preview: url.slice(0, 60),
+        payload: url,
+        status: created.status || 'ACTIVE',
+        explicit: true,
+        title: this.dynamicTitle().trim() || undefined
+      });
     } catch (err: unknown) {
       this.dynamicError.set(err instanceof Error ? err.message : 'Failed to create dynamic link');
     } finally {
@@ -2144,8 +2645,8 @@ export class InputPanelComponent {
 
   // Dropdown Options
   readonly smsFormatOptions: QrSelectOption<string>[] = [
-    { value: 'SMSTO', label: 'SMSTO: (Universal Android & iOS standard)' },
-    { value: 'sms', label: 'sms: (RFC 5724 standard)' }
+    { value: 'sms', label: 'sms: (RFC 5724 standard - Recommended)' },
+    { value: 'SMSTO', label: 'SMSTO: (Legacy Android format)' }
   ];
 
   readonly wifiEncryptionOptions: QrSelectOption<string>[] = [
@@ -2197,7 +2698,18 @@ export class InputPanelComponent {
     { value: 'facebook', label: 'Facebook', icon: 'facebook' },
     { value: 'tiktok', label: 'TikTok', icon: 'tiktok' },
     { value: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp' },
-    { value: 'telegram', label: 'Telegram', icon: 'telegram' }
+    { value: 'telegram', label: 'Telegram', icon: 'telegram' },
+    { value: 'github', label: 'GitHub', icon: 'github' },
+    { value: 'threads', label: 'Threads', icon: 'threads' },
+    { value: 'discord', label: 'Discord', icon: 'discord' },
+    { value: 'pinterest', label: 'Pinterest', icon: 'pinterest' },
+    { value: 'reddit', label: 'Reddit', icon: 'reddit' },
+    { value: 'snapchat', label: 'Snapchat', icon: 'snapchat' },
+    { value: 'spotify', label: 'Spotify', icon: 'spotify' },
+    { value: 'medium', label: 'Medium', icon: 'medium' },
+    { value: 'patreon', label: 'Patreon', icon: 'patreon' },
+    { value: 'substack', label: 'Substack', icon: 'substack' },
+    { value: 'behance', label: 'Behance', icon: 'behance' }
   ];
 
   readonly appPlatformOptions: QrSelectOption<string>[] = [
@@ -2240,7 +2752,7 @@ export class InputPanelComponent {
   smsData: SmsData = {
     phone: '',
     message: '',
-    format: 'SMSTO'
+    format: 'sms'
   };
 
   wifiData: WifiData = {
@@ -2384,7 +2896,16 @@ export class InputPanelComponent {
   }
 
   onContentInput(val: string): void {
-    this.contentChange.emit(val);
+    let normalized = normalizeLineEndings(val);
+    if (this.selectedType() === 'text') {
+      if (normalized.length > MAX_TEXT_CHARS) {
+        normalized = normalized.slice(0, MAX_TEXT_CHARS);
+      }
+      while (countUtf8Bytes(normalized) > MAX_TEXT_BYTES && normalized.length > 0) {
+        normalized = normalized.slice(0, -1);
+      }
+    }
+    this.contentChange.emit(normalized);
   }
 
   onWebsiteChange(): void {
@@ -2437,17 +2958,13 @@ export class InputPanelComponent {
   }
 
   onPhoneInputValueChange(val: PhoneInputValue): void {
-    this.phoneData.number = val.e164 || val.digitsOnly;
-    if (val.isValid) {
-      this.onPhoneChange();
-    }
+    this.phoneData.number = val.e164 || val.digitsOnly || val.rawNumber;
+    this.onPhoneChange();
   }
 
   onSmsPhoneInputValueChange(val: PhoneInputValue): void {
-    this.smsData.phone = val.e164 || val.digitsOnly;
-    if (val.isValid) {
-      this.onSmsChange();
-    }
+    this.smsData.phone = val.e164 || val.digitsOnly || val.rawNumber;
+    this.onSmsChange();
   }
 
   onVCardPhoneInputValueChange(val: PhoneInputValue): void {
@@ -2474,6 +2991,10 @@ export class InputPanelComponent {
 
   onAddSocialCenterIcon(event: AddCenterIconEvent): void {
     this.addSocialCenterIcon.emit(event);
+  }
+
+  onRemoveSocialCenterIcon(): void {
+    this.removeSocialCenterIcon.emit();
   }
 
   onIosAppInputChange(val: string): void {

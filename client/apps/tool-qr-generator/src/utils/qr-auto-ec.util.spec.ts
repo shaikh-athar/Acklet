@@ -58,4 +58,32 @@ describe('calculateAutoErrorCorrection', () => {
     });
     expect(extremeResult.level).toBe('L');
   });
+
+  it('holds error correction level at M for plain text even when exceeding 800 characters', () => {
+    const textContent = 'A'.repeat(900);
+    const result = calculateAutoErrorCorrection({
+      content: textContent,
+      type: 'text',
+      hasLogo: false
+    });
+    expect(result.level).toBe('M');
+  });
+
+  it('selects level Q for dynamic smart link without logo regardless of payload size', () => {
+    const result = calculateAutoErrorCorrection({
+      content: 'A'.repeat(3000),
+      isDynamic: true,
+      hasLogo: false
+    });
+    expect(result.level).toBe('Q');
+  });
+
+  it('selects level H for dynamic smart link when logo or custom shape is present', () => {
+    const result = calculateAutoErrorCorrection({
+      content: 'A'.repeat(3000),
+      isDynamic: true,
+      hasLogo: true
+    });
+    expect(result.level).toBe('H');
+  });
 });

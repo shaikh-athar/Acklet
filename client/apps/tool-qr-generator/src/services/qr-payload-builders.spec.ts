@@ -84,11 +84,37 @@ describe('QR Payload Builders & Validators', () => {
   });
 
   describe('Plain Text', () => {
-    it('trims text and enforces 2,953 character limit', () => {
+    it('trims text and enforces 5,000 character limit', () => {
       expect(buildTextPayload('  Acklet Notes  ')).toBe('Acklet Notes');
       expect(validateText('').isValid).toBe(false);
       expect(validateText('Valid text').isValid).toBe(true);
-      expect(validateText('x'.repeat(3000)).isValid).toBe(false);
+      expect(validateText('x'.repeat(5000)).isValid).toBe(true);
+
+      const overCharLimit = validateText('x'.repeat(5001));
+      expect(overCharLimit.isValid).toBe(false);
+      expect(overCharLimit.error).toBe('Maximum is 5,000 characters.');
+    });
+
+    it('enforces 10,000 UTF-8 byte cap for multi-byte characters (Hindi / emoji)', () => {
+      // Devanagari / Hindi character 'न' is 3 bytes in UTF-8
+      const hindiUnderCap = 'नमस्ते दुनिया '.repeat(200); // ~3,000 chars, ~7,400 bytes
+      expect(validateText(hindiUnderCap).isValid).toBe(true);
+
+      // 3,500 Hindi characters = ~10,500 bytes (> 10,000 byte cap) while well under 5,000 chars
+      const hindiOverCap = 'न'.repeat(3500);
+      expect(hindiOverCap.length).toBe(3500);
+      const res = validateText(hindiOverCap);
+      expect(res.isValid).toBe(false);
+      expect(res.error).toBe('Non-English text uses more space');
+
+      // Mixed emoji + Hindi: 2,000 emojis (4,000 chars, 8,000 bytes) + 800 Hindi chars (800 chars, 2,400 bytes)
+      // Total: 4,800 chars (< 5,000 limit), 10,400 bytes (> 10,000 byte cap)
+      const mixedOverCap = '🚀'.repeat(2000) + 'न'.repeat(800);
+      expect(mixedOverCap.length).toBe(4800);
+      expect(new TextEncoder().encode(mixedOverCap).length).toBe(10400);
+      const mixedRes = validateText(mixedOverCap);
+      expect(mixedRes.isValid).toBe(false);
+      expect(mixedRes.error).toBe('Non-English text uses more space');
     });
 
     it('normalizes CRLF and CR to clean single LF and strips UTF-8 BOM', () => {

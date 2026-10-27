@@ -5,31 +5,71 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8cc24f72-cf76-4714-94a5-20cada12dd6d" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-online-clipboard/src/styles.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/angular.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/angular.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/batch-generator/batch-generator.component.spec.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/batch-generator/batch-generator.component.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/brand-customizer/brand-customizer.component.ts" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/color-customizer/color-customizer.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/color-customizer/color-customizer.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/customization-panel/customization-panel.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/customization-panel/customization-panel.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/design-customizer/design-customizer.component.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/design-customizer/design-customizer.component.spec.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/design-customizer/design-customizer.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/design-customizer/design-customizer.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/input-panel/input-panel.component.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/input-panel/input-panel.component.spec.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/input-panel/input-panel.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/input-panel/input-panel.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/location-input/location-input.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/location-input/location-input.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/preview-panel/preview-panel.component.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/preview-panel/preview-panel.component.spec.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/preview-panel/preview-panel.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/preview-panel/preview-panel.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/qr-brand-icon/qr-brand-icon.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/qr-brand-icon/qr-brand-icon.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/qr-select/qr-select.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/qr-select/qr-select.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/social-link-input/social-link-input.component.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/social-link-input/social-link-input.component.spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/social-link-input/social-link-input.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/social-link-input/social-link-input.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/config/qr-responsive.descriptor.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/config/qr-responsive.descriptor.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/models/qr-frames.data.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/models/qr-frames.data.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/models/qr-generator.models.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/models/qr-generator.models.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/qr-generator-responsive.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/qr-generator-responsive.spec.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/qr-generator.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/qr-generator.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/services/qr-dynamic.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/services/qr-dynamic.service.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/services/qr-generator.service.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/services/qr-generator.service.spec.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/services/qr-generator.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/services/qr-generator.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/services/qr-history.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/services/qr-history.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/services/qr-payload-builders.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/services/qr-payload-builders.spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/services/qr-payload-builders.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/services/qr-payload-builders.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/services/qr-verifier.service.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/services/qr-verifier.service.spec.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/services/qr-verifier.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/services/qr-verifier.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/utils/qr-auto-ec.util.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/utils/qr-auto-ec.util.spec.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/utils/qr-auto-ec.util.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/utils/qr-auto-ec.util.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-registry/src/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-registry/src/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-registry/src/models.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-registry/src/models.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-registry/src/tools.manifest.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-registry/src/tools.manifest.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/utils/qr-brand-mask.util.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/utils/qr-svg-renderer.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/utils/qr-svg-renderer.spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/utils/qr-svg-renderer.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/utils/qr-svg-renderer.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/utils/social-platforms.data.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/utils/social-platforms.data.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tools-hub/src/app/app.component.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tools-hub/src/app/app.component.spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tools-hub/src/app/app.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tools-hub/src/app/app.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/icon/ts-icon-map.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/icon/ts-icon-map.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/shell/ts-shell.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/shell/ts-shell.component.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/sidebar/ts-sidebar.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/sidebar/ts-sidebar.component.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/sidebar/ts-tool-list.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/sidebar/ts-tool-list.component.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/topbar/ts-topbar.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/topbar/ts-topbar.component.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/services/tool-theme.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/services/tool-theme.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/styles/base.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/styles/base.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/hub/hub-home.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/hub/hub-home.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/styles/tokens.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/styles/tokens.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/proxy.conf.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/proxy.conf.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/src/app/app.routes.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/app/app.routes.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../client/src/main.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/main.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../docs/ui-design-system.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/ui-design-system.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/0-Requirements/api-contract.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/0-Requirements/api-contract.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/1-Progress/implementation-log.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/1-Progress/implementation-log.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/1-Progress/issues-and-fixes.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/1-Progress/issues-and-fixes.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/2-Implementation/deployment.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/2-Implementation/deployment.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/2-Implementation/service-design.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/2-Implementation/service-design.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/2-Implementation/testing-strategy.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/2-Implementation/testing-strategy.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/UI_REFERENCE.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/UI_REFERENCE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/feature.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/QR-Generator/feature.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/security/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/security/SecurityConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/qr/controller/QrRedirectController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/qr/controller/QrRedirectController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/qr/service/QrResolutionService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/qr/service/QrResolutionService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/com/code/acklet/tool/tools/qr/QrResolutionServiceTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/com/code/acklet/tool/tools/qr/QrResolutionServiceTest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -55,23 +95,23 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Application.Acklet.executor": "Run",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "Spring Boot.AckletApplication.executor": "Run",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "tools/qr",
-    "kotlin-language-version-configured": "true",
-    "nodejs_package_manager_path": "npm",
-    "ts.external.directory.path": "/Applications/IntelliJ IDEA.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Application.Acklet.executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;Spring Boot.AckletApplication.executor&quot;: &quot;Run&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;tools/qr&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/Applications/IntelliJ IDEA.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration name="Acklet" type="Application" factoryName="Application">
       <option name="MAIN_CLASS_NAME" value="com.code.acklet.AckletApplication" />

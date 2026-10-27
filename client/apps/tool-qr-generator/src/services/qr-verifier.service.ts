@@ -101,20 +101,55 @@ export class QRVerifierService {
       }
 
       if (!code) {
+        const payloadLength = expectedPayload.length;
+        const isDense = payloadLength > 500;
         return {
           isScannable: false,
           expectedPayload,
           match: false,
           confidence: 'low',
           fixAvailable: true,
+          reason: isDense ? `High matrix density (${payloadLength} chars)` : 'Low contrast or obscured locators',
+          tip: isDense ? 'Shorten content, use short link, or reduce EC' : 'Use high contrast (#000 on #FFF) and remove large logos',
           message: 'Unscannable: Decoder cannot detect locator patterns. Check contrast ratio or reduce logo size.'
         };
       }
 
-      const match = code.data.trim() === expectedPayload.trim();
+      const normalizePayload = (str: string) => str.trim().replace(/\/+$/, '');
+      const match = normalizePayload(code.data) === normalizePayload(expectedPayload);
       const contrast = this.measureContrastRange(imageData.data);
-      const isHighConfidence = match && pass === 1 && contrast >= 140;
+      const isHighConfidence = match && (pass === 1 || pass === 4) && contrast >= 120;
       const confidence = isHighConfidence ? 'high' : match ? 'medium' : 'low';
+
+      let reason: string | undefined;
+      let tip: string | undefined;
+
+      if (confidence === 'low') {
+        if (contrast < 100) {
+          reason = 'Low color contrast between foreground and background';
+          tip = 'Use darker foreground and lighter background';
+        } else if (expectedPayload.length > 500) {
+          reason = `Dense matrix (${expectedPayload.length} chars) makes modules small`;
+          tip = 'Use hosted short link mode or reduce error correction';
+        } else if (!match) {
+          reason = 'Decoded content differs from expected payload';
+          tip = 'Check character encoding or remove embedded logo';
+        } else {
+          reason = 'Locator patterns require extra enhancement to read';
+          tip = 'Click "Fix automatically" for instant high-contrast optimization';
+        }
+      } else if (confidence === 'medium') {
+        if (contrast < 140) {
+          reason = 'Moderate contrast may lag in dim ambient light';
+          tip = 'Increase contrast for instant camera detection';
+        } else if (expectedPayload.length > 300) {
+          reason = 'Dense QR matrix';
+          tip = 'Keep error correction at M or L for larger modules';
+        } else {
+          reason = 'Decoder required multi-pass filtering';
+          tip = 'Use standard square modules and clear quiet zone';
+        }
+      }
 
       return {
         isScannable: true,
@@ -123,6 +158,8 @@ export class QRVerifierService {
         match,
         confidence,
         fixAvailable: confidence !== 'high',
+        reason,
+        tip,
         message: match
           ? 'Scannability Verified: 100% Match.'
           : 'Scannability Warning: Decoded content differs slightly from intended payload.'

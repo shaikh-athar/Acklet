@@ -14,12 +14,14 @@ import {
   AfterViewInit,
   NgZone,
   ChangeDetectionStrategy,
-  effect
+  effect,
+  HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolSidebarService } from '../../services/tool-sidebar.service';
 import { SidebarStateService } from '../../services/sidebar-state.service';
 import { ToolSettingsService } from '../../services/tool-settings.service';
+import { ToolThemeService } from '../../services/tool-theme.service';
 import { getToolsHubUrl, getPortalUrl } from '@acklet/shared';
 import { ToolRegistryItem } from '@acklet/tool-registry';
 import { TsIconComponent } from '../icon/ts-icon.component';
@@ -50,18 +52,6 @@ export interface SectionNavLink {
       <!-- Left Zone: Logo / Name + Current Tool Chip Breadcrumb   -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div class="ts-zone-left">
-        @if (showSidebar()) {
-          <button 
-            type="button" 
-            class="ts-mobile-menu-btn" 
-            (click)="sidebarService.toggleMobileDrawer()"
-            aria-label="Toggle navigation menu"
-            tsTooltip="Toggle menu"
-          >
-            <ts-icon name="menu" [size]="18" />
-          </button>
-        }
-
         <!-- Acklet Tools Brand Link to Tools Hub -->
         <a [href]="hubUrl" class="ts-brand-link" title="Acklet Tools Hub">
           <ts-icon name="zap" [size]="22" class="ts-brand-mark" />
@@ -108,7 +98,7 @@ export interface SectionNavLink {
       </nav>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- Right Zone: Share, Save, Theme Toggle (Order: Share, Save, Theme) -->
+      <!-- Right Zone: Share, Save, Theme Toggle, Tools Drawer   -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div class="ts-zone-right">
         <!-- Share / Copy Link Button -->
@@ -149,8 +139,21 @@ export interface SectionNavLink {
           <span class="ts-action-label hide-below-1100">{{ isFavorited() ? 'Saved' : 'Save' }}</span>
         </button>
 
-        <!-- ONE Single Theme Toggle -->
+        <!-- ONE Single Theme Toggle (Desktop Only; moved to Navigation Sheet on Mobile/Tablet) -->
         <ts-theme-toggle />
+
+        <!-- Navigation Menu Button (4 circles grid) -->
+        <button
+          type="button"
+          class="ts-tools-grid-btn"
+          [class.active]="isNavMenuOpen()"
+          (click)="toggleNavMenu($event)"
+          [attr.aria-expanded]="isNavMenuOpen()"
+          aria-label="Navigation menu"
+          tsTooltip="Navigation"
+        >
+          <ts-icon name="layout-grid-circles" [size]="18" />
+        </button>
 
         <!-- Optional Primary Action Button if configured -->
         @if (showPrimaryAction()) {
@@ -165,6 +168,116 @@ export interface SectionNavLink {
         }
       </div>
     </header>
+
+    <!-- Navigation Menu: Tablet Anchored Popover / Mobile Clean Sheet -->
+    @if (isNavMenuOpen()) {
+      <div 
+        class="ts-nav-backdrop" 
+        (click)="closeNavMenu()" 
+        aria-hidden="true"
+      ></div>
+
+      <nav 
+        class="ts-nav-panel slide-fade-up" 
+        role="dialog" 
+        aria-modal="true" 
+        aria-label="Navigation menu"
+        (click)="$event.stopPropagation()"
+      >
+        <!-- Mobile Sheet Handle & Header (Visible on phone) -->
+        <div class="ts-nav-sheet-header">
+          <div class="ts-nav-sheet-handle" aria-hidden="true"></div>
+          <div class="ts-nav-sheet-title-row">
+            <span class="ts-nav-sheet-title">Navigation</span>
+            <button 
+              type="button" 
+              class="ts-nav-sheet-close-btn" 
+              (click)="closeNavMenu()"
+              aria-label="Close navigation menu"
+            >
+              <ts-icon name="x" [size]="18" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Section Navigation Links -->
+        <div class="ts-nav-panel-links" role="menu">
+          @for (link of sectionLinks(); track link.id) {
+            <button 
+              type="button" 
+              role="menuitem"
+              class="ts-nav-panel-item" 
+              [class.active]="activeSection() === link.id"
+              (click)="onNavMenuItemClick($event, link.id)"
+            >
+              <span class="ts-nav-item-text">{{ link.label }}</span>
+              @if (activeSection() === link.id) {
+                <span class="ts-nav-item-active-pill">Active</span>
+              }
+            </button>
+          }
+        </div>
+
+        <div class="ts-nav-panel-divider" role="separator"></div>
+
+        <!-- Secondary Actions: Share & Save Tool & Acklet Tools -->
+        <div class="ts-nav-panel-actions">
+          <button 
+            type="button" 
+            role="menuitem"
+            class="ts-nav-panel-item ts-nav-action-row" 
+            (click)="onNavShareClick()"
+          >
+            <ts-icon [name]="copiedLink() ? 'check' : 'link'" [size]="18" class="ts-nav-action-icon" />
+            <span class="ts-nav-item-text">{{ copiedLink() ? 'Link Copied!' : 'Share Tool' }}</span>
+          </button>
+
+          <button 
+            type="button" 
+            role="menuitem"
+            class="ts-nav-panel-item ts-nav-action-row" 
+            [class.is-favorited]="isFavorited()"
+            (click)="onNavSaveClick()"
+          >
+            <ts-icon name="star" [size]="18" class="ts-nav-action-icon" [class.is-fav]="isFavorited()" />
+            <span class="ts-nav-item-text">{{ isFavorited() ? 'Saved to Favorites' : 'Save Tool' }}</span>
+          </button>
+
+          @if (showSidebar()) {
+            <button 
+              type="button" 
+              role="menuitem"
+              class="ts-nav-panel-item ts-nav-action-row" 
+              (click)="openToolsDrawerFromNav()"
+            >
+              <ts-icon name="grid" [size]="18" class="ts-nav-action-icon" />
+              <span class="ts-nav-item-text">Acklet Tools</span>
+            </button>
+          }
+        </div>
+
+        <div class="ts-nav-panel-divider" role="separator"></div>
+
+        <!-- Dark / Light Theme Toggle in Navigation Sheet -->
+        <div class="ts-nav-theme-row" (click)="toggleTheme()" role="menuitem">
+          <div class="ts-nav-theme-left">
+            <ts-icon [name]="isDark() ? 'moon' : 'sun'" [size]="18" class="ts-nav-action-icon" />
+            <span class="ts-nav-item-text">{{ isDark() ? 'Dark Mode' : 'Light Mode' }}</span>
+          </div>
+          <button
+            type="button"
+            class="ts-nav-theme-toggle-switch"
+            [class.is-dark]="isDark()"
+            (click)="$event.stopPropagation(); toggleTheme()"
+            role="switch"
+            [attr.aria-checked]="isDark()"
+            aria-label="Toggle dark mode"
+          >
+            <span class="ts-nav-switch-knob"></span>
+          </button>
+        </div>
+      </nav>
+    }
   `,
   styles: [`
     :host {
@@ -194,8 +307,7 @@ export interface SectionNavLink {
       user-select: none;
       box-sizing: border-box;
       min-width: 0;
-      overflow: hidden;
-      transform: translateZ(0);
+      overflow: visible;
       transition: background var(--ts-dur-base, 200ms) var(--ts-ease),
                   box-shadow var(--ts-dur-base, 200ms) var(--ts-ease);
     }
@@ -436,6 +548,343 @@ export interface SectionNavLink {
       outline-offset: 2px;
     }
 
+    /* Tools Drawer Grid Button on Right - Only visible on small screen */
+    .ts-tools-grid-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      min-height: 40px;
+      border-radius: var(--ts-radius-control, 12px);
+      background: transparent;
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+      color: var(--text-muted, #71717a);
+      cursor: pointer;
+      outline: none;
+      transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, transform 100ms ease;
+    }
+
+    :host-context([data-theme="dark"]) .ts-tools-grid-btn {
+      border-color: var(--border, rgba(255, 255, 255, 0.1));
+      color: var(--text-muted, #a1a1aa);
+    }
+
+    .ts-tools-grid-btn:hover,
+    .ts-tools-grid-btn.active {
+      background: var(--ts-row-hover, rgba(15, 23, 42, 0.04));
+      color: var(--accent, #2563eb);
+      border-color: var(--border, rgba(0, 0, 0, 0.15));
+    }
+
+    :host-context([data-theme="dark"]) .ts-tools-grid-btn:hover,
+    :host-context([data-theme="dark"]) .ts-tools-grid-btn.active {
+      background: var(--ts-row-hover, rgba(255, 255, 255, 0.06));
+      color: var(--accent, #60a5fa);
+      border-color: var(--border, rgba(255, 255, 255, 0.18));
+    }
+
+    .ts-tools-grid-btn:active {
+      transform: scale(0.97);
+    }
+
+    .ts-tools-grid-btn:focus-visible {
+      outline: 2px solid var(--ts-focus-ring) !important;
+      outline-offset: 2px;
+    }
+
+    /* Navigation Menu Backdrop & Panel (Tablet Anchored Popover / Mobile Clean Sheet) */
+    .ts-nav-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 998;
+      animation: tsFadeIn 150ms ease-out;
+    }
+
+    .ts-nav-panel {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 16px;
+      width: 250px;
+      border-radius: 16px;
+      background: var(--bg-card, var(--card, #ffffff));
+      color: var(--text, #09090b);
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+      box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--border, rgba(0, 0, 0, 0.06));
+      z-index: 999;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      box-sizing: border-box;
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-panel {
+      background: var(--bg-card, var(--surface-1, #18181b));
+      color: var(--text, #fcfcfc);
+      border-color: var(--border, rgba(255, 255, 255, 0.12));
+      box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border, rgba(255, 255, 255, 0.08));
+    }
+
+    .ts-nav-sheet-header {
+      display: none;
+    }
+
+    .ts-nav-panel-links,
+    .ts-nav-panel-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      width: 100%;
+    }
+
+    .ts-nav-panel-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-height: 44px;
+      height: 44px;
+      padding: 0 14px;
+      border-radius: 10px;
+      border: none;
+      background: transparent;
+      color: var(--text, #18181b);
+      font-family: var(--font-body, "Nunito", sans-serif);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: background-color 150ms ease, color 150ms ease;
+      user-select: none;
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-panel-item {
+      color: var(--text, #f1f5f9);
+    }
+
+    .ts-nav-panel-item:hover {
+      background: var(--surface-hover, rgba(15, 23, 42, 0.05));
+      color: var(--accent, #2563eb);
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-panel-item:hover {
+      background: var(--surface-hover, rgba(255, 255, 255, 0.08));
+      color: var(--accent, #3b82f6);
+    }
+
+    .ts-nav-panel-item.active {
+      background: var(--accent-soft, rgba(37, 99, 235, 0.1));
+      color: var(--accent-strong, var(--accent, #1d4ed8));
+      font-weight: 700;
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-panel-item.active {
+      background: var(--accent-soft, rgba(59, 130, 246, 0.16));
+      color: var(--accent-strong, var(--accent, #60a5fa));
+    }
+
+    .ts-nav-item-active-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      background: var(--accent, #111111);
+      color: var(--accent-ink, #ffffff);
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-item-active-pill {
+      background: var(--accent, #60a5fa);
+      color: #000000;
+    }
+
+    .ts-nav-action-row {
+      justify-content: flex-start;
+      gap: 12px;
+    }
+
+    .ts-nav-action-icon {
+      flex-shrink: 0;
+      color: var(--text-muted, #71717a);
+    }
+
+    .ts-nav-action-icon.is-fav {
+      color: #eab308;
+      fill: #eab308;
+    }
+
+    .ts-nav-panel-divider {
+      height: 1px;
+      background: var(--border, rgba(0, 0, 0, 0.08));
+      margin: 4px 6px;
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-panel-divider {
+      background: var(--border, rgba(255, 255, 255, 0.1));
+    }
+
+    /* Dark/Light Theme Row in Navigation Sheet */
+    .ts-nav-theme-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-height: 44px;
+      height: 44px;
+      padding: 0 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      user-select: none;
+      box-sizing: border-box;
+      transition: background-color 150ms ease;
+    }
+
+    .ts-nav-theme-row:hover {
+      background: var(--surface-hover, rgba(15, 23, 42, 0.05));
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-theme-row:hover {
+      background: var(--surface-hover, rgba(255, 255, 255, 0.08));
+    }
+
+    .ts-nav-theme-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text, #18181b);
+      font-family: var(--font-body, "Nunito", sans-serif);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-theme-left {
+      color: var(--text, #f1f5f9);
+    }
+
+    .ts-nav-theme-toggle-switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      width: 44px;
+      height: 24px;
+      min-width: 44px;
+      min-height: 24px;
+      border-radius: 9999px;
+      background: var(--border, rgba(15, 23, 42, 0.18));
+      border: none;
+      padding: 2px;
+      cursor: pointer;
+      outline: none;
+      box-sizing: border-box;
+      transition: background-color 200ms ease;
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-theme-toggle-switch {
+      background: var(--border, rgba(255, 255, 255, 0.18));
+    }
+
+    .ts-nav-theme-toggle-switch.is-dark {
+      background: var(--accent, #3b82f6);
+    }
+
+    .ts-nav-switch-knob {
+      display: block;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      transform: translateX(0);
+    }
+
+    .ts-nav-theme-toggle-switch.is-dark .ts-nav-switch-knob {
+      transform: translateX(20px);
+    }
+
+    /* Mobile Sheet Layout for Navigation Menu (<768px) */
+    @media (max-width: 767px) {
+      .ts-nav-panel {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        top: auto;
+        width: 100%;
+        max-width: 100%;
+        border-radius: 20px 20px 0 0;
+        padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px;
+        box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.25);
+        animation: tsSlideUp 200ms cubic-bezier(0.16, 1, 0.3, 1);
+        max-height: 82vh;
+        overflow-y: auto;
+      }
+
+      .ts-nav-sheet-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        padding-bottom: 8px;
+        margin-bottom: 4px;
+        border-bottom: 1px solid var(--border, rgba(0, 0, 0, 0.06));
+      }
+
+      :host-context([data-theme="dark"]) .ts-nav-sheet-header {
+        border-bottom-color: var(--border, rgba(255, 255, 255, 0.08));
+      }
+
+      .ts-nav-sheet-handle {
+        width: 36px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--border, rgba(0, 0, 0, 0.2));
+        margin-bottom: 10px;
+      }
+
+      :host-context([data-theme="dark"]) .ts-nav-sheet-handle {
+        background: var(--border, rgba(255, 255, 255, 0.2));
+      }
+
+      .ts-nav-sheet-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+      }
+
+      .ts-nav-sheet-title {
+        font-family: var(--font-heading, "Nunito", sans-serif);
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text);
+      }
+
+      .ts-nav-sheet-close-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+        border-radius: 10px;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+      }
+    }
+
+    @keyframes tsSlideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
     /* Enhanced Light Theme Navbar Focus & Capsule Track */
     :host-context([data-theme="light"]) .ts-nav-links-track,
     :host-context(:not([data-theme="dark"])) .ts-nav-links-track {
@@ -478,9 +927,9 @@ export interface SectionNavLink {
     }
 
     :host-context([data-theme="dark"]) .ts-nav-active-pill {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid var(--accent-border, rgba(59, 130, 246, 0.3));
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 8px -2px var(--accent-glow, rgba(59, 130, 246, 0.2));
+      background: var(--accent-soft, rgba(59, 130, 246, 0.16));
+      border: 1px solid var(--accent-border, rgba(59, 130, 246, 0.35));
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 8px -2px var(--accent-glow, rgba(59, 130, 246, 0.25));
     }
 
     :host-context([data-theme="dark"]) .ts-nav-link-btn {
@@ -494,8 +943,8 @@ export interface SectionNavLink {
     }
 
     :host-context([data-theme="dark"]) .ts-nav-link-btn.active {
-      color: #2DD4BF;
-      font-weight: 600;
+      color: var(--accent-strong, var(--accent, #60A5FA));
+      font-weight: 700;
       letter-spacing: -0.01em;
     }
 
@@ -649,12 +1098,11 @@ export interface SectionNavLink {
 
     /* Responsive Breakpoints */
     @media (max-width: 1023px) {
-      .ts-mobile-menu-btn {
-        display: inline-flex;
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
-        min-height: 44px;
+      .ts-tools-grid-btn {
+        display: inline-flex !important;
+      }
+      ts-theme-toggle {
+        display: none !important;
       }
       .ts-zone-center {
         display: none;
@@ -721,13 +1169,17 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly tabChange = output<string>();
   readonly openCommandPalette = output<void>();
   readonly aboutClick = output<void>();
+  readonly dynamicLinksClick = output<void>();
 
   readonly sidebarService = inject(ToolSidebarService);
   readonly sidebarState = inject(SidebarStateService);
   readonly settingsService = inject(ToolSettingsService);
+  readonly themeService = inject(ToolThemeService, { optional: true });
   readonly portalUrl = getPortalUrl();
   readonly hubUrl = getToolsHubUrl();
   private readonly zone = inject(NgZone);
+
+  readonly isDark = computed(() => this.themeService?.effectiveTheme() === 'dark');
 
   readonly navTrack = viewChild<ElementRef<HTMLElement>>('navTrack');
   readonly navLinkBtns = viewChildren<ElementRef<HTMLAnchorElement>>('navLinkBtns');
@@ -738,6 +1190,93 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly isIndicatorReady = signal<boolean>(false);
   readonly copiedLink = signal<boolean>(false);
   readonly isFavorited = signal<boolean>(false);
+
+  private readonly elementRef = inject(ElementRef);
+  readonly isNavMenuOpen = signal<boolean>(false);
+
+  toggleNavMenu(event?: MouseEvent): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.isNavMenuOpen.update(v => !v);
+  }
+
+  closeNavMenu(): void {
+    this.isNavMenuOpen.set(false);
+  }
+
+  toggleTheme(): void {
+    this.themeService?.toggleTheme();
+  }
+
+  openToolsDrawerFromNav(): void {
+    this.closeNavMenu();
+    this.sidebarService.openMobileDrawer();
+  }
+
+  toggleToolsDrawer(event?: MouseEvent): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.sidebarService.toggleMobileDrawer();
+  }
+
+  onNavMenuItemClick(event: MouseEvent, sectionId: string): void {
+    this.closeNavMenu();
+    if (sectionId === 'dynamic') {
+      this.activeSection.set('dynamic');
+      this.dynamicLinksClick.emit();
+      this.tabChange.emit('dynamic');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('acklet:switch-tab', { detail: 'dynamic' }));
+      }
+      return;
+    }
+    if (sectionId === 'tool') {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('acklet:switch-tab', { detail: 'tool' }));
+      }
+    }
+    this.scrollToSection(event, sectionId);
+  }
+
+  onNavShareClick(): void {
+    this.closeNavMenu();
+    this.shareTool();
+  }
+
+  onNavSaveClick(): void {
+    this.toggleFavorite();
+  }
+
+  shareTool(): void {
+    if (typeof window === 'undefined') return;
+    const url = window.location.href.split('#')[0];
+    const title = this.tool()?.name || 'Acklet Tool';
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator.share({ title, url }).catch(() => {});
+    } else {
+      this.copyShareLink();
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (this.isNavMenuOpen()) {
+      const target = event.target as HTMLElement;
+      if (!this.elementRef.nativeElement.querySelector('.ts-nav-panel')?.contains(target) &&
+          !this.elementRef.nativeElement.querySelector('.ts-tools-grid-btn')?.contains(target)) {
+        this.closeNavMenu();
+      }
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.isNavMenuOpen()) {
+      this.closeNavMenu();
+    }
+  }
 
   copyShareLink(): void {
     if (typeof window === 'undefined' || typeof navigator === 'undefined') return;
@@ -886,9 +1425,21 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (typeof document === 'undefined') return;
 
+    if (sectionId === 'dynamic') {
+      this.dynamicLinksClick.emit();
+      this.tabChange.emit('dynamic');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('acklet:switch-tab', { detail: 'dynamic' }));
+      }
+      return;
+    }
+
     const scrollContainer = (document.querySelector('.ts-main-scroll-container') || document.getElementById('main-content')) as HTMLElement | null;
 
     if (sectionId === 'tool') {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('acklet:switch-tab', { detail: 'tool' }));
+      }
       if (scrollContainer) {
         scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
       } else {

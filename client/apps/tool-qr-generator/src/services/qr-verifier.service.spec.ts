@@ -86,4 +86,46 @@ describe('QRVerifierService', () => {
     expect(res.match).toBe(false);
     expect(res.message).toContain('Unscannable');
   });
+
+  it('correctly scores high confidence for a plain black-on-white short-link QR and does not score low', async () => {
+    const shortUrl = 'http://localhost:8080/l/abc12345';
+    (jsQR as any).mockReturnValue({
+      data: shortUrl
+    });
+
+    const pixelBuffer = new Uint8ClampedArray(400);
+    // Half black pixels
+    for (let i = 0; i < 200; i += 4) {
+      pixelBuffer[i] = 0;
+      pixelBuffer[i + 1] = 0;
+      pixelBuffer[i + 2] = 0;
+      pixelBuffer[i + 3] = 255;
+    }
+    // Half white pixels
+    for (let i = 200; i < 400; i += 4) {
+      pixelBuffer[i] = 255;
+      pixelBuffer[i + 1] = 255;
+      pixelBuffer[i + 2] = 255;
+      pixelBuffer[i + 3] = 255;
+    }
+
+    if (typeof HTMLCanvasElement !== 'undefined') {
+      HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
+        fillStyle: '',
+        fillRect: vi.fn(),
+        drawImage: vi.fn(),
+        getImageData: vi.fn().mockReturnValue({
+          data: pixelBuffer,
+          width: 10,
+          height: 10
+        })
+      }) as any;
+    }
+
+    const res = await service.verifyScannability('data:image/png;base64,mock', shortUrl);
+    expect(res.isScannable).toBe(true);
+    expect(res.match).toBe(true);
+    expect(res.confidence).toBe('high');
+    expect(res.confidence).not.toBe('low');
+  });
 });

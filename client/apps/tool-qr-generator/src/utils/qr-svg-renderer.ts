@@ -8,7 +8,6 @@ import {
   QrGradientOptions
 } from '../models/qr-generator.models';
 import { getQrShapeById } from './qr-shapes.data';
-import { generateTextMask } from './qr-brand-mask.util';
 
 /**
  * Calculates standard relative luminance (sRGB / Rec. 709).
@@ -80,9 +79,10 @@ export function renderQrToSvg(content: string, options?: Partial<QROptions>): Re
   const strength = artShape?.strength || 'balanced';
   const fadeEdges = artShape?.fadeEdges ?? false;
 
-  // If Trim mode is selected for an eligible shape, force Error Correction Level to 'H'
+  // If Trim mode is selected or a Logo is present, force Error Correction Level to 'H' for 30% recovery
   const isTrimMode = mode === 'trim' && shapeDef.supportsTrim;
-  const errorCorrectionLevel = isTrimMode ? 'H' : options?.errorCorrection || 'M';
+  const hasLogo = Boolean(options?.logo);
+  const errorCorrectionLevel = (isTrimMode || hasLogo) ? 'H' : options?.errorCorrection || 'M';
 
   // Generate ISO/IEC 18004 BitMatrix via standard qrcode engine
   const qrInstance = QRCode.create(content, {
@@ -94,7 +94,7 @@ export function renderQrToSvg(content: string, options?: Partial<QROptions>): Re
 
   // Base module size in SVG user units
   const m = 10;
-  const quietZoneModules = Math.max(4, options?.margin ?? 4);
+  const quietZoneModules = Math.max(0, options?.margin ?? 4);
 
   // Determine decorative field extension for "Around" mode
   let decMargin = 0;
@@ -108,36 +108,17 @@ export function renderQrToSvg(content: string, options?: Partial<QROptions>): Re
   const totalWidth = totalCols * m;
   const totalHeight = totalRows * m;
 
-  // Brand Art Options
-  const brand = options?.brand;
-  const isBrandActive = brand?.enabled && !!brand.text;
-  const brandPlacement = brand?.placement || 'in-code';
-  const brandColor = brand?.color || '#0284c7';
-  const brandFont = brand?.font || 'Outfit';
-
-  let inCodeMask: boolean[][] | null = null;
-  let aroundMask: boolean[][] | null = null;
-
-  if (isBrandActive) {
-    if (brandPlacement === 'in-code' && brand.text) {
-      inCodeMask = generateTextMask(brand.text, brandFont, N, N, 'in-code');
-    } else if (brandPlacement === 'around-code' && brand.text) {
-      aroundMask = generateTextMask(brand.text, brandFont, totalRows, totalCols, 'around-code');
-    }
-  }
-
-  const isBanner = isBrandActive && brandPlacement === 'banner' && !!brand.text;
-  const bannerHeight = isBanner ? 42 : 0;
-  const finalSvgHeight = isBanner ? totalHeight + bannerHeight + 10 : totalHeight;
-
   const coreStartX = (quietZoneModules + decMargin) * m;
   const coreStartY = (quietZoneModules + decMargin) * m;
 
   // Colors & Gradients
   const fgColor = options?.foregroundColor || '#000000';
   const bgColor = options?.backgroundColor || '#FFFFFF';
-  const cornerSquareColor = options?.cornerSquareColor || fgColor;
-  const cornerDotColor = options?.cornerDotColor || fgColor;
+  const hasFgGrad = Boolean(options?.foregroundGradient?.enabled);
+  const gradId = 'qr-fg-grad';
+  const fgPaint = hasFgGrad ? `url(#${gradId})` : fgColor;
+  const cornerSquareColor = options?.cornerSquareColor || fgPaint;
+  const cornerDotColor = options?.cornerDotColor || fgPaint;
 
   const dotType = options?.dotType || 'square';
   const cornerSquareType = options?.cornerSquareType || 'square';
@@ -162,12 +143,13 @@ export function renderQrToSvg(content: string, options?: Partial<QROptions>): Re
   // Logo clearance setup
   let logoCleared: Array<[number, number, number, number]> = [];
   if (options?.logo) {
-    const logoScale = Math.max(0.12, Math.min(0.42, options.logoSize ?? 0.32));
+    const logoScale = Math.max(0.10, Math.min(0.40, options.logoSize ?? 0.24));
     const logoModuleW = Math.round(N * logoScale);
     const logoModuleH = logoModuleW;
     const logoStartC = Math.floor((N - logoModuleW) / 2);
     const logoStartR = Math.floor((N - logoModuleH) / 2);
-    const pad = Math.max(0, Math.min(3, options.logoMargin ?? 1));
+    const maxSafePad = Math.max(0, Math.min(8, Math.floor((N - logoModuleW) / 2) - 1));
+    const pad = Math.max(0, Math.min(maxSafePad, options.logoMargin ?? 1));
     logoCleared.push([
       logoStartR - pad,
       logoStartC - pad,
@@ -261,10 +243,7 @@ export function renderQrToSvg(content: string, options?: Partial<QROptions>): Re
             opacity = Math.round(0.32 * fadeFactor * 100) / 100;
           }
 
-          const isBrandAround = aroundMask && aroundMask[r]?.[c];
-          const fill = isBrandAround
-            ? `fill="${brandColor}" fill-opacity="0.95"`
-            : `fill="${decTint}" fill-opacity="${opacity}"`;
+          const fill = `fill="${decTint}" fill-opacity="${opacity}"`;
 
           const x = c * m;
           const y = r * m;
@@ -312,8 +291,7 @@ export function renderQrToSvg(content: string, options?: Partial<QROptions>): Re
         }
       }
 
-      const isBrandModule = inCodeMask && inCodeMask[r]?.[c] && !isReserved;
-      const moduleFill = isBrandModule ? `fill="${brandColor}"` : fgFillAttr;
+      const moduleFill = fgFillAttr;
 
       const x = coreStartX + c * m;
       const y = coreStartY + r * m;
@@ -350,36 +328,28 @@ export function renderQrToSvg(content: string, options?: Partial<QROptions>): Re
 
   // 5. Embedded Logo
   if (options?.logo) {
-    const logoScale = Math.max(0.12, Math.min(0.42, options.logoSize ?? 0.32));
+    const logoScale = Math.max(0.10, Math.min(0.40, options.logoSize ?? 0.24));
     const logoPx = Math.round(N * m * logoScale);
     const logoX = coreStartX + (N * m - logoPx) / 2;
     const logoY = coreStartY + (N * m - logoPx) / 2;
     const cornerR = Math.round(logoPx * 0.16);
 
+    const isBgTransparent = options.logoBgTransparent ?? true;
+    const bgElement = isBgTransparent
+      ? ''
+      : `<rect x="${logoX - 4}" y="${logoY - 4}" width="${logoPx + 8}" height="${logoPx + 8}" rx="${cornerR + 2}" ${bgFillAttr} filter="drop-shadow(0 2px 4px rgba(0,0,0,0.12))"/>`;
+
     svgElements.push(
       `<g id="qr-embedded-logo">
-        <rect x="${logoX - 4}" y="${logoY - 4}" width="${logoPx + 8}" height="${logoPx + 8}" rx="${cornerR + 2}" ${bgFillAttr} filter="drop-shadow(0 2px 4px rgba(0,0,0,0.12))"/>
+        ${bgElement}
         <clipPath id="qr-logo-clip"><rect x="${logoX}" y="${logoY}" width="${logoPx}" height="${logoPx}" rx="${cornerR}"/></clipPath>
-        <image href="${escapeXml(options.logo)}" x="${logoX}" y="${logoY}" width="${logoPx}" height="${logoPx}" preserveAspectRatio="xMidYMid meet" clip-path="url(#qr-logo-clip)"/>
-      </g>`
-    );
-  }
-
-  // 6. Vector Brand Banner (if placement === 'banner')
-  if (isBanner && brand?.text) {
-    const bannerY = totalHeight + 4;
-    const bannerW = totalWidth - (quietZoneModules + decMargin) * 2 * m + 2 * m;
-    const bannerX = coreStartX - m;
-    svgElements.push(
-      `<g id="qr-brand-banner">
-        <rect x="${bannerX}" y="${bannerY}" width="${bannerW}" height="${bannerHeight}" rx="8" fill="${brandColor}"/>
-        <text x="${totalWidth / 2}" y="${bannerY + bannerHeight / 2 + 5}" fill="#ffffff" font-family="'${brandFont}', system-ui, -apple-system, sans-serif" font-size="15" font-weight="700" letter-spacing="1.5" text-anchor="middle">${escapeXml(brand.text.toUpperCase())}</text>
+        <image href="${escapeXml(options.logo)}" xlink:href="${escapeXml(options.logo)}" x="${logoX}" y="${logoY}" width="${logoPx}" height="${logoPx}" preserveAspectRatio="xMidYMid meet" clip-path="url(#qr-logo-clip)"/>
       </g>`
     );
   }
 
   const defsBlock = defs.length > 0 ? `<defs>${defs.join('')}</defs>` : '';
-  const finalSvg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${totalWidth} ${finalSvgHeight}" width="${totalWidth}" height="${finalSvgHeight}">
+  const finalSvg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${totalWidth} ${totalHeight}" width="${totalWidth}" height="${totalHeight}">
 ${defsBlock}
 ${svgElements.join('\n')}
 </svg>`;

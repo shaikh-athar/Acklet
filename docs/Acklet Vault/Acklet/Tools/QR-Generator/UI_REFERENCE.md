@@ -9,30 +9,25 @@ status: Complete
 
 ## 1. Page Layout & Grid Architecture
 
-The QR Generator occupies a responsive two-column grid (`.qr-workspace-grid`) styled with Acklet's emerald accent token (`[data-accent="emerald"]`).
+The QR Generator occupies a dedicated `.qr-page-shell` layout with sticky ad gutters at $\ge 1280\text{px}$, a centered $1160\text{px}$ tool container, and a fixed side-by-side workspace:
 
 ```text
-+--------------------------------------------------------------------------+
-|  [⚡ Client-Side Utility]  [🛡️ Processed locally, no tracking]           |
-|  QR Generator (Fraunces Display Heading)                                 |
-|  Create, customize, and download high-resolution QR codes in seconds.    |
-+--------------------------------------------------------------------------+
-|  LEFT COLUMN (1.25fr)                 | RIGHT COLUMN (1fr)               |
-|  +----------------------------------+ | +------------------------------+ |
-|  | Input Panel                      | | | Preview Panel                | |
-|  | - Content type tabs              | | | - Header & "Ready" badge     | |
-|  | - Fast presets (URL/Email/Phone) | | | - Canvas Stage               | |
-|  | - Textarea & char counter        | | |   (QR Image or Empty state)  | |
-|  | - Live validation alert          | | | - Encoded Payload preview    | |
-|  +----------------------------------+ | | - Dynamic Metadata Card      | |
-|  | Customization Panel              | | |   (Version, byte count, bar) | |
-|  | - Foreground/Background pickers  | | | - Download PNG Button        | |
-|  | - Swap & preset swatch buttons   | | | - Privacy guarantee pill     | |
-|  | - Contrast badge & warning alert | | +------------------------------+ |
-|  | - Size range slider & presets    | |                                |
-|  | - Error correction segmented btns| |                                |
-|  +----------------------------------+ |                                |
-+--------------------------------------------------------------------------+
++-----------------------------------------------------------------------------------------+
+| [Ad Gutter Left (>=1280px)]  |  CENTERED TOOL CONTAINER (max-width: 1160px)  |  [Ad Gutter Right] |
+| 160-300px sticky 600px h     |                                               | 160-300px sticky  |
+|                              |  UNIFIED WORKSPACE (~100vh)                   |                   |
+|                              |  +---------------------+ +------------------+ |                   |
+|                              |  | Left: Mode Nav Bar  | | Right: Fixed     | |                   |
+|                              |  | [Content] [Customize| | Preview Panel    | |                   |
+|                              |  | ------------------- | | (Fixed on right) | |                   |
+|                              |  | Tab 1: Content Card | | - Live QR Stage  | |                   |
+|                              |  |   or                | | - Auto-fix CTA   | |                   |
+|                              |  | Tab 2: Customize Card| - Instant Format  | |                   |
+|                              |  |   (Frames/Shapes/   | | - Download CTA   | |                   |
+|                              |  |    Colors/Logo)     | |                  | |                   |
+|                              |  | (Exact same height) | |                  | |                   |
+|                              |  +---------------------+ +------------------+ |                   |
++-----------------------------------------------------------------------------------------+
 ```
 
 ---
@@ -69,12 +64,15 @@ The QR Generator occupies a responsive two-column grid (`.qr-workspace-grid`) st
   - Contextual explanation paragraph updating on active selection.
 
 ### 2.4 Preview Panel (`<app-qr-preview-panel>`)
-- **Canvas Stage Area**: High-contrast display background with pixel-crisp QR code rendering.
+- **Canvas Stage Area**: High-contrast display background with pixel-crisp QR code rendering and animated QR assemble reveal layer.
+- **Transparent Logo & Vector Framing**: Logos render with natural transparency (no forced white plate); decorative frames auto-scale inner QR code via `innerViewBox` with high-contrast safety backings.
 - **Live Payload Inspector**: Monospace box showing exact string passed to the encoder.
 - **Metadata Card (`<app-qr-metadata-display>`)**:
   - 4-item grid: **Version**, **Capacity**, **Payload**, **Recovery**.
   - Animated emerald progress bar (`transition: width 0.3s ease`).
+- **Scannability Diagnostics**: Unobtrusive; standard "High" scan confidence banner is suppressed to keep preview clean, surfacing only if scan issues are detected.
 - **Download Action Button**: Primary emerald CTA (`hlmBtn`), disabled if input is empty or generating.
+
 
 ---
 
@@ -99,13 +97,13 @@ The QR Generator occupies a responsive two-column grid (`.qr-workspace-grid`) st
 
 ---
 
-## 5. Responsive Behavior
+## 5. Responsive Behavior & Unified Workspace Flow
 
 | Viewport Width | Layout Mode | Adjustments |
 | :--- | :--- | :--- |
-| **$> 900\text{px}$** (Desktop) | 2-column grid (`1.25fr : 1fr`) | Input and Customization on Left, Preview sticky on Right |
-| **$\le 900\text{px}$** (Tablet & Mobile) | 1-column vertical stack | Input $\rightarrow$ Customization $\rightarrow$ Preview $\rightarrow$ Download |
-| **$\le 520\text{px}$** (Mobile Small) | Compact vertical stack | Color pickers stack into 1 column; preset buttons wrap neatly |
+| **Desktop ($\ge 1024\text{px}$)** | **Unified Fixed Side-by-Side Flow** | • **Fixed QR Preview Card**: The Live QR Preview card stays securely pinned on the right side across all navigation modes.<br>• **Unified Left Column**: Hosts the mode navigation bar (`[Content]` / `[Customize]`). Both the Content Input card and Customize Design Studio mount inside Column 1, sharing identical dimensions, width, and height (`calc(100% - 42px)`) with smooth internal scrolling.<br>• **Quick Actions**: Includes quick PNG download, quick SVG export, and native quick Share button with `share-2` icon.<br>• **Sub-Tab Navigation**: Customization sub-tabs (Frames, Shapes, Colors, Logo) animate smoothly with micro-transitions without disrupting the fixed layout.<br>• **View QR Code Action**: Floating action button provides instant smooth scrolling back to the QR card if scrolled on narrower screens. |
+| **Tablet Portrait ($\le 1023\text{px}$)** | 1-column responsive touch flow | Stacked panels with vertical scroll; touch-optimized tap targets, updated desktop-matching sidebar sheet, and horizontal swipe-in gesture from screen background to reveal navigation sidebar. |
+| **Mobile ($\le 768\text{px}$)** | Full-Height 3-State Mobile Flow | • **Full Viewport Coverage**: `:host`, `.qr-page-shell`, `.qr-tool-container`, and views flex to 100% height without empty voids.<br>• **Content Type Selector Dropdown**: Centered dropdown trigger replaces horizontal scroll chips, providing instant type search and selection.<br>• **Assemble-Only QR Animation**: Generated QR displays exclusively via the assembling mosaic animation without pre-flashing the static output image.<br>• **Action Bar & Icons**: Summary card contains working `edit` icon with pencil indicator; bottom action bar provides Download, Share, and Copy buttons.<br>• **Sidebar Gesture**: Left edge/background swipe-in gesture opens the updated navigation sidebar, excluding interactive sliders, preview canvas, and inputs. |
 
 ---
 
@@ -120,3 +118,21 @@ All components resolve against Acklet's semantic CSS variables in `tokens.css`:
 - `--accent-strong`: `#34d399` (Dark) / `#059669` (Light)
 - `--accent-soft`: `rgba(16, 185, 129, 0.12)`
 - `--accent-ink`: `#022c22`
+
+---
+
+## 7. Decorative Frames & Logo Embed Standards
+
+### Decorative Frame Geometry & QR Containment
+All 18 vector frame templates ([qr-frames.data.ts](file:///Users/ayaz/Acklet/client/apps/tool-qr-generator/src/models/qr-frames.data.ts)) adhere to strict boundary containment:
+- **Circular & Tapered Frames**:
+  - `badge` (Award Badge): Inscribed inside `r=130` backing circle with `qrBox: { x: 78, y: 103, size: 164 }`. Max corner radius from center is $82 \times \sqrt{2} \approx 116\text{px} < 130\text{px}$, leaving 14px of quiet breathing margin with 0% corner protrusion.
+  - `coffee-cup` (Coffee Cup): Inscribed within the tapered tumbler silhouette (`M 42 66 L 65 380 ...`) with `qrBox: { x: 77, y: 95, size: 166 }`. Maintains 18px+ inner margin on both sides at the narrowest point.
+  - `gift-box` (Gift Present): Sits comfortably within the box body with `qrBox: { x: 65, y: 110, size: 190 }`, leaving 27px+ margins on left, right, and below the lid.
+  - `ticket` (Event Ticket): Sits safely between the ticket notches with `qrBox: { x: 50, y: 45, size: 220 }` (25px margin to notches).
+  - `sticker-peel` (Die-cut Sticker): Sized at `qrBox: { x: 45, y: 35, size: 210 }`, ending at $y=245$ well above the folded corner peel at $y=280$.
+- **Coordinate Synchronization**: `template.qrBox` and `template.renderSvg` `<image>` tags share identical `x`, `y`, and `size` parameters to ensure that thumbnail grids, live vector preview, and raster exports remain 100% pixel-aligned.
+
+### Logo Preset SVG Formatting
+- **DOM SVG Insertion (`innerSvg`)**: SVG fragments inserted into HTML/DOM elements via Angular `innerHTML` must use unencoded hex color values (`stroke="#3b82f6"`, `fill="#10b981"`). Never use URL-encoded `%23` in DOM SVGs, as SVG parsers treat `%23` as an invalid color token, dropping strokes and defaulting fills to black.
+- **Data URI (`dataUrl`)**: In standalone UTF-8 Data URIs (`data:image/svg+xml;utf8,...`), `#` must be URL-encoded as `%23` to prevent premature URL truncation.

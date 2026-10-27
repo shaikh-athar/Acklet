@@ -111,6 +111,17 @@ export type SocialPlatform =
   | 'vimeo'
   | 'whatsapp'
   | 'telegram'
+  | 'github'
+  | 'threads'
+  | 'discord'
+  | 'pinterest'
+  | 'reddit'
+  | 'snapchat'
+  | 'spotify'
+  | 'medium'
+  | 'patreon'
+  | 'substack'
+  | 'behance'
   | 'custom';
 
 export interface SocialData {
@@ -208,11 +219,21 @@ export interface QrFrameOptions {
   textColor: string;
 }
 
+export function getDefaultCtaTextColor(theme?: string): string {
+  if (theme) return theme === 'dark' ? '#ffffff' : '#000000';
+  if (typeof document !== 'undefined') {
+    const docTheme = document.documentElement.getAttribute('data-theme');
+    if (docTheme === 'dark') return '#ffffff';
+    if (docTheme === 'light') return '#000000';
+  }
+  return '#000000';
+}
+
 export const DEFAULT_FRAME_OPTIONS: QrFrameOptions = {
   style: 'none',
   text: 'SCAN ME',
   color: '#3b82f6',
-  textColor: '#ffffff'
+  textColor: '#000000'
 };
 
 export interface QrGradientOptions {
@@ -264,40 +285,6 @@ export const DEFAULT_ART_SHAPE_OPTIONS: QrArtShapeOptions = {
   fadeEdges: false
 };
 
-export type QrBrandPlacement = 'in-code' | 'around-code' | 'banner';
-
-export type QrBrandFont =
-  | 'Outfit'
-  | 'Inter'
-  | 'Montserrat'
-  | 'Playfair Display'
-  | 'Space Grotesk'
-  | 'Plus Jakarta Sans'
-  | 'Bebas Neue'
-  | 'Caveat';
-
-export interface QrBrandOptions {
-  enabled: boolean;
-  type: 'name' | 'image';
-  mode?: 'name' | 'image';
-  placement: QrBrandPlacement;
-  text?: string;
-  font?: QrBrandFont;
-  color?: string;
-  gradient?: QrGradientOptions;
-  imageData?: string;
-  imageThreshold?: number;
-}
-
-export const DEFAULT_BRAND_OPTIONS: QrBrandOptions = {
-  enabled: false,
-  type: 'name',
-  placement: 'in-code',
-  text: '',
-  font: 'Outfit',
-  color: '#0284c7'
-};
-
 export interface QROptions {
   content: string;
   type: ContentType;
@@ -331,26 +318,18 @@ export interface QROptions {
   logoSize?: number;
   /** Safe margin buffer around logo */
   logoMargin?: number;
+  /** Whether logo background plate is transparent (default: true) */
+  logoBgTransparent?: boolean;
   /** Decorative frame and CTA banner */
   frame?: QrFrameOptions;
   /** QR Art overall silhouette & shape styling */
   artShape?: QrArtShapeOptions;
-  /** QR Art brand name and brand image artwork */
-  brand?: QrBrandOptions;
 }
 
-export interface BatchQrItem {
-  id: string;
-  title: string;
-  content: string;
-  formattedPayload: string;
-  dataUrl?: string;
-  status: 'pending' | 'generating' | 'done' | 'error';
-  error?: string;
-}
 
 export interface QRHistoryItem {
   id: string;
+  name?: string;
   type: ContentType;
   content: string;
   formattedPayload: string;
@@ -382,6 +361,8 @@ export interface QRVerificationResult {
   message: string;
   confidence?: QrScanConfidence;
   fixAvailable?: boolean;
+  reason?: string;
+  tip?: string;
 }
 
 export interface QRMetadata {
@@ -468,7 +449,7 @@ export const CONTENT_TYPE_CONFIGS: Record<ContentType, ContentTypeConfig> = {
     label: 'Website URL',
     icon: 'globe',
     placeholder: 'https://example.com/page',
-    helperText: 'Opens web link when scanned. Auto-prefixes https://.',
+    helperText: '',
     example: 'https://acklet.com'
   },
   text: {
@@ -476,7 +457,7 @@ export const CONTENT_TYPE_CONFIGS: Record<ContentType, ContentTypeConfig> = {
     label: 'Plain Text',
     icon: 'type',
     placeholder: 'Enter any text message, note, or code snippet...',
-    helperText: 'Raw UTF-8 text message up to 2,953 characters.',
+    helperText: '',
     example: 'Hello World from Acklet'
   },
   email: {
@@ -603,7 +584,7 @@ export const DESIGN_PRESETS: DesignPreset[] = [
     id: 'classy-navy',
     name: 'Classy Navy',
     description: 'Sophisticated dual-corner accents with curved leaves',
-    dotType: 'classy-rounded',
+    dotType: 'rounded',
     cornerSquareType: 'extra-rounded',
     cornerDotType: 'dot',
     foregroundColor: '#1e3a8a',
@@ -628,7 +609,7 @@ export const DESIGN_PRESETS: DesignPreset[] = [
     name: 'Diamond Luxe',
     description: 'Jeweled diamond modules with leaf locator frames',
     dotType: 'diamond',
-    cornerSquareType: 'classy',
+    cornerSquareType: 'extra-rounded',
     cornerDotType: 'diamond',
     foregroundColor: '#0284c7',
     backgroundColor: '#f0f9ff',

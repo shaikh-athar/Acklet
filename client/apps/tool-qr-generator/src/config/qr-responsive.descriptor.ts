@@ -26,7 +26,6 @@ export const QR_RESPONSIVE_DESCRIPTOR: ToolResponsiveDescriptor = {
       ],
       p2: [
         'history-drawer',
-        'batch-generator-modal',
         'dynamic-manager-modal',
         'advanced-settings-sheet',
         'verbose-descriptions'
@@ -48,7 +47,6 @@ export const QR_RESPONSIVE_DESCRIPTOR: ToolResponsiveDescriptor = {
       ],
       p2: [
         'history-slideout',
-        'batch-generator-modal',
         'dynamic-manager-modal',
         'advanced-settings-modal'
       ]
@@ -68,7 +66,6 @@ export const QR_RESPONSIVE_DESCRIPTOR: ToolResponsiveDescriptor = {
       ],
       p2: [
         'history-panel',
-        'batch-generator-modal',
         'dynamic-manager-modal',
         'advanced-settings-modal'
       ]
@@ -88,7 +85,6 @@ export const QR_RESPONSIVE_DESCRIPTOR: ToolResponsiveDescriptor = {
       ],
       p2: [
         'history-panel',
-        'batch-generator-modal',
         'dynamic-manager-modal',
         'advanced-settings-modal'
       ]

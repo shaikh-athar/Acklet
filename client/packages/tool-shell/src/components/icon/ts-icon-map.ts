@@ -18,6 +18,7 @@ import {
   LucidePanelRightOpen,
   LucideArrowLeft,
   LucideArrowRight,
+  LucideArrowUp,
   LucideArrowUpRight,
   LucideExternalLink,
   LucideInfo,
@@ -125,7 +126,18 @@ import {
   LucideHeart,
   LucideFrame,
   LucideArrowLeftRight,
-  LucideActivity
+  LucideActivity,
+  LucideAward,
+  LucideBadge,
+  LucideTarget,
+  LucideGraphStar,
+  LucideGalleryVerticalEnd,
+  LucideUnlink,
+  LucideMapPinned,
+  LucideLocateFixed,
+  LucideLink2Off,
+  LucideScanEye,
+  LucideSquarePen
 } from '@lucide/angular';
 
 import {
@@ -213,6 +225,7 @@ export const LUCIDE_MOTION_MAP: Record<string, string> = {
   clipboard: 'motion-scale-up',
   star: 'motion-star-pop',
   search: 'motion-scale-up',
+  'arrow-up': 'motion-translate-up',
   'arrow-up-right': 'motion-translate-right',
   'arrow-right': 'motion-translate-right',
   sun: 'motion-rotate-15',
@@ -312,6 +325,9 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   'arrow-right': {
     animated: ArrowRightIcon,
     lucide: LucideArrowRight
+  },
+  'arrow-up': {
+    lucide: LucideArrowUp
   },
   'arrow-up-right': {
     lucide: LucideArrowUpRight
@@ -574,6 +590,18 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   pencil: {
     lucide: LucidePencil
   },
+  'square-pen': {
+    lucide: LucideSquarePen
+  },
+  'pen-square': {
+    lucide: LucideSquarePen
+  },
+  edit: {
+    lucide: LucideSquarePen
+  },
+  'edit-2': {
+    lucide: LucidePencil
+  },
   presentation: {
     lucide: LucidePresentation
   },
@@ -681,6 +709,12 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   'map-pin': {
     lucide: LucideMapPin
   },
+  'map-pinned': {
+    lucide: LucideMapPinned
+  },
+  'locate-fixed': {
+    lucide: LucideLocateFixed
+  },
   calendar: {
     lucide: LucideCalendar
   },
@@ -710,5 +744,35 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   },
   activity: {
     lucide: LucideActivity
+  },
+  award: {
+    lucide: LucideAward
+  },
+  brand: {
+    lucide: LucideAward
+  },
+  badge: {
+    lucide: LucideBadge
+  },
+  target: {
+    lucide: LucideTarget
+  },
+  'graph-star': {
+    lucide: LucideGraphStar
+  },
+  'gallery-vertical-end': {
+    lucide: LucideGalleryVerticalEnd
+  },
+  'link-2-off': {
+    lucide: LucideLink2Off
+  },
+  'scan-eye': {
+    lucide: LucideScanEye
+  },
+  unlink: {
+    lucide: LucideUnlink
+  },
+  'grid-circles': {
+    lucide: LucideLayoutGridCircles
   }
 };

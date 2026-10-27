@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createEnvironmentInjector, runInInjectionContext, signal, WritableSignal } from '@angular/core';
 import { PreviewPanelComponent } from './preview-panel.component';
 import { QRVerifierService } from '../../services/qr-verifier.service';
+import { QRGeneratorService } from '../../services/qr-generator.service';
 import { ExportFormat } from '../../models/qr-generator.models';
 
 describe('PreviewPanelComponent', () => {
@@ -32,6 +33,7 @@ describe('PreviewPanelComponent', () => {
     const rootInjector = {
       get: (token: any, notFound?: any) => {
         if (token === QRVerifierService) return mockVerifier;
+        if (token === QRGeneratorService) return { svgToPngBlob: vi.fn().mockResolvedValue(new Blob([], { type: 'image/png' })) };
         return notFound;
       }
     } as any;
@@ -55,11 +57,15 @@ describe('PreviewPanelComponent', () => {
         if (s <= 1024) return 'lg';
         return 'xl';
       };
+      (component as any).margin = signal(4);
+      (component as any).isAutoEc = signal(true);
+      (component as any).autoEcReason = signal('Standard automatic error correction');
+      (component as any).isSmartLink = signal(false);
     });
   });
 
   describe('Empty State & Sample Trigger (Stage 4)', () => {
-    it('emits loadSampleClick when Try an Example is triggered', () => {
+    it('emits loadSampleClick when sample load is triggered', () => {
       let emitted = false;
       component.loadSampleClick.subscribe(() => {
         emitted = true;
@@ -132,6 +138,147 @@ describe('PreviewPanelComponent', () => {
 
       (component as any).size.set(2048);
       expect(component.sizeTier()).toBe('xl');
+    });
+  });
+
+  describe('Phase 4: Header Actions & Advanced Settings Modal Integration', () => {
+    it('opens advanced settings modal when isAdvancedOpen is set', () => {
+      expect(component.isAdvancedOpen()).toBe(false);
+      component.isAdvancedOpen.set(true);
+      expect(component.isAdvancedOpen()).toBe(true);
+    });
+
+
+    it('exposes margin, isAutoEc, and autoEcReason signals', () => {
+      expect(component.margin()).toBe(4);
+      expect(component.isAutoEc()).toBe(true);
+      expect(component.autoEcReason()).toBe('Standard automatic error correction');
+    });
+
+    it('exposes isCreatingHostedLink, fallbackNotice, and isDevAddressWarning signals', () => {
+      (component as any).isCreatingHostedLink = signal(true);
+      (component as any).fallbackNotice = signal('Hosted link unavailable. Generated offline static QR code.');
+      (component as any).isDevAddressWarning = signal(true);
+
+      expect(component.isCreatingHostedLink()).toBe(true);
+      expect(component.fallbackNotice()).toContain('offline static QR code');
+      expect(component.isDevAddressWarning()).toBe(true);
+    });
+
+    it('emits retryClick when retry is triggered', () => {
+      let retryEmitted = false;
+      component.retryClick.subscribe(() => {
+        retryEmitted = true;
+      });
+
+      component.retryClick.emit();
+      expect(retryEmitted).toBe(true);
+    });
+  });
+
+  describe('State Sequence & Constant Footprint (Empty -> Creating -> Ready -> Error with Retry)', () => {
+    let testComponent: PreviewPanelComponent;
+    let qrDataUrlSig: WritableSignal<string | null>;
+    let isCreatingHostedLinkSig: WritableSignal<boolean>;
+    let isGeneratingSig: WritableSignal<boolean>;
+    let errorSig: WritableSignal<string | null>;
+    let sizeSig: WritableSignal<number>;
+    let isSmartLinkSig: WritableSignal<boolean>;
+    let encodedPayloadSig: WritableSignal<string | null>;
+
+    beforeEach(() => {
+      qrDataUrlSig = signal<string | null>(null);
+      isCreatingHostedLinkSig = signal<boolean>(false);
+      isGeneratingSig = signal<boolean>(false);
+      errorSig = signal<string | null>(null);
+      sizeSig = signal<number>(512);
+      isSmartLinkSig = signal<boolean>(false);
+      encodedPayloadSig = signal<string | null>(null);
+
+      const rootInjector = {
+        get: (token: any, notFound?: any) => {
+          if (token === QRVerifierService) return mockVerifier;
+          return notFound;
+        }
+      } as any;
+      const envInjector = createEnvironmentInjector([], rootInjector);
+
+      runInInjectionContext(envInjector, () => {
+        testComponent = new PreviewPanelComponent();
+        (testComponent as any).qrDataUrl = qrDataUrlSig;
+        (testComponent as any).isCreatingHostedLink = isCreatingHostedLinkSig;
+        (testComponent as any).isGenerating = isGeneratingSig;
+        (testComponent as any).error = errorSig;
+        (testComponent as any).size = sizeSig;
+        (testComponent as any).isSmartLink = isSmartLinkSig;
+        (testComponent as any).encodedPayload = encodedPayloadSig;
+        (testComponent as any).formattedPayload = signal('https://acklet.com');
+        (testComponent as any).historyItems = signal([]);
+        (testComponent as any).dynamicCount = signal(0);
+        (testComponent as any).margin = signal(4);
+        (testComponent as any).isAutoEc = signal(true);
+        (testComponent as any).autoEcReason = signal('Automatic');
+        (testComponent as any).fallbackNotice = signal(null);
+        (testComponent as any).isDevAddressWarning = signal(false);
+      });
+    });
+
+    it('identifies Empty state when not creating, not generating, and no qrDataUrl', () => {
+      expect(testComponent.qrDataUrl()).toBeNull();
+      expect(testComponent.isCreatingHostedLink()).toBe(false);
+      expect(testComponent.isGenerating()).toBe(false);
+      expect(testComponent.error()).toBeNull();
+    });
+
+    it('identifies Creating state with constant tile footprint tier', () => {
+      isCreatingHostedLinkSig.set(true);
+      expect(testComponent.isCreatingHostedLink()).toBe(true);
+      expect(testComponent.qrDataUrl()).toBeNull();
+
+      // Footprint tier should match the size setting
+      const creatingTier = testComponent.sizeTier();
+      expect(creatingTier).toBe('md');
+    });
+
+    it('transitions from Creating to Ready state preserving constant tile footprint tier', () => {
+      // Step 1: Creating state
+      isCreatingHostedLinkSig.set(true);
+      const creatingTier = testComponent.sizeTier();
+
+      // Step 2: Transition to Ready state
+      isCreatingHostedLinkSig.set(false);
+      qrDataUrlSig.set('data:image/png;base64,mockPng');
+      isSmartLinkSig.set(true);
+      encodedPayloadSig.set('http://localhost:8080/l/abc12345');
+
+      const readyTier = testComponent.sizeTier();
+
+      // Assert tile size tier remains exactly constant between creating and ready
+      expect(readyTier).toBe(creatingTier);
+      expect(testComponent.qrDataUrl()).toBe('data:image/png;base64,mockPng');
+      expect(testComponent.isCreatingHostedLink()).toBe(false);
+      expect(testComponent.encodedPayload()).toBe('http://localhost:8080/l/abc12345');
+    });
+
+    it('toggles neutral isVerifying checking state during verification', () => {
+      expect(testComponent.isVerifying()).toBe(false);
+      testComponent.isVerifying.set(true);
+      expect(testComponent.isVerifying()).toBe(true);
+      testComponent.isVerifying.set(false);
+      expect(testComponent.isVerifying()).toBe(false);
+    });
+
+    it('identifies Error state and allows retry emission', () => {
+      errorSig.set('Network failure generating hosted link');
+      expect(testComponent.error()).toBe('Network failure generating hosted link');
+
+      let retryFired = false;
+      testComponent.retryClick.subscribe(() => {
+        retryFired = true;
+      });
+
+      testComponent.retryClick.emit();
+      expect(retryFired).toBe(true);
     });
   });
 });

@@ -104,9 +104,17 @@ export interface QrSelectOption<T = any> {
       position: relative;
     }
 
+    :host:has(.qr-select-container.is-open) {
+      z-index: 200;
+    }
+
     .qr-select-container {
       position: relative;
       width: 100%;
+    }
+
+    .qr-select-container.is-open {
+      z-index: 200;
     }
 
     .qr-select-container.disabled {

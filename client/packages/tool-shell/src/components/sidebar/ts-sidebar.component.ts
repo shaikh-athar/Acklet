@@ -9,6 +9,7 @@ import { TsToolListComponent, FAVORITES_KEY } from './ts-tool-list.component';
 import { TsSearchComponent } from '../search/ts-search.component';
 import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
 import { ToolSettingsService } from '../../services/tool-settings.service';
+import { DrawerGestureService } from '../../services/drawer-gesture.service';
 
 @Component({
   selector: 'ts-sidebar',
@@ -18,6 +19,7 @@ import { ToolSettingsService } from '../../services/tool-settings.service';
     '[class.is-pinned]': 'sidebarState.isPinned()',
     '[class.is-peek]': 'sidebarState.isPeek()',
     '[class.is-hidden]': 'sidebarState.isHidden()',
+    '[class.is-mobile-open]': 'sidebarService.isMobileDrawerOpen()',
     '[attr.data-mode]': 'sidebarState.mode()'
   },
   imports: [
@@ -114,6 +116,9 @@ import { ToolSettingsService } from '../../services/tool-settings.service';
         class="ts-mobile-sheet-backdrop" 
         (click)="sidebarService.closeMobileDrawer()" 
         (keydown)="onBackdropKeydown($event)"
+        (pointerdown)="onBackdropPointerDown($event)"
+        (pointermove)="onBackdropPointerMove($event)"
+        (pointerup)="onBackdropPointerUp($event)"
         role="dialog" 
         aria-modal="true" 
         aria-label="Navigation Menu"
@@ -121,6 +126,9 @@ import { ToolSettingsService } from '../../services/tool-settings.service';
         <aside 
           class="ts-mobile-sheet-panel" 
           (click)="$event.stopPropagation()"
+          (pointerdown)="onPanelPointerDown($event)"
+          (pointermove)="onPanelPointerMove($event)"
+          (pointerup)="onPanelPointerUp($event)"
           (touchstart)="onTouchStart($event)"
           (touchmove)="onTouchMove($event)"
           (touchend)="onTouchEnd($event)"
@@ -134,82 +142,76 @@ import { ToolSettingsService } from '../../services/tool-settings.service';
             <button 
               type="button" 
               class="ts-sheet-close-btn"
-              (click)="sidebarService.closeMobileDrawer()"
+              (click)="onCloseButtonClick($event)"
               aria-label="Close menu"
             >
               <ts-icon name="x" [size]="18" />
             </button>
-          </div>
+          </div>          <!-- Updated Mobile/Tablet Sidebar matching Desktop Card Design -->
+          <div class="ts-sidebar-inner ts-mobile-sidebar-inner">
+            <!-- 1. Top Action Rows: All tools + Search tools -->
+            <div class="ts-sidebar-top-actions">
+              <a [href]="hubUrl" class="ts-action-row" (click)="sidebarService.closeMobileDrawer()" title="Browse all tools" aria-label="Browse all tools">
+                <ts-icon name="grid" [size]="20" class="ts-action-row-icon" />
+                <span class="ts-action-row-label">All tools</span>
+              </a>
 
-          <!-- Section Links for this tool (on mobile) -->
-          @if (sectionLinks().length > 0) {
-            <div class="ts-sheet-sections">
-              <div class="ts-sheet-section-title">This Tool</div>
-              <div class="ts-sheet-section-pills">
-                @for (sec of sectionLinks(); track sec.id) {
-                  <button 
-                    type="button" 
-                    class="ts-sheet-section-pill"
-                    (click)="scrollToSection($event, sec.id)"
-                  >
-                    {{ sec.label }}
-                  </button>
-                }
-              </div>
+              @if (showInlineSearch()) {
+                <div class="ts-sidebar-search-container">
+                  <ts-search 
+                    #searchInputMobile
+                    [value]="searchQuery()" 
+                    (valueChange)="searchQuery.set($event)" 
+                    (keydown)="onSearchKeydown($event)"
+                  />
+                </div>
+              } @else {
+                <button 
+                  type="button" 
+                  class="ts-action-row ts-action-search-btn"
+                  (click)="openSearch()"
+                  aria-label="Search tools"
+                >
+                  <ts-icon name="search" [size]="20" class="ts-action-row-icon" />
+                  <span class="ts-action-row-label">Search tools</span>
+                  <kbd class="ts-search-kbd">⌘K</kbd>
+                </button>
+              }
             </div>
-          }
 
-          <!-- Mobile Actions (Share & Save under 480px) -->
-          <div class="ts-sheet-mobile-actions">
-            <button 
-              type="button" 
-              class="ts-sheet-action-btn"
-              (click)="copyShareLink()"
-            >
-              <ts-icon [name]="copiedLink() ? 'check' : 'link'" [size]="16" />
-              <span>{{ copiedLink() ? 'Link copied' : 'Share tool' }}</span>
-            </button>
-            <button 
-              type="button" 
-              class="ts-sheet-action-btn"
-              [class.is-favorited]="isFavorited()"
-              (click)="toggleFavorite()"
-            >
-              <ts-icon name="star" [size]="16" [class.ts-sheet-star-icon]="isFavorited()" />
-              <span>{{ isFavorited() ? 'Saved to favorites' : 'Save to favorites' }}</span>
-            </button>
-          </div>
+            <!-- 2. Nav Area: Scrolls Internally with same ts-tool-list -->
+            <div class="ts-sidebar-scroll-body">
+              <ts-tool-list 
+                [tools]="tools()" 
+                [currentSlug]="currentSlug()" 
+                [isRail]="false"
+                [searchQuery]="searchQuery()"
+              />
+            </div>
 
-          <!-- Mobile Search Row -->
-          <div class="ts-sidebar-search-row">
-            <ts-search [value]="searchQuery()" (valueChange)="searchQuery.set($event)" />
-          </div>
-
-          <!-- Mobile Sheet Scroll Body with same ts-tool-list -->
-          <div class="ts-sidebar-scroll-body">
-            <ts-tool-list 
-              [tools]="tools()" 
-              [currentSlug]="currentSlug()" 
-              [isRail]="false"
-              [searchQuery]="searchQuery()"
-            />
-
-          </div>
-
-          <div class="ts-sidebar-pinned-footer">
-            <a [href]="hubUrl" class="ts-footer-link" (click)="sidebarService.closeMobileDrawer()">
-              <ts-icon name="grid" [size]="14" />
-              <span>All tools</span>
-            </a>
-            <button
-              type="button"
-              class="ts-footer-btn"
-              (click)="toggleSettings(); sidebarService.closeMobileDrawer()"
-              tsTooltip="Settings"
-              aria-label="Settings"
-            >
-              <ts-icon name="settings" [size]="18" />
-            </button>
+            <!-- 3. Pinned Bottom Bar: Help (left) + Settings (right) -->
+            <div class="ts-sidebar-pinned-footer">
+              <a 
+                [href]="portalUrl + '/community/help'" 
+                class="ts-footer-btn" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                tsTooltip="Help & Support" 
+                aria-label="Help & Support"
+                (click)="onHelpClick($event)"
+              >
+                <ts-icon name="help-circle" [size]="18" />
+              </a>
+              <button
+                type="button"
+                class="ts-footer-btn ts-settings-footer-btn"
+                (click)="onSettingsClick($event)"
+                tsTooltip="Settings"
+                aria-label="Settings"
+              >
+                <ts-icon name="settings" [size]="18" />
+              </button>
+            </div>
           </div>
         </aside>
       </div>
@@ -242,6 +244,10 @@ import { ToolSettingsService } from '../../services/tool-settings.service';
 
     :host(.is-peek) {
       pointer-events: auto;
+    }
+
+    :host(.is-mobile-open) {
+      pointer-events: auto !important;
     }
 
     .ts-sidebar-card {
@@ -543,6 +549,7 @@ import { ToolSettingsService } from '../../services/tool-settings.service';
       color: var(--text-2, #52525B);
       cursor: pointer;
       text-decoration: none;
+      pointer-events: auto !important;
       transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
                   color var(--ts-dur-fast, 150ms) var(--ts-ease),
                   transform var(--ts-dur-press, 150ms) var(--ts-ease);
@@ -630,28 +637,51 @@ import { ToolSettingsService } from '../../services/tool-settings.service';
     .ts-mobile-sheet-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.75);
+      background: rgba(0, 0, 0, 0.45);
       backdrop-filter: blur(4px);
-      z-index: var(--ts-z-overlay, 40);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: var(--ts-z-overlay, 100);
       display: flex;
       justify-content: flex-start;
       animation: tsFadeIn 150ms ease-out;
+      touch-action: pan-y;
+      pointer-events: auto !important;
     }
 
     .ts-mobile-sheet-panel {
-      width: 85vw;
+      width: 86vw;
       max-width: 320px;
-      height: 100%;
-      background: var(--ts-overlay-bg);
-      -webkit-backdrop-filter: var(--ts-overlay-filter);
-      backdrop-filter: var(--ts-overlay-filter);
-      border-right: 1px solid var(--ts-overlay-border);
+      height: calc(100% - 20px);
+      margin: 10px;
+      border-radius: var(--shell-radius, 20px);
+      background: var(--bg-card, var(--card, #ffffff));
+      color: var(--text, #18181b);
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
       display: flex;
       flex-direction: column;
-      box-shadow: var(--ts-overlay-shadow, 0 10px 25px rgba(0, 0, 0, 0.2));
+      box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border, rgba(0, 0, 0, 0.08));
       animation: tsSlideIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
       touch-action: pan-y;
       will-change: transform;
+      overflow: hidden;
+      z-index: 101;
+      pointer-events: auto !important;
+    }
+
+    :host-context([data-theme="dark"]) .ts-mobile-sheet-panel,
+    [data-theme="dark"] .ts-mobile-sheet-panel {
+      background: var(--bg-card, var(--surface-1, #18181b));
+      color: var(--text, #fcfcfc);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border, rgba(255, 255, 255, 0.08));
+    }
+
+    .ts-mobile-sidebar-inner {
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
     .ts-sheet-header {
@@ -696,6 +726,7 @@ import { ToolSettingsService } from '../../services/tool-settings.service';
       outline: none;
       color: var(--text-muted, #71717A);
       cursor: pointer;
+      pointer-events: auto !important;
       transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
                   color var(--ts-dur-fast, 150ms) var(--ts-ease);
     }
@@ -842,6 +873,7 @@ import { ToolSettingsService } from '../../services/tool-settings.service';
       :host {
         display: contents !important;
         position: static !important;
+        pointer-events: auto !important;
       }
       .hide-mobile {
         display: none !important;
@@ -917,38 +949,129 @@ export class TsSidebarComponent implements OnDestroy {
     }).catch(() => { });
   }
 
-  // Touch swipe to dismiss mobile drawer
-  readonly touchTranslateX = signal<string | null>(null);
+  private readonly drawerGesture = inject(DrawerGestureService);
+
+  // Touch & pointer swipe to dismiss mobile drawer (follows finger, respects thresholds)
+  private readonly internalTouchTranslate = signal<string | null>(null);
+  readonly touchTranslateX = computed<string | null>(() => {
+    const gestureOffset = this.drawerGesture.dragTranslateX();
+    if (gestureOffset !== null) {
+      return `translateX(${gestureOffset}px)`;
+    }
+    return this.internalTouchTranslate();
+  });
+
   private touchStartX = 0;
   private touchStartY = 0;
   private isSwiping = false;
+
+  onCloseButtonClick(e: Event): void {
+    e.stopPropagation();
+    e.preventDefault();
+    this.sidebarService.closeMobileDrawer();
+  }
+
+  onSettingsClick(e: Event): void {
+    e.stopPropagation();
+    e.preventDefault();
+    this.sidebarService.closeMobileDrawer();
+    this.settingsService.open();
+  }
+
+  onHelpClick(e: MouseEvent): void {
+    e.stopPropagation();
+    this.sidebarService.closeMobileDrawer();
+    if (typeof window !== 'undefined') {
+      window.open(this.portalUrl + '/community/help', '_blank', 'noopener,noreferrer');
+    }
+  }
+
+  onPanelPointerDown(e: PointerEvent): void {
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      this.drawerGesture.startSwipeLeft(e.clientX, e.clientY, e.target as HTMLElement);
+    }
+  }
+
+  onPanelPointerMove(e: PointerEvent): void {
+    if ((e.pointerType === 'touch' || e.pointerType === 'pen') && this.drawerGesture.isDragging()) {
+      this.drawerGesture.moveSwipe(e.clientX, e.clientY, true);
+    }
+  }
+
+  onPanelPointerUp(e: PointerEvent): void {
+    if ((e.pointerType === 'touch' || e.pointerType === 'pen') && this.drawerGesture.isDragging()) {
+      const action = this.drawerGesture.endSwipe(true);
+      if (action === 'close') {
+        this.sidebarService.closeMobileDrawer();
+      }
+    }
+  }
+
+  onBackdropPointerDown(e: PointerEvent): void {
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      this.drawerGesture.startSwipeLeft(e.clientX, e.clientY, e.target as HTMLElement);
+    }
+  }
+
+  onBackdropPointerMove(e: PointerEvent): void {
+    if ((e.pointerType === 'touch' || e.pointerType === 'pen') && this.drawerGesture.isDragging()) {
+      this.drawerGesture.moveSwipe(e.clientX, e.clientY, true);
+    }
+  }
+
+  onBackdropPointerUp(e: PointerEvent): void {
+    if ((e.pointerType === 'touch' || e.pointerType === 'pen') && this.drawerGesture.isDragging()) {
+      const action = this.drawerGesture.endSwipe(true);
+      if (action === 'close') {
+        this.sidebarService.closeMobileDrawer();
+      }
+    }
+  }
 
   onTouchStart(e: TouchEvent): void {
     if (e.touches.length !== 1) return;
     this.touchStartX = e.touches[0].clientX;
     this.touchStartY = e.touches[0].clientY;
     this.isSwiping = false;
+    this.drawerGesture.startSwipeLeft(this.touchStartX, this.touchStartY, e.target as HTMLElement);
   }
 
   onTouchMove(e: TouchEvent): void {
     if (e.touches.length !== 1) return;
-    const deltaX = e.touches[0].clientX - this.touchStartX;
-    const deltaY = e.touches[0].clientY - this.touchStartY;
+    const clientX = e.touches[0].clientX;
+    const clientY = e.touches[0].clientY;
+    const deltaX = clientX - this.touchStartX;
+    const deltaY = clientY - this.touchStartY;
 
-    if (deltaX < 0 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+    if (deltaX < 0 && Math.abs(deltaX) > Math.abs(deltaY) * 1.05) {
       this.isSwiping = true;
-      this.touchTranslateX.set(`translateX(${deltaX}px)`);
+      this.internalTouchTranslate.set(`translateX(${deltaX}px)`);
+      this.drawerGesture.moveSwipe(clientX, clientY, true);
     }
   }
 
   onTouchEnd(e: TouchEvent): void {
-    if (!this.isSwiping) return;
-    const currentX = e.changedTouches[0]?.clientX || 0;
+    const currentX = e.changedTouches[0]?.clientX ?? 0;
     const deltaX = currentX - this.touchStartX;
-    this.touchTranslateX.set(null);
+    let shouldClose = false;
+
+    if (this.drawerGesture.isDragging()) {
+      const action = this.drawerGesture.endSwipe(true);
+      if (action === 'close') {
+        shouldClose = true;
+      }
+    }
+
+    if (!shouldClose && (this.isSwiping || deltaX < -35)) {
+      if (deltaX < -35) {
+        shouldClose = true;
+      }
+    }
+
+    this.internalTouchTranslate.set(null);
     this.isSwiping = false;
 
-    if (deltaX < -60) {
+    if (shouldClose) {
       this.sidebarService.closeMobileDrawer();
     }
   }

@@ -56,6 +56,10 @@ export function validateWebsite(data: WebsiteData): QRValidationResult {
     return { isValid: false, error: 'Executable schemes (javascript:, data:) are prohibited for security.' };
   }
 
+  if (rawUrl.length > MAX_URL_CHARS) {
+    return { isValid: false, error: `Website URL exceeds maximum length of ${MAX_URL_CHARS.toLocaleString()} characters.` };
+  }
+
   const warnings: string[] = [];
 
   let parsed: URL;
@@ -99,9 +103,9 @@ export function validateWebsite(data: WebsiteData): QRValidationResult {
 
 export function buildTextPayload(text: string): string {
   if (!text) return '';
-  // Strip UTF-8 BOM if present, normalize all CRLF/CR to single LF
+  // Strip UTF-8 BOM if present, normalize all CRLF/CR to single LF, and apply Unicode NFC normalization
   const clean = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  return clean.trim();
+  return clean.normalize('NFC').trim();
 }
 
 /**
@@ -131,17 +135,49 @@ export function detectPotentialTextType(text: string): 'url' | 'email' | 'phone'
   return null;
 }
 
+import {
+  MAX_TEXT_CHARS,
+  MAX_OTHER_BYTES,
+  MAX_URL_CHARS
+} from './smart-link.config';
+
+export { MAX_TEXT_CHARS, MAX_OTHER_BYTES, MAX_URL_CHARS };
+export const MAX_TEXT_BYTES = MAX_OTHER_BYTES;
+export const LARGE_TEXT_BYTES_THRESHOLD = 800;
+
+export function normalizeLineEndings(text: string): string {
+  return (text || '').replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+}
+
+export function countUtf8Bytes(text: string): number {
+  if (!text) return 0;
+  const normalized = normalizeLineEndings(text);
+  return new TextEncoder().encode(normalized).length;
+}
+
 export function validateText(text: string): QRValidationResult {
-  const trimmed = (text || '').trim();
+  const normalized = normalizeLineEndings(text);
+  const trimmed = normalized.trim();
   if (!trimmed) {
     return { isValid: false, error: 'Text content cannot be empty.' };
   }
-  if (trimmed.length > 2953) {
+
+  const charCount = normalized.length;
+  if (charCount > MAX_TEXT_CHARS) {
     return {
       isValid: false,
-      error: `Text length (${trimmed.length}) exceeds maximum QR capacity of 2,953 characters.`
+      error: `Maximum is ${MAX_TEXT_CHARS.toLocaleString()} characters.`
     };
   }
+
+  const byteCount = new TextEncoder().encode(normalized).length;
+  if (byteCount > MAX_OTHER_BYTES) {
+    return {
+      isValid: false,
+      error: 'Non-English text uses more space'
+    };
+  }
+
   return { isValid: true };
 }
 
@@ -699,7 +735,19 @@ export const SOCIAL_DOMAINS: Record<string, string[]> = {
   youtube: ['youtube.com', 'youtu.be'],
   vimeo: ['vimeo.com'],
   whatsapp: ['wa.me', 'whatsapp.com', 'api.whatsapp.com'],
-  telegram: ['t.me', 'telegram.me']
+  telegram: ['t.me', 'telegram.me'],
+  github: ['github.com'],
+  discord: ['discord.gg', 'discord.com'],
+  spotify: ['spotify.com'],
+  twitch: ['twitch.tv'],
+  snapchat: ['snapchat.com'],
+  pinterest: ['pinterest.com'],
+  reddit: ['reddit.com'],
+  threads: ['threads.net'],
+  medium: ['medium.com'],
+  behance: ['behance.net'],
+  dribbble: ['dribbble.com'],
+  custom: []
 };
 
 export function buildSocialPayload(data: SocialData): string {

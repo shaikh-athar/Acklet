@@ -57,7 +57,7 @@ class QrResolutionServiceTest {
 
         when(qrCodeRepository.findByCode("abc123")).thenReturn(Optional.of(entity));
 
-        ResponseEntity<Void> response = resolutionService.resolveShortlink("abc123", request);
+        ResponseEntity<?> response = resolutionService.resolveShortlink("abc123", request);
 
         assertEquals(HttpStatus.FOUND, response.getStatusCode());
         assertEquals(URI.create("https://destination.example.com"), response.getHeaders().getLocation());
@@ -75,7 +75,7 @@ class QrResolutionServiceTest {
 
         when(qrCodeRepository.findByCode("menu99")).thenReturn(Optional.of(entity));
 
-        ResponseEntity<Void> response = resolutionService.resolveShortlink("menu99", request);
+        ResponseEntity<?> response = resolutionService.resolveShortlink("menu99", request);
 
         assertEquals(HttpStatus.TEMPORARY_REDIRECT, response.getStatusCode());
         assertEquals(URI.create("https://acklet.dev/tools/qr-generator/view/menu99"), response.getHeaders().getLocation());
@@ -92,7 +92,7 @@ class QrResolutionServiceTest {
 
         when(qrCodeRepository.findByCode("paused1")).thenReturn(Optional.of(entity));
 
-        ResponseEntity<Void> response = resolutionService.resolveShortlink("paused1", request);
+        ResponseEntity<?> response = resolutionService.resolveShortlink("paused1", request);
 
         assertEquals(HttpStatus.TEMPORARY_REDIRECT, response.getStatusCode());
         assertEquals(URI.create("https://acklet.dev/tools/qr-generator/view/paused1?paused=true"), response.getHeaders().getLocation());
@@ -110,7 +110,7 @@ class QrResolutionServiceTest {
 
         when(qrCodeRepository.findByCode("exp123")).thenReturn(Optional.of(entity));
 
-        ResponseEntity<Void> response = resolutionService.resolveShortlink("exp123", request);
+        ResponseEntity<?> response = resolutionService.resolveShortlink("exp123", request);
 
         assertEquals(HttpStatus.TEMPORARY_REDIRECT, response.getStatusCode());
         assertEquals(URI.create("https://acklet.dev/tools/qr-generator/view/exp123?expired=true"), response.getHeaders().getLocation());
@@ -128,7 +128,7 @@ class QrResolutionServiceTest {
 
         when(qrCodeRepository.findByCode("gate77")).thenReturn(Optional.of(entity));
 
-        ResponseEntity<Void> response = resolutionService.resolveShortlink("gate77", request);
+        ResponseEntity<?> response = resolutionService.resolveShortlink("gate77", request);
 
         assertEquals(HttpStatus.TEMPORARY_REDIRECT, response.getStatusCode());
         assertEquals(URI.create("https://acklet.dev/tools/qr-generator/view/gate77?auth=required"), response.getHeaders().getLocation());

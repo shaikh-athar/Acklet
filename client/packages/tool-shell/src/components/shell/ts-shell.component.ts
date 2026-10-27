@@ -22,6 +22,7 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
 import { RevealDirective, TsRevealDirective } from '../../directives/reveal.directive';
 import { PerfFlagsService } from '../../services/perf-flags.service';
 import { TsSettingsModalComponent } from '../settings/ts-settings-modal.component';
+import { DrawerGestureService } from '../../services/drawer-gesture.service';
 
 @Component({
   selector: 'ts-shell, lib-tool-layout',
@@ -1069,6 +1070,68 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
         event.preventDefault();
         this.dismissFirstHint();
         this.sidebarState.toggle();
+      }
+    }
+  }
+
+  private readonly drawerGesture = inject(DrawerGestureService);
+
+  // Pointer & Touch Swipe Gesture for Mobile / Tablet to reveal sidebar on touch devices
+  @HostListener('pointerdown', ['$event'])
+  onShellPointerDown(e: PointerEvent): void {
+    if (!this.showSidebar() || e.pointerType !== 'touch' || this.sidebarService.isMobileDrawerOpen()) {
+      return;
+    }
+    const started = this.drawerGesture.startSwipeRight(e.clientX, e.clientY, e.target as HTMLElement);
+    if (started) {
+      this.sidebarService.isMobileDrawerOpen.set(true);
+    }
+  }
+
+  @HostListener('pointermove', ['$event'])
+  onShellPointerMove(e: PointerEvent): void {
+    if (e.pointerType === 'touch' && this.drawerGesture.isDragging()) {
+      this.drawerGesture.moveSwipe(e.clientX, e.clientY, false);
+    }
+  }
+
+  @HostListener('pointerup', ['$event'])
+  @HostListener('pointercancel', ['$event'])
+  onShellPointerUp(e: PointerEvent): void {
+    if (e.pointerType === 'touch' && this.drawerGesture.isDragging()) {
+      const action = this.drawerGesture.endSwipe(false);
+      if (action !== 'open') {
+        this.sidebarService.closeMobileDrawer();
+      }
+    }
+  }
+
+  @HostListener('touchstart', ['$event'])
+  onShellTouchStart(e: TouchEvent): void {
+    if (!this.showSidebar() || e.touches.length !== 1 || this.sidebarService.isMobileDrawerOpen()) {
+      return;
+    }
+    const touch = e.touches[0];
+    const started = this.drawerGesture.startSwipeRight(touch.clientX, touch.clientY, e.target as HTMLElement);
+    if (started) {
+      this.sidebarService.isMobileDrawerOpen.set(true);
+    }
+  }
+
+  @HostListener('touchmove', ['$event'])
+  onShellTouchMove(e: TouchEvent): void {
+    if (e.touches.length !== 1 || !this.drawerGesture.isDragging()) return;
+    const touch = e.touches[0];
+    this.drawerGesture.moveSwipe(touch.clientX, touch.clientY, false);
+  }
+
+  @HostListener('touchend', ['$event'])
+  @HostListener('touchcancel', ['$event'])
+  onShellTouchEnd(e: TouchEvent): void {
+    if (this.drawerGesture.isDragging()) {
+      const action = this.drawerGesture.endSwipe(false);
+      if (action !== 'open') {
+        this.sidebarService.closeMobileDrawer();
       }
     }
   }

@@ -52,27 +52,34 @@ return {
 | Service | File Path | Scope | Purpose |
 | :--- | :--- | :--- | :--- |
 | **`QrCodeService`** | `server/acklet/.../tools/qr/service/QrCodeService.java` | Spring `@Service` | Dynamic QR code lifecycle (creation, updates, Base62 slug generation with collision retry, BCrypt password hashing, SHA-256 manage keys). |
-| **`QrResolutionService`** | `server/acklet/.../tools/qr/service/QrResolutionService.java` | Spring `@Service` | High-speed shortlink resolver at `/q/{code}` (HTTP 302 Found for direct links, HTTP 307 for hosted viewers and password gates). |
+| **`QrResolutionService`** | `server/acklet/.../tools/qr/service/QrResolutionService.java` | Spring `@Service` | Shortlink resolver at `/q/{code}`: returns HTTP 302 Found to target URL (URL type), renders high-speed mobile-first escaped HTML with Copy/Share/Download actions (TEXT type), returns 410 Gone for expired/deleted, and 404 friendly HTML for unknown codes. Sets strict CSP, `no-cache`, and `X-Robots-Tag: noindex, nofollow`. |
+| **`QrLinkService`** | `server/acklet/.../tools/qr/service/QrLinkService.java` | Spring `@Service` | Manages hosted short links (`POST /api/v1/qr-links`), Base62 generation, reserved words defense, case-sensitive lookup verification, NFC text normalization, and rate limiting. |
+| **`QrHtmlRenderer`** | `server/acklet/.../tools/qr/util/QrHtmlRenderer.java` | Utility | Renders safe, XSS-free mobile-first HTML viewer for TEXT payloads with action controls ("Copy", "Share / Save to Notes", "Download .txt") and UTF-8 BOM encoding. |
 | **`LocalDiskQrStorageService`** | `server/acklet/.../tools/qr/storage/LocalDiskQrStorageService.java` | Spring `@Service` | Secure asset storage with path traversal defense, 20MB file boundary validation, and SHA-256 checksums. |
 | **`QrAnalyticsService`** | `server/acklet/.../tools/qr/service/QrAnalyticsService.java` | Spring `@Service` | Privacy-conscious scan telemetry using salted daily hashes (`SHA-256(ip + salt + date)`), honoring DNT and Sec-GPC. |
 
 ---
 
-## 4. Shortlink Resolution Flow (`QrResolutionService`)
+## 4. Hosted Shortlink Flow (`SmartLinkService` & `QrResolutionService`)
 
 ```mermaid
 flowchart TD
-    Scan[User Scans /q/{code}] --> Lookup[Lookup QrCodeEntity by code]
-    Lookup --> Exists{Exists?}
-    Exists -- No --> Err404[404 Not Found]
-    Exists -- Yes --> ExpCheck{Expired?}
-    ExpCheck -- Yes --> ExpNotice[307 Redirect: ?expired=true]
-    ExpCheck -- No --> PauseCheck{Status == PAUSED?}
-    PauseCheck -- Yes --> PauseNotice[307 Redirect: ?paused=true]
-    PauseCheck -- No --> Telemetry[Record Telemetry Hash & Metadata]
-    Telemetry --> PassCheck{hasPassword?}
-    PassCheck -- Yes --> PassGate[307 Redirect: ?auth=required]
-    PassCheck -- No --> TypeCheck{Landing Page Type?}
-    TypeCheck -- Yes --> Viewer[307 Redirect: /tools/qr-generator/view/:code]
-    TypeCheck -- No --> DirectUrl[302 Found: target_url]
+    UserInput[User Enters Long URL or Long Text] --> CheckSize{Exceeds Direct Capacity?}
+    CheckSize -- No --> GenDirect[Generate Direct In-Browser QR]
+    CheckSize -- Yes --> BackendReq[POST /api/v1/qr-links]
+    BackendReq --> CreateConfirm{Confirmed?}
+    CreateConfirm -- Error --> FallbackCheck{Content <= 1500 chars?}
+    FallbackCheck -- Yes --> RenderFallback[Render Static Dense QR + Retry Banner]
+    FallbackCheck -- No --> ShowError[Show Hosted Service Error + Retry Button]
+    CreateConfirm -- Success --> GenShortQR[Render QR with Short URL: /q/{code}]
+
+    Scan[User Scans QR: /q/{code}] --> Lookup[Lookup QrLinkEntity by Code]
+    Lookup --> Found{Exists?}
+    Found -- No --> Render404[Return 404 HTML Page with Friendly Notice]
+    Found -- Yes --> Expired{Expired or Deleted?}
+    Expired -- Yes --> Render410[Return 410 Gone HTML Page]
+    Expired -- No --> TypeCheck{Payload Type?}
+    TypeCheck -- URL --> Redir302[HTTP 302 Found: Redirect to Long URL]
+    TypeCheck -- TEXT --> Render200[HTTP 200 OK: Escaped HTML Mobile Viewer]
+    Render200 --> Actions[Actions: Copy, Share/Save to Notes, Download .txt]
 ```

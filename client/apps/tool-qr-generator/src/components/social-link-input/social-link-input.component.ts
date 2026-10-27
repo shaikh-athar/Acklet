@@ -97,7 +97,24 @@ export interface AddCenterIconEvent {
       </div>
 
       <!-- Center Brand Icon Prompt (Auto-suggestion) -->
-      @if (showCenterIconPrompt()) {
+      <!-- Center Brand Icon Prompt (Auto-suggestion or Active Removal) -->
+      @if (hasCenterIconActive() && selectedPlatform().iconName) {
+        <div class="center-icon-prompt is-active slide-fade-up">
+          <div class="prompt-icon-badge">
+            <app-qr-brand-icon [name]="selectedPlatform().iconName!" />
+          </div>
+          <div class="prompt-text-block">
+            <span class="prompt-title">{{ selectedPlatform().name }} logo placed in center</span>
+            <span class="prompt-desc">Logo shield is active with error correction boost.</span>
+          </div>
+          <div class="prompt-actions">
+            <button type="button" class="remove-icon-btn" (click)="triggerRemoveCenterIcon()">
+              <ts-icon name="trash-2" />
+              <span>Remove logo</span>
+            </button>
+          </div>
+        </div>
+      } @else if (showCenterIconPrompt()) {
         <div class="center-icon-prompt slide-fade-up">
           <div class="prompt-icon-badge">
             <app-qr-brand-icon [name]="selectedPlatform().iconName!" />
@@ -387,6 +404,42 @@ export interface AddCenterIconEvent {
       height: 12px;
     }
 
+    .center-icon-prompt.is-active {
+      background: var(--surface-2, rgba(255, 255, 255, 0.05));
+      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.16));
+    }
+
+    .remove-icon-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.18));
+      border-radius: 6px;
+      background: var(--surface-hover, rgba(255, 255, 255, 0.08));
+      color: var(--text, #ffffff);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+    }
+
+    .remove-icon-btn:hover {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #ef4444;
+    }
+
+    .remove-icon-btn:focus-visible {
+      outline: 2px solid #ef4444;
+      outline-offset: 2px;
+    }
+
+    .remove-icon-btn ts-icon {
+      width: 12px;
+      height: 12px;
+    }
+
     .dismiss-prompt-btn {
       display: inline-flex;
       align-items: center;
@@ -457,6 +510,7 @@ export class SocialLinkInputComponent implements OnInit {
 
   readonly valueChange = output<SocialLinkInputValue>();
   readonly addCenterIcon = output<AddCenterIconEvent>();
+  readonly removeCenterIcon = output<void>();
 
   readonly allPlatforms = ALL_SOCIAL_PLATFORMS;
   readonly selectedPlatform = signal<SocialPlatformConfig>(getSocialPlatform('instagram'));
@@ -548,12 +602,17 @@ export class SocialLinkInputComponent implements OnInit {
   triggerAddCenterIcon(): void {
     const platform = this.selectedPlatform();
     if (platform.iconName) {
+      this.dismissedPromptFor.set(platform.id);
       this.addCenterIcon.emit({
         iconId: platform.iconName,
         platformName: platform.name
       });
-      this.dismissedPromptFor.set(platform.id);
     }
+  }
+
+  triggerRemoveCenterIcon(): void {
+    this.dismissedPromptFor.set('');
+    this.removeCenterIcon.emit();
   }
 
   dismissIconPrompt(): void {
