@@ -393,7 +393,7 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
     }
 
     .ts-action-row-label {
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 14.5px;
       line-height: 20px;
       font-weight: 400;
@@ -596,7 +596,7 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
       border-radius: 8px;
       color: var(--text-muted, #71717A);
       font-size: 13px;
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-weight: 600;
       text-decoration: none;
       transition: color 150ms ease, background-color 150ms ease;
@@ -706,7 +706,7 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
     }
 
     .ts-brand-wordmark {
-      font-family: var(--font-heading, "Nunito", sans-serif);
+      font-family: var(--font-heading, "Scoutie Sans", sans-serif);
       font-size: 18px;
       font-weight: 800;
       color: var(--text);
@@ -823,7 +823,7 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
       background: var(--surface-hover, #F4F4F5);
       border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
       color: var(--text, #18181B);
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 13.5px;
       font-weight: 600;
       cursor: pointer;

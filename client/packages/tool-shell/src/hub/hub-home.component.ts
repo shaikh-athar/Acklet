@@ -14,7 +14,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { getAllTools, ToolRegistryItem } from '@acklet/tool-registry';
+import { getAllTools, ToolRegistryItem, resolveToolAccent } from '@acklet/tool-registry';
 import { getToolUrl } from '@acklet/shared';
 import { TsIconComponent } from '../components/icon/ts-icon.component';
 import { TsPillTabsComponent, PillTabItem } from '../components/primitive/ts-pill-tabs.component';
@@ -59,16 +59,7 @@ const RECENT_KEY = 'acklet.tools.recent';
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- Visual Background Layer (Hero/Header Area)              -->
-      <!-- ══════════════════════════════════════════════════════ -->
-      <div class="hub-hero-bg-layer" aria-hidden="true">
-        <div class="hub-hero-gradient"></div>
-        <div class="hub-hero-grain"></div>
-        <div class="hub-hero-veil"></div>
-      </div>
-
-      <!-- ══════════════════════════════════════════════════════ -->
-      <!-- A) FIXED TOP AREA (Sticky within Main Card)            -->
+      <!-- A) FIXED TOP AREA (Sticky Header)                      -->
       <!-- ══════════════════════════════════════════════════════ -->
       <header class="hub-header-sticky">
         <div class="hub-header-inner">
@@ -205,6 +196,16 @@ const RECENT_KEY = 'acklet.tools.recent';
                 [class.is-entering]="enteringSlugs().has(tool.slug)"
                 [class.is-leaving]="leavingSlugs().has(tool.slug)"
                 [style.--stagger-delay.ms]="idx < 8 ? idx * 30 : 240"
+                [style.--row-accent]="getToolAccent(tool).base"
+                [style.--row-accent-strong]="getToolAccent(tool).strong"
+                [style.--row-accent-soft]="getToolAccent(tool).soft"
+                [style.--row-accent-border]="getToolAccent(tool).border"
+                [style.--row-accent-glow]="getToolAccent(tool).glow"
+                [style.--accent]="getToolAccent(tool).base"
+                [style.--accent-strong]="getToolAccent(tool).strong"
+                [style.--accent-soft]="getToolAccent(tool).soft"
+                [style.--accent-border]="getToolAccent(tool).border"
+                [style.--accent-glow]="getToolAccent(tool).glow"
                 (click)="onToolClick($event, tool)"
                 (keydown)="onRowKeyDown($event, idx)"
               >
@@ -264,30 +265,23 @@ const RECENT_KEY = 'acklet.tools.recent';
       width: 100%;
       min-width: 0;
       color: var(--text, #18181B);
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       position: relative;
+      background-color: var(--page-bg, #F7F8F8);
+      min-height: 100%;
 
-      /* ══ Phase 1 Theme Tokens ══════════════════════════════════ */
-      --bg-base: #EEEDED;
-      --glow-peach: rgba(247, 214, 196, 0.85);
-      --glow-lavender: rgba(196, 190, 230, 0.75);
-      --glow-blue: rgba(99, 112, 235, 0.85);
-      --grid-line: rgba(0, 0, 0, 0.08);
-      --grid-hover: rgba(80, 90, 220, 0.35);
-      --headline-veil: rgba(255, 255, 255, 0.35);
+      /* ══ Theme Tokens ══════════════════════════════════ */
+      --bg-base: var(--page-bg, #F7F8F8);
+      --grid-line: rgba(0, 0, 0, 0.06);
     }
 
     /* Dark Mode Theming (using existing dark theme selectors) */
     :host-context([data-theme="dark"]),
     [data-theme="dark"] :host,
     :host([data-theme="dark"]) {
-      --bg-base: #0E1016;
-      --glow-peach: rgba(225, 112, 138, 0.25); /* muted rose at ~25% */
-      --glow-lavender: rgba(99, 85, 180, 0.35); /* deep violet at lower opacity */
-      --glow-blue: rgba(45, 65, 160, 0.45); /* deep navy/indigo at lower opacity */
+      background-color: var(--page-bg, #0F1011);
+      --bg-base: var(--page-bg, #0F1011);
       --grid-line: rgba(255, 255, 255, 0.07);
-      --grid-hover: rgba(140, 150, 255, 0.35);
-      --headline-veil: rgba(14, 16, 22, 0.35);
     }
 
     .sr-only {
@@ -304,8 +298,9 @@ const RECENT_KEY = 'acklet.tools.recent';
 
     .hub-page-root {
       width: 100%;
+      max-width: 1200px;
       margin: 0 auto;
-      padding: 0 4px;
+      padding: 24px 24px 48px;
       display: flex;
       flex-direction: column;
       gap: 24px;
@@ -313,7 +308,6 @@ const RECENT_KEY = 'acklet.tools.recent';
       transition: opacity 200ms ease-out;
       position: relative;
       isolation: isolate;
-      overflow-x: hidden;
     }
 
     .hub-page-root.is-navigating {
@@ -322,88 +316,15 @@ const RECENT_KEY = 'acklet.tools.recent';
     }
 
     /* ══════════════════════════════════════════════════════════ */
-    /* Premium Hero Gradient Background Layer (Phase 1)          */
-    /* ══════════════════════════════════════════════════════════ */
-    .hub-hero-bg-layer {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      width: 100%;
-      height: clamp(520px, 85vh, 760px);
-      z-index: -1;
-      pointer-events: none;
-      overflow: hidden;
-      contain: paint;
-      background-color: var(--bg-base);
-      transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease);
-    }
-
-    .hub-hero-gradient {
-      position: absolute;
-      inset: 0;
-      background-image:
-        /* peach glow center-left */
-        radial-gradient(60% 55% at 38% 60%, var(--glow-peach) 0%, transparent 70%),
-        /* lavender mid-right */
-        radial-gradient(55% 60% at 75% 70%, var(--glow-lavender) 0%, transparent 70%),
-        /* blue corner bottom-right */
-        radial-gradient(45% 55% at 100% 100%, var(--glow-blue) 0%, transparent 70%),
-        /* fade to page background at bottom edge */
-        linear-gradient(180deg, transparent 0%, transparent 60%, var(--bg-base) 100%);
-      background-repeat: no-repeat;
-    }
-
-    .hub-hero-grain {
-      position: absolute;
-      inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-      background-repeat: repeat;
-      background-size: 180px 180px;
-      opacity: 0.05;
-      mix-blend-mode: multiply;
-      pointer-events: none;
-    }
-
-    :host-context([data-theme="dark"]) .hub-hero-grain {
-      opacity: 0.04;
-      mix-blend-mode: overlay;
-    }
-
-    .hub-hero-veil {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 280px;
-      background: radial-gradient(ellipse 65% 50% at 25% 35%, var(--headline-veil) 0%, transparent 80%);
-      pointer-events: none;
-    }
-
-    @media (max-width: 640px) {
-      .hub-hero-bg-layer {
-        height: clamp(420px, 75vh, 560px);
-      }
-      .hub-hero-gradient {
-        background-image:
-          radial-gradient(75% 50% at 30% 50%, var(--glow-peach) 0%, transparent 70%),
-          radial-gradient(70% 55% at 75% 65%, var(--glow-lavender) 0%, transparent 70%),
-          radial-gradient(60% 60% at 100% 100%, var(--glow-blue) 0%, transparent 70%),
-          linear-gradient(180deg, transparent 0%, transparent 55%, var(--bg-base) 100%);
-      }
-    }
-
-    /* ══════════════════════════════════════════════════════════ */
-    /* A) FIXED TOP AREA (Sticky inside the scrolling main card) */
+    /* A) FIXED TOP AREA (Sticky Header)                         */
     /* ══════════════════════════════════════════════════════════ */
     .hub-header-sticky {
       position: sticky;
-      top: -24px; /* Matches ts-main-scroll-container top padding */
+      top: 0;
       z-index: 25;
-      background: color-mix(in srgb, var(--bg-base) 65%, transparent);
+      background: color-mix(in srgb, var(--bg-base) 85%, transparent);
       padding: 12px 0 16px;
-      margin-top: -8px;
-      border-bottom: 1px solid var(--grid-line, rgba(0, 0, 0, 0.08));
+      border-bottom: 1px solid var(--grid-line, rgba(0, 0, 0, 0.06));
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
@@ -411,7 +332,7 @@ const RECENT_KEY = 'acklet.tools.recent';
     }
 
     :host-context([data-theme="dark"]) .hub-header-sticky {
-      background: color-mix(in srgb, var(--bg-base) 65%, transparent);
+      background: color-mix(in srgb, var(--bg-base) 85%, transparent);
       border-bottom-color: var(--grid-line, rgba(255, 255, 255, 0.07));
     }
 
@@ -445,7 +366,7 @@ const RECENT_KEY = 'acklet.tools.recent';
     }
 
     .hub-heading {
-      font-family: var(--font-heading, "Nunito", sans-serif);
+      font-family: var(--font-heading, "Scoutie Sans", sans-serif);
       font-size: clamp(24px, 2rem, 30px);
       font-weight: 800;
       color: var(--text, #09090B);
@@ -697,6 +618,7 @@ const RECENT_KEY = 'acklet.tools.recent';
     }
 
     /* Spotlight layer following cursor inside row */
+    /* Spotlight layer following cursor inside row */
     .hub-spotlight-layer {
       position: absolute;
       inset: 0;
@@ -704,7 +626,7 @@ const RECENT_KEY = 'acklet.tools.recent';
       opacity: 0;
       background: radial-gradient(
         260px circle at var(--mx, -999px) var(--my, -999px),
-        rgba(0, 0, 0, 0.04),
+        var(--row-accent-soft, rgba(0, 0, 0, 0.04)),
         transparent 70%
       );
       transition: opacity 180ms ease;
@@ -714,56 +636,52 @@ const RECENT_KEY = 'acklet.tools.recent';
     :host-context([data-theme="dark"]) .hub-spotlight-layer {
       background: radial-gradient(
         260px circle at var(--mx, -999px) var(--my, -999px),
-        rgba(255, 255, 255, 0.06),
+        var(--row-accent-soft, rgba(255, 255, 255, 0.06)),
         transparent 70%
       );
     }
 
-    /* Calm Grayscale Hover: Pointer devices only */
+    /* Hover state with Tool Accent preservation: Pointer devices only */
     @media (hover: hover) {
       .hub-tool-row-link:hover {
-        background: var(--surface-hover, #F4F4F5);
-        border-color: var(--border, rgba(0, 0, 0, 0.07));
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+        background: var(--surface-hover, #F8F9FA);
+        background: color-mix(in srgb, var(--row-accent, #71717A) 3.5%, var(--surface, #FFFFFF));
+        border-color: var(--row-accent-border, var(--border, rgba(0, 0, 0, 0.09)));
+        box-shadow: 0 4px 14px var(--row-accent-glow, rgba(0, 0, 0, 0.04));
         transform: translateY(-1px);
       }
 
       :host-context([data-theme="dark"]) .hub-tool-row-link:hover {
-        background: var(--surface-hover, #1E1E22);
-        border-color: var(--border, rgba(255, 255, 255, 0.06));
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+        background: var(--surface-hover, #18191B);
+        background: color-mix(in srgb, var(--row-accent, #FFFFFF) 5%, var(--surface, #141414));
+        border-color: var(--row-accent-border, rgba(255, 255, 255, 0.12));
+        box-shadow: 0 4px 14px var(--row-accent-glow, rgba(0, 0, 0, 0.3));
         transform: translateY(-1px);
       }
 
       .hub-tool-row-link:hover .hub-spotlight-layer {
-        opacity: 1;
+        opacity: 0.55;
       }
 
-      /* Icon tile turns solid black with white icon on row hover (220ms) */
+      /* Keep the accent color of that tool on hover */
       .hub-tool-row-link:hover .hub-row-icon-tile :first-child {
-        background: #000000 !important;
-        border-color: #000000 !important;
-        color: #FFFFFF !important;
+        background: var(--row-accent-soft, var(--accent-soft)) !important;
+        border-color: var(--row-accent, var(--accent-strong)) !important;
+        color: var(--row-accent-strong, var(--accent-strong)) !important;
+        box-shadow: 0 0 0 3px var(--row-accent-soft, var(--accent-soft)), 0 4px 12px var(--row-accent-glow, var(--accent-glow)) !important;
+        transform: scale(1.03);
         transition: all 220ms cubic-bezier(0.16, 1, 0.3, 1) !important;
       }
 
-      :host-context([data-theme="dark"]) .hub-tool-row-link:hover .hub-row-icon-tile :first-child {
-        background: #FFFFFF !important;
-        border-color: #FFFFFF !important;
-        color: #000000 !important;
+      .hub-tool-row-link:hover .hub-star-btn {
+        opacity: 1;
       }
 
-      /* Arrow icon slides 4px right and fades in */
+      /* Arrow icon shifts slightly and adopts tool accent color */
       .hub-tool-row-link:hover .hub-open-arrow {
-        color: var(--text, #18181B);
+        color: var(--row-accent-strong, var(--accent-strong, var(--text)));
         opacity: 1;
-        transform: translateX(4px);
-      }
-
-      :host-context([data-theme="dark"]) .hub-tool-row-link:hover .hub-open-arrow {
-        color: #FFFFFF;
-        opacity: 1;
-        transform: translateX(4px);
+        transform: translate(2px, -2px);
       }
     }
 
@@ -788,18 +706,53 @@ const RECENT_KEY = 'acklet.tools.recent';
       outline-color: var(--ts-focus-ring, #E4E4E7) !important;
     }
 
+    /* Spartan hlm-item slot layout rules */
+    .hub-tool-row-link hlm-item-media,
+    .hub-tool-row-link [data-slot="item-media"] {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 2;
+    }
+
+    .hub-tool-row-link hlm-item-content,
+    .hub-tool-row-link [data-slot="item-content"] {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      flex: 1 1 0%;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      position: relative;
+      z-index: 2;
+    }
+
+    .hub-tool-row-link hlm-item-actions,
+    .hub-tool-row-link [data-slot="item-actions"] {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+      margin-left: auto;
+      position: relative;
+      z-index: 3;
+    }
+
     .hub-row-title-line {
       display: flex;
       align-items: center;
       gap: 8px;
-      flex-wrap: wrap;
       min-width: 0;
+      max-width: 100%;
       position: relative;
       z-index: 2;
     }
 
     .hub-tool-name {
-      font-family: var(--font-heading, "Nunito", sans-serif);
+      font-family: var(--font-heading, "Scoutie Sans", sans-serif);
       font-size: 15px;
       font-weight: 700;
       color: var(--text, #18181B);
@@ -807,6 +760,8 @@ const RECENT_KEY = 'acklet.tools.recent';
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      min-width: 0;
+      max-width: 100%;
       line-height: 1.25;
     }
 
@@ -815,12 +770,15 @@ const RECENT_KEY = 'acklet.tools.recent';
     }
 
     .hub-tool-desc {
+      display: block;
       font-size: 13px;
       color: var(--text-muted, #71717A);
       line-height: 1.4;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      min-width: 0;
+      max-width: 100%;
       margin: 2px 0 0;
       position: relative;
       z-index: 2;
@@ -857,22 +815,30 @@ const RECENT_KEY = 'acklet.tools.recent';
       border-radius: var(--ts-radius-full, 9999px);
       background: transparent;
       border: none;
-      color: var(--text-muted, #A1A1AA);
+      color: var(--text-muted, #71717A);
+      opacity: 0.8;
       cursor: pointer;
       outline: none;
       position: relative;
       z-index: 3;
-      transition: color 150ms ease, transform 150ms ease, background-color 150ms ease;
+      flex-shrink: 0;
+      transition: color 150ms ease, transform 150ms ease, background-color 150ms ease, opacity 150ms ease;
     }
 
     .hub-star-btn:hover {
       color: var(--text, #18181B);
-      background: rgba(0, 0, 0, 0.04);
+      opacity: 1;
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    :host-context([data-theme="dark"]) .hub-star-btn {
+      color: var(--text-muted, #A1A1AA);
     }
 
     :host-context([data-theme="dark"]) .hub-star-btn:hover {
       color: #FFFFFF;
-      background: rgba(255, 255, 255, 0.06);
+      opacity: 1;
+      background: rgba(255, 255, 255, 0.07);
     }
 
     .hub-star-btn:active {
@@ -881,6 +847,7 @@ const RECENT_KEY = 'acklet.tools.recent';
 
     .hub-star-btn.is-favorite {
       color: #F59E0B !important; /* Gold favorite star */
+      opacity: 1 !important;
       animation: starPop 280ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
@@ -890,11 +857,17 @@ const RECENT_KEY = 'acklet.tools.recent';
       justify-content: center;
       width: 28px;
       height: 28px;
-      color: var(--text-muted, #A1A1AA);
-      opacity: 0.6;
+      color: var(--text-muted, #71717A);
+      opacity: 0.75;
       position: relative;
       z-index: 2;
+      flex-shrink: 0;
       transition: color 220ms ease, transform 220ms ease, opacity 220ms ease;
+    }
+
+    :host-context([data-theme="dark"]) .hub-open-arrow {
+      color: var(--text-muted, #A1A1AA);
+      opacity: 0.8;
     }
 
     /* Soft Search Match Highlight */
@@ -1018,6 +991,18 @@ const RECENT_KEY = 'acklet.tools.recent';
 export class HubHomeComponent implements OnInit, OnDestroy {
   private readonly zone: NgZone;
   private readonly el: ElementRef<HTMLElement>;
+  private readonly themeService = inject(ToolThemeService);
+
+  getToolAccent(tool: ToolRegistryItem) {
+    let mode: 'dark' | 'light' = 'light';
+    if (this.themeService) {
+      mode = this.themeService.effectiveTheme() === 'dark' ? 'dark' : 'light';
+    } else if (typeof document !== 'undefined') {
+      mode = (document.documentElement.getAttribute('data-theme') === 'dark' ||
+              document.body?.getAttribute('data-theme') === 'dark') ? 'dark' : 'light';
+    }
+    return resolveToolAccent(tool, mode);
+  }
 
   constructor(zone?: NgZone, el?: ElementRef<HTMLElement>) {
     try {
@@ -1270,7 +1255,6 @@ export class HubHomeComponent implements OnInit, OnDestroy {
   }
 
   private readonly capsuleService = inject(ToolCapsuleService);
-  private readonly themeService = inject(ToolThemeService);
 
   getToolHref(slug: string): string {
     return getToolUrl(slug);

@@ -55,7 +55,7 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
           }
         </div>
 
-        <!-- Text Stack: Title (Nunito 18px semibold) + Description (Nunito 14-15px, up to 3 lines) -->
+        <!-- Text Stack: Title (Scoutie Sans 18px semibold) + Description (Scoutie Sans 14-15px, up to 3 lines) -->
         <div class="ts-card-text-stack">
           <h3 class="ts-card-title">{{ tool().name }}</h3>
           <p class="ts-card-description">{{ tool().shortDescription }}</p>
@@ -137,7 +137,7 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
     }
 
     .ts-tile-fallback {
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 18px;
       font-weight: 700;
       text-transform: uppercase;
@@ -157,7 +157,7 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
     }
 
     .ts-card-title {
-      font-family: var(--font-heading, "Nunito", sans-serif);
+      font-family: var(--font-heading, "Scoutie Sans", sans-serif);
       font-size: 18px;
       font-weight: 600;
       color: var(--text, #0D0D0D);
@@ -167,7 +167,7 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
     }
 
     .ts-card-description {
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 14.5px;
       line-height: 1.5;
       color: var(--text-muted, #6B6B6B);

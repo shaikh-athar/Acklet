@@ -377,7 +377,7 @@ export interface SectionNavLink {
     }
 
     .ts-brand-wordmark {
-      font-family: var(--font-heading, "Nunito", sans-serif);
+      font-family: var(--font-heading, "Scoutie Sans", sans-serif);
       font-size: 18px;
       font-weight: 800;
       color: var(--text);
@@ -462,7 +462,7 @@ export interface SectionNavLink {
       align-items: center;
       padding: 5px 14px;
       border-radius: var(--ts-radius-full, 9999px);
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 13.5px;
       font-weight: 500;
       color: var(--text-muted, #71717A);
@@ -515,7 +515,7 @@ export interface SectionNavLink {
       background: transparent;
       border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
       color: var(--text-muted, #71717A);
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
@@ -654,7 +654,7 @@ export interface SectionNavLink {
       border: none;
       background: transparent;
       color: var(--text, #18181b);
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
@@ -756,7 +756,7 @@ export interface SectionNavLink {
       align-items: center;
       gap: 12px;
       color: var(--text, #18181b);
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 14px;
       font-weight: 500;
     }
@@ -858,7 +858,7 @@ export interface SectionNavLink {
       }
 
       .ts-nav-sheet-title {
-        font-family: var(--font-heading, "Nunito", sans-serif);
+        font-family: var(--font-heading, "Scoutie Sans", sans-serif);
         font-size: 16px;
         font-weight: 700;
         color: var(--text);
@@ -1083,7 +1083,7 @@ export interface SectionNavLink {
       border-radius: var(--ts-radius-full, 9999px);
       background: var(--text, #18181B);
       color: var(--bg, #FFFFFF);
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 13.5px;
       font-weight: 600;
       text-decoration: none;

@@ -1,5 +1,5 @@
 /* packages/tool-shell/src/styles/tokens.css */
-@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300..900;1,300..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Scoutie+Sans:ital,wght@0,200..800;1,200..800&display=swap');
 
 :root,
 html[data-theme="dark"],
@@ -18,12 +18,10 @@ html[data-theme="dark"],
   --ts-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --ts-ease: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* ══ TYPOGRAPHY (Single Font: Nunito) ══════════════════════════════ */
-  --font-heading: 'Nunito', system-ui, -apple-system, sans-serif;
-  --font-body: 'Nunito', system-ui, -apple-system, sans-serif;
-  --ts-font-sans: 'Nunito', system-ui, -apple-system, sans-serif;
-  --ts-font-heading: 'Nunito', system-ui, -apple-system, sans-serif;
-  --ts-font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* ══ TYPOGRAPHY (Single Unified Tool Font: Scoutie Sans) ═══════════ */
+  --ts-font-sans: 'Scoutie Sans', sans-serif;
+  --ts-font-heading: 'Scoutie Sans', sans-serif;
+  --ts-font-mono: 'Geist Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* ══ TYPE SCALE ═════════════════════════════════════════════════════
      Page title: 28/34 weight 650, letter-spacing -0.02em, color --text.
@@ -1000,6 +998,27 @@ html[data-theme="light"],
 }
 
 /* ============================================================
+   TOOL SCOPED TYPOGRAPHY & UTILITIES (Tools & Tools Hub only)
+   ============================================================ */
+.ts-root,
+.hub-page-root,
+[data-tool],
+[data-slot="tool-shell"],
+body.is-tool-page {
+  font-family: var(--ts-font-sans, "Scoutie Sans", sans-serif);
+  font-optical-sizing: auto;
+  --font-heading: "Scoutie Sans", sans-serif;
+  --font-body: "Scoutie Sans", sans-serif;
+  --font-sans: "Scoutie Sans", sans-serif;
+}
+
+.scoutie-sans {
+  font-family: "Scoutie Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-style: normal;
+}
+
+/* ============================================================
    TAILWIND CSS V4 THEME BINDINGS FOR TOOL SHELL & TOOLS
    ============================================================ */
 @theme {
@@ -1023,7 +1042,7 @@ html[data-theme="light"],
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
-  --font-sans: var(--ts-font-sans);
-  --font-heading: var(--ts-font-heading);
+  --font-tool-sans: var(--ts-font-sans);
+  --font-tool-heading: var(--ts-font-heading);
   --font-mono: var(--ts-font-mono);
 }
