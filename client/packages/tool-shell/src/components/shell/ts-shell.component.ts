@@ -807,13 +807,16 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
       box-shadow: none !important;
     }
 
-    .ts-tool-card-surface.full-bleed > * {
-      width: 100%;
-      height: 100%;
-      min-height: 0;
-      flex: 1 1 0%;
-      display: flex;
-      flex-direction: column;
+    .ts-tool-card-surface.full-bleed > *,
+    ::ng-deep .ts-tool-card-surface.full-bleed > *,
+    ::ng-deep .ts-tool-card-surface.full-bleed app-json-lens,
+    ::ng-deep .ts-tool-card-surface.full-bleed app-clipboard-tool {
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 0 !important;
+      flex: 1 1 0% !important;
+      display: flex !important;
+      flex-direction: column !important;
     }
 
     /* Cleanly hide duplicate header & trust chips if present in tool child template */
@@ -966,6 +969,7 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly tool = input<ToolRegistryItem | null>(null);
   readonly config = input<ToolShellConfig | null>(null);
   readonly surface = input<'clear' | 'frost' | 'tinted' | 'solid'>('clear');
+  readonly activeTab = input<string | undefined>(undefined);
   readonly tabChange = output<string>();
 
   readonly mainCard = viewChild<ElementRef<HTMLElement>>('mainCard');
@@ -1310,6 +1314,10 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   });
 
   readonly activeTabId = computed<string>(() => {
+    const ext = this.activeTab();
+    if (ext) {
+      return ext;
+    }
     if (this.internalActiveTab()) {
       return this.internalActiveTab();
     }

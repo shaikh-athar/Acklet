@@ -2,10 +2,12 @@
 import type { ToolRegistryItem } from './models';
 import { CLIPBOARD_MANIFEST } from './manifests/clipboard.manifest';
 import { QR_MANIFEST } from './manifests/qr.manifest';
-import { AMBER_ACCENT, BLUE_ACCENT, ROSE_ACCENT, VIOLET_ACCENT } from './accent-presets';
+import { DATALENS_MANIFEST } from './manifests/datalens.manifest';
+import { AMBER_ACCENT, BLUE_ACCENT, ROSE_ACCENT, VIOLET_ACCENT, EMERALD_ACCENT } from './accent-presets';
 
 export { CLIPBOARD_MANIFEST } from './manifests/clipboard.manifest';
 export { QR_MANIFEST } from './manifests/qr.manifest';
+export { DATALENS_MANIFEST } from './manifests/datalens.manifest';
 
 /**
  * Single Source of Truth for all tools in Acklet.
@@ -13,44 +15,8 @@ export { QR_MANIFEST } from './manifests/qr.manifest';
 export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
   'clipboard': CLIPBOARD_MANIFEST,
   'qr': QR_MANIFEST,
-  'json-formatter': {
-    id: 'json-formatter',
-    name: 'JSON Formatter',
-    slug: 'json-formatter',
-    category: 'Formatters',
-    categorySlug: 'formatters',
-    shortDescription: 'Beautify, minify, and validate JSON with real-time error detection.',
-    about: 'JSON Formatter is a fast, keyboard-friendly editor to format, validate, and minify JSON payloads in your browser.',
-    description: 'Clean up messy JSON, minify for production payloads, and detect syntax errors with line-level indicators.',
-    icon: 'braces',
-    version: '1.0.0',
-    status: 'live',
-    badge: 'updated',
-    featured: true,
-    order: 2,
-    subdomain: 'json-formatter',
-    executionMode: 'browser',
-    accentHue: 28,
-    features: ['Runs offline in browser', 'Syntax error locator', 'Minify & beautify', 'No data stored'],
-    howTo: [
-      'Paste your raw JSON into the editor.',
-      'Click Format to beautify or Minify to compress.',
-      'Copy the formatted output with one click.'
-    ],
-    faqs: [
-      {
-        id: 'json-privacy',
-        question: 'Is my JSON uploaded anywhere?',
-        answer: 'No. All formatting and validation executes entirely in your browser memory.'
-      }
-    ],
-    related: ['jwt-inspector', 'clipboard', 'base64-encoder'],
-    seo: {
-      title: 'JSON Formatter & Validator | Acklet',
-      description: 'Format, validate and minify JSON in your browser with zero latency.',
-      keywords: ['json formatter', 'json validator', 'beautify json']
-    }
-  },
+  'datalens': DATALENS_MANIFEST,
+  'json-formatter': DATALENS_MANIFEST,
   'jwt-inspector': {
     id: 'jwt-inspector',
     name: 'JWT Inspector',
@@ -164,13 +130,27 @@ export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
 };
 
 export function getAllTools(): ToolRegistryItem[] {
-  return Object.values(TOOL_REGISTRY).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
+  const seen = new Set<string>();
+  const list: ToolRegistryItem[] = [];
+  for (const tool of Object.values(TOOL_REGISTRY)) {
+    if (!seen.has(tool.id)) {
+      seen.add(tool.id);
+      list.push(tool);
+    }
+  }
+  return list.sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
 }
 
 export function getToolsByCategory(category: string, excludeSlug?: string): ToolRegistryItem[] {
-  return Object.values(TOOL_REGISTRY).filter(
-    tool => tool.category.toLowerCase() === category.toLowerCase() && tool.slug !== excludeSlug
-  );
+  const seen = new Set<string>();
+  const list: ToolRegistryItem[] = [];
+  for (const tool of Object.values(TOOL_REGISTRY)) {
+    if (!seen.has(tool.id) && tool.category.toLowerCase() === category.toLowerCase() && tool.slug !== excludeSlug) {
+      seen.add(tool.id);
+      list.push(tool);
+    }
+  }
+  return list;
 }
 
 export function getToolBySlug(slug: string): ToolRegistryItem | undefined {

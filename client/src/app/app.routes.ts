@@ -39,6 +39,20 @@ export const routes: Routes = [
   },
   { path: 'tools/online-clipboard', redirectTo: 'tools/clipboard', pathMatch: 'full' },
   { path: 'tools/app/airvault', redirectTo: 'tools/clipboard', pathMatch: 'full' },
+  {
+    path: 'datalens',
+    loadComponent: () => import('../../apps/tool-datalens/src/app/app.component').then(m => m.AppComponent),
+    title: 'DataLens (JSON Formatter) — Acklet'
+  },
+  { path: 'data-lens', redirectTo: 'datalens', pathMatch: 'full' },
+  { path: 'json-formatter', redirectTo: 'datalens', pathMatch: 'full' },
+  {
+    path: 'tools/datalens',
+    loadComponent: () => import('../../apps/tool-datalens/src/app/app.component').then(m => m.AppComponent),
+    title: 'DataLens (JSON Formatter) — Acklet'
+  },
+  { path: 'tools/data-lens', redirectTo: 'tools/datalens', pathMatch: 'full' },
+  { path: 'tools/app/datalens', redirectTo: 'tools/datalens', pathMatch: 'full' },
 
   // --- Public Pages under main header/navbar layout ---
   {

@@ -137,7 +137,28 @@ import {
   LucideLocateFixed,
   LucideLink2Off,
   LucideScanEye,
-  LucideSquarePen
+  LucideSquarePen,
+  LucideArrowUpDown,
+  LucideBarChart2,
+  LucideChevronsUpDown,
+  LucideColumns,
+  LucideCornerUpLeft,
+  LucideFileCode2,
+  LucideFileInput,
+  LucideFileJson,
+  LucideFolderTree,
+  LucideGitCompare,
+  LucideMinimize2,
+  LucideNetwork,
+  LucideRepeat,
+  LucideRotateCcw,
+  LucideRotateCw,
+  LucideRuler,
+  LucideSearchCode,
+  LucideShieldAlert,
+  LucideWand2,
+  LucideZoomIn,
+  LucideZoomOut
 } from '@lucide/angular';
 
 import {
@@ -774,5 +795,74 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   },
   'grid-circles': {
     lucide: LucideLayoutGridCircles
+  },
+  'arrow-up-down': {
+    lucide: LucideArrowUpDown
+  },
+  'bar-chart-2': {
+    lucide: LucideBarChart2
+  },
+  'chevrons-up-down': {
+    lucide: LucideChevronsUpDown
+  },
+  columns: {
+    lucide: LucideColumns
+  },
+  'corner-up-left': {
+    lucide: LucideCornerUpLeft
+  },
+  'file-code-2': {
+    lucide: LucideFileCode2
+  },
+  'file-input': {
+    lucide: LucideFileInput
+  },
+  'file-json': {
+    lucide: LucideFileJson
+  },
+  'folder-tree': {
+    lucide: LucideFolderTree
+  },
+  'git-diff': {
+    lucide: LucideGitCompare
+  },
+  'git-compare': {
+    lucide: LucideGitCompare
+  },
+  'minimize-2': {
+    lucide: LucideMinimize2
+  },
+  network: {
+    lucide: LucideNetwork
+  },
+  repeat: {
+    lucide: LucideRepeat
+  },
+  'rotate-ccw': {
+    lucide: LucideRotateCcw
+  },
+  'rotate-cw': {
+    lucide: LucideRotateCw
+  },
+  ruler: {
+    lucide: LucideRuler
+  },
+  'search-code': {
+    lucide: LucideSearchCode
+  },
+  'shield-alert': {
+    lucide: LucideShieldAlert
+  },
+  wand: {
+    lucide: LucideWand2
+  },
+  'wand-2': {
+    lucide: LucideWand2
+  },
+  'zoom-in': {
+    lucide: LucideZoomIn
+  },
+  'zoom-out': {
+    lucide: LucideZoomOut
   }
 };
