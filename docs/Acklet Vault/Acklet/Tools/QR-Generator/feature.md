@@ -1,7 +1,7 @@
 ---
 tool: QR Generator
-phase: 1
-last-updated: 2026-10-20
+phase: 3
+last-updated: 2026-10-28
 status: Complete
 ---
 
@@ -11,257 +11,228 @@ status: Complete
 
 | Feature ID | Feature Name | Description | Status |
 | :--- | :--- | :--- | :--- |
-| **QR-F01** | Multi-Type Content Input | Text, URL, Email, and Phone with live formatting and validation | **Implemented** |
-| **QR-F02** | Type-Aware Fast Presets | Quick switching between URL, Email, and Phone with sample placeholders | **Implemented** |
-| **QR-F03** | Dual-Tone Color Customization | Native color pickers, normalized hex inputs, swap button, and 4 preset pairs | **Implemented** |
+| **QR-F01** | Multi-Type Content Input | 12 structured content types with live formatting, validation, and plain text notes link mode | **Implemented** |
+| **QR-F02** | Type-Aware Fast Presets | Quick demo samples for URL, Wi-Fi, vCard, Event, and Crypto | **Implemented** |
+| **QR-F03** | Color & Gradient Customization | Solid, Linear Gradient, and Radial Gradient modes with 0–360° angle rotation, dual stops, and presets | **Implemented** |
 | **QR-F04** | WCAG AA/AAA Contrast Guard | Mathematical relative luminance check with < 2.5:1 scanner warning alert | **Implemented** |
-| **QR-F05** | Resolution Range Slider & Chips | Continuous 100–2000px slider (50px steps) plus 4 quick resolution chips | **Implemented** |
-| **QR-F06** | Error Correction Selector | L (7%), M (15% recommended), Q (25%), and H (30%) recovery modes | **Implemented** |
-| **QR-F07** | Dynamic ISO/IEC 18004 Metadata | Dynamic Version (1–40), Capacity, Used Bytes, and animated Emerald Progress Bar | **Implemented** |
-| **QR-F08** | In-Browser PNG, SVG & JPEG Download | One-click instant export in PNG, scalable vector SVG, or JPEG format | **Implemented** |
-| **QR-F09** | Dual-Theme High Contrast UI | Full high-contrast legibility across Light and Dark themes via tokens | **Implemented** |
-| **QR-F10** | 12 Complete Content Types & Builders | Dedicated structured forms & pure builders for URL, Text, Email, Phone, SMS, Wi-Fi, Geo, Event, vCard, Social, App Store, and Crypto | **Implemented** |
-| **QR-F11** | Client-Side Scannability Verifier | In-browser camera-grade QR decode testing via `jsqr` with diagnostic payload matching | **Implemented** |
-| **QR-F12** | Hosted Dynamic QR Code Shortlinks | Spring Boot `/q/{code}` shortlinks with Base62 slugs and HTTP 302/307 redirection | **Implemented** |
+| **QR-F05** | Resolution Range Slider & Chips | Continuous 100–2000px slider plus 4 quick resolution chips (Small 256px, Medium 512px, Large 1024px, Print 2048px) | **Implemented** |
+| **QR-F06** | Error Correction Selector | L (7%), M (15% recommended), Q (25%), and H (30%) recovery modes with automatic logo boost | **Implemented** |
+| **QR-F07** | Dynamic ISO/IEC 18004 Metadata | Dynamic Version (1–40), Capacity, Used Bytes, and animated Progress Bar | **Implemented** |
+| **QR-F08** | In-Browser Multi-Format Download | Scalable vector SVG, lossless PNG, JPEG, and direct image clipboard copy | **Implemented** |
+| **QR-F09** | Dual-Theme High Contrast UI | Canonical Acklet Scoutie Sans font, Blue accent (`#3B82F6`), and dual-theme tokens | **Implemented** |
+| **QR-F10** | 12 Complete Content Types & Builders | Dedicated structured forms and pure RFC payload builders for all 12 types | **Implemented** |
+| **QR-F11** | Multi-Pass Scannability Verifier | In-browser 4-pass decoding engine powered by `jsQR` with diagnostic payload matching | **Implemented** |
+| **QR-F12** | Hosted Dynamic QR Code Shortlinks | Spring Boot `/q/{code}` shortlinks with Base62 slugs, device-aware routing, and HTTP 302/307 redirects | **Implemented** |
 | **QR-F13** | Anonymous Manage Key Authorization | Secret 256-bit manage keys with SHA-256 storage allowing editing without an account | **Implemented** |
 | **QR-F14** | Privacy-Preserving Scan Telemetry | Salted daily visitor hashes, country, device, OS, and browser tracking respecting DNT/GPC | **Implemented** |
 | **QR-F15** | Dynamic QR Manager & Inline Editor | Drawer for updating destination URLs anytime, toggling pause/resume, and viewing analytics | **Implemented** |
-| **QR-F16** | Hosted Landing Page Viewer & Asset Types | Responsive viewer at `/tools/qr-generator/view/:code` for PDF, Menu, Coupon, vCard, Multi-URL | **Implemented** |
+| **QR-F16** | Hosted Landing Page Viewer & Types | Responsive viewer at `/tools/qr-generator/view/:code` for PDF, Menu, Coupon, vCard, Multi-URL | **Implemented** |
 | **QR-F17** | Hosted Dynamic QR Creator Drawer | Direct creation of hosted PDF, Menu, Coupon, vCard, and Multi-URL dynamic codes | **Implemented** |
 | **QR-F18** | Dynamic QR Passcode Gate | Optional client-side PIN/passcode verification before unlocking private hosted content | **Implemented** |
-| **QR-F19** | Decorative Frames & CTA Borders | Vector frames (Bottom Banner, Top Header, Polaroid, Badge Pill, Chat Bubble) with custom CTA captions | **Implemented** |
+| **QR-F19** | Decorative Frames & CTA Ribbons | 18+ vector frames (`bottom-banner`, `top-header`, `polaroid`, `badge-pill`, `chat-bubble`, etc.) with custom CTA captions | **Implemented** |
 | **QR-F20** | Batch QR Code Generation | Client-side bulk generation from CSV or text list with live progress and ZIP archive download | **Implemented** |
-| **QR-F21** | Overall Shape Engine | 12 geometric overall shapes (Circle, Heart, Star, Hexagon, Diamond, Shield, Drop, Speech Bubble, Badge, Ticket) across Around, Badge, and Trim modes | **Removed** |
-| **QR-F22** | Brand Name & Brand Artwork | Custom brand typography (8 Google Fonts), client-side verified image silhouettes, and brand tab customizer | **Removed** |
-| **QR-F23** | Calm Scan Confidence & Auto-Fix | Calm scan confidence rating chip (High, Medium, Low), one-click automatic fix, and ready-made presets | **Implemented** |
+| **QR-F21** | Module & Corner Shape Styling | 11 dot styles, 8 corner locator squares, and 10 corner dots with independent coloring | **Implemented** |
+| **QR-F22** | Logo Embedding & Auto EC Boost | Custom image upload (PNG/SVG/JPEG), 20+ brand presets, transparent background toggle, and auto EC boost to H/Q | **Implemented** |
+| **QR-F23** | Calm Scan Confidence & Auto-Fix | Calm scan confidence rating chip (High, Medium, Low), diagnostic tips, and one-click automatic fix | **Implemented** |
 
 ---
 
 ## 2. Detailed Feature Behavior
 
-### QR-F01: Multi-Type Content Input
-- **Purpose**: Allow users to encode text or standardized protocol strings without needing to memorize protocol syntax.
-- **User Interaction**:
-  - Selecting content type via tab buttons updates placeholder text, character limits, and validation rules.
-  - Typing in the multi-line textarea updates character count in real time.
-  - **Plain Text Limits & Live Counter**:
-    - Max 2,000 characters and 2,300 UTF-8 bytes cap (enforced using `TextEncoder`).
-    - Live counter: `{{ textCharCountFormatted() }} / 2,000 characters`.
-    - Warning banner if byte cap is hit first (Hindi, emojis, multi-byte text): *"Non-English text uses more space"*.
-    - Error banner if character limit is exceeded: *"Maximum is 2,000 characters"*.
-    - Scannability hint above ~800 bytes: *"Large codes are harder to scan. Try Notes link mode."*.
-  - **Plain Text Two Modes**:
-    - **Direct text** (default): Encodes raw normalized text directly into the QR code with Error Correction held at level `M`. Helper text: *"After scanning, tap Copy or Share and choose Notes. Opening a notes app automatically is not possible with plain QR codes."*
-    - **Hosted short-link text mode** (`POST /api/v1/qr-links`): Automatically engaged or manually selected when text exceeds scannability threshold (300 chars, up to 20,000 chars).
-      - Encodes a compact short URL (`/q/{code}`) into the QR matrix, keeping QR density light and scannable.
-      - "Create-then-generate" flow ensures QR is only displayed after the backend confirms link persistence.
-      - Resolves to a clean, mobile-first responsive HTML viewer page with "Copy", "Share / Save to Notes" (Web Share API with fallback to copy), and "Download .txt" controls.
-      - Explanatory note: *"Hint: Tap 'Share / Save to Notes' to pick Apple Notes, Google Keep, or any notepad app."*
-      - Offline/network failure fallback: Renders static high-density QR if payload <= 1500 chars with an inline warning and "Retry" action. Otherwise displays clear error state with "Retry".
-- **Processing Flow**:
-  1. Content is validated against the active type (`text`, `url`, `email`, `phone`, `sms`, `wifi`, `geo`, `event`, `vcard`, `social`, `app`, `crypto`).
-  2. If invalid, an inline error is displayed below the textarea and QR generation is paused.
-  3. If valid, payload formatter prepends appropriate protocol (`mailto:`, `tel:`, `smsto:`, `WIFI:`, `geo:`, etc.) or formats raw URL/text.
-- **Edge Cases**:
-  - Whitespace-only input: Clears error and renders the empty state placeholder.
-  - Multi-line text: Normalizes CRLF and CR line breaks to standard `\n` without data loss.
+### QR-F01: Multi-Type Content Input & Plain Text Dual Mode
+- **Purpose**: Allow users to encode structured data or plain notes without memorizing protocol schemas.
+- **Content Types Supported**: Website URL, Plain Text, Email, Phone, SMS, Wi-Fi, Location / Geo, Calendar Event, vCard 3.0, Social Profile, App Store, and Crypto Wallet.
+- **Type Selection**: Accessible centered dropdown trigger matching input panel width with instant search filter, type icon badges, and keyboard navigation.
+- **Plain Text Dual Modes**:
+  - **Direct Text Mode (Default)**: Directly encodes raw UTF-8 text into the QR code matrix (up to 2,000 characters and 2,300 bytes enforced via `TextEncoder`).
+    - Live character counter: `{{ charCount }} / 2,000 characters`.
+    - Warning banner if non-English multi-byte text hits byte cap first: *"Non-English text uses more space"*.
+    - Scannability hint above ~800 bytes: *"Large codes are harder to scan. Try Notes link mode."*
+  - **Hosted Notes Link Mode**: Uses `POST /api/v1/qr-links` to encode a compact `/q/{code}` link into the QR code, resolving to an optimized mobile-first Notes viewer at `/tools/qr-generator/notes/:code`.
+    - Supports larger text payloads (up to 20,000 characters) while maintaining a low-density, easily scannable QR code.
+    - Responsive viewer provides "Copy", "Share / Save to Notes" (via Web Share API), and "Download .txt" actions.
 
 ### QR-F02: Type-Aware Fast Presets
-- **Purpose**: Quick sample workflows for fast testing and demonstration.
-- **Presets**:
-  - **URL**: Pre-fills `https://acklet.com`.
-  - **Wi-Fi**: Pre-fills `Acklet-Guest` network.
-  - **vCard**: Pre-fills complete digital contact card for Alex Mercer.
-  - **Event**: Pre-fills Acklet Product Launch event.
-  - **Crypto**: Pre-fills Bitcoin receiving wallet.
+- **Purpose**: Quick sample workflows for demonstration and instant testing.
+- **Presets Available**:
+  - **URL**: Pre-populates `https://acklet.com`.
+  - **Wi-Fi**: Pre-populates `Acklet-Guest` WPA2 network.
+  - **vCard**: Pre-populates comprehensive digital business card for Alex Mercer.
+  - **Event**: Pre-populates Acklet Product Launch calendar event.
+  - **Crypto**: Pre-populates Bitcoin wallet address and amount.
 
-### QR-F03: Dual-Tone Color Customization
-- **Purpose**: Brand and style the QR code modules (foreground) and stage background (background).
-- **User Interaction**:
-  - Clicking native `<input type="color">` opens the OS color picker.
-  - Typing into hex text input validates syntax and auto-uppercases characters.
-  - Clicking **Swap** inverts foreground and background colors.
-  - Clicking a preset swatch pair (**Classic**, **Emerald**, **Navy**, **Dark Mode**) updates both colors simultaneously.
-- **Integration**: Feeds into `QRCodeStyling` options object.
+### QR-F03: Color & Gradient Customization
+- **Purpose**: Brand and style the QR code modules, corner locators, and canvas background.
+- **Modes**:
+  - **Solid Color**: Single foreground color and background color with native color pickers, normalized uppercase hex inputs, and one-click Swap button.
+  - **Linear Gradient**: Dual color stops (`color1`, `color2`) with a continuous rotation slider from $0^\circ$ to $360^\circ$.
+  - **Radial Gradient**: Concentric color transition radiating from the center of the QR matrix.
+- **Curated Gradient Presets**: Ready-made color pairings (Ocean Blue, Sunset Glow, Emerald Forest, Purple Dawn, Neon Cyber).
+- **Independent Corner Styling**: Optional dedicated color pickers for corner locator outer squares and inner dots.
 
 ### QR-F04: WCAG AA/AAA Contrast Guard
-- **Purpose**: Guarantee that generated QR codes can be decoded reliably by camera hardware under poor lighting conditions.
-- **Math Formula**:
+- **Purpose**: Ensure generated codes remain decodable by camera sensors under variable lighting conditions.
+- **Mathematical Luminance Formula**:
   $$L = 0.2126 \cdot R + 0.7152 \cdot G + 0.0722 \cdot B$$
   $$\text{Contrast Ratio} = \frac{\max(L_1, L_2) + 0.05}{\min(L_1, L_2) + 0.05}$$
 - **Behavior**:
-  - Displays numerical ratio (e.g. `21.00:1`) and WCAG level badge (**AAA**, **AA**, or **Fail**).
-  - When ratio is $< 2.5:1$, displays a prominent red warning banner:
+  - Calculates ratio in real time (e.g. `12.4:1`) and renders WCAG compliance badge (**AAA** $\ge 7:1$, **AA** $\ge 4.5:1$, **Fail** $< 4.5:1$).
+  - When contrast ratio drops below $2.5:1$, displays a prominent warning banner:
     *"Low contrast (< 2.5:1). Camera scanners may fail to scan this code reliably."*
 
-### QR-F05: Resolution Range Slider & Chips
-- **Purpose**: Allow fine-grained control over export resolution for both small web embeds and high-DPI print.
-- **Range**:
-  - Minimum: `100px`
-  - Maximum: `2,000px`
-  - Step: `50px`
-- **Preset Chips**:
-  - **Small**: 150px (Web thumbnails)
-  - **Medium**: 300px (Default web display)
-  - **Large**: 500px (Document prints)
-  - **XL**: 800px (High-resolution print signage)
+### QR-F05: Resolution Range Slider & Preset Chips
+- **Purpose**: Output scaling for digital screens, mobile apps, and high-DPI print media.
+- **Controls**:
+  - Slider: Continuous range from `100px` to `2000px` (step `50px`).
+  - Preset Chips: **Small (256px)** for web thumbnails, **Medium (512px)** for general mobile scanning, **Large (1024px)** for flyers and documents, and **Print (2048px)** for large posters and signage.
 
-### QR-F06: Error Correction Selector
-- **Purpose**: Control Reed-Solomon redundancy blocks to tolerate dirt, damage, or partial obscuration.
-- **Modes**:
-  - **Level L**: Recovers ~7% of data (smallest module count, highest capacity).
-  - **Level M (Default / Recommended)**: Recovers ~15% of data (optimal balance for mobile scanning).
-  - **Level Q**: Recovers ~25% of data (suitable for industrial environments).
-  - **Level H**: Recovers ~30% of data (densest matrix, maximum damage resistance).
+### QR-F06: Error Correction Selector & Auto-Boost
+- **Purpose**: Control Reed-Solomon redundancy blocks to tolerate dirt, damage, or logo obstruction.
+- **Levels**:
+  - **L (Low)**: Recovers ~7% of damaged data (lowest density, highest character capacity).
+  - **M (Medium - Default)**: Recovers ~15% of damaged data (recommended balance for mobile cameras).
+  - **Q (Quartile)**: Recovers ~25% of damaged data (high reliability for print materials).
+  - **H (High)**: Recovers ~30% of damaged data (maximum fault tolerance with denser module grid).
+- **Automatic Logo Boost**: Uploading a logo image or selecting a brand preset automatically raises error correction to Level H or Q via `calculateAutoErrorCorrection()`, preventing scanning failure with helpful toast feedback.
 
 ### QR-F07: Dynamic ISO/IEC 18004 Metadata Display
-- **Purpose**: Give developers and creators instant feedback on version capacity and payload saturation.
-- **Fields**:
-  - **QR Version**: Minimum required version ($1\text{ to }40$) dynamically computed from encoded byte length.
-  - **Max Capacity**: Upper byte ceiling for the resolved version and error correction level.
-  - **Used Bytes**: Exact byte length of the encoded payload.
+- **Purpose**: Real-time feedback on payload saturation and matrix complexity.
+- **Metrics Calculated**:
+  - **Version**: Minimum QR version ($1\text{ to }40$) dynamically computed from byte length.
+  - **Capacity**: Upper character/byte limit for the resolved version and EC level.
+  - **Used Bytes**: Exact payload byte length.
   - **Recovery**: Percentage error recovery tolerance.
-  - **Visual Bar**: Animated progress bar (`width: usagePercent%`). When $> 90\%$, changes to warning amber.
+  - **Usage Bar**: Animated progress meter (`width: usagePercent%`), turning amber when $> 90\%$.
 
-### QR-F08: In-Browser Multi-Format Download & Clipboard Copy
-- **Purpose**: Export the rendered QR code as a standard image file or copy to clipboard without server latency.
-- **Implementation**:
-  - Exports in PNG, SVG (vector), and JPEG formats.
-  - Copy directly to OS clipboard as image blob with fallback.
-  - Filename format: `qr-code-<timestamp>.<ext>`.
+### QR-F08: Multi-Format Download & Clipboard Copy
+- **Purpose**: Instant, client-side export without server round-trips.
+- **Formats**:
+  - **SVG**: Scalable vector markup via `qr-svg-renderer.ts` with embedded shapes, frames, and logos.
+  - **PNG**: Lossless high-resolution raster export.
+  - **JPEG**: Web-compatible raster export.
+  - **Clipboard Copy**: Direct image blob copy to system clipboard (`navigator.clipboard.write`).
+- **Filename**: Formatted as `qr-code-<timestamp>.<ext>`.
 
-### QR-F10: 12 Complete Content Types & Pure Builders
-- **12 Types**: Website, Plain Text, Email, Phone, SMS, Wi-Fi, Location / Geo, Event, vCard 3.0, Social, App Store, and Crypto Wallet.
-- **Progressive Disclosure**: Primary essential inputs visible upfront; advanced and optional fields neatly nested under native `<details class="more-options">` accordions.
-- **Standards Compliance**:
-  - iCalendar: RFC 5545 VCALENDAR/VEVENT with CRLF, 75-octet line folding, alarms, recurrence rules, and timezones.
-  - vCard: RFC 2426 vCard 3.0 and NTT DoCoMo MECARD format with structured addresses and UTF-8 escaping.
-  - Wi-Fi: ZXing standard with character escaping (`\`, `;`, `,`, `:`, `"`), WPA/WEP/WPA3/nopass, and Enterprise EAP.
-  - Phone & SMS: International E.164 parsing via `libphonenumber-js`.
-  - Location: RFC 5870 `geo:` URI, Google/Apple Maps URLs, and paste URL coordinate extractor.
-  - Crypto: BIP21 & EIP-681 URIs for Bitcoin, Ethereum, Solana, Litecoin, and Bitcoin Cash.
+### QR-F09: Dual-Theme High Contrast UI
+- **Typography**: Unified Acklet tool font **Scoutie Sans** (`font-family: 'Scoutie Sans', sans-serif;`).
+- **Color Identity**: Blue Accent (`#3B82F6` dark / `#2563EB` light) registered in manifest and CSS variables.
+- **Contrast Guarantee**: Text, inputs, buttons, and badges maintain $\ge 4.5:1$ contrast against dark and light surface tokens.
 
-### QR-F11: Client-Side Scannability Verifier
-- **Engine**: In-browser decoding powered by `jsqr`.
-- **Workflow**: Decodes off-screen canvas bitmap of the generated QR code to verify camera-grade readability before print or deployment.
-- **Feedback**:
-  - Status Badge: "Verified 100% Scannable" (green) or "Scan Warning" (amber/red).
-  - Exact payload string match comparison against active content.
-  - Diagnostic warnings for unreadable matrix, low contrast, or excessive density.
+### QR-F10: 12 Structured Content Types & Pure Builders
+All payloads are generated via deterministic pure functions in `qr-payload-builders.ts`:
+- **URL**: Normalizes schemes and constructs standardized UTM query parameters.
+- **Plain Text**: Normalizes line breaks to CRLF or LF consistently.
+- **Email**: Constructs RFC 5322 compliant `mailto:` URIs with URL-encoded query parameters.
+- **Phone & SMS**: Parses international numbers into E.164 standard strings via `libphonenumber-js`.
+- **Wi-Fi**: Formats ZXing strings with standard character escaping (`\`, `;`, `,`, `:`, `"`), supporting WPA/WEP/WPA3 and Enterprise EAP.
+- **Location**: RFC 5870 `geo:` URI generation and coordinate extraction from Google/Apple Maps links.
+- **Event**: RFC 5545 iCalendar generation with 75-octet line folding and timezone parsing.
+- **vCard 3.0**: RFC 2426 format with UTF-8 character encoding and structured address fields.
+- **Social**: 20+ platform extractors normalising handles to canonical profile URLs.
+- **App Store**: Device-aware smart links directing to iOS App Store or Google Play.
+- **Crypto**: BIP21 and EIP-681 URIs for Bitcoin, Ethereum, Solana, Litecoin, and Bitcoin Cash.
 
-### QR-F12: Hosted Short Links & Dynamic QR Codes
-- **Purpose**: Short URLs (`/q/{code}`) hosted by Spring Boot 3.4.1 for long URLs, long text, and managed dynamic QR codes.
-- **Hosted Short Links (`POST /api/v1/qr-links`)**:
-  - Automatically requested when URLs exceed 120 characters or text exceeds 300 characters.
-  - Base62 6-character random slugs with reserved word validation and case-sensitive collision protection.
-  - URL payloads return **HTTP 302 Found** (`Location: <target>`, `no-cache`, `no-referrer`, `noindex`). Strictly validates target scheme to `http` or `https` (rejects `javascript:`, `data:`, `file:`).
-  - TEXT payloads return **HTTP 200 OK** directly serving a fast, responsive mobile HTML viewer with strict CSP (`default-src 'none'`), XSS escaping, UTF-8 BOM download, Copy button, and "Share / Save to Notes" (Web Share API).
-  - Unknown codes return friendly **HTTP 404** HTML pages without stack traces; expired/deleted codes return **HTTP 410 Gone**.
-- **Managed Dynamic Codes**:
-  - Status management: `ACTIVE`, `PAUSED` (renders paused notice), `EXPIRED` (renders expiration notice).
-  - Redirection: HTTP 302 Found for direct links, HTTP 307 Temporary Redirect for hosted landing page types or password verification.
+### QR-F11: Multi-Pass Scannability Verifier
+- **Engine**: In-browser camera barcode decoder powered by `jsQR`.
+- **4-Pass Decoding Pipeline**:
+  1. *Standard Pass*: Direct decode of canvas image bitmap.
+  2. *Contrast-Stretched Pass*: Histogram equalization and local binarization to decode low-contrast codes.
+  3. *Inverted Luminance Pass*: Checks if the code was styled with inverted polarity.
+  4. *Center Crop Pass*: Isolates the core QR matrix from surrounding decorative frames.
+- **Confidence Rating**: Evaluated into High, Medium, or Low with diagnostic guidance and an auto-fix action.
+
+### QR-F12: Hosted Dynamic QR Code Shortlinks
+- **Endpoint**: `GET /q/{code}` hosted by Spring Boot 3.4.1.
+- **Slug Generation**: Base62 6-character random slugs with collision retries and reserved word defense.
+- **Redirection Behavior**:
+  - `DYNAMIC_URL`: Returns **HTTP 302 Found** directly redirecting to destination URL.
+  - Device-aware routing: Automatically routes iOS devices to `iosUrl`, Android devices to `androidUrl`, and other platforms to `fallbackUrl`.
+  - Hosted types: Returns **HTTP 307 Temporary Redirect** to `/tools/qr-generator/view/:code`.
+  - Status management: Returns friendly HTML notices for `PAUSED` or `EXPIRED` codes; returns HTTP 404 for unknown codes.
 
 ### QR-F13: Anonymous Manage Key Authorization
-- **Purpose**: Allow users to edit their dynamic QR codes without forcing mandatory account creation or logins.
-- **Security**:
-  - Server generates 256-bit random cryptographic keys.
-  - Key is displayed once to the user and saved to client-side `localStorage`.
-  - Stored in PostgreSQL `qr_codes` table only as a `SHA-256` hash (`manage_key_hash`).
-  - Required in the path for management operations (`PUT /api/v1/qr/manage/{key}`).
+- **Security Architecture**:
+  - Server generates 256-bit cryptographic keys.
+  - Key is displayed once to the creator and stored in browser `localStorage`.
+  - Server stores only the `SHA-256` hash (`manage_key_hash`) in PostgreSQL `qr_codes`.
+  - Required in the path for updates (`PUT /api/v1/qr/manage/{key}`).
+  - Allows full management and inline editing without requiring account registration.
 
 ### QR-F14: Privacy-Preserving Scan Telemetry
-- **Purpose**: Provide scan counts, unique device estimates, and demographic breakdown without tracking individuals or storing PII.
-- **Privacy Protections**:
-  - No raw IP addresses are persisted.
-  - `visitor_hash` computed as `SHA-256(ip + salt + date)` for daily unique metrics.
-  - Full respect for Do Not Track (`DNT: 1`) and Global Privacy Control (`Sec-GPC: 1`).
-  - Country code parsed from Cloudflare headers (`CF-IPCountry`) or proxy headers.
-  - Device type, OS, and browser parsed using lightweight, zero-dependency `UserAgentParser`.
+- **Guarantees**:
+  - Zero raw IP addresses are persisted to disk or database.
+  - Unique daily visitors aggregated via `SHA-256(ip + salt + date)`.
+  - Full compliance with Do Not Track (`DNT: 1`) and Global Privacy Control (`Sec-GPC: 1`).
+  - Lightweight user-agent parsing for device category (Mobile, Tablet, Desktop), OS, and browser family.
 
 ### QR-F15: Dynamic QR Manager Drawer & Inline Editor
-- **Purpose**: Manage all created dynamic QR codes in a unified, accessible drawer UI.
-- **Capabilities**:
-  - Displays list of managed dynamic QRs saved in `localStorage` or imported via private Manage Key.
-  - Real-time scan counters and status pills.
-  - Inline destination URL editor (updates backend immediately without re-printing QR code).
+- **Features**:
+  - Unified drawer displaying all managed dynamic QR codes stored in `localStorage` or imported via manage key.
+  - Live scan counters and status badges (`ACTIVE`, `PAUSED`, `EXPIRED`).
+  - Inline destination URL editor updating backend routing instantly without changing the printed QR code.
   - One-click Pause and Resume toggles.
-  - Detailed scan analytics modal with breakdown by daily trend, device type, OS, and country.
+  - Scan analytics modal featuring daily scan timeline, country breakdown, and device distribution.
 
-### QR-F16: Hosted Dynamic Landing Page Viewer & Types
-- **Route**: `/tools/qr-generator/view/:code`.
-- **Purpose**: Render beautiful, mobile-optimized landing pages when a dynamic QR code points to hosted content instead of an external website.
-- **Hosted Content Types**:
-  - **PDF Document (`DYNAMIC_PDF`)**: Displays document title, file size, description, preview frame, and instant download button.
-  - **Restaurant/Cafe Menu (`DYNAMIC_MENU`)**: Categorized menu sections with dish names, prices, descriptions, and dietary badges (`vegan`, `vegetarian`, `gluten-free`, `spicy`).
-  - **Promo Coupon (`DYNAMIC_COUPON`)**: Highlighted discount percentage/badge, expiration countdown, terms, one-click promo code copy, and checkout redirection CTA.
-  - **Digital Business Card (`DYNAMIC_VCARD`)**: Clean profile card with job title, company, phone, email, address, and a one-click **Save Contact** button that generates and downloads a native `.vcf` file.
-  - **Multi-Links Hub (`DYNAMIC_MULTI_URL`)**: Link-in-bio style page featuring user bio and responsive list of outbound social/profile links.
+### QR-F16: Hosted Dynamic Landing Page Viewer (`/tools/qr-generator/view/:code`)
+- **Supported Hosted Content Types**:
+  - **PDF Document (`DYNAMIC_PDF`)**: Clean preview card with file size, description, and direct download button.
+  - **Restaurant Menu (`DYNAMIC_MENU`)**: Categorized sections, dish prices, descriptions, and dietary badges.
+  - **Promo Coupon (`DYNAMIC_COUPON`)**: Highlighted discount badge, promo code copy, expiry countdown, and checkout button.
+  - **Digital Business Card (`DYNAMIC_VCARD`)**: Profile card with one-click **Save Contact** generating a `.vcf` file.
+  - **Multi-Links Hub (`DYNAMIC_MULTI_URL`)**: Link-in-bio hub with profile bio and outbound social buttons.
 
 ### QR-F17: Hosted Dynamic QR Creator Drawer
-- **Purpose**: Create and manage hosted dynamic QR codes directly from the drawer UI.
 - **Workflow**:
-  - Choose between Website URL, PDF Document, Menu, Coupon, vCard, or Multi-Links.
-  - Fill in type-specific metadata (with optional PDF file attachment).
+  - Select dynamic type (Website URL, PDF, Menu, Coupon, vCard, Multi-URL).
+  - Fill in type-specific fields and attach assets (up to 20MB).
   - Optional custom vanity slug (e.g. `summer-promo`).
-  - Generates Base62 slug, uploads associated files to backend asset storage, and registers secret manage key in browser `localStorage`.
+  - Creates dynamic code on backend and registers manage key in `localStorage`.
 
-### QR-F18: Dynamic QR Passcode Protection Gate
-- **Purpose**: Restrict access to sensitive hosted documents, confidential menus, or exclusive coupons with a PIN or password.
-- **Implementation**:
-  - Creator sets optional passcode during creation or via manager update.
-  - Landing viewer detects `hasPassword: true` and renders an authentication gate before fetching or displaying payload data.
-  - Verification performed via `POST /api/v1/qr/public/{code}/verify-password`.
+### QR-F18: Dynamic QR Passcode Gate
+- **Purpose**: Restrict access to confidential documents, VIP menus, or private coupons.
+- **Workflow**:
+  - Creator sets optional passcode during creation.
+  - Viewer renders authentication PIN gate before retrieving payload data.
+  - Passcode verification executed via `POST /api/v1/qr/public/{code}/verify-password`.
 
-### QR-F19: Decorative Frames & CTA Borders
-- **Purpose**: Surround the generated QR code with customizable high-converting decorative frames and call-to-action captions.
-- **Frame Styles**:
-  - `none`: Standard borderless QR code.
-  - `bottom-banner`: Outer container card with a bottom ribbon displaying customizable CTA text.
-  - `top-header`: Card with top ribbon badge displaying caption header.
-  - `polaroid`: Classic white polaroid border with authentic bottom margin caption.
-  - `badge-pill`: Rounded pill surrounding frame with an anchored floating badge chip.
-  - `chat-bubble`: Conversation bubble frame with a speech notch pointing toward the content.
-- **Customization**:
-  - Real-time CTA text input with quick preset suggestion chips ("SCAN ME", "VISIT WEBSITE", "VIEW MENU", "CONNECT WI-FI", "SAVE CONTACT", "GET OFFER").
-  - Independent native frame background color and text color pickers with hex normalization.
-  - Export: Automatically baked into vector SVG downloads and rasterized into PNG/JPEG downloads via canvas composition.
+### QR-F19: Decorative Frames & CTA Ribbons
+- **Styles Available**: `none`, `bottom-banner`, `top-header`, `polaroid`, `badge-pill`, `chat-bubble`, `tag`, `ticket`, `coffee-cup`, `shopping-bag`, `phone`, `speech-bubble`, `banner-ribbon`, `badge`, `minimal-bracket`, `gift-box`, `storefront`, `sticker-peel`, `delivery-box`, `envelope`.
+- **CTA Customization**: Real-time editable text with quick suggestion chips ("SCAN ME", "VISIT WEBSITE", "VIEW MENU", "CONNECT WI-FI", "SAVE CONTACT", "GET OFFER").
+- **Colors**: Independent frame background and text color pickers with automatic high-contrast theme defaults.
 
 ### QR-F20: Batch QR Code Generation & ZIP Export
-- **Purpose**: Generate dozens or hundreds of customized QR codes at once for events, table tents, inventory labels, or marketing campaigns.
-- **Features**:
-  - Modal workflow accessible via "Batch Generate" header button.
-  - CSV file upload (`.csv`, `.txt`) or direct multi-line pasting (e.g. `Title,URL`).
-  - Pre-built "Load Sample CSV" demo button.
-  - Real-time item parser supporting quoted and unquoted CSV fields.
-  - Live generation progress bar (`Generating X of Y`).
-  - Scrollable interactive preview grid with individual PNG downloads and payload clipboard copy.
-  - Single-click "Download ZIP Archive" powered by `jszip` packaging all generated codes into a formatted archive (`acklet-qr-batch-<timestamp>.zip`).
+- **Workflow**:
+  - Accessible via "Batch Generate" header button.
+  - CSV file upload or multi-line text list pasting (e.g. `Title,URL`).
+  - Built-in "Load Sample CSV" demo button.
+  - Real-time generation progress bar (`Generating X of Y`).
+  - Interactive preview grid with single-item downloads.
+  - Single-click "Download ZIP Archive" powered by `jszip` (`acklet-qr-batch-<timestamp>.zip`).
 
-### QR-F21: Overall Shape Engine
-- **Purpose**: Render scannable QR codes styled into non-square silhouettes while preserving ISO 18004 locator patterns.
-- **Shapes Supported**: Circle, Heart, Star, Hexagon, Diamond, Shield, Drop, Speech Bubble, Badge, Ticket, Rounded Square, Square.
-- **Rendering Modes**:
-  - `Around`: Keeps the core QR rectangular with a >= 4 module quiet zone, scattering decorative modules outward into the shape boundary with edge fade and anti-finder rules.
-  - `Badge`: Encapsulates the complete QR code inside a solid shaped vector SVG badge with high-contrast border and padding.
-  - `Trim`: Soft-crops outer non-reserved data modules within a strict 12% error-correction allowance and automatically elevates recovery to Level H (30%). Real finder locators (top-left, top-right, bottom-left) remain 100% untouched.
+### QR-F21: Module & Corner Shape Styling
+- **Module Dot Shapes (11 styles)**: `square`, `dots`, `rounded`, `extra-rounded`, `classy`, `classy-rounded`, `diamond`, `star`, `heart`, `cross`, `scanline`.
+- **Corner Square Locators (8 styles)**: `square`, `dot`, `extra-rounded`, `classy`, `classy-rounded`, `rounded`, `pinch`, `shield`.
+- **Corner Dot Locators (10 styles)**: `square`, `dot`, `rounded`, `extra-rounded`, `classy`, `classy-rounded`, `diamond`, `star`, `heart`, `cross`.
 
-### QR-F22: Brand Name & Brand Image Artwork (Removed)
-- **Status**: Removed. The Brand tab, BrandCustomizerComponent, and brand mask rendering engine have been removed to keep the Customize Design interface clean and focused on Frame, Shape, Logo, and Color.
+### QR-F22: Logo Embedding & Auto EC Boost
+- **Capabilities**:
+  - Drag-and-drop file upload supporting PNG, SVG, and JPEG files.
+  - 20+ built-in brand preset icons (WhatsApp, Instagram, X/Twitter, YouTube, LinkedIn, GitHub, etc.).
+  - Logo size slider (10% to 45%) and margin clearance slider.
+  - Transparent logo background plate toggle.
+  - Automatic Reed-Solomon Error Correction elevation to Level H or Q with toast notification.
 
 ### QR-F23: Calm Scan Confidence & Auto-Fix
-- **Purpose**: Provide reassurance about real-world camera readability with actionable one-click resolution.
-- **Confidence Rating**: Evaluates decoder passes and luminance dynamic range into High, Medium, or Low confidence.
-- **Fix Automatically**: Single-click button that automatically elevates error correction to Level H, adjusts shape density to Safe/Balanced, and sharpens contrast to guarantee instantaneous camera recognition.
-- **Examples Menu**: Quick-load presets for Circle Badge, Heart Silhouette, and Standard Sample.
+- **Confidence Rating**: Evaluates decoder passes and dynamic range into High, Medium, or Low.
+- **One-Click Auto-Fix**: Automatically elevates Error Correction to Level H, adjusts dot density to Safe/Balanced, and sharpens contrast to guarantee instantaneous camera recognition.
 
 ---
 
 ## 3. Dependencies & Libraries
 
 - **`qr-code-styling` (`^1.9.2`)**: Client-side QR generation engine with shape customization, corner customization, and logo embedding.
+- **`jsqr` (`^1.4.0`)**: In-memory camera barcode image decoder for client-side scannability testing.
 - **`jszip` (`^3.10.1`)**: In-browser client-side asynchronous ZIP file creation for batch QR code downloads.
-- **`jsqr` (`^1.4.0`)**: In-memory camera-grade barcode image decoder for client-side scannability testing.
 - **`libphonenumber-js` (`^1.12.35`)**: International E.164 phone number parser and validator.
-- **`@acklet/tool-shell`**: Shared design system tokens, Spartan UI primitives (`HlmButton`, `HlmBadge`, `HlmInput`), and `TsIconComponent`.
+- **`@acklet/tool-shell`**: Shared design system tokens, Spartan UI primitives, and `TsIconComponent`.
 - **`rxjs` (`^7.8.0`)**: Reactive debounced pipelines.
-
