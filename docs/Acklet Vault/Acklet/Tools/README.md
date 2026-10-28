@@ -49,9 +49,9 @@ All tools adhere to the standard 4-subfolder structure defined in [DOCUMENTATION
 
 **DataLens by Acklet** is a multi-format structured data workbench and inspection engine engineered for modern software engineers, DevOps specialists, and API developers.
 
-- **Primary URL**: `/tools/data-lens`
-- **Component Root**: [client/src/tools/data-lens/](file:///Users/ayaz/Acklet/client/src/tools/data-lens/)
-- **Documentation Root**: [data-lens/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/data-lens/README.md)
+- **Primary URL**: `http://datalens.localhost:4200` / `https://datalens.acklet.com` (Fallback route: `/tools/datalens` or `/datalens`)
+- **Component Root**: [client/apps/tool-datalens/](client/apps/tool-datalens/)
+- **Documentation Root**: [data-lens/](data-lens/README.md)
 
 ---
 

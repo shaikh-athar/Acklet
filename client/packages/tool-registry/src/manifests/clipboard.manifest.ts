@@ -28,9 +28,9 @@ export const CLIPBOARD_MANIFEST: ToolRegistryItem = {
   theme: {
     accent: TEAL_ACCENT,
     font: {
-      family: 'Nunito',
-      fontFamily: "'Nunito', system-ui, -apple-system, sans-serif",
-      fallback: 'system-ui, -apple-system, sans-serif',
+      family: 'Scoutie Sans',
+      fontFamily: "'Scoutie Sans', sans-serif",
+      fallback: 'sans-serif',
       source: 'google'
     },
     radius: '16px',

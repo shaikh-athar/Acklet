@@ -1,13 +1,13 @@
 ---
 tool: QR Generator
 phase: 3
-last-updated: 2026-10-21
+last-updated: 2026-10-28
 status: Complete
 ---
 
 # QR Generator — Data Model & Entity Relationship Architecture
 
-This document specifies the PostgreSQL relational schema, Flyway migrations, JPA entity models, and TypeScript frontend interfaces for the Acklet Dynamic QR subsystem.
+This document specifies the PostgreSQL relational schema, Flyway migrations, JPA entity models, and TypeScript frontend interfaces for the Acklet QR Generator and its Dynamic QR subsystem.
 
 ---
 
@@ -107,44 +107,147 @@ erDiagram
 
 ---
 
-## 4. Frontend TypeScript Model Alignment
+## 4. Frontend TypeScript Models Reference
 
 ```typescript
-// Status machine
-export type QrStatus = 'ACTIVE' | 'PAUSED' | 'EXPIRED' | 'BLOCKED';
+// Core Content Types
+export type ContentType =
+  | 'url'
+  | 'text'
+  | 'email'
+  | 'phone'
+  | 'sms'
+  | 'wifi'
+  | 'geo'
+  | 'event'
+  | 'vcard'
+  | 'social'
+  | 'app'
+  | 'crypto';
 
-// Dynamic QR entity summary cached in browser localStorage
-export interface ManagedDynamicQr {
-  code: string;
-  manageKey: string;
-  shortUrl: string;
-  type: string;
-  title?: string;
-  targetUrl?: string;
-  hasPassword?: boolean;
-  status: QrStatus;
-  scanCount: number;
-  uniqueScanCount: number;
-  createdAt: string;
-  expiresAt?: string;
+// Error Correction Levels
+export type ErrorCorrectionLevel = 'L' | 'M' | 'Q' | 'H';
+
+// Module and Corner Shapes
+export type QrDotType =
+  | 'square'
+  | 'dots'
+  | 'rounded'
+  | 'extra-rounded'
+  | 'classy'
+  | 'classy-rounded'
+  | 'diamond'
+  | 'star'
+  | 'heart'
+  | 'cross'
+  | 'scanline';
+
+export type QrCornerSquareType =
+  | 'square'
+  | 'dot'
+  | 'extra-rounded'
+  | 'classy'
+  | 'classy-rounded'
+  | 'rounded'
+  | 'pinch'
+  | 'shield';
+
+export type QrCornerDotType =
+  | 'square'
+  | 'dot'
+  | 'rounded'
+  | 'extra-rounded'
+  | 'classy'
+  | 'classy-rounded'
+  | 'diamond'
+  | 'star'
+  | 'heart'
+  | 'cross';
+
+// Frame and Ribbon Options
+export type QrFrameStyle =
+  | 'none'
+  | 'bottom-banner'
+  | 'top-header'
+  | 'polaroid'
+  | 'badge-pill'
+  | 'chat-bubble'
+  | 'simple-border'
+  | 'rounded-card'
+  | 'tag'
+  | 'ticket'
+  | 'coffee-cup'
+  | 'shopping-bag'
+  | 'phone'
+  | 'speech-bubble'
+  | 'banner-ribbon'
+  | 'badge'
+  | 'minimal-bracket'
+  | 'gift-box'
+  | 'storefront'
+  | 'sticker-peel'
+  | 'delivery-box'
+  | 'envelope';
+
+export interface QrFrameOptions {
+  style: QrFrameStyle;
+  text: string;
+  color: string;
+  textColor: string;
 }
 
-// Public info payload consumed by LandingViewerComponent
-export interface QrPublicInfoDto {
-  code: string;
-  type: string;
-  title?: string;
-  hasPassword: boolean;
-  status: string;
-  targetUrl?: string;
-  contentJson?: string;
-  assets?: Array<{
-    id: string;
-    fileName: string;
-    detectedMime: string;
-    sizeBytes: number;
-    downloadUrl: string;
-    createdAt: string;
-  }>;
+// Gradient Options
+export interface QrGradientOptions {
+  enabled: boolean;
+  type: 'linear' | 'radial';
+  rotation: number; // 0 to 360 degrees
+  color1: string;
+  color2: string;
+}
+
+// Full Generation Options
+export interface QROptions {
+  content: string;
+  type: ContentType;
+  size?: number;
+  foregroundColor?: string;
+  backgroundColor?: string;
+  foregroundGradient?: QrGradientOptions;
+  backgroundGradient?: QrGradientOptions;
+  errorCorrection?: ErrorCorrectionLevel;
+  margin?: number;
+  dotType?: QrDotType;
+  cornerSquareType?: QrCornerSquareType;
+  cornerDotType?: QrCornerDotType;
+  cornerSquareColor?: string;
+  cornerDotColor?: string;
+  logo?: string;
+  logoSize?: number;
+  logoMargin?: number;
+  logoBgTransparent?: boolean;
+  frame?: QrFrameOptions;
+}
+
+// Scannability Verification Result
+export type QrScanConfidence = 'high' | 'medium' | 'low';
+
+export interface QRVerificationResult {
+  isScannable: boolean;
+  decodedPayload?: string;
+  expectedPayload: string;
+  match: boolean;
+  message: string;
+  confidence?: QrScanConfidence;
+  fixAvailable?: boolean;
+  reason?: string;
+  tip?: string;
+}
+
+// ISO/IEC 18004 Metadata
+export interface QRMetadata {
+  version: number;        // 1 to 40
+  capacity: number;       // character ceiling
+  used: number;           // payload byte length
+  usagePercent: number;   // 0.0 to 100.0%
 }
 ```

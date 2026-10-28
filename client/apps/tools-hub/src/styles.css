@@ -10,7 +10,7 @@ html, body {
   min-height: 100%;
   background-color: var(--page-bg);
   color: var(--text);
-  font-family: var(--font-body, "Nunito", sans-serif);
+  font-family: var(--font-body, "Scoutie Sans", sans-serif);
   transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
               color var(--ts-dur-base, 200ms) var(--ts-ease);
 }

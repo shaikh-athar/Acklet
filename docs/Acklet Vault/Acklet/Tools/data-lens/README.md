@@ -84,39 +84,55 @@ DataLens automatically detects and manages heterogeneous document formats:
 
 ## 5. Technical Stack & Component Mapping
 
+- **Application Root**: [client/apps/tool-datalens/](client/apps/tool-datalens/)
+- **Shared Layout**: [`@acklet/tool-shell`](client/packages/tool-shell/) (`<ts-shell [tool]="manifest" [config]="shellConfig" [activeTab]="activeTab()" (tabChange)="onTabChange($event)">`)
+- **Viewport Sizing**: Strict 100% container height & width (`layout: 'fullBleed'`), zero outer window overflow, flex-based panels with internal scrolling.
+- **Top Bar Integration**: Mode switching (**Format** and **Compare**) elevated to the primary `ts-topbar` center pill navigation, eliminating duplicate card toolbar headers.
+- **Icon & Button Standards**: Unified 28px control button heights, 24px inner tab pills, and crisp 14px/16px/18px Lucide icon alignment across toolbars and panel headers.
+- **Tool Registry**: [`@acklet/tool-registry`](client/packages/tool-registry/) (`DATALENS_MANIFEST`, `id: 'datalens'`)
+- **Primary Domain**: `http://datalens.localhost:4200` / `https://datalens.acklet.com`
 - **Framework**: Angular (Standalone Components, Signals, OnPush Change Detection).
-- **Styling**: Scoped CSS with CSS Custom Properties, Tailwind CSS v4.
-- **Icons**: Lucide Icons (`@lucide/angular`).
+- **Styling**: Scoped CSS with CSS Custom Properties, Tailwind CSS v4, Acklet dual-theme tokens.
+- **Icons**: Lucide Icons via `@acklet/tool-shell` (`ts-icon`).
 - **Parsing Libraries**: `yaml` (v2), custom browser DOMParser (XML), custom PapaParse/CSV streaming engine, custom TOML tokenizer.
 
 ### File Hierarchy
 ```text
-client/src/tools/data-lens/
-├── data-lens.component.ts               # Main container orchestrator & state signals
-├── data-lens.component.html             # High-level workspace layout grid
-├── data-lens.component.css              # Scoped design tokens, themes & responsive breakpoints
-├── components/
-│   ├── data-lens-toolbar.component.ts   # Level 2 document & transformation action bar
-│   ├── data-lens-editor.component.ts    # Monaco-style source editor with line gutter
-│   ├── data-lens-inspector.component.ts # Level 3 contextual tab suite (Code, Tree, Table, Graph, Stats, CodeGen)
-│   ├── data-lens-diff.component.ts      # Advanced split/unified side-by-side diff visualizer
-│   ├── data-lens-error-panel.component.ts # AST error diagnostic & line jump banner
-│   ├── data-lens-history-drawer.component.ts # IndexedDB local history browser drawer
-│   ├── data-lens-settings-drawer.component.ts # Preference configuration drawer
-│   ├── data-lens-command-palette.component.ts # Cmd+K quick execution modal
-│   ├── data-lens-share-modal.component.ts # Client-side payload URL generator
-│   ├── data-lens-privacy-modal.component.ts # Interactive client-side security explainer
-│   ├── data-lens-drag-overlay.component.ts # Drag-and-drop backdrop visualizer
-│   ├── data-lens-toast-container.component.ts # Action notification toast queue
-│   ├── data-lens-seo-footer.component.ts # Non-intrusive bottom technical guide & SEO
-│   └── inspector-empty-state.component.ts # Contextual empty fallback states
-└── services/
-    ├── data-lens.service.ts             # Core AST parser, formatters, stats, converters & graph builder
-    ├── data-lens.worker.ts              # Off-thread Web Worker for async formatting, validation & diffing
-    ├── data-lens-diff.service.ts        # Word/line tokenization, structural diff & hunk builder
-    ├── data-lens-history.service.ts     # IndexedDB persistence & snapshot retention manager
-    ├── format-registry.service.ts       # Format registry & capability declaration provider
-    └── format-operations.service.ts     # Format operations pipeline coordinator
+client/apps/tool-datalens/
+├── src/
+│   ├── main.ts                          # Standalone tool application bootstrap
+│   ├── styles.css                       # Scoped CSS importing Tailwind v4 & tool-shell tokens
+│   ├── app/
+│   │   ├── app.component.ts             # ts-shell root wrapper with tab sync
+│   │   └── app.component.spec.ts        # Manifest & shell configuration unit tests
+│   ├── data-lens.component.ts           # Main container orchestrator & state signals
+│   ├── data-lens.component.html         # High-level workspace layout grid
+│   ├── data-lens.component.css          # Scoped design tokens, themes & responsive breakpoints
+│   ├── components/
+│   │   ├── icon.component.ts            # Local adapter delegating to ts-icon
+│   │   ├── data-lens-feedback-modal.component.ts # Self-contained feedback modal
+│   │   ├── data-lens-toolbar.component.ts # Level 2 document & transformation action bar
+│   │   ├── data-lens-editor.component.ts  # Monaco-style source editor with line gutter
+│   │   ├── data-lens-inspector.component.ts # Level 3 contextual tab suite (Code, Tree, Table, Graph, Stats, CodeGen)
+│   │   ├── data-lens-diff.component.ts    # Advanced split/unified side-by-side diff visualizer
+│   │   ├── data-lens-error-panel.component.ts # AST error diagnostic & line jump banner
+│   │   ├── data-lens-history-drawer.component.ts # IndexedDB local history browser drawer
+│   │   ├── data-lens-settings-drawer.component.ts # Preference configuration drawer
+│   │   ├── data-lens-command-palette.component.ts # Cmd+K quick execution modal
+│   │   ├── data-lens-share-modal.component.ts # Client-side payload URL generator
+│   │   ├── data-lens-privacy-modal.component.ts # Interactive client-side security explainer
+│   │   ├── data-lens-drag-overlay.component.ts # Drag-and-drop backdrop visualizer
+│   │   ├── data-lens-toast-container.component.ts # Action notification toast queue
+│   │   ├── data-lens-seo-footer.component.ts # Non-intrusive bottom technical guide & SEO
+│   │   └── inspector-empty-state.component.ts # Contextual empty fallback states
+│   └── services/
+│       ├── data-lens.service.ts         # Core AST parser, formatters, stats, converters & graph builder
+│       ├── data-lens.worker.ts          # Off-thread Web Worker for async formatting, validation & diffing
+│       ├── data-lens-diff.service.ts    # Word/line tokenization, structural diff & hunk builder
+│       ├── data-lens-diff.service.spec.ts # 29 unit tests covering line/word/AST diff algorithms
+│       ├── data-lens-history.service.ts # IndexedDB persistence & snapshot retention manager
+│       ├── format-registry.service.ts   # Format registry & capability declaration provider
+│       └── format-operations.service.ts # Format operations pipeline coordinator
 ```
 
 ---

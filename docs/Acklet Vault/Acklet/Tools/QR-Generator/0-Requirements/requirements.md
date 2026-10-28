@@ -1,342 +1,109 @@
 ---
 tool: QR Generator
-phase: 1
-last-updated: 2026-10-20
+phase: 3
+last-updated: 2026-10-28
 status: Complete
 ---
 
-# QR Generator — Requirements
+# QR Generator — Requirements Specification
 
-## Overview
-QR Generator is a lightweight utility tool for creating, customizing, and downloading QR codes. MVP Phase 1 focuses on single QR generation with basic customization, real-time preview, and PNG download. No backend, no analytics, no logos (those are Phase 2+).
+## 1. Overview
+QR Generator is an enterprise-grade utility tool for creating, customizing, verifying, and exporting QR codes. Built in compliance with the **Canonical Acklet Design System**, it combines 100% private in-browser generation with an optional Spring Boot backend for privacy-preserving dynamic short links (`/q/{code}`) and device-aware mobile routing.
 
-- **Target Users**: Developers, marketers, general users sharing links, contact info, phone numbers, email addresses.
-- **Positioning**: Client-side processing for privacy ("Processed locally, no tracking").
-
----
-
-## Phase 1: MVP Baseline
-
-### Must-Have (Baseline)
-
-#### Input
-- [x] Accept content input (textarea)
-- [x] Support 4 content types: Text, URL, Email, Phone
-- [x] Type-aware UI (dropdown selector + placeholder text)
-- [x] Character counter (shows content length)
-- [x] Preset buttons for quick type switching (Email, Phone, URL)
-
-#### Customization
-- [x] Foreground color picker (dark module — default `#000000`)
-- [x] Background color picker (light module — default `#FFFFFF`)
-- [x] Size slider (100–2000px, default 300px, step 50px)
-- [x] Preset size buttons (Small/Medium/Large/XL)
-- [x] Error correction dropdown (L/M/Q/H, default M)
-  - L: 7% recovery
-  - M: 15% recovery (recommended)
-  - Q: 25% recovery
-  - H: 30% recovery
-- [x] Contrast warning (highlight if foreground/background contrast < 2.5:1)
-
-#### Preview
-- [x] Real-time QR code rendering (updates instantly on input/customization change)
-- [x] Metadata display:
-  - QR version (1–40)
-  - Max capacity (characters this version can hold)
-  - Used capacity (current content length)
-  - Usage % (visual progress bar)
-- [x] Loading skeleton while generating
-
-#### Output
-- [x] Download button (PNG format only, Phase 1)
-- [x] Filename format: `qr-code-{timestamp}.png` (e.g., `qr-code-1729440000000.png`)
-- [x] Button disabled while generating or if no QR exists
-
-#### UI & Layout
-- [x] Two-column grid layout:
-  - Left: Input panel + Customization panel
-  - Right: Preview panel + Download action
-- [x] Responsive: Single column on mobile (< 900px width)
-- [x] Card-based design: Panels have surface background, border, border-radius 12px
-- [x] Header with title "QR Generator" + subtitle "Processed locally, no tracking."
-- [x] Consistent spacing (1.5–2rem gaps)
-
-#### Theme & Styling
-- [x] Acklet design system compliance:
-  - Display font: Fraunces
-  - UI font: Inter
-  - Code font: JetBrains Mono
-  - Color palette: Emerald accent (NOT ink-green) for QR tool override
-  - Dark/light mode support via CSS variables
-- [x] Accessible color contrast (≥ 4.5:1 for all text)
-- [x] All inputs have associated labels (`<label for="">`)
-- [x] Focus indicators visible (border change or outline)
-
-#### Performance
-- [x] Page load time: LCP < 2.5s
-- [x] QR generation latency: < 500ms per change
-- [x] Bundle size: < 150KB gzipped (QR Generator module)
-- [x] No unnecessary re-renders (optimize change detection)
+- **Target Users**: Developers, marketers, businesses, and general users generating links, Wi-Fi access tokens, digital business cards, events, and plain text notes.
+- **Positioning**: Zero telemetry, client-side default processing (*"100% Client-Side • Zero Telemetry"*).
+- **Tool Accent**: Registered **Blue Accent** (`BLUE_ACCENT`: `#3B82F6` dark / `#2563EB` light).
+- **Tool Typography**: Unified **Scoutie Sans** (`font-family: 'Scoutie Sans', sans-serif;`).
 
 ---
 
-### Nice-to-Have (Phase 1 Extras)
-- [ ] Contrast ratio display (numerical value, e.g., "21:1 WCAG AAA")
-- [ ] Copy QR as data URI to clipboard
-- [ ] Keyboard shortcuts (Cmd+S or Ctrl+S to download)
-- [ ] Undo/redo for color changes
-- [ ] Recent colors history (last 5 used)
+## 2. Functional Requirements Checklist
+
+### 2.1 Content Input & Formats (12 Types)
+- [x] Accept content input with live 250ms debounced reactive signal processing
+- [x] Support 12 complete content types:
+  - **Website URL**: Protocol normalization, auto-`https://`, UTM parameter builder
+  - **Plain Text**: Character/byte counter, direct static encoding vs hosted Notes shortlink mode
+  - **Email**: RFC 5322 `mailto:` schema with `to`, `cc`, `bcc`, `subject`, and `body`
+  - **Phone Call**: E.164 parsing and international validation via `libphonenumber-js`
+  - **SMS Message**: Direct `smsto:` / `sms:` URI generator with recipient and text
+  - **Wi-Fi**: ZXing standard for WPA/WPA2/WPA3, WEP, unencrypted, hidden SSIDs, and Enterprise 802.1x EAP
+  - **Location / Geo**: RFC 5870 `geo:` URI, coordinates, Apple Maps, and Google Maps URL extraction
+  - **Calendar Event**: RFC 5545 iCalendar (`VEVENT`) with 75-octet line folding, alarms, and recurrence rules
+  - **vCard 3.0**: RFC 2426 format with UTF-8 character encoding and structured address fields
+  - **Social Profile**: 20+ preset platforms (Instagram, X, LinkedIn, TikTok, YouTube, WhatsApp, GitHub, etc.)
+  - **App Store**: Smart mobile links routing between iOS App Store and Google Play with fallback
+  - **Crypto Wallet**: BIP21 / EIP-681 URIs for Bitcoin, Ethereum, Solana, Litecoin, and Bitcoin Cash
+- [x] Centered content type dropdown selector trigger with instant search popover and icons
+- [x] Pre-filled sample workflows (URL, Wi-Fi, vCard, Event, Crypto)
+
+### 2.2 Visual Customization Studio
+- [x] **Colors & Gradients**:
+  - Solid Color mode (foreground and background swatches with hex normalization)
+  - Linear Gradient mode with 0°–360° rotation angle slider and dual color stops
+  - Radial Gradient mode
+  - Curated gradient presets (Ocean Blue, Sunset Glow, Emerald Forest, Purple Dawn, Neon Cyber)
+  - Independent corner locator outer square and inner dot color controls
+  - One-click Swap colors button
+- [x] **Shapes & Geometry**:
+  - 11 module dot patterns: `square`, `dots`, `rounded`, `extra-rounded`, `classy`, `classy-rounded`, `diamond`, `star`, `heart`, `cross`, `scanline`
+  - 8 corner square locator styles: `square`, `dot`, `extra-rounded`, `classy`, `classy-rounded`, `rounded`, `pinch`, `shield`
+  - 10 corner dot locator styles: `square`, `dot`, `rounded`, `extra-rounded`, `classy`, `classy-rounded`, `diamond`, `star`, `heart`, `cross`
+- [x] **Decorative CTA Frames**:
+  - 18+ vector frame styles (`bottom-banner`, `top-header`, `polaroid`, `badge-pill`, `chat-bubble`, `tag`, `ticket`, `coffee-cup`, etc.)
+  - Editable CTA ribbon text with quick suggestion chips ("SCAN ME", "VISIT WEBSITE", "CONNECT WI-FI", etc.)
+  - Frame background and text color pickers with high-contrast defaults
+- [x] **Logo & Brand Embedding**:
+  - Drag-and-drop file upload zone (PNG, SVG, JPEG)
+  - 20+ preset brand and social icons
+  - Logo size slider (10% to 45%) and margin clearance slider
+  - Transparent logo background plate toggle
+  - Automatic Error Correction boost elevating recovery to Level H or Q upon logo insertion
+- [x] **Resolution & Sizing**:
+  - Continuous range slider (100–2000px, 50px step)
+  - 4 quick preset chips: Small (256px), Medium (512px), Large (1024px), Print (2048px)
+- [x] **Error Correction Levels**:
+  - Segmented buttons for L (~7%), M (~15% recommended), Q (~25%), H (~30%)
+
+### 2.3 Live Preview & Verification
+- [x] Real-time rendering stage with vector SVG preview and mosaic assemble animation
+- [x] Automated in-browser multi-pass decodability verifier via `jsQR` (Standard, Contrast-Stretched, Inverted, Center Crop)
+- [x] Calm scan confidence badge (High, Medium, Low) with diagnostic tips and one-click auto-fix
+- [x] Real-time ISO/IEC 18004 metadata calculation (Version 1–40, Capacity, Used Bytes, Usage progress bar)
+- [x] Mathematical WCAG relative luminance contrast guard with scanner warning alert when ratio $< 2.5:1$
+
+### 2.4 Multi-Format Export & Actions
+- [x] Pure vector SVG export (`.svg`) via `qr-svg-renderer.ts`
+- [x] High-resolution lossless PNG export (`.png`)
+- [x] Standard JPEG export (`.jpeg`)
+- [x] Direct image blob clipboard copy (`navigator.clipboard.write`)
+- [x] Native Web Share API integration
+- [x] Batch generation modal from CSV / text list with live progress bar and ZIP download (`jszip`)
+- [x] History drawer with `localStorage` persistence (up to 8 items, deduplicated)
+
+### 2.5 Dynamic QR Subsystem (Spring Boot 3.4.1 Backend)
+- [x] Shortlink resolver at `GET /q/{code}` with HTTP 302/307 redirects and Base62 slugs
+- [x] Device-aware intelligent routing (iOS vs Android vs Desktop)
+- [x] Anonymous 256-bit manage key authorization stored as SHA-256 hashes (zero account requirement)
+- [x] Dynamic QR management drawer with inline URL editing, pause/resume, and analytics
+- [x] Privacy-preserving scan telemetry using salted daily visitor hashes (`SHA-256(ip + salt + date)`)
+- [x] Hosted dynamic landing page viewer at `/tools/qr-generator/view/:code` (PDF, Menu, Coupon, vCard, Multi-URL)
+- [x] Notes viewer at `/tools/qr-generator/notes/:code` with Copy, Share to Notes, and Download .txt
+- [x] Passcode gate for PIN-protected private hosted dynamic QR codes
 
 ---
 
-## Phase 2: Advanced Customization & Batch
-*Do NOT build in Phase 1. These are Phase 2 deliverables.*
-- [ ] Logo upload (drag-drop, preview, size %, position)
-- [ ] Module shapes (square, circle, diamond)
-- [ ] Corner shapes (square, rounded, extra-rounded)
-- [ ] Frames/borders (decorative border, CTA text like "Scan me!")
-- [ ] Quiet zone adjustment (margin around QR)
-- [ ] Additional input types: vCard, Wi-Fi (SSID+password), SMS, geolocation
-- [ ] Batch generation (CSV/text list → multiple QR codes → ZIP download)
-- [ ] History/localStorage (last 10 generated)
-- [ ] Templates (pre-filled profiles: Business Card, Event, Promo, Wi-Fi)
-- [ ] Output formats: SVG (templated), JPG, WebP, Base64
+## 3. Non-Functional Requirements & Performance Targets
 
----
+### 3.1 Accessibility (WCAG 2.1 AA)
+- [x] All interactive controls fully keyboard navigable (Tab, Shift+Tab, Enter, Space, Escape, Arrows)
+- [x] Semantic ARIA roles (`role="tablist"`, `role="tab"`, `role="listbox"`, `aria-selected`, `aria-expanded`)
+- [x] High-visibility `:focus-visible` rings using `--accent` (`#3B82F6`)
+- [x] Text-to-surface contrast strictly satisfies $\ge 4.5:1$ across both Dark and Light themes
+- [x] Icons always accompanied by descriptive labels or `aria-label` attributes
 
-## Phase 3: Backend & Analytics
-*Do NOT build in Phase 1. These are Phase 3 deliverables.*
-- [ ] Backend QR generation (Spring Boot + ZXing)
-- [ ] Database persistence (optional; store QR codes for sharing)
-- [ ] Analytics (opt-in: scan logging, device type, geolocation)
-- [ ] Analytics dashboard (scan counts, trends)
-- [ ] Vector output (EPS via FreeHEP)
-- [ ] Cloud storage (S3/GCS for logos, generated QR codes)
-- [ ] Shareable links (public QR code links, optional expiration)
-- [ ] URL shortening integration (with QR)
-
----
-
-## Non-Functional Requirements
-
-### Accessibility (WCAG 2.1 AA)
-- [ ] All interactive elements keyboard-navigable (Tab, Enter, Space)
-- [ ] Focus indicators visible on all inputs
-- [ ] Color picker + fallback hex input (not color-dependent alone)
-- [ ] Error/warning messages associated with form controls
-- [ ] Contrast ratio text ≥ 4.5:1 on all backgrounds
-- [ ] No flashing/strobing (no animations > 3Hz)
-
-### Browser Support
-- [ ] Chrome/Chromium (latest)
-- [ ] Firefox (latest)
-- [ ] Safari (latest)
-- [ ] Edge (latest)
-- [ ] Mobile browsers (iOS Safari, Chrome mobile)
-
-### Performance Targets
-- [ ] Page load time (LCP): < 2.5s
-- [ ] First Paint: < 1.5s
-- [ ] Time to Interactive: < 4s
-- [ ] Bundle size (gzipped): < 150KB
-- [ ] QR generation: < 500ms per change
-
-### Constraints
-- [ ] Content max length: 2,953 characters (QR v40, alphanumeric mode)
-- [ ] File size: PNG downloads ≤ 20KB each (typical QR 300x300px)
-- [ ] Browser storage (Phase 2): localStorage only, no IndexedDB
-- [ ] No external API calls in Phase 1 (pure client-side)
-- [ ] No tracking/analytics in Phase 1
-
----
-
-## Input Types & Formatting
-
-| Type | Format | Example | Prefix | Validation |
-| :--- | :--- | :--- | :--- | :--- |
-| **Text** | Plain string | "Hello World" | (none) | Length ≤ 2953 |
-| **URL** | HTTP(S) URI | https://example.com | `https://` | Valid URI domain |
-| **Email** | RFC 5322 email | user@example.com | `mailto:` | Valid email format |
-| **Phone** | E.164 format | +1234567890 | `tel:` | Digits only, ≥ 5 digits |
-| **Wi-Fi** | MeCard/ZXing format | WIFI:S:OfficeNet;T:WPA;P:pass;; | `WIFI:` | Non-empty SSID |
-| **vCard** | RFC 2426 vCard 3.0 | BEGIN:VCARD...END:VCARD | `BEGIN:VCARD` | Name required (FN/N) |
-| **SMS** | SMSTO URI | SMSTO:+14155552671:Hello | `SMSTO:` | Valid phone, ≥ 5 digits |
-| **Geo** | RFC 5870 URI | geo:37.7749,-122.4194?q=HQ | `geo:` | Lat [-90,90], Lng [-180,180] |
-
----
-
-## Customization Options Detail
-
-### Color Picker
-- **Implementation**: Native `<input type="color">` + hex text input
-- **Format**: Hex (`#RRGGBB`, e.g., `#000000`)
-- **Contrast check**: If contrast < 2.5:1, show ⚠️ warning icon + tooltip
-- **Tooltip content**: "Low contrast. Consider lighter/darker color for readability."
-- **Preview box**: Show sample text with chosen colors
-
-### Size Slider
-- **Range**: 100–2000px
-- **Step**: 50px
-- **Default**: 300px
-- **Preset buttons**:
-  - Small: 150px
-  - Medium: 300px
-  - Large: 500px
-  - XL: 800px
-- **Display**: Show current size in label (e.g., "Size: 300px")
-
-### Error Correction Level
-- **L (7%)**: "Can recover ~7% damaged data. Default."
-- **M (15%)**: "Can recover ~15% damaged data. Recommended."
-- **Q (25%)**: "Can recover ~25% damaged data."
-- **H (30%)**: "Can recover ~30% damaged data. Highest robustness."
-- **Default**: M
-
-### Metadata Display
-- **QR Version**: Dynamically calculated based on content length + error correction (versions 1–40)
-- **Capacity**: Max characters this version can hold (alphanumeric mode)
-- **Used Capacity**: Current content length
-- **Usage %**: `(used / capacity) * 100`, rounded
-- **Progress bar**: Visual fill, colored with accent color
-
----
-
-## Component & Service Architecture
-
-### Components (8 total, standalone)
-1. `QRGeneratorComponent` (main, orchestrates state)
-2. `InputPanelComponent` (content input + type selector)
-3. `PreviewPanelComponent` (wrapper for QR display + metadata)
-   - `QRCanvasComponent` (renders QR image)
-   - `MetadataDisplayComponent` (version, capacity, progress bar)
-4. `CustomizationPanelComponent` (wrapper for customization)
-   - `ColorCustomizerComponent` (foreground + background pickers)
-   - `SizeSliderComponent` (size slider + presets)
-   - `ErrorCorrectionSelectorComponent` (dropdown + tooltip)
-5. `OutputPanelComponent` (wrapper for download)
-   - `DownloadButtonComponent` (download logic)
-
-### Services (2 total)
-1. `QRGeneratorService`
-   - `async generateQR(options): Promise<string>` → Data URL
-   - `getMetadata(content, ec): QRMetadata` → Version, capacity, usage
-   - `isValidContent(content, ec): boolean` → Content length validation
-2. `ColorValidatorService`
-   - `isValidHex(color): boolean` → Hex format validation
-   - `hexToRgb(hex): {r, g, b} | null` → Color conversion
-   - `contrastRatio(fg, bg): number` → WCAG formula
-   - `hasLowContrast(fg, bg): boolean` → Contrast check (< 2.5:1)
-
----
-
-## Data Flow
-```
-User Input (textarea)
-  ↓
-InputPanelComponent emits (contentChange)
-  ↓
-QRGeneratorComponent updates currentOptions.content
-  ↓
-QRGeneratorComponent calls generateQR() on service
-  ↓
-QRGeneratorService.generateQR() returns Data URL
-  ↓
-QRGeneratorComponent updates qrDataUrl
-  ↓
-QRCanvasComponent (bound to qrDataUrl) renders img
-  ↓
-User sees QR code live
-[Same flow for color/size/EC changes via CustomizationPanel]
-
-User clicks Download
-  ↓
-DownloadButtonComponent creates <a download>
-  ↓
-Browser saves qr-code-{timestamp}.png
-```
-
----
-
-## Testing Requirements
-
-### Unit Tests
-- [ ] `QRGeneratorService.generateQR()` produces valid data URL
-- [ ] `QRGeneratorService.getMetadata()` returns correct version/capacity
-- [ ] `QRGeneratorService.isValidContent()` validates length correctly
-- [ ] `ColorValidatorService.contrastRatio()` calculates correctly (spot-check #000 on #FFF = 21:1)
-- [ ] `ColorValidatorService.hasLowContrast()` flags low contrast
-- [ ] Component inputs/outputs wired correctly
-- **Coverage target**: 80%+ on services
-
-### E2E Tests
-- [ ] Input URL → QR generates → Metadata shows version 1 + capacity 41
-- [ ] Change color → QR updates in < 500ms
-- [ ] Change size → Image resizes, QR pattern stays valid
-- [ ] Change error correction → Visual pattern changes (more/less white space)
-- [ ] Download → File saves as PNG, decodable with phone camera
-- [ ] Contrast warning appears when colors too similar
-- [ ] All 4 input types produce valid QR codes
-
-### Accessibility (WCAG 2.1 AA)
-- [ ] All form inputs have `<label for="">`
-- [ ] Tab navigation works (all interactive elements reachable)
-- [ ] Focus indicators visible (≥ 3px border or outline)
-- [ ] Color picker + hex input (not color-alone)
-- [ ] Error/warning text associated with inputs (`aria-describedby` or nearby text)
-- [ ] Contrast ratio ≥ 4.5:1 (text on background)
-- [ ] No automatic focus trap (can Tab out of QR tool)
-
-### Performance Tests
-- [ ] LCP (Largest Contentful Paint): < 2.5s
-- [ ] Bundle size (gzipped): < 150KB
-- [ ] QR generation per keystroke: < 500ms
-- [ ] No layout shift (CLS < 0.1)
-- [ ] Smooth animations (60fps, no jank)
-
----
-
-## Libraries & Dependencies
-
-| Library | Version | Purpose | Why This One? |
-| :--- | :--- | :--- | :--- |
-| `qrcode` | `^1.5.3` | QR generation | Lightweight, zero deps, native JS, client-side |
-| `@angular/core` | `^18.x` | Framework | Already in use |
-| `@angular/forms` | `^18.x` | Form handling | ReactiveFormsModule or FormsModule |
-| `@angular/cdk` | `^18.x` | UI utilities | Already in Acklet (reuse) |
-| `spartan/ui` | `^18.x` | UI components | Already in Acklet (consistency) |
-| `lucide-angular`| `^0.x.x` | Icons | Already in Acklet |
-| `@angular/common` | `^18.x` | Common directives | Already in use |
-
----
-
-## Success Metrics
-- **Functional**:
-  - ✅ QR generates for all 4 input types (TEXT, URL, EMAIL, PHONE)
-  - ✅ Colors customizable with live preview
-  - ✅ Contrast warning appears when appropriate
-  - ✅ Size slider works smoothly
-  - ✅ Error correction level selectable
-  - ✅ Download button saves valid, decodable PNG
-  - ✅ Metadata accurate (version, capacity, usage %)
-- **UX**:
-  - ✅ Tool loads in < 2.5s LCP
-  - ✅ QR preview updates in < 500ms per change
-  - ✅ Mobile layout responsive (single column on < 900px)
-  - ✅ No visual jank or layout shift
-- **Design**:
-  - ✅ Emerald accent used consistently (not ink-green)
-  - ✅ Fraunces font for headings, Inter for body
-  - ✅ Dark/light mode compatible
-  - ✅ Spacing matches Acklet guidelines
-- **Quality**:
-  - ✅ 80%+ code coverage on services
-  - ✅ E2E flow passes on desktop + mobile
-  - ✅ WCAG 2.1 AA compliance verified
-  - ✅ All unit & accessibility tests pass
-
----
-
-## Sign-Off
-- **Product**: Athar (2026-10-20) ✅ Approved
-- **Status**: Ready for Development
-- **Timeline**: Week 1-2
+### 3.2 Performance Targets
+- [x] QR matrix calculation latency: $< 20\text{ ms}$ for typical payloads
+- [x] Live UI update frame rate: Stable 60 FPS under debounced 250ms stream
+- [x] Vector SVG export: Instant client-side download without network requests
+- [x] Largest Contentful Paint (LCP): $< 1.8\text{ s}$

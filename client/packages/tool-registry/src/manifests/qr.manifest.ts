@@ -27,11 +27,11 @@ export const QR_MANIFEST: ToolRegistryItem = {
   theme: {
     accent: BLUE_ACCENT,
     font: {
-      family: 'Figtree',
-      fontFamily: "'Figtree Variable', 'Figtree', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      weights: [400, 500, 600, 700],
-      fallback: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      source: 'self-hosted'
+      family: 'Scoutie Sans',
+      fontFamily: "'Scoutie Sans', sans-serif",
+      weights: [300, 400, 500, 600, 700],
+      fallback: 'sans-serif',
+      source: 'google'
     },
     radius: '16px',
     density: 'default',

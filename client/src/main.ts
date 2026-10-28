@@ -9,7 +9,8 @@ const pathname = typeof window !== 'undefined' ? window.location.pathname.toLowe
 const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
 const queryTool = urlParams?.get('tool')?.toLowerCase();
 const isQrPath = pathname === '/qr' || pathname === '/qr-generator';
-const toolSlug = extractToolSlugFromHostname(hostname) || (queryTool && ['clipboard', 'qr', 'qr-generator'].includes(queryTool) ? queryTool : null);
+const isDataLensPath = pathname === '/datalens' || pathname === '/data-lens' || pathname === '/json-formatter';
+const toolSlug = extractToolSlugFromHostname(hostname) || (queryTool && ['clipboard', 'qr', 'qr-generator', 'datalens', 'data-lens', 'json-formatter'].includes(queryTool) ? queryTool : null);
 
 if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools') {
   // Bootstrap Tools Hub (apps/tools-hub)
@@ -40,6 +41,18 @@ if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools'
       });
     })
     .catch((err) => console.error('[Tool QR Generator Bootstrap Error]', err));
+} else if (toolSlug === 'datalens' || toolSlug === 'data-lens' || toolSlug === 'json-formatter' || isDataLensPath) {
+  // Bootstrap DataLens tool (apps/tool-datalens)
+  Promise.all([
+    import('../apps/tool-datalens/src/app/app.component'),
+    import('@angular/common/http')
+  ])
+    .then(([{ AppComponent }, { provideHttpClient, withFetch }]) => {
+      return bootstrapApplication(AppComponent, {
+        providers: [provideHttpClient(withFetch())]
+      });
+    })
+    .catch((err) => console.error('[Tool DataLens Bootstrap Error]', err));
 } else {
   // Bootstrap Acklet Portal (default)
   Promise.all([

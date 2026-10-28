@@ -71,7 +71,7 @@ import { TsIconComponent } from '../icon/ts-icon.component';
     }
 
     .ts-related-title {
-      font-family: var(--font-heading, "Nunito", sans-serif);
+      font-family: var(--font-heading, "Scoutie Sans", sans-serif);
       font-size: var(--ts-type-section-label-size, 12px);
       line-height: var(--ts-type-section-label-lh, 16px);
       font-weight: var(--ts-type-section-label-weight, 600);
@@ -131,7 +131,7 @@ import { TsIconComponent } from '../icon/ts-icon.component';
     }
 
     .ts-related-name {
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: var(--ts-type-label-size, 13px);
       line-height: var(--ts-type-label-lh, 18px);
       font-weight: 600;

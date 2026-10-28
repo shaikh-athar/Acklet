@@ -414,7 +414,7 @@ export const RECENT_KEY = 'acklet.tools.recent';
     }
 
     .ts-group-title {
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 14px;
       font-weight: 500;
       line-height: 20px;
@@ -575,7 +575,7 @@ export const RECENT_KEY = 'acklet.tools.recent';
 
     /* Long name right fade mask (no ellipsis) */
     .ts-tool-name {
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 14.5px;
       line-height: 20px;
       font-weight: 400;
@@ -619,7 +619,7 @@ export const RECENT_KEY = 'acklet.tools.recent';
     }
 
     .ts-view-all-text {
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 13.5px;
       color: var(--text-3, #6B7280);
     }

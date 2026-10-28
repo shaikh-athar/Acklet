@@ -1,78 +1,116 @@
 ---
 tool: QR Generator
 phase: 3
-last-updated: 2026-10-21
+last-updated: 2026-10-28
 status: Complete
 ---
 
 # QR Generator — Component Tree & UI Architecture
 
-This document describes the Angular component hierarchy, state flow, and modal overlay architecture for the QR Generator tool.
+This document describes the verified Angular standalone component hierarchy, reactive signal data flow, and dedicated route architecture for the Acklet QR Generator.
 
 ---
 
-## 1. Component Hierarchy
+## 1. Component Hierarchy & Module Boundaries
 
 ```text
-QRGeneratorComponent (standalone: true)
-  State: selectedType, content, size, foregroundColor, backgroundColor, errorCorrection,
-         frameOptions, dotsOptions, cornersOptions, logoOptions, dynamicDrawerOpen, batchModalOpen
-  │
-  ├── Header Actions Area
-  │   ├── Dynamic QRs Drawer Trigger Button (Pill badge showing active count)
-  │   └── Batch Generate Trigger Button
-  │
-  ├── Two-Column Responsive Workspace Grid
-  │   ├── Column 1 (Left: Studio Panel ~55%)
-  │   │   ├── Studio Header
-  │   │   │   ├── Unified Type Picker Track (5 Quick Chips: URL, Text, Wi-Fi, vCard, Email)
-  │   │   │   ├── Accessible More Dropdown Popover (7 Extended Types: Phone, SMS, Geo, Event, Social, App, Crypto)
-  │   │   │   ├── Sample Example Loader Trigger
-  │   │   │   └── Consolidated Studio Tabs (Content | Design | Settings)
-  │   │   │
-  │   │   ├── Tab 1: Content
-  │   │   │   └── InputPanelComponent (standalone: true)
-  │   │   │       ├── Dedicated Structured Form Controls (8px grid standardization)
-  │   │   │       ├── Progressive Disclosure (<details class="more-options"> for UTMs, MECARD, Wi-Fi EAP)
-  │   │   │       └── Dynamic Three-State Status Line (Ready, Capacity Warning >80%, Error with Fix Link)
-  │   │   │
-  │   │   ├── Tab 2: Design
-  │   │   │   ├── Segmented Sub-Navigation (Colors | Shapes | Logo | Frame)
-  │   │   │   ├── Sub-Tab Colors: ColorCustomizerComponent (Hex, Pickers, WCAG Contrast Guard)
-  │   │   │   ├── Sub-Tab Shapes: DesignCustomizerComponent (Dot Matrix, Corner Locators, Presets)
-  │   │   │   ├── Sub-Tab Logo: DesignCustomizerComponent (Upload, SVG presets, Scaling/Margin)
-  │   │   │   └── Sub-Tab Frame: DesignCustomizerComponent (CTA Banners, Colors, Frames)
-  │   │   │
-  │   │   └── Tab 3: Settings
-  │   │       ├── ErrorCorrectionSelectorComponent (L, M recommended, Q, H)
-  │   │       ├── SizeSliderComponent (100–2000px slider + preset chips)
-  │   │       └── Collapsed Technical Details Disclosure (<details>)
-  │   │           ├── MetadataDisplayComponent (Matrix Version, Capacity limits, Usage %)
-  │   │           └── Encoded RFC Payload Code Block with 1-click clipboard copy
-  │   │
-  │   └── Column 2 (Right: Live Preview & Action Bar ~45%)
-  │       └── PreviewPanelComponent (standalone: true)
-  │           ├── Vector SVG / Canvas Stage Container with decorative frame rendering
-  │           ├── Test Scannability Action Button (jsQR Camera-Grade Verifier Badge)
-  │           ├── Primary Action Bar: Split Download PNG / JPEG Dropdown + Dedicated Quick SVG Vector Button
-  │           └── Drawer & Modal Controls: History Drawer, Batch Modal, Dynamic QRs Drawer
-  │
-  ├── Modals & Overlays (Dynamic / State-driven)
-  │   ├── QrDynamicManagerComponent (standalone: true)
-  │   │   [isOpen] (close)
-  │   │   ├── Managed QRs List with live scan counts and status pills
-  │   │   ├── Inline Destination URL Editor
-  │   │   ├── Pause / Resume Toggles
-  │   │   ├── Scan Analytics Modal (Daily trends, device, country breakdown)
-  │   │   └── New Dynamic QR Creator (Website, PDF, Menu, Coupon, vCard, Multi-URL with file upload)
-  │   │
-  │   └── BatchGeneratorComponent (standalone: true)
-  │       [isOpen] (close)
-  │       ├── CSV File Dropzone & Raw Text Paste Parser
-  │       ├── "Load Sample CSV" Demo Action
-  │       ├── Asynchronous Batch Generation Pipeline with Progress Bar (X of Y)
-  │       ├── Interactive Preview Grid with Single-Item PNG Download & Copy
-  │       └── One-Click "Download ZIP Archive" Button (JSZip)
+AppComponent (client/apps/tool-qr-generator/src/app/app.component.ts)
+  └── ts-shell (ToolLayoutComponent from @acklet/tool-shell)
+        [tool]="QR_MANIFEST" [config]="{ layout: 'fullBleed', showDescriptionCard: false }"
+        └── QRGeneratorComponent (src/qr-generator.component.ts)
+              ├── Reactive Signals:
+              │     activeTab ('content' | 'design' | 'dynamic')
+              │     designSubTab ('frame' | 'shapes' | 'logo' | 'colors')
+              │     selectedType (12 content types)
+              │     qrName, content, size, foregroundColor, backgroundColor
+              │     foregroundGradient, backgroundGradient
+              │     errorCorrection ('L' | 'M' | 'Q' | 'H')
+              │     dotType, cornerSquareType, cornerDotType
+              │     cornerSquareColor, cornerDotColor
+              │     logo, logoSize, logoMargin, logoBgTransparent
+              │     frameOptions (style, text, color, textColor)
+              │
+              ├── Top Mode Navigation Bar
+              │     ├── Tab Button: Content
+              │     ├── Tab Button: Customize (with custom design indicator dot)
+              │     └── Tab Button: Dynamic Links (with active count badge)
+              │
+              ├── Column 1 (Left: Studio Workspace Panel ~55%)
+              │     │
+              │     ├── TAB 1: Content Input Studio
+              │     │     ├── QR Name Input Bar (with clear button)
+              │     │     ├── Centered Content Type Selector Trigger & Search Popover
+              │     │     └── InputPanelComponent (components/input-panel/)
+              │     │           ├── Form Inputs per Content Type
+              │     │           ├── LocationInputComponent (components/location-input/)
+              │     │           ├── PhoneInputComponent (components/phone-input/)
+              │     │           ├── SocialLinkInputComponent (components/social-link-input/)
+              │     │           └── QrSelectComponent (components/qr-select/)
+              │     │
+              │     ├── TAB 2: Customize Design Studio
+              │     │     ├── Sub-Nav: Frame | Shape | Logo | Color
+              │     │     │
+              │     │     ├── Sub-Tab Frame:
+              │     │     │     └── DesignCustomizerComponent (activeSection="frame")
+              │     │     │           ├── 18+ Vector Frame Templates Grid
+              │     │     │           ├── CTA Ribbon Text Input + Suggestions
+              │     │     │           └── Frame Background & Text Color Pickers
+              │     │     │
+              │     │     ├── Sub-Tab Shape:
+              │     │     │     └── DesignCustomizerComponent (activeSection="shapes")
+              │     │     │           ├── 11 Dot Matrix Pattern Selectors
+              │     │     │           ├── 8 Corner Locator Square Selectors
+              │     │     │           └── 10 Corner Dot Selectors
+              │     │     │
+              │     │     ├── Sub-Tab Logo:
+              │     │     │     └── DesignCustomizerComponent (activeSection="logo")
+              │     │     │           ├── Drag & Drop File Upload Zone
+              │     │     │           ├── 20+ Brand & Social Preset Icons
+              │     │     │           │     └── QrBrandIconComponent (components/qr-brand-icon/)
+              │     │     │           ├── Logo Size & Margin Sliders
+              │     │     │           ├── Transparent Background Plate Toggle
+              │     │     │           └── Auto Error Correction Elevation Indicator
+              │     │     │
+              │     │     └── Sub-Tab Color:
+              │     │           └── ColorCustomizerComponent (components/color-customizer/)
+              │     │                 ├── Mode: Solid | Linear Gradient | Radial Gradient
+              │     │                 ├── Angle Rotation Slider (0° - 360°)
+              │     │                 ├── Dual Color Stops & Swap Button
+              │     │                 ├── Dedicated Corner Locator Color Controls
+              │     │                 ├── Curated Gradient Presets
+              │     │                 └── WCAG Contrast Guard Meter (AAA, AA, Fail)
+              │     │
+              │     └── TAB 3: Dynamic Links Studio
+              │           ├── DynamicLinksComponent (components/dynamic-links/)
+              │           └── QrDynamicManagerComponent (components/dynamic-manager/)
+              │                 ├── Managed Dynamic QRs List (live scan counts, status)
+              │                 ├── Inline Destination URL Editor
+              │                 ├── Pause / Resume Toggles
+              │                 └── Scan Analytics Modal (Daily timeline, country, device)
+              │
+              ├── Column 2 (Right: Live Preview Panel ~45%)
+              │     └── PreviewPanelComponent (components/preview-panel/)
+              │           ├── Vector SVG / Canvas Stage Container
+              │           ├── QrAssembleEffectComponent (components/qr-assemble-effect/)
+              │           ├── In-Browser Scannability Verifier Badge (jsQR Multi-Pass)
+              │           │     └── Calm Confidence Rating (High, Medium, Low) & Auto-Fix
+              │           ├── ErrorCorrectionSelectorComponent (components/error-correction-selector/)
+              │           ├── SizeSliderComponent (components/size-slider/)
+              │           ├── MetadataDisplayComponent (components/metadata-display/)
+              │           │     └── ISO/IEC 18004 Version, Capacity, Used Bytes, Usage Meter
+              │           └── Action Bar:
+              │                 ├── Download PNG (Primary CTA)
+              │                 ├── Download SVG (Scalable Vector)
+              │                 ├── Download JPEG
+              │                 ├── Copy Image to Clipboard
+              │                 ├── Share (Web Share API)
+              │                 └── History Drawer Trigger
+              │
+              └── Modals & Overlays
+                    ├── AdvancedModalComponent (components/advanced-modal/)
+                    ├── CollectionsPanelComponent (components/collections-panel/)
+                    ├── History Drawer (localStorage persistence)
+                    └── Mobile Sticky Action Bar & Bottom Sheet (@acklet/tool-shell)
 ```
 
 ---
@@ -81,13 +119,19 @@ QRGeneratorComponent (standalone: true)
 
 ```text
 LandingViewerComponent (Route: /tools/qr-generator/view/:code)
-  ├── Authentication Gate (PIN / Passcode input for protected QRs)
-  ├── Paused Notice Screen (Friendly alert when shortlink is paused)
+  ├── Passcode Gate Screen (PIN / Password input for protected dynamic QRs)
+  ├── Paused Notice Screen (Alert when link is paused)
   ├── Expired Notice Screen (Alert when link TTL has lapsed)
   └── Hosted Content Views:
-      ├── PDF Document Viewer (Title, size, description, preview frame, download CTA)
-      ├── Restaurant / Cafe Menu (Sections, items, prices, dietary badges: vegan/vegetarian/gluten-free/spicy)
-      ├── Promo Coupon Card (Discount badge, promo code copy, expiry countdown, checkout CTA)
-      ├── Digital Business Card (Contact info, social links, one-click Save Contact .vcf generator)
-      └── Multi-URL Link-in-Bio Hub (Avatar, bio, list of outbound social links)
+        ├── PDF Document Viewer (Title, file size, description, preview frame, download CTA)
+        ├── Restaurant Menu (Sections, items, prices, dietary badges: vegan/vegetarian/gluten-free/spicy)
+        ├── Promo Coupon Card (Discount badge, promo code copy, expiry countdown, checkout CTA)
+        ├── Digital Business Card (Contact info, social links, one-click Save Contact .vcf generator)
+        └── Multi-URL Link-in-Bio Hub (Avatar, bio, outbound social profile links)
+
+NotesViewerComponent (Routes: /tools/qr-generator/notes/:code & /notes/:code)
+  ├── Clean, mobile-first responsive text reader for long plain text QR codes
+  ├── Copy Text Button
+  ├── Share / Save to Notes Action (Web Share API with fallback to copy)
+  └── Download .txt File Action
 ```

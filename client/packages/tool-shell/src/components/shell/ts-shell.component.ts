@@ -45,6 +45,9 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
   template: `
     <div 
       class="ts-root" 
+      [class.no-topbar]="!showTopbar()"
+      [class.no-sidebar]="!showSidebar()"
+      [class.is-full-bleed]="isFullBleed()"
       [attr.data-tool]="tool()?.slug || 'default'"
       [attr.data-theme]="themeService.effectiveTheme()"
       [attr.data-accent]="tool()?.accent || 'neutral'"
@@ -259,8 +262,8 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
       --ts-radius-control: 12px;
       --ts-radius-tile: 16px;
       --ts-radius-full: 9999px;
-      --font-body: "Nunito", system-ui, -apple-system, sans-serif;
-      --font-heading: "Nunito", system-ui, -apple-system, sans-serif;
+      --font-body: "Scoutie Sans", sans-serif;
+      --font-heading: "Scoutie Sans", sans-serif;
     }
 
     .ts-root[data-theme="light"] {
@@ -316,7 +319,7 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
       /* transparent — page color comes from ts-backdrop (position:fixed) */
       background-color: transparent;
       color: var(--text);
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       padding: max(var(--shell-padding, 12px), env(safe-area-inset-top, 0px))
                max(var(--shell-padding, 12px), env(safe-area-inset-right, 0px))
                max(var(--shell-padding, 12px), env(safe-area-inset-bottom, 0px))
@@ -578,6 +581,25 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
                   box-shadow var(--ts-dur-base, 200ms) var(--ts-ease);
     }
 
+    /* Full-page coverage when running without chrome (e.g. tools-hub) */
+    .ts-root.no-topbar.no-sidebar {
+      padding: 0 !important;
+    }
+
+    .ts-root.no-topbar.no-sidebar .ts-main-content-card {
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      border: none !important;
+      background: var(--page-bg, #F7F8F8) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    :host-context([data-theme="dark"]) .ts-root.no-topbar.no-sidebar .ts-main-content-card,
+    .ts-root[data-theme="dark"].no-topbar.no-sidebar .ts-main-content-card {
+      background: var(--page-bg, #0F1011) !important;
+    }
+
     .ts-main-scroll-container {
       position: relative;
       z-index: 1;
@@ -785,13 +807,16 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
       box-shadow: none !important;
     }
 
-    .ts-tool-card-surface.full-bleed > * {
-      width: 100%;
-      height: 100%;
-      min-height: 0;
-      flex: 1 1 0%;
-      display: flex;
-      flex-direction: column;
+    .ts-tool-card-surface.full-bleed > *,
+    ::ng-deep .ts-tool-card-surface.full-bleed > *,
+    ::ng-deep .ts-tool-card-surface.full-bleed app-json-lens,
+    ::ng-deep .ts-tool-card-surface.full-bleed app-clipboard-tool {
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 0 !important;
+      flex: 1 1 0% !important;
+      display: flex !important;
+      flex-direction: column !important;
     }
 
     /* Cleanly hide duplicate header & trust chips if present in tool child template */
@@ -944,6 +969,7 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly tool = input<ToolRegistryItem | null>(null);
   readonly config = input<ToolShellConfig | null>(null);
   readonly surface = input<'clear' | 'frost' | 'tinted' | 'solid'>('clear');
+  readonly activeTab = input<string | undefined>(undefined);
   readonly tabChange = output<string>();
 
   readonly mainCard = viewChild<ElementRef<HTMLElement>>('mainCard');
@@ -1288,6 +1314,10 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   });
 
   readonly activeTabId = computed<string>(() => {
+    const ext = this.activeTab();
+    if (ext) {
+      return ext;
+    }
     if (this.internalActiveTab()) {
       return this.internalActiveTab();
     }
