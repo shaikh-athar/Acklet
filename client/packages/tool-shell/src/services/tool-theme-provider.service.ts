@@ -2,7 +2,7 @@
 import { Injectable } from '@angular/core';
 import { ToolRegistryItem, resolveToolAccent, ToolThemeColorVariants } from '@acklet/tool-registry';
 
-export const SHARED_DEFAULT_FONT = "'Nunito', system-ui, -apple-system, sans-serif";
+export const SHARED_DEFAULT_FONT = "'Scoutie Sans', sans-serif";
 
 export interface ToolThemeStyles {
   '--tool-accent': string;

@@ -241,7 +241,7 @@ html[data-theme="light"] body:has(.ts-root),
 */
 
 .spartan-button {
-  font-family: var(--ts-font-sans, "Nunito", sans-serif);
+  font-family: var(--ts-font-sans, "Scoutie Sans", sans-serif);
   border-radius: var(--ts-radius-md, 12px);
   border: none;
   cursor: pointer;

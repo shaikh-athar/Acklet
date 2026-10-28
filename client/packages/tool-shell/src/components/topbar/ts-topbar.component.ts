@@ -377,7 +377,7 @@ export interface SectionNavLink {
     }
 
     .ts-brand-wordmark {
-      font-family: var(--font-heading, "Nunito", sans-serif);
+      font-family: var(--font-heading, "Scoutie Sans", sans-serif);
       font-size: 18px;
       font-weight: 800;
       color: var(--text);
@@ -462,7 +462,7 @@ export interface SectionNavLink {
       align-items: center;
       padding: 5px 14px;
       border-radius: var(--ts-radius-full, 9999px);
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 13.5px;
       font-weight: 500;
       color: var(--text-muted, #71717A);
@@ -515,7 +515,7 @@ export interface SectionNavLink {
       background: transparent;
       border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
       color: var(--text-muted, #71717A);
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
@@ -654,7 +654,7 @@ export interface SectionNavLink {
       border: none;
       background: transparent;
       color: var(--text, #18181b);
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
@@ -756,7 +756,7 @@ export interface SectionNavLink {
       align-items: center;
       gap: 12px;
       color: var(--text, #18181b);
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 14px;
       font-weight: 500;
     }
@@ -858,7 +858,7 @@ export interface SectionNavLink {
       }
 
       .ts-nav-sheet-title {
-        font-family: var(--font-heading, "Nunito", sans-serif);
+        font-family: var(--font-heading, "Scoutie Sans", sans-serif);
         font-size: 16px;
         font-weight: 700;
         color: var(--text);
@@ -1083,7 +1083,7 @@ export interface SectionNavLink {
       border-radius: var(--ts-radius-full, 9999px);
       background: var(--text, #18181B);
       color: var(--bg, #FFFFFF);
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 13.5px;
       font-weight: 600;
       text-decoration: none;
@@ -1360,11 +1360,27 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
 
     effect(() => {
       const links = this.sectionLinks();
+      const tabId = this.activeTabId();
+      if (tabId) {
+        this.activeSection.set(tabId);
+      } else if (links.length > 0 && !links.some(l => l.id === this.activeSection())) {
+        this.activeSection.set(links[0].id);
+      }
       if (links.length > 0 && typeof window !== 'undefined') {
         setTimeout(() => {
           this.updatePillIndicator();
           this.setupScrollSpy();
-        }, 150);
+        }, 50);
+      }
+    });
+
+    effect(() => {
+      const tabId = this.activeTabId();
+      if (tabId) {
+        this.activeSection.set(tabId);
+        if (typeof window !== 'undefined') {
+          setTimeout(() => this.updatePillIndicator(), 50);
+        }
       }
     });
 
@@ -1441,15 +1457,15 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
     event.preventDefault();
     this.activeSection.set(sectionId);
     this.updatePillIndicator();
+    this.tabChange.emit(sectionId);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('acklet:switch-tab', { detail: sectionId }));
+    }
 
     if (typeof document === 'undefined') return;
 
     if (sectionId === 'dynamic') {
       this.dynamicLinksClick.emit();
-      this.tabChange.emit('dynamic');
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('acklet:switch-tab', { detail: 'dynamic' }));
-      }
       return;
     }
 
@@ -1508,14 +1524,14 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.scrollContainerEl && this.boundScrollListener) {
       this.scrollContainerEl.removeEventListener('scroll', this.boundScrollListener);
     }
-    this.intersectionObserver?.disconnect();
-
+    const links = this.sectionLinks();
     this.intersectionObserver = new IntersectionObserver((entries) => {
       this.zone.run(() => {
+        const currentLinks = this.sectionLinks();
         for (const entry of entries) {
           if (entry.isIntersecting) {
             const id = entry.target.id;
-            if (id) {
+            if (id && currentLinks.some(l => l.id === id)) {
               this.activeSection.set(id);
               this.updatePillIndicator();
             }
@@ -1528,16 +1544,17 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
       threshold: 0
     });
 
-    const sections = ['tool', 'about', 'how-to-use', 'faq', 'related'];
-    sections.forEach(id => {
-      const el = document.getElementById(id);
+    links.forEach(l => {
+      const el = document.getElementById(l.id);
       if (el) {
         this.intersectionObserver?.observe(el);
       }
     });
 
     this.boundScrollListener = () => {
-      if (scrollContainer.scrollTop < 80 && this.activeSection() !== 'tool') {
+      const currentLinks = this.sectionLinks();
+      const hasToolSection = currentLinks.some(l => l.id === 'tool');
+      if (hasToolSection && scrollContainer.scrollTop < 80 && this.activeSection() !== 'tool') {
         this.zone.run(() => {
           this.activeSection.set('tool');
           this.updatePillIndicator();
@@ -1553,9 +1570,22 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
     const btns = this.navLinkBtns();
     if (!track || !btns || btns.length === 0) return;
 
-    const currentId = this.activeSection();
     const links = this.sectionLinks();
-    const activeIdx = links.findIndex(l => l.id === currentId);
+    if (links.length === 0) return;
+
+    let currentId = this.activeSection();
+    let activeIdx = links.findIndex(l => l.id === currentId);
+
+    if (activeIdx === -1) {
+      const tabId = this.activeTabId();
+      if (tabId && links.some(l => l.id === tabId)) {
+        currentId = tabId;
+      } else {
+        currentId = links[0].id;
+      }
+      this.activeSection.set(currentId);
+      activeIdx = links.findIndex(l => l.id === currentId);
+    }
 
     if (activeIdx === -1 || !btns[activeIdx]) {
       this.isIndicatorReady.set(false);
@@ -1569,8 +1599,10 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
     const left = btnRect.left - trackRect.left;
     const width = btnRect.width;
 
-    this.indicatorWidth.set(width);
-    this.indicatorTransform.set(`translateX(${left}px)`);
-    this.isIndicatorReady.set(true);
+    if (width > 0) {
+      this.indicatorWidth.set(width);
+      this.indicatorTransform.set(`translateX(${left}px)`);
+      this.isIndicatorReady.set(true);
+    }
   }
 }

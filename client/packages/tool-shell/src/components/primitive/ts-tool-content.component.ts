@@ -219,7 +219,7 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
     }
 
     .ts-section-title {
-      font-family: var(--font-heading, "Nunito", sans-serif);
+      font-family: var(--font-heading, "Scoutie Sans", sans-serif);
       font-size: var(--ts-type-section-title-size, 18px);
       line-height: var(--ts-type-section-title-lh, 26px);
       font-weight: var(--ts-type-section-title-weight, 650);
@@ -343,7 +343,7 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
       background: var(--ts-surface-inset, #F6F7F7);
       border: 1px solid var(--ts-surface-inset-border, rgba(15, 23, 42, 0.05));
       color: var(--text, #09090B);
-      font-family: var(--font-heading, "Nunito", sans-serif);
+      font-family: var(--font-heading, "Scoutie Sans", sans-serif);
       font-size: 13px;
       font-weight: 800;
       flex-shrink: 0;
@@ -449,7 +449,7 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
     }
 
     .ts-related-title {
-      font-family: var(--font-heading, "Nunito", sans-serif);
+      font-family: var(--font-heading, "Scoutie Sans", sans-serif);
       font-size: 14.5px;
       font-weight: 700;
       color: var(--text, #18181B);

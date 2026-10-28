@@ -144,7 +144,7 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
     }
 
     .ts-faq-heading {
-      font-family: var(--font-heading, "Nunito", sans-serif);
+      font-family: var(--font-heading, "Scoutie Sans", sans-serif);
       font-size: var(--ts-type-section-title-size, 18px);
       line-height: var(--ts-type-section-title-lh, 26px);
       font-weight: var(--ts-type-section-title-weight, 650);
@@ -210,7 +210,7 @@ import { TsRevealDirective } from '../../directives/ts-reveal.directive';
       background: transparent;
       border: none;
       color: var(--text, #18181B);
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: var(--ts-type-body-size, 14.5px);
       font-weight: 600;
       text-align: left;

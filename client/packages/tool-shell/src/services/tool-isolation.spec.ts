@@ -45,11 +45,11 @@ describe('Tool Theming & Isolation Suite', () => {
 
       expect(darkTokens['--tool-accent']).toBe('#3B82F6');
       expect(darkTokens['--accent']).toBe('#3B82F6');
-      expect(darkTokens['--font-sans']).toContain('Figtree');
+      expect(darkTokens['--font-sans']).toContain('Scoutie Sans');
 
       expect(lightTokens['--tool-accent']).toBe('#2563EB');
       expect(lightTokens['--accent']).toBe('#2563EB');
-      expect(lightTokens['--font-sans']).toContain('Figtree');
+      expect(lightTokens['--font-sans']).toContain('Scoutie Sans');
     });
 
     it('generates distinct, isolated theme tokens for Online Clipboard', () => {
@@ -58,14 +58,14 @@ describe('Tool Theming & Isolation Suite', () => {
 
       expect(darkTokens['--tool-accent']).toBe('#2DD4BF');
       expect(darkTokens['--accent']).toBe('#2DD4BF');
-      expect(darkTokens['--font-sans']).toContain('Nunito');
+      expect(darkTokens['--font-sans']).toContain('Scoutie Sans');
 
       expect(lightTokens['--tool-accent']).toBe('#0F766E');
       expect(lightTokens['--accent']).toBe('#0F766E');
-      expect(lightTokens['--font-sans']).toContain('Nunito');
+      expect(lightTokens['--font-sans']).toContain('Scoutie Sans');
     });
 
-    it('ensures styles applied to Tool A do not contaminate Tool B (side-by-side / sequential purity)', () => {
+    it('ensures accents applied to Tool A do not contaminate Tool B while sharing unified tool font', () => {
       const qrTokens = themeProvider.resolveThemeTokens(QR_MANIFEST, 'dark');
       const clipTokens = themeProvider.resolveThemeTokens(CLIPBOARD_MANIFEST, 'dark');
 
@@ -73,10 +73,9 @@ describe('Tool Theming & Isolation Suite', () => {
       expect(qrTokens['--tool-accent']).not.toBe(clipTokens['--tool-accent']);
       expect(qrTokens['--accent']).not.toBe(clipTokens['--accent']);
 
-      // Distinct fonts
-      expect(qrTokens['--font-sans']).not.toBe(clipTokens['--font-sans']);
-      expect(qrTokens['--font-sans']).toContain('Figtree');
-      expect(clipTokens['--font-sans']).toContain('Nunito');
+      // Unified tool font across all tools
+      expect(qrTokens['--font-sans']).toContain('Scoutie Sans');
+      expect(clipTokens['--font-sans']).toContain('Scoutie Sans');
 
       // Verify idempotency and immutability
       const qrTokensSecondCall = themeProvider.resolveThemeTokens(QR_MANIFEST, 'dark');

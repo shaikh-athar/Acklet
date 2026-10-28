@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import { createEnvironmentInjector, runInInjectionContext } from '@angular/core';
 import { HubHomeComponent } from './hub-home.component';
 
-describe('HubHomeComponent - Phase 1: Premium Gradient Background', () => {
+describe('HubHomeComponent - Clean Background & Tool Accent Preservation', () => {
   function createHub(): HubHomeComponent {
     const rootInjector = {
       get: (_token: any, notFound?: any) => notFound
@@ -19,75 +19,52 @@ describe('HubHomeComponent - Phase 1: Premium Gradient Background', () => {
     expect(hub).toBeTruthy();
   });
 
-  it('declares the hero background layer and child gradient elements in template', () => {
+  it('confirms no multi-color gradient background elements exist in template', () => {
     const annotations = (HubHomeComponent as any)['ɵcmp'];
     expect(annotations).toBeDefined();
     const constsStr: string = JSON.stringify(annotations.consts || []) + (annotations.template?.toString() || '');
 
-    // Verify background layer markup exists
-    expect(constsStr).toContain('hub-hero-bg-layer');
-    expect(constsStr).toContain('hub-hero-gradient');
-    expect(constsStr).toContain('hub-hero-grain');
-    expect(constsStr).toContain('hub-hero-veil');
+    // Background mesh gradient layer elements must be removed
+    expect(constsStr).not.toContain('hub-hero-bg-layer');
+    expect(constsStr).not.toContain('hub-hero-gradient');
+    expect(constsStr).not.toContain('hub-hero-grain');
+    expect(constsStr).not.toContain('hub-hero-veil');
   });
 
-  it('defines required Phase 1 CSS variables and theming in component styles', () => {
+  it('binds per-tool accent styles to row items for icon and hover color preservation', () => {
+    const annotations = (HubHomeComponent as any)['ɵcmp'];
+    const constsStr: string = JSON.stringify(annotations.consts || []) + (annotations.template?.toString() || '');
+
+    // Verifies per-tool accent bindings are passed to row items
+    expect(constsStr).toContain('--row-accent');
+    expect(constsStr).toContain('--row-accent-strong');
+    expect(constsStr).toContain('--row-accent-soft');
+  });
+
+  it('defines clean theme tokens and border variables in component styles', () => {
     const annotations = (HubHomeComponent as any)['ɵcmp'];
     const styles: string[] = annotations.styles || [];
     const joinedStyles = styles.join('\n');
 
-    // 1. Light Mode CSS Variables
-    expect(joinedStyles).toContain('--bg-base: #EEEDED');
-    expect(joinedStyles).toContain('--glow-peach: rgba(247, 214, 196, 0.85)');
-    expect(joinedStyles).toContain('--glow-lavender: rgba(196, 190, 230, 0.75)');
-    expect(joinedStyles).toContain('--glow-blue: rgba(99, 112, 235, 0.85)');
-    expect(joinedStyles).toContain('--grid-line: rgba(0, 0, 0, 0.08)');
-    expect(joinedStyles).toContain('--grid-hover: rgba(80, 90, 220, 0.35)');
+    // Clean tokens without mesh glow variables
+    expect(joinedStyles).not.toContain('--glow-peach');
+    expect(joinedStyles).not.toContain('--glow-lavender');
+    expect(joinedStyles).not.toContain('--glow-blue');
 
-    // 2. Dark Mode CSS Variables & Selector
+    // Dual-theme base tokens
+    expect(joinedStyles).toContain('--bg-base');
     expect(joinedStyles).toContain('[data-theme="dark"]');
-    expect(joinedStyles).toContain('--bg-base: #0E1016');
-    expect(joinedStyles).toContain('--glow-peach: rgba(225, 112, 138, 0.25)');
-    expect(joinedStyles).toContain('--glow-lavender: rgba(99, 85, 180, 0.35)');
-    expect(joinedStyles).toContain('--glow-blue: rgba(45, 65, 160, 0.45)');
-    expect(joinedStyles).toContain('--grid-line: rgba(255, 255, 255, 0.07)');
-    expect(joinedStyles).toContain('--grid-hover: rgba(140, 150, 255, 0.35)');
   });
 
-  it('configures layered radial gradients with bottom linear fade', () => {
+  it('preserves tool accent colors on row hover instead of turning black', () => {
     const annotations = (HubHomeComponent as any)['ɵcmp'];
     const styles: string[] = annotations.styles || [];
     const joinedStyles = styles.join('\n');
 
-    // Radial gradients center-left peach, mid-right lavender, corner-right blue
-    expect(joinedStyles).toContain('radial-gradient(60% 55% at 38% 60%, var(--glow-peach)');
-    expect(joinedStyles).toContain('radial-gradient(55% 60% at 75% 70%, var(--glow-lavender)');
-    expect(joinedStyles).toContain('radial-gradient(45% 55% at 100% 100%, var(--glow-blue)');
-
-    // Fade to page background at bottom edge
-    expect(joinedStyles).toContain('linear-gradient(180deg, transparent 0%, transparent 60%, var(--bg-base) 100%)');
-  });
-
-  it('incorporates subtle inline SVG feTurbulence grain at 4-6% opacity', () => {
-    const annotations = (HubHomeComponent as any)['ɵcmp'];
-    const styles: string[] = annotations.styles || [];
-    const joinedStyles = styles.join('\n');
-
-    expect(joinedStyles).toContain('feTurbulence');
-    expect(joinedStyles).toContain('opacity: 0.05');
-    expect(joinedStyles).toContain('mix-blend-mode: multiply');
-  });
-
-  it('positions hero background behind content with pointer-events: none and no scroll leakage', () => {
-    const annotations = (HubHomeComponent as any)['ɵcmp'];
-    const styles: string[] = annotations.styles || [];
-    const joinedStyles = styles.join('\n');
-
-    expect(joinedStyles).toContain('position: absolute');
-    expect(joinedStyles).toContain('pointer-events: none');
-    expect(joinedStyles).toContain('z-index: -1');
-    expect(joinedStyles).toContain('overflow: hidden');
-    expect(joinedStyles).toContain('contain: paint');
+    // On hover, icon tile uses tool accent variables rather than static solid black
+    expect(joinedStyles).toContain('var(--row-accent-strong');
+    expect(joinedStyles).toContain('var(--row-accent-soft');
+    expect(joinedStyles).not.toContain('background: #000000 !important');
   });
 
   it('verifies WCAG AA contrast ratio (>= 4.5:1) for title text over background', () => {
@@ -108,16 +85,52 @@ describe('HubHomeComponent - Phase 1: Premium Gradient Background', () => {
       return (brightest + 0.05) / (darkest + 0.05);
     }
 
-    // Light mode text #09090B on #EEEDED base
-    const lightText: [number, number, number] = [9, 9, 11];
-    const lightBase: [number, number, number] = [238, 237, 237];
+    // Light mode text #18181B on #F7F8F8 base
+    const lightText: [number, number, number] = [24, 24, 27];
+    const lightBase: [number, number, number] = [247, 248, 248];
     const lightContrast = contrast(lightText, lightBase);
     expect(lightContrast).toBeGreaterThanOrEqual(4.5); // Expected > 14:1
 
-    // Dark mode text #FCFCFC on #0E1016 base
+    // Dark mode text #FCFCFC on #0F1011 base
     const darkText: [number, number, number] = [252, 252, 252];
-    const darkBase: [number, number, number] = [14, 16, 22];
+    const darkBase: [number, number, number] = [15, 16, 17];
     const darkContrast = contrast(darkText, darkBase);
     expect(darkContrast).toBeGreaterThanOrEqual(4.5); // Expected > 16:1
+  });
+
+  it('enforces ellipsis truncation for long tool descriptions and persistent action icons', () => {
+    const annotations = (HubHomeComponent as any)['ɵcmp'];
+    const styles: string[] = annotations.styles || [];
+    const joinedStyles = styles.join('\n');
+
+    // Content container must flex-shrink and constrain width to prevent overflow
+    expect(joinedStyles).toContain('min-width: 0');
+    expect(joinedStyles).toContain('overflow: hidden');
+
+    // Description text must truncate with ellipsis
+    expect(joinedStyles).toContain('text-overflow: ellipsis');
+    expect(joinedStyles).toContain('white-space: nowrap');
+
+    // Action container (star + arrow) must not shrink or get pushed off-screen
+    expect(joinedStyles).toContain('flex-shrink: 0');
+    expect(joinedStyles).toContain('margin-left: auto');
+  });
+
+  it('applies a subtle, low-intensity hover background color effect on tool rows', () => {
+    const annotations = (HubHomeComponent as any)['ɵcmp'];
+    const styles: string[] = annotations.styles || [];
+    const joinedStyles = styles.join('\n');
+
+    // Subtle tint using color-mix with tool accent
+    expect(joinedStyles).toContain('color-mix(in srgb, var(--row-accent');
+  });
+
+  it('uses Scoutie Sans as the unified font family for tools and eliminates Nunito', () => {
+    const annotations = (HubHomeComponent as any)['ɵcmp'];
+    const styles: string[] = annotations.styles || [];
+    const joinedStyles = styles.join('\n');
+
+    expect(joinedStyles).toContain('Scoutie Sans');
+    expect(joinedStyles).not.toContain('Nunito');
   });
 });

@@ -155,7 +155,7 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
 
     /* Page title: 28/34 weight 650; Letter-spacing -0.02em, color --text */
     .ts-header-title {
-      font-family: var(--font-heading, "Nunito", sans-serif);
+      font-family: var(--font-heading, "Scoutie Sans", sans-serif);
       font-size: var(--ts-type-page-title-size, 28px);
       line-height: var(--ts-type-page-title-lh, 34px);
       font-weight: var(--ts-type-page-title-weight, 650);
@@ -180,7 +180,7 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
 
     /* Description: 15/24, color --text-2 */
     .ts-header-description {
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: var(--ts-type-description-size, 15px);
       line-height: var(--ts-type-description-lh, 24px);
       color: var(--text-2, #52525B);
@@ -208,7 +208,7 @@ import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
       background: transparent;
       border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
       color: var(--text-muted, #71717A);
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;

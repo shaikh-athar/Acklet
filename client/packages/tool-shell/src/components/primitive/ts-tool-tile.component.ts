@@ -54,7 +54,7 @@ import { TsIconComponent } from '../icon/ts-icon.component';
     }
 
     .ts-tile-fallback {
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 13px;
       font-weight: 700;
       text-transform: uppercase;

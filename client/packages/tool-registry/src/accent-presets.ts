@@ -43,6 +43,27 @@ export const TEAL_ACCENT: ToolAccentConfig = {
   }
 };
 
+export const EMERALD_ACCENT: ToolAccentConfig = {
+  name: 'emerald',
+  hue: 160,
+  dark: {
+    base: '#10B981',
+    ink: '#064E3B',
+    strong: '#34D399',
+    soft: 'rgba(16, 185, 129, 0.12)',
+    border: 'rgba(16, 185, 129, 0.25)',
+    glow: 'rgba(16, 185, 129, 0.20)'
+  },
+  light: {
+    base: '#059669',
+    ink: '#FFFFFF',
+    strong: '#047857',
+    soft: 'rgba(5, 150, 105, 0.08)',
+    border: 'rgba(5, 150, 105, 0.20)',
+    glow: 'rgba(5, 150, 105, 0.15)'
+  }
+};
+
 export const AMBER_ACCENT: ToolAccentConfig = {
   name: 'amber',
   hue: 28,
@@ -111,6 +132,8 @@ export const DEFAULT_TOOL_ACCENT = BLUE_ACCENT;
 const ACCENT_MAP: Record<string, ToolAccentConfig> = {
   blue: BLUE_ACCENT,
   teal: TEAL_ACCENT,
+  emerald: EMERALD_ACCENT,
+  green: EMERALD_ACCENT,
   amber: AMBER_ACCENT,
   orange: AMBER_ACCENT,
   violet: VIOLET_ACCENT,

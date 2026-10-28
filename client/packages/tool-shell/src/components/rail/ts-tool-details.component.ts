@@ -47,7 +47,7 @@ interface DetailRow {
     }
 
     .ts-details-title {
-      font-family: var(--font-heading, "Nunito", sans-serif);
+      font-family: var(--font-heading, "Scoutie Sans", sans-serif);
       font-size: var(--ts-type-section-label-size, 12px);
       line-height: var(--ts-type-section-label-lh, 16px);
       font-weight: var(--ts-type-section-label-weight, 600);
@@ -78,7 +78,7 @@ interface DetailRow {
     }
 
     .ts-details-label {
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 14px;
       line-height: 20px;
       font-weight: 500;
@@ -87,7 +87,7 @@ interface DetailRow {
     }
 
     .ts-details-value {
-      font-family: var(--font-body, "Nunito", sans-serif);
+      font-family: var(--font-body, "Scoutie Sans", sans-serif);
       font-size: 14px;
       line-height: 20px;
       font-weight: 600;
