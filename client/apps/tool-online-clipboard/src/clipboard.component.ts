@@ -662,6 +662,18 @@ export class ClipboardComponent implements OnInit, OnDestroy {
         this.showSortPopover.set(false);
         return;
       }
+      if (this.showFormattingMore()) {
+        this.showFormattingMore.set(false);
+        return;
+      }
+      if (this.showColorPicker()) {
+        this.showColorPicker.set(false);
+        return;
+      }
+      if (this.showAddMenu()) {
+        this.showAddMenu.set(false);
+        return;
+      }
       if (this.selectedItemIds().size > 0) {
         this.clearSelection();
         return;
@@ -684,6 +696,33 @@ export class ClipboardComponent implements OnInit, OnDestroy {
         this.navigateLightbox(-1);
       } else if (event.key === 'ArrowRight') {
         this.navigateLightbox(1);
+      }
+    }
+  }
+
+  @HostListener('document:pointerdown', ['$event'])
+  onDocumentPointerDown(event: PointerEvent): void {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+
+    if (this.showFormattingMore()) {
+      const isInside = target.closest('.toolbar-more-wrapper') || target.closest('.more-menu-popover');
+      if (!isInside) {
+        this.showFormattingMore.set(false);
+      }
+    }
+
+    if (this.showColorPicker()) {
+      const isInside = target.closest('.toolbar-color-wrapper') || target.closest('.color-picker-popover');
+      if (!isInside) {
+        this.showColorPicker.set(false);
+      }
+    }
+
+    if (this.showAddMenu()) {
+      const isInside = target.closest('.add-button-wrapper') || target.closest('.add-dropdown-menu');
+      if (!isInside) {
+        this.showAddMenu.set(false);
       }
     }
   }

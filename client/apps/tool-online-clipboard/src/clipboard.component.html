@@ -214,6 +214,7 @@
           <button 
             type="button" 
             class="join-open-btn" 
+            data-variant="primary"
             [disabled]="isJoining()" 
             (click)="joinClipboard()"
           >
@@ -296,6 +297,7 @@
         <button 
           type="button" 
           class="join-open-btn" 
+          data-variant="primary"
           [disabled]="isJoining()" 
           (click)="joinClipboard()"
           title="Open clipboard"
@@ -419,38 +421,44 @@
           <!-- Floating Glassmorphism Formatting Toolbar (Bottom-Right of Editor Canvas) -->
           @if (!isAnyModalOpen()) {
             <div class="editor-formatting-toolbar" (mousedown)="$event.preventDefault()" role="toolbar" aria-label="Formatting tools">
-            <!-- 1. Bold -->
-            <button 
-              type="button" 
-              class="toolbar-glass-btn" 
-              (click)="applyFormatting('bold')" 
-              title="Bold (Ctrl+B / Cmd+B)" 
-              aria-label="Bold"
-            >
-              <ts-icon name="bold" [size]="15" />
-            </button>
+            <!-- Text Formatting Group (Bold, Italic, Underline) -->
+            <div class="toolbar-btn-group">
+              <!-- 1. Bold -->
+              <button 
+                type="button" 
+                class="toolbar-glass-btn" 
+                (click)="applyFormatting('bold')" 
+                title="Bold (Ctrl+B / Cmd+B)" 
+                aria-label="Bold"
+              >
+                <ts-icon name="bold" [size]="15" />
+              </button>
 
-            <!-- 2. Italic -->
-            <button 
-              type="button" 
-              class="toolbar-glass-btn" 
-              (click)="applyFormatting('italic')" 
-              title="Italic (Ctrl+I / Cmd+I)" 
-              aria-label="Italic"
-            >
-              <ts-icon name="italic" [size]="15" />
-            </button>
+              <!-- 2. Italic -->
+              <button 
+                type="button" 
+                class="toolbar-glass-btn" 
+                (click)="applyFormatting('italic')" 
+                title="Italic (Ctrl+I / Cmd+I)" 
+                aria-label="Italic"
+              >
+                <ts-icon name="italic" [size]="15" />
+              </button>
 
-            <!-- 2b. Underline -->
-            <button 
-              type="button" 
-              class="toolbar-glass-btn" 
-              (click)="applyFormatting('underline')" 
-              title="Underline (Ctrl+U / Cmd+U)" 
-              aria-label="Underline"
-            >
-              <ts-icon name="underline" [size]="15" />
-            </button>
+              <!-- 2b. Underline -->
+              <button 
+                type="button" 
+                class="toolbar-glass-btn" 
+                (click)="applyFormatting('underline')" 
+                title="Underline (Ctrl+U / Cmd+U)" 
+                aria-label="Underline"
+              >
+                <ts-icon name="underline" [size]="15" />
+              </button>
+            </div>
+
+            <!-- Divider -->
+            <div class="toolbar-glass-divider" aria-hidden="true"></div>
 
             <!-- 3. Text Color (with Color Palette Popover) -->
             <div class="toolbar-color-wrapper">
@@ -466,6 +474,7 @@
               </button>
 
               @if (showColorPicker()) {
+                <div class="formatting-backdrop" (click)="showColorPicker.set(false)"></div>
                 <div class="toolbar-glass-popover color-picker-popover" (mousedown)="$event.preventDefault(); $event.stopPropagation()">
                   <div class="color-palette-title">Text Color</div>
                   <div class="color-swatches-grid">
@@ -508,6 +517,7 @@
               </button>
 
               @if (showFormattingMore()) {
+                <div class="formatting-backdrop" (click)="showFormattingMore.set(false)"></div>
                 <div class="toolbar-glass-popover more-menu-popover" (mousedown)="$event.preventDefault(); $event.stopPropagation()">
                   <!-- Text Styles Section -->
                   <div class="popover-section-label">Typography & Style</div>
@@ -867,6 +877,7 @@
                 <button 
                   type="button" 
                   class="dark-pill-add-btn" 
+                  data-variant="primary"
                   (click)="showAddMenu.set(!showAddMenu())"
                   title="Add files"
                 >
@@ -876,7 +887,8 @@
                 </button>
 
                 @if (showAddMenu()) {
-                  <div class="add-dropdown-menu" (mouseleave)="showAddMenu.set(false)">
+                  <div class="formatting-backdrop" (click)="showAddMenu.set(false)"></div>
+                  <div class="add-dropdown-menu">
                     <button type="button" class="add-menu-item" (click)="openFilePicker(); showAddMenu.set(false)">
                       <ts-icon name="hard-drive" [size]="16" />
                       <span>{{ copy.filesTab.addFromDevice }}</span>
@@ -921,6 +933,7 @@
               <button 
                 type="button" 
                 class="dark-pill-add-btn mobile-add-btn" 
+                data-variant="primary"
                 (click)="showAddMenu.set(!showAddMenu())"
                 title="Add files"
               >
@@ -929,7 +942,8 @@
               </button>
 
               @if (showAddMenu()) {
-                <div class="add-dropdown-menu" (mouseleave)="showAddMenu.set(false)">
+                <div class="formatting-backdrop" (click)="showAddMenu.set(false)"></div>
+                <div class="add-dropdown-menu">
                   <button type="button" class="add-menu-item" (click)="openFilePicker(); showAddMenu.set(false)">
                     <ts-icon name="hard-drive" [size]="16" />
                     <span>{{ copy.filesTab.addFromDevice }}</span>
