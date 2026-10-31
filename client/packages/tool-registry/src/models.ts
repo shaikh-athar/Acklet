@@ -30,6 +30,13 @@ export interface ToolManifestTab {
   keepAlive?: boolean;
 }
 
+export interface ToolSubItem {
+  id: string;
+  label: string;
+  path: string;
+  icon?: string;
+}
+
 export interface ToolRegistryItem {
   id: string;
   name: string;
@@ -43,6 +50,7 @@ export interface ToolRegistryItem {
   status: ToolStatus;
   badge?: ToolBadgeType;
   subdomain?: string;
+  subItems?: ToolSubItem[];
   addedAt?: string; // ISO Date YYYY-MM-DD
   updatedAt?: string; // ISO Date YYYY-MM-DD
   featured?: boolean;

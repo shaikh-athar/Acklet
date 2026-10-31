@@ -6,7 +6,10 @@ import {
   ChangeDetectionStrategy,
   computed,
   signal,
-  inject
+  inject,
+  OnInit,
+  ChangeDetectorRef,
+  effect
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -2420,10 +2423,11 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
 
   `]
 })
-export class InputPanelComponent {
+export class InputPanelComponent implements OnInit {
   private qrService: QRGeneratorService;
   readonly dynamicService: QrDynamicService;
   readonly smartLinkService = inject(SmartLinkService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   constructor(
     qrService?: QRGeneratorService,
@@ -2431,6 +2435,30 @@ export class InputPanelComponent {
   ) {
     this.qrService = qrService ?? inject(QRGeneratorService);
     this.dynamicService = dynamicService ?? inject(QrDynamicService);
+
+    effect(() => {
+      const type = this.selectedType();
+      const val = this.content();
+      if (val) {
+        if (type === 'url' && this.websiteData.url !== val) {
+          this.websiteData.url = val;
+          this.cdr.markForCheck();
+        } else if (type === 'email' && !this.emailData.to) {
+          this.restorePayload('email', val);
+          this.cdr.markForCheck();
+        } else if (type === 'phone' && !this.phoneData.number) {
+          this.restorePayload('phone', val);
+          this.cdr.markForCheck();
+        }
+      }
+    });
+  }
+
+  ngOnInit(): void {
+    const initialContent = this.content();
+    if (initialContent) {
+      this.restorePayload(this.selectedType(), initialContent);
+    }
   }
 
   readonly selectedType = input<ContentType>('url');
@@ -3225,5 +3253,6 @@ export class InputPanelComponent {
       if (ssid) this.wifiData.ssid = ssid[1];
       if (pass) this.wifiData.password = pass[1];
     }
+    this.cdr.markForCheck();
   }
 }

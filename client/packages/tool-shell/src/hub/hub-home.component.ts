@@ -229,6 +229,23 @@ const RECENT_KEY = 'acklet.tools.recent';
                     <span hlmItemTitle class="hub-tool-name" [innerHTML]="highlightMatch(tool.name)"></span>
                   </div>
                   <p hlmItemDescription class="hub-tool-desc" [innerHTML]="highlightMatch(tool.shortDescription)"></p>
+                  @if (tool.subItems && tool.subItems.length > 0) {
+                    <div class="hub-sub-items-bar">
+                      @for (sub of tool.subItems; track sub.id) {
+                        <a
+                          [href]="getToolHref(tool.slug) + sub.path"
+                          class="hub-sub-item-badge"
+                          (click)="$event.stopPropagation()"
+                          (keydown)="$event.stopPropagation()"
+                        >
+                          @if (sub.icon) {
+                            <ts-icon [name]="sub.icon" [size]="12" />
+                          }
+                          <span>{{ sub.label }}</span>
+                        </a>
+                      }
+                    </div>
+                  }
                 </hlm-item-content>
 
                 <!-- Right Side Actions: Favorite Star Button + Open Arrow Icon -->
@@ -803,6 +820,48 @@ const RECENT_KEY = 'acklet.tools.recent';
       background: #27272A;
       border-color: rgba(255, 255, 255, 0.08);
       color: #A1A1AA;
+    }
+
+    .hub-sub-items-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .hub-sub-item-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--text-muted, #71717A);
+      background: var(--surface-hover, rgba(0, 0, 0, 0.04));
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+      text-decoration: none;
+      transition: all 120ms ease;
+    }
+
+    .hub-sub-item-badge:hover {
+      background: var(--surface-active, rgba(0, 0, 0, 0.08));
+      color: var(--text, #111111);
+      border-color: var(--border-strong, rgba(0, 0, 0, 0.2));
+    }
+
+    :host-context([data-theme="dark"]) .hub-sub-item-badge {
+      color: var(--text-muted, #A1A1AA);
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    :host-context([data-theme="dark"]) .hub-sub-item-badge:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #FCFCFC;
+      border-color: rgba(255, 255, 255, 0.25);
     }
 
     /* Actions: Star & Arrow */

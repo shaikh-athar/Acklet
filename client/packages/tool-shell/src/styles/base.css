@@ -132,7 +132,7 @@ html[data-theme="light"] body:has(.ts-root),
     color var(--ts-dur-fast, 150ms) var(--ts-ease);
 }
 
-.ts-root button:not([data-variant="primary"]):not(.split-primary-btn):not(.split-arrow-btn):not(.guided-next-btn):not(.btn-primary):not([class*="primary"]):not([class*="accent"]):not(.dark-pill-add-btn):not(.join-open-btn):not(.empty-action-btn):not(.view-toggle-btn):hover,
+.ts-root button:not([data-variant="primary"]):not([data-variant="destructive"]):not(.spartan-button-variant-destructive):not(.split-primary-btn):not(.split-arrow-btn):not(.guided-next-btn):not(.btn-primary):not([class*="primary"]):not([class*="accent"]):not([class*="destructive"]):not([class*="danger"]):not([class*="delete"]):not(.copied):not(.dark-pill-add-btn):not(.join-open-btn):not(.empty-action-btn):not(.view-toggle-btn):hover,
 .ts-root .ts-btn:hover,
 .ts-root .ts-icon-btn:hover,
 .ts-root .ts-action-btn:hover {
@@ -140,7 +140,7 @@ html[data-theme="light"] body:has(.ts-root),
   outline: none !important;
 }
 
-.ts-root button:not([data-variant="primary"]):not(.split-primary-btn):not(.split-arrow-btn):not(.guided-next-btn):not(.btn-primary):not([class*="primary"]):not([class*="accent"]):not(.dark-pill-add-btn):not(.join-open-btn):not(.empty-action-btn):not(.view-toggle-btn):active,
+.ts-root button:not([data-variant="primary"]):not([data-variant="destructive"]):not(.spartan-button-variant-destructive):not(.split-primary-btn):not(.split-arrow-btn):not(.guided-next-btn):not(.btn-primary):not([class*="primary"]):not([class*="accent"]):not([class*="destructive"]):not([class*="danger"]):not([class*="delete"]):not(.copied):not(.dark-pill-add-btn):not(.join-open-btn):not(.empty-action-btn):not(.view-toggle-btn):active,
 .ts-root .ts-btn:active,
 .ts-root .ts-icon-btn:active,
 .ts-root .ts-action-btn:active {
@@ -207,17 +207,30 @@ html[data-theme="light"] body:has(.ts-root),
   z-index: 3000;
   padding: 4px 8px;
   border-radius: var(--ts-radius-sm, 8px);
-  background: var(--ts-overlay-bg, var(--ts-raised));
-  -webkit-backdrop-filter: var(--ts-overlay-filter, none);
-  backdrop-filter: var(--ts-overlay-filter, none);
-  border: 1px solid var(--ts-overlay-border, var(--ts-border));
-  color: var(--ts-text);
+  background: var(--ts-overlay-bg, var(--ts-raised, #18181B));
+  -webkit-backdrop-filter: var(--ts-overlay-filter, blur(12px));
+  backdrop-filter: var(--ts-overlay-filter, blur(12px));
+  border: 1px solid var(--ts-overlay-border, var(--ts-border, rgba(255, 255, 255, 0.12)));
+  color: var(--ts-text, #F4F4F5);
   font-size: var(--ts-text-xs, 12px);
   font-family: var(--ts-font-sans);
   pointer-events: none;
   box-shadow: var(--ts-overlay-shadow, var(--ts-shadow-md));
   opacity: 0;
-  transition: opacity var(--ts-dur-base) var(--ts-ease);
+  transform: translateY(4px);
+  transition: opacity var(--ts-dur-fast, 180ms) var(--ts-ease, cubic-bezier(0.16, 1, 0.3, 1)),
+              transform var(--ts-dur-fast, 180ms) var(--ts-ease, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.ts-tooltip-bubble.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (hover: none), (pointer: coarse) {
+  .ts-tooltip-bubble {
+    display: none !important;
+  }
 }
 
 /* ══ TEXT SELECTION (accent-soft tint) ═══════════════════════════ */

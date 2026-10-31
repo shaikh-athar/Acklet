@@ -28,6 +28,12 @@ import {
   LucideDownload,
   LucideUpload,
   LucideUploadCloud,
+  LucideDownloadCloud,
+  LucidePause,
+  LucidePlay,
+  LucidePower,
+  LucidePowerOff,
+  LucideCopyPlus,
   LucideFile,
   LucideFileText,
   LucideFileCode,
@@ -130,7 +136,6 @@ import {
   LucideAward,
   LucideBadge,
   LucideTarget,
-  LucideGraphStar,
   LucideGalleryVerticalEnd,
   LucideUnlink,
   LucideMapPinned,
@@ -252,7 +257,10 @@ export const LUCIDE_MOTION_MAP: Record<string, string> = {
   sun: 'motion-rotate-15',
   moon: 'motion-rotate-15',
   zap: 'motion-scale-up',
-  'zap-off': 'motion-scale-up'
+  'zap-off': 'motion-scale-up',
+  link: 'motion-rotate-15',
+  urlshortener: 'motion-rotate-15',
+  chain: 'motion-rotate-15'
 };
 
 /**
@@ -384,7 +392,16 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
     lucide: LucideEyeOff
   },
   link: {
-    lucide: LucideLink
+    lucide: LucideLink,
+    notes: 'URL Shortener tool identity and link indicators'
+  },
+  urlshortener: {
+    lucide: LucideLink,
+    notes: 'URL Shortener identity alias'
+  },
+  chain: {
+    lucide: LucideLink,
+    notes: 'Chain icon alias'
   },
   flag: {
     lucide: LucideFlag
@@ -779,7 +796,7 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
     lucide: LucideTarget
   },
   'graph-star': {
-    lucide: LucideGraphStar
+    lucide: LucideStar
   },
   'gallery-vertical-end': {
     lucide: LucideGalleryVerticalEnd
@@ -864,5 +881,44 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   },
   'zoom-out': {
     lucide: LucideZoomOut
+  },
+  pause: {
+    lucide: LucidePause
+  },
+  play: {
+    lucide: LucidePlay
+  },
+  deactivate: {
+    lucide: LucidePause
+  },
+  reactivate: {
+    lucide: LucidePlay
+  },
+  power: {
+    lucide: LucidePower
+  },
+  'power-off': {
+    lucide: LucidePowerOff
+  },
+  'copy-plus': {
+    lucide: LucideCopyPlus
+  },
+  duplicate: {
+    lucide: LucideCopyPlus
+  },
+  'download-cloud': {
+    lucide: LucideDownloadCloud
+  },
+  backup: {
+    lucide: LucideArchive
+  },
+  restore: {
+    lucide: LucideUploadCloud
+  },
+  delete: {
+    lucide: LucideTrash2
+  },
+  qr: {
+    lucide: LucideQrCode
   }
 };
