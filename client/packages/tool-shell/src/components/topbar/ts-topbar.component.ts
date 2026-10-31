@@ -423,6 +423,12 @@ export interface SectionNavLink {
       justify-content: center;
       justify-self: center;
       height: 100%;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      position: relative;
+      -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+      mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
     }
 
     .ts-nav-links-track {
@@ -430,9 +436,24 @@ export interface SectionNavLink {
       display: inline-flex;
       align-items: center;
       gap: 2px;
-      padding: 3px;
+      padding: 3px 8px;
       background: transparent;
       border-radius: var(--ts-radius-full, 9999px);
+      max-width: 100%;
+      overflow-x: auto;
+      scrollbar-width: none;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+    }
+
+    .ts-nav-links-track::-webkit-scrollbar {
+      display: none;
+    }
+
+    .ts-nav-link-btn {
+      scroll-snap-align: center;
+      flex-shrink: 0;
     }
 
     .ts-nav-active-pill {
@@ -1120,7 +1141,7 @@ export interface SectionNavLink {
       }
     }
 
-    /* Small screens (Mobile <768px): Hide center navigation & theme toggle, show 4-circles navigation drawer button */
+    /* Small screens (Mobile <768px): Scrollable center navigation, hide desktop theme toggle */
     @media (max-width: 767px) {
       .ts-tools-grid-btn {
         display: inline-flex !important;
@@ -1129,13 +1150,21 @@ export interface SectionNavLink {
         display: none !important;
       }
       .ts-zone-center {
-        display: none !important;
+        display: flex !important;
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+        margin: 0 4px;
       }
       .ts-topbar-card {
-        grid-template-columns: 1fr auto;
+        grid-template-columns: auto 1fr auto;
         height: 56px;
         padding: 0 8px;
         border-radius: 16px;
+      }
+      .ts-nav-link-btn {
+        padding: 4px 10px;
+        font-size: 12.5px;
       }
       .ts-zone-left {
         gap: 6px;
@@ -1593,16 +1622,17 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const btnEl = btns[activeIdx].nativeElement;
-    const trackRect = track.getBoundingClientRect();
-    const btnRect = btnEl.getBoundingClientRect();
-
-    const left = btnRect.left - trackRect.left;
-    const width = btnRect.width;
+    const left = btnEl.offsetLeft;
+    const width = btnEl.offsetWidth;
 
     if (width > 0) {
       this.indicatorWidth.set(width);
       this.indicatorTransform.set(`translateX(${left}px)`);
       this.isIndicatorReady.set(true);
+
+      if (track.scrollWidth > track.clientWidth) {
+        btnEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
     }
   }
 }

@@ -46,6 +46,9 @@ import {
   LucideChevronRight,
   LucideMenu,
   LucideX,
+  LucideLink,
+  LucideQrCode,
+  LucideShare2,
   LucideMail,
   LucideMapPin,
   LucideSparkles,
@@ -228,6 +231,12 @@ export class IconComponent {
     'layout-dashboard': LucideLayoutDashboard,
     list: LucideList,
     images: LucideImages,
+    link: LucideLink,
+    urlshortener: LucideLink,
+    chain: LucideLink,
+    'qr-code': LucideQrCode,
+    share: LucideShare2,
+    'share-2': LucideShare2,
   };
 
   readonly lucideIconComponent = computed(() => {

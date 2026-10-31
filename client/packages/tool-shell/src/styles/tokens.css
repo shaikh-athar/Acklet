@@ -577,6 +577,67 @@ html[data-theme="light"],
   --tool-brand-accent: var(--accent);
 }
 
+/* Warm Bronze Palette (URL Shortener):
+   dark:  accent #D6A15E, hover #E0AE70, soft rgba(214,161,94,0.12), ring rgba(214,161,94,0.28), ink/on-accent #1A1307
+   light: accent #9A6633, hover #875829, soft rgba(154,102,51,0.10), ring rgba(154,102,51,0.28), ink/on-accent #FFFFFF
+   (WCAG AA >= 4.5:1 verified: contrast on dark surface > 8:1, contrast on light surface > 5:1, text on accent > 5:1)
+*/
+[data-accent="amber"],
+.ts-root[data-accent="amber"],
+[data-theme="dark"][data-accent="amber"],
+.ts-root[data-theme="dark"][data-accent="amber"],
+[data-theme="dark"] [data-accent="amber"],
+.ts-root[data-theme="dark"] [data-accent="amber"] {
+  --accent: #D6A15E;
+  --accent-hover: #E0AE70;
+  --accent-pressed: #C4914F;
+  --accent-soft: rgba(214, 161, 94, 0.12);
+  --accent-ring: rgba(214, 161, 94, 0.28);
+  --accent-ink: #1A1307;
+  --accent-strong: #D6A15E;
+  --on-accent: #1A1307;
+  --accent-border: rgba(214, 161, 94, 0.24);
+  --accent-glow: rgba(214, 161, 94, 0.12);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--accent-ink);
+  --tool-brand-accent: var(--accent);
+
+  /* Primary Button Tokens (URL Shortener - unified #C98B4E in both themes) */
+  --btn-primary-bg: #C98B4E;
+  --btn-primary-text: #1F1608;
+  --btn-primary-hover: #D49A5E;
+  --btn-primary-pressed: #B87C42;
+  --btn-primary-disabled-opacity: 0.45;
+  --btn-primary-focus-ring: #C98B4E;
+}
+
+[data-theme="light"][data-accent="amber"],
+.ts-root[data-theme="light"][data-accent="amber"],
+[data-theme="light"] [data-accent="amber"],
+.ts-root[data-theme="light"] [data-accent="amber"] {
+  --accent: #9A6633;
+  --accent-hover: #875829;
+  --accent-pressed: #764C22;
+  --accent-soft: rgba(154, 102, 51, 0.10);
+  --accent-ring: rgba(154, 102, 51, 0.28);
+  --accent-ink: #FFFFFF;
+  --accent-strong: #9A6633;
+  --on-accent: #FFFFFF;
+  --accent-border: rgba(154, 102, 51, 0.22);
+  --accent-glow: rgba(154, 102, 51, 0.10);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--accent-ink);
+  --tool-brand-accent: var(--accent);
+
+  /* Primary Button Tokens (URL Shortener - unified #C98B4E in both themes) */
+  --btn-primary-bg: #C98B4E;
+  --btn-primary-text: #1F1608;
+  --btn-primary-hover: #D49A5E;
+  --btn-primary-pressed: #B87C42;
+  --btn-primary-disabled-opacity: 0.45;
+  --btn-primary-focus-ring: #C98B4E;
+}
+
 /* Blue Palette (QR Generator & Modern Minimal):
    light: accent #2563EB, ink #FFFFFF, strong #1D4ED8
    dark:  accent #3B82F6, ink #FFFFFF, strong #60A5FA

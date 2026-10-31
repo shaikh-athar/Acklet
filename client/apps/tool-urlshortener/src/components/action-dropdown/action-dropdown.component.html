@@ -1,0 +1,85 @@
+<!-- apps/tool-urlshortener/src/components/action-dropdown/action-dropdown.component.html -->
+<div class="action-dropdown-host" [class.is-open]="isOpen()">
+
+  <!-- Trigger Button -->
+  <button
+    type="button"
+    class="action-trigger-btn"
+    [ngClass]="triggerClass"
+    [class.is-primary]="triggerVariant === 'default'"
+    [class.is-outline]="triggerVariant === 'outline'"
+    [class.is-secondary]="triggerVariant === 'secondary'"
+    [class.is-ghost]="triggerVariant === 'ghost'"
+    [class.has-label]="!!triggerLabel"
+    [class.is-active]="isOpen()"
+    (click)="toggleOpen($event)"
+    [attr.aria-expanded]="isOpen()"
+    [attr.aria-haspopup]="'menu'"
+    [attr.aria-label]="triggerAriaLabel"
+  >
+    @if (triggerIcon && (!triggerLabel || triggerIcon !== 'chevron-down')) {
+      <ts-icon [name]="triggerIcon" [size]="16" class="trigger-icon" />
+    }
+    @if (triggerLabel) {
+      <span class="trigger-label">{{ triggerLabel }}</span>
+    }
+    @if (badge != null && badge !== '' && badge !== 0) {
+      <span class="trigger-badge">{{ badge }}</span>
+    }
+    @if (triggerLabel && triggerIcon === 'chevron-down') {
+      <ts-icon name="chevron-down" [size]="13" class="trigger-chevron" [class.rotated]="isOpen()" />
+    }
+  </button>
+
+  <!-- Dropdown Menu Overlay -->
+  @if (isOpen()) {
+    <!-- Backdrop for click outside -->
+    <div
+      class="action-backdrop"
+      (click)="close()"
+      aria-hidden="true"
+    ></div>
+
+    <!-- Dropdown Menu Container -->
+    <div
+      class="action-menu-container"
+      [class.flip-up]="flipUp()"
+      [class.align-left]="align === 'left'"
+      [class.has-custom-content]="customContent"
+      role="menu"
+      [attr.aria-label]="triggerAriaLabel"
+      (keydown)="onMenuKeydown($event)"
+      tabindex="-1"
+    >
+      <!-- Menu Items or Custom Content -->
+      @if (customContent) {
+        <div class="sheet-custom-slot">
+          <ng-content></ng-content>
+        </div>
+      } @else {
+        <div class="action-items-list" role="presentation">
+          @for (item of items; track item.id; let idx = $index) {
+            <button
+              type="button"
+              class="action-menu-item"
+              [class.is-destructive]="item.destructive"
+              [class.is-disabled]="item.disabled"
+              [class.is-focused]="activeIndex() === idx"
+              role="menuitem"
+              [attr.aria-disabled]="item.disabled ? 'true' : null"
+              (click)="onItemClick(item, $event)"
+              [tabindex]="activeIndex() === idx ? 0 : -1"
+            >
+              @if (item.icon) {
+                <ts-icon [name]="item.icon" [size]="16" class="item-icon" />
+              }
+              <span class="item-label">{{ item.label }}</span>
+            </button>
+          }
+        </div>
+      }
+
+    </div>
+  }
+
+</div>

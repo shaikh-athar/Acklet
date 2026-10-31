@@ -10,6 +10,7 @@ Welcome to the **Acklet Tools Documentation Hub**. This directory documents the 
 | :--- | :--- | :--- | :--- | :--- |
 | **Online Clipboard** | [Online-Clipboard/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/Online-Clipboard/README.md) | Ephemeral Cross-Device Transfer & Sync | Text, Links, Images, Files, E2EE, ZIP | **Production Ready** |
 | **QR Generator** | [QR-Generator/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/QR-Generator/README.md) | Client-Side QR Code Studio & Customizer | Text, URL, Email, Phone, PNG, Custom Styling | **Production Ready (Phase 1)** |
+| **URL Shortener** | [URL-Shortener/](URL-Shortener/README.md) | Privacy-First Fast URL Shortener & Link Studio | Base62 URLs, Custom Slugs, TTL, QR Handoff | **Production Ready** |
 | **DataLens** | [data-lens/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/data-lens/README.md) | Structured Data Workbench & Inspector | JSON, YAML, XML, CSV, TOML, cURL | **Production Ready** |
 | **AirVault** | [airvault/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/README.md) | Cross-Device Clipboard & Sync Platform | Text, Code, URLs, Images, Files, E2EE | **Production Ready** |
 
@@ -45,7 +46,17 @@ All tools adhere to the standard 4-subfolder structure defined in [DOCUMENTATION
 
 ---
 
-## 3. DataLens Overview
+## 3. URL Shortener Overview
+
+**URL Shortener by Acklet** is a fast, privacy-respecting link shortening utility with custom aliases, configurable TTL expiry, anonymous browser-stored link management, safe preview mode, and QR Generator deep linking.
+
+- **Primary URL**: `http://urlshortener.localhost:4200` / `https://urlshortener.acklet.com`
+- **Component Root**: `client/apps/tool-urlshortener/`
+- **Documentation Root**: [URL-Shortener/](URL-Shortener/README.md)
+
+---
+
+## 4. DataLens Overview
 
 **DataLens by Acklet** is a multi-format structured data workbench and inspection engine engineered for modern software engineers, DevOps specialists, and API developers.
 
@@ -55,7 +66,7 @@ All tools adhere to the standard 4-subfolder structure defined in [DOCUMENTATION
 
 ---
 
-## 4. AirVault Overview
+## 5. AirVault Overview
 
 **AirVault by Acklet** is a real-time cross-device clipboard synchronization platform with encrypted transport, smart content classification, device pairing, and GSAP motion choreography.
 
@@ -65,7 +76,7 @@ All tools adhere to the standard 4-subfolder structure defined in [DOCUMENTATION
 
 ---
 
-## 5. Related Platform Architecture
+## 6. Related Platform Architecture
 
 - [UI-FOUNDATION.md](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Architecture/UI-FOUNDATION.md) — Acklet UI component foundation & architectural principles.
 - [defination.md](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/defination.md) — Acklet platform glossary and terminology definitions.

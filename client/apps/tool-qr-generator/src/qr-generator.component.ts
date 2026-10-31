@@ -3597,6 +3597,17 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
 
   readonly inputPanel = viewChild(InputPanelComponent);
 
+  constructor() {
+    effect(() => {
+      const panel = this.inputPanel();
+      const content = this.content();
+      const type = this.selectedType();
+      if (panel && content) {
+        panel.restorePayload(type, content);
+      }
+    });
+  }
+
   // QR Name (Assignable & Renamable by User)
   readonly qrName = signal<string>('My QR Code');
 
@@ -3972,6 +3983,24 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
         }
       }
     } catch { }
+
+    // Ingest incoming URL query parameters (e.g. from URL Shortener 'Make QR' or deep links)
+    if (typeof window !== 'undefined') {
+      try {
+        const search = window.location.search || '';
+        const hash = window.location.hash || '';
+        const searchStr = search || (hash.includes('?') ? hash.substring(hash.indexOf('?')) : '');
+        const searchParams = new URLSearchParams(searchStr);
+        const queryText = searchParams.get('url') || searchParams.get('text') || searchParams.get('data') || searchParams.get('content');
+        if (queryText && queryText.trim()) {
+          const rawVal = queryText.trim();
+          const targetType: ContentType = (searchParams.get('type') as ContentType) || 'url';
+          this.selectedType.set(targetType);
+          this.content.set(rawVal);
+          this.inputPanel()?.restorePayload(targetType, rawVal);
+        }
+      } catch { }
+    }
 
     // Setup adaptive debounced generator pipeline (~200ms on desktop, ~350ms on mobile/touch to preserve CPU and typing cadence)
     // Combined with distinctUntilChanged to prevent duplicate generation
