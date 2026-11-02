@@ -6,7 +6,8 @@ import {
   ChangeDetectionStrategy,
   computed,
   signal,
-  inject
+  inject,
+  effect
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -2432,6 +2433,20 @@ export class InputPanelComponent {
     this.qrService = qrService ?? inject(QRGeneratorService);
     this.dynamicService = dynamicService ?? inject(QrDynamicService);
   }
+
+  private readonly syncContentEffect = effect(() => {
+    const c = this.content();
+    const type = this.selectedType();
+    if (c) {
+      if (type === 'url') {
+        if (this.websiteData.url !== c) {
+          this.websiteData.url = c;
+        }
+      } else {
+        this.restorePayload(type, c);
+      }
+    }
+  });
 
   readonly selectedType = input<ContentType>('url');
   readonly content = input<string>('');

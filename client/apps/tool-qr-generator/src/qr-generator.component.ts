@@ -13,6 +13,7 @@ import {
   untracked
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
 import { Subject, Subscription, timer, BehaviorSubject } from 'rxjs';
 import { debounce, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
@@ -3567,6 +3568,7 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
   readonly responsive = inject(ResponsiveService);
   private readonly haptics = inject(HapticService);
   readonly smartLinkService = inject(SmartLinkService);
+  private readonly route = inject(ActivatedRoute, { optional: true });
   readonly hubUrl = getToolsHubUrl();
 
   readonly isMobileFlow = computed(() => this.responsive.isPhone() || this.responsive.isTabletPortrait());
@@ -3958,6 +3960,60 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
     this.onDownload('png');
   }
 
+  applyIncomingQuery(params: { get?: (k: string) => string | null } | Record<string, string | null | undefined>): void {
+    const getParam = (k: string): string | null => {
+      if (typeof (params as any).get === 'function') {
+        return (params as any).get(k);
+      }
+      return (params as Record<string, string | null | undefined>)[k] ?? null;
+    };
+
+    const targetUrl = getParam('url') || getParam('link');
+    const targetText = getParam('text');
+    const targetValue = getParam('value') || getParam('data') || getParam('content') || getParam('q');
+    const requestedType = (getParam('type') || '').toLowerCase() as ContentType;
+    const incomingName = getParam('name') || getParam('title');
+
+    const incomingValue = targetUrl || targetText || targetValue;
+    if (incomingValue && incomingValue.trim()) {
+      const trimmed = incomingValue.trim();
+      let determinedType: ContentType = 'url';
+
+      if (requestedType && ALL_CONTENT_TYPES.some(t => t.type === requestedType)) {
+        determinedType = requestedType;
+      } else if (targetUrl) {
+        determinedType = 'url';
+      } else if (targetText) {
+        determinedType = 'text';
+      } else if (/^(https?:\/\/|www\.)/i.test(trimmed)) {
+        determinedType = 'url';
+      } else {
+        determinedType = 'text';
+      }
+
+      if (incomingName) {
+        this.qrName.set(incomingName.trim());
+      }
+
+      this.selectedType.set(determinedType);
+      this.content.set(trimmed);
+      this.isFullRevealNeeded = true;
+
+      if (this.responsive.isPhone()) {
+        this.phoneState.set('result');
+      }
+
+      // Synchronize input panel child component form fields
+      this.inputPanel()?.restorePayload(determinedType, trimmed);
+      setTimeout(() => {
+        this.inputPanel()?.restorePayload(determinedType, trimmed);
+      }, 0);
+
+      // Execute QR generation immediately with the auto-filled content
+      this.executeGeneration(trimmed, determinedType);
+    }
+  }
+
   ngOnInit(): void {
     // Restore persistent advanced settings if available
     try {
@@ -3973,6 +4029,47 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
       }
     } catch { }
 
+    // Read query parameters for Make QR / URL Shortener / deep-link auto-fill & auto-generation
+    if (typeof window !== 'undefined' && window.location) {
+      try {
+        const search = window.location.search || '';
+        const params = new URLSearchParams(search);
+
+        let hashParams: URLSearchParams | null = null;
+        if (window.location.hash) {
+          const hash = window.location.hash;
+          const queryIdx = hash.indexOf('?');
+          if (queryIdx !== -1) {
+            hashParams = new URLSearchParams(hash.slice(queryIdx + 1));
+          } else if (hash.includes('=')) {
+            hashParams = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash);
+          }
+        }
+
+        const combinedGetter = {
+          get: (k: string) => params.get(k) || (hashParams ? hashParams.get(k) : null)
+        };
+
+        if (combinedGetter.get('url') || combinedGetter.get('link') || combinedGetter.get('text') || combinedGetter.get('value') || combinedGetter.get('data') || combinedGetter.get('content') || combinedGetter.get('q')) {
+          this.applyIncomingQuery(combinedGetter);
+        }
+      } catch (err) {
+        console.warn('[QRGenerator] Failed reading query params for auto-fill:', err);
+      }
+    }
+
+    if (this.route) {
+      this.sub.add(
+        this.route.queryParams.subscribe(params => {
+          if (!params) return;
+          const incoming = params['url'] || params['link'] || params['text'] || params['value'] || params['data'] || params['content'] || params['q'];
+          if (incoming && incoming.trim() && incoming.trim() !== this.content()) {
+            this.applyIncomingQuery(params);
+          }
+        })
+      );
+    }
+
     // Setup adaptive debounced generator pipeline (~200ms on desktop, ~350ms on mobile/touch to preserve CPU and typing cadence)
     // Combined with distinctUntilChanged to prevent duplicate generation
     this.sub.add(
@@ -3984,8 +4081,10 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
       })
     );
 
-    // Initial render (empty-first flow: empty content produces null dataUrl and shows placeholder)
-    this.executeGeneration(this.content(), this.selectedType());
+    // Initial render (empty-first flow: only if content was not already generated via query params)
+    if (!this.content()) {
+      this.executeGeneration(this.content(), this.selectedType());
+    }
 
     // Setup theme observation for CTA Text Color default (black in light mode, white in dark mode)
     if (typeof document !== 'undefined') {

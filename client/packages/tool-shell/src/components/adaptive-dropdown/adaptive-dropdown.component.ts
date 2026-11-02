@@ -22,13 +22,13 @@ import { TsIconComponent } from '../icon/ts-icon.component';
   imports: [CommonModule, BottomSheetComponent, TsIconComponent],
   template: `
     <!-- Trigger Button -->
-    <div class="dropdown-trigger-wrapper">
+    <div class="dropdown-trigger-wrapper" (click)="onTriggerWrapperClick($event)">
       <ng-content select="[trigger]">
         <!-- Default Trigger Button if custom trigger is not provided -->
         <button
           type="button"
           class="default-dropdown-trigger"
-          (click)="toggleOpen()"
+          (click)="toggleOpen(); $event.stopPropagation()"
           [attr.aria-expanded]="isOpen()"
           [attr.aria-label]="ariaLabel()"
         >
@@ -60,9 +60,12 @@ import { TsIconComponent } from '../icon/ts-icon.component';
         <div class="desktop-popover-backdrop" (click)="close()" aria-hidden="true"></div>
         <div
           class="desktop-popover custom-scrollbar"
+          [class.placement-top]="placement() === 'top'"
+          [class.align-right]="align() === 'right'"
           role="menu"
           [style.width]="menuWidth()"
           [attr.aria-label]="title() || ariaLabel()"
+          (click)="onItemClick($event)"
         >
           <ng-content />
         </div>
@@ -133,6 +136,16 @@ import { TsIconComponent } from '../icon/ts-icon.component';
       animation: popoverFadeIn 0.15s ease forwards;
     }
 
+    .desktop-popover.placement-top {
+      top: auto;
+      bottom: calc(100% + 8px);
+    }
+
+    .desktop-popover.align-right {
+      left: auto;
+      right: 0;
+    }
+
     /* Light Theme */
     :host-context([data-theme="light"]) .default-dropdown-trigger,
     [data-theme="light"] .default-dropdown-trigger {
@@ -188,9 +201,16 @@ export class AdaptiveDropdownComponent {
   readonly ariaLabel = input<string>('Dropdown menu');
   readonly menuWidth = input<string>('240px');
   readonly closeOnSelect = input<boolean>(true);
+  readonly placement = input<'bottom' | 'top' | 'auto'>('auto');
+  readonly align = input<'left' | 'right'>('right');
 
   readonly opened = output<void>();
   readonly closed = output<void>();
+
+  onTriggerWrapperClick(event: MouseEvent): void {
+    // If the click came from inside a trigger, toggle dropdown
+    this.toggleOpen();
+  }
 
   @HostListener('window:keydown.escape')
   onEscape(): void {

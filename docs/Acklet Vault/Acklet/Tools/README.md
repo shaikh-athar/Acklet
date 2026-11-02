@@ -10,6 +10,7 @@ Welcome to the **Acklet Tools Documentation Hub**. This directory documents the 
 | :--- | :--- | :--- | :--- | :--- |
 | **Online Clipboard** | [Online-Clipboard/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/Online-Clipboard/README.md) | Ephemeral Cross-Device Transfer & Sync | Text, Links, Images, Files, E2EE, ZIP | **Production Ready** |
 | **QR Generator** | [QR-Generator/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/QR-Generator/README.md) | Client-Side QR Code Studio & Customizer | Text, URL, Email, Phone, PNG, Custom Styling | **Production Ready (Phase 1)** |
+| **Barcode Generator** | [Barcode-Generator/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/Barcode-Generator/README.md) | In-Browser Vector Barcode Studio | Code 128, EAN, UPC, ISBN, ITF, Codabar, SVG, PNG, PDF | **Production Ready (Phase 1)** |
 | **DataLens** | [data-lens/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/data-lens/README.md) | Structured Data Workbench & Inspector | JSON, YAML, XML, CSV, TOML, cURL | **Production Ready** |
 | **AirVault** | [airvault/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/README.md) | Cross-Device Clipboard & Sync Platform | Text, Code, URLs, Images, Files, E2EE | **Production Ready** |
 
@@ -45,7 +46,17 @@ All tools adhere to the standard 4-subfolder structure defined in [DOCUMENTATION
 
 ---
 
-## 3. DataLens Overview
+## 3. Barcode Generator Overview
+
+**Barcode Generator by Acklet** is a 100% in-browser, privacy-first barcode studio that produces standards-compliant 1D (and planned 2D) barcodes with automatic GS1 Modulo-10 checksum calculation, physical print scaling, optical contrast validation, and lossless vector SVG, 300 DPI PNG, and PDF exports.
+
+- **Primary URL**: `http://barcode.localhost:4200` / `https://barcode.acklet.com` (Fallback route: `/barcode` or `/tools/barcode`)
+- **Component Root**: [client/apps/tool-barcode-generator/](file:///Users/ayaz/Acklet/client/apps/tool-barcode-generator/)
+- **Documentation Root**: [Barcode-Generator/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/Barcode-Generator/README.md)
+
+---
+
+## 4. DataLens Overview
 
 **DataLens by Acklet** is a multi-format structured data workbench and inspection engine engineered for modern software engineers, DevOps specialists, and API developers.
 
@@ -55,7 +66,7 @@ All tools adhere to the standard 4-subfolder structure defined in [DOCUMENTATION
 
 ---
 
-## 4. AirVault Overview
+## 5. AirVault Overview
 
 **AirVault by Acklet** is a real-time cross-device clipboard synchronization platform with encrypted transport, smart content classification, device pairing, and GSAP motion choreography.
 

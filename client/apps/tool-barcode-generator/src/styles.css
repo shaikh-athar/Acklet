@@ -1,0 +1,111 @@
+/* apps/tool-barcode-generator/src/styles.css */
+@import "tailwindcss";
+@import "../../../packages/tool-shell/src/styles/tokens.css";
+@import "../../../packages/tool-shell/src/styles/base.css";
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Canonical Breakpoint Tokens */
+  --bp-xs-max: 399px;
+  --bp-sm-min: 400px;
+  --bp-sm-max: 639px;
+  --bp-md-min: 640px;
+  --bp-md-max: 1023px;
+  --bp-lg-min: 1024px;
+  --bp-lg-max: 1439px;
+  --bp-xl-min: 1440px;
+
+  /* Accent Tokens (Blue) */
+  --accent-blue: #2563EB;
+  --accent-blue-hover: #1D4ED8;
+  --accent-blue-active: #1E40AF;
+  --accent-blue-soft: rgba(37, 99, 235, 0.12);
+
+  /* Canonical Focus Ring */
+  --ts-focus-ring: 2px solid var(--tool-accent, #2563EB);
+  --ts-focus-offset: 2px;
+
+  /* Device Size Tiers (Default: xl / lg Desktop) */
+  --tier-font-body: clamp(14px, 1vw, 16px);
+  --tier-font-label: 14px;
+  --tier-font-heading: 18px;
+  --tier-icon-size: 20px;
+  --tier-control-height: 48px;
+  --tier-card-padding: 24px;
+  --tier-card-gap: 24px;
+  --tier-tab-height: 60px;
+  --tier-step-badge-size: 28px;
+  --tier-topbar-height: 64px;
+  --tier-shell-padding: 16px;
+  --tier-shell-max-width: 1600px;
+}
+
+@media (max-width: 1023px) {
+  :root {
+    --tier-font-body: 15px;
+    --tier-font-label: 13px;
+    --tier-font-heading: 17px;
+    --tier-icon-size: 18px;
+    --tier-control-height: 46px;
+    --tier-card-padding: 20px;
+    --tier-card-gap: 20px;
+    --tier-tab-height: 58px;
+    --tier-step-badge-size: 26px;
+    --tier-topbar-height: 56px;
+    --tier-shell-padding: 16px;
+    --tier-shell-max-width: 1080px;
+  }
+}
+
+@media (max-width: 639px) {
+  :root {
+    --tier-font-body: 14px;
+    --tier-font-label: 12px;
+    --tier-font-heading: 16px;
+    --tier-icon-size: 18px;
+    --tier-control-height: 44px;
+    --tier-card-padding: 16px;
+    --tier-card-gap: 16px;
+    --tier-tab-height: 56px;
+    --tier-step-badge-size: 24px;
+    --tier-topbar-height: 56px;
+    --tier-shell-padding: 12px;
+    --tier-shell-max-width: 600px;
+  }
+}
+
+@media (max-width: 399px) {
+  :root {
+    --tier-font-body: 14px;
+    --tier-font-label: 12px;
+    --tier-font-heading: 15px;
+    --tier-icon-size: 16px;
+    --tier-control-height: 44px;
+    --tier-card-padding: 12px;
+    --tier-card-gap: 12px;
+    --tier-tab-height: 54px;
+    --tier-step-badge-size: 24px;
+    --tier-topbar-height: 52px;
+    --tier-shell-padding: 6px;
+    --tier-shell-max-width: 390px;
+  }
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Manrope', var(--ts-font-sans), sans-serif;
+  transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
+              color var(--ts-dur-base, 200ms) var(--ts-ease);
+}
+
+app-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100dvh;
+}

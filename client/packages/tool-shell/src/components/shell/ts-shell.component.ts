@@ -810,7 +810,8 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
     .ts-tool-card-surface.full-bleed > *,
     ::ng-deep .ts-tool-card-surface.full-bleed > *,
     ::ng-deep .ts-tool-card-surface.full-bleed app-json-lens,
-    ::ng-deep .ts-tool-card-surface.full-bleed app-clipboard-tool {
+    ::ng-deep .ts-tool-card-surface.full-bleed app-clipboard-tool,
+    ::ng-deep .ts-tool-card-surface.full-bleed app-barcode-generator {
       width: 100% !important;
       height: 100% !important;
       min-height: 0 !important;
@@ -961,6 +962,38 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
       .ts-tool-card-surface:not(.full-bleed) {
         padding: 16px;
         border-radius: 16px;
+      }
+    }
+
+    @media (max-width: 399px) {
+      .ts-root {
+        padding: max(4px, env(safe-area-inset-top, 0px))
+                 max(4px, env(safe-area-inset-right, 0px))
+                 max(4px, env(safe-area-inset-bottom, 0px))
+                 max(4px, env(safe-area-inset-left, 0px));
+      }
+      .ts-shell-grid {
+        grid-template-rows: 52px 1fr;
+        gap: 4px;
+      }
+      .ts-navbar-card-slot {
+        height: 52px;
+      }
+      .ts-main-content-card {
+        border-radius: 12px;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+      }
+      .ts-main-scroll-container:not(.full-bleed) {
+        padding: 0;
+        gap: 8px;
+      }
+      .ts-tool-card-surface:not(.full-bleed) {
+        padding: 0;
+        border-radius: 12px;
+        background: transparent;
+        border: none;
       }
     }
   `]
