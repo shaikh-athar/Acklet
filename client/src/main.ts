@@ -59,11 +59,12 @@ if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools'
   // Bootstrap URL Shortener tool (apps/tool-urlshortener)
   Promise.all([
     import('../apps/tool-urlshortener/src/app/app.component'),
-    import('@angular/common/http')
+    import('@angular/common/http'),
+    import('../apps/tool-urlshortener/src/services/shortener-error.interceptor')
   ])
-    .then(([{ AppComponent }, { provideHttpClient, withFetch }]) => {
+    .then(([{ AppComponent }, { provideHttpClient, withFetch, withInterceptors }, { shortenerErrorInterceptor }]) => {
       return bootstrapApplication(AppComponent, {
-        providers: [provideHttpClient(withFetch())]
+        providers: [provideHttpClient(withFetch(), withInterceptors([shortenerErrorInterceptor]))]
       });
     })
     .catch((err) => console.error('[Tool URL Shortener Bootstrap Error]', err));

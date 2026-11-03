@@ -158,6 +158,9 @@
   z-index: 1000;
   min-width: 190px;
   max-width: min(280px, calc(100vw - 24px));
+  max-height: min(340px, calc(100dvh - 32px));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   border-radius: 12px;
   background: var(--bg-surface, #18181B);
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));

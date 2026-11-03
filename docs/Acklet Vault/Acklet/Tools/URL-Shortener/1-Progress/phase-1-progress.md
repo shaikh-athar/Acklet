@@ -134,7 +134,48 @@ node scripts/verify.mjs -B --app=tool-urlshortener
   - HTTP code badges (`410` for Limit reached, Expired, and Deactivated; `403` for Scheduled) displayed alongside status dots in desktop rows and mobile cards.
   - Subtitle updated to plain statement: *"Links created on this device and securely synchronized with Acklet."*
 
-### 2.8 Clean Working Tree Check
+### 2.8 Status Badge & Label Simplification
+- **Numeric Code Removal**: Removed HTTP status codes (`410`, `403`, etc.) from all UI badges, chips, and table cells.
+- Status badges now strictly display plain, friendly labels: `Active`, `Scheduled`, `Expired`, `Limit reached`, and `Deactivated`.
+- Subtitle updated to plain statement: *"Links created on this device and securely synchronized with Acklet."*
+
+### 2.9 Friendly Sanitized Error Catalog & Bootstrap Interceptor
+- **Bootstrap Interceptor**: Created `shortenerErrorInterceptor` in `shortener-error.interceptor.ts` and registered it globally in `client/src/main.ts`.
+- **Friendly Message Catalog**: Created `shortener-messages.ts` with friendly, negotiable explanations for 400, 401, 403, 404, 409, 410, 429, 500, and network failure (status 0).
+- **Leakage Prevention**: Strictly intercepts raw technical strings (e.g. `Http failure response for http://...: 500 Internal Server Error`, stack traces, SQL syntax, or internal endpoints) before they reach the user, replacing them with friendly messages such as *"Something went wrong on our end. Please try again in a few moments."*
+- **Unit Test Coverage**: Added `shortener-messages.spec.ts` (8 tests) verifying mapping, technical error stripping, and fallback handling.
+
+### 2.10 Unreachable-Service Handling & Request Loop Protection
+- **Single In-Flight Guard**: Deduplicated concurrent calls to `getMyLinks()` so route changes and component re-renders never flood the dev proxy or backend.
+- **Limited Exponential Backoff**: Automatically retries failed list calls up to 2 times (1s, then 2s), then stops cleanly without infinite request loops.
+- **Calm Banner**: Surfaces a non-alarming notice at the top of My Links: *"Some details can't be loaded right now. Please try again in a few minutes."* with a manual **Try again** retry button.
+- **Unreachable Service State Machine**:
+  - Differentiates truly empty states from unreachable states ("No links yet" never appears during an outage).
+  - Mutating actions (Create, Edit, Deactivate, Delete, Bulk actions) are disabled with explanatory tooltips.
+  - Offline-safe actions (View, Search, Filter, Sort, Export CSV, and Copy short link) remain active.
+  - Protected links whose original destinations are not cached display `"Not available right now"` with external link icons hidden.
+
+### 2.11 Multi-Device Responsive Scaling & Bottom Sheet Architecture
+- **Responsive Layout Across Screen Tiers**:
+  - Small (`< 600px` down to 320px): Full height centering via `100dvh` (minus header and safe area insets); landscape phones top-align and scroll naturally.
+  - Medium (`600px - 1023px`): 2-column auto-fit structured card grid (`repeat(auto-fit, minmax(280px, 1fr))`).
+  - Large (`>= 1024px`): Full desktop data table with sticky header and horizontal scroll bounds.
+- **5-Row Mobile Card Anatomy**:
+  - Row 1: Short code (`/code` in monospace bold bronze) + 38px high-contrast bronze Copy button + 38px 3-dots Action menu (`app-action-dropdown`).
+  - Row 2: Link icon + original link with ellipsis truncation (tooltip on link hover only) OR `"Not available right now"`.
+  - Row 3: Optional label badge with text truncation.
+  - Row 4: Badges wrapped with 6px gap (Status label, Protected, One-time, Max click(s), Expiry date/time).
+  - Row 5: 3-column stats grid (`repeat(3, minmax(0, 1fr))`) side-by-side: Clicks, Created, and Last visited.
+- **Mobile Dropdowns & Containing-Block Isolation**:
+  - `.mobile-link-card` uses `overflow: visible;` and dynamic z-index elevation (`z-index: 100 !important;`) on `.is-menu-open` / `:has(.action-dropdown-host.is-open)`, preventing sibling cards from clipping or covering open menus.
+  - Status & Sort dropdowns elevated to `z-index: 200 !important;` when open, painting completely above Row 2's Filters button. Status aligns to `left: 0;`, Sort aligns to `right: 0;`.
+  - Attribute Filters bottom sheet rendered at the root template level (`.mobile-filter-drawer-backdrop` + `.mobile-filter-drawer-surface`) via shared `<ng-template #attributeFiltersContent>`, completely escaping `backdrop-filter` containing-block traps.
+- **Full Test Suite Status**:
+  - `vitest run apps/tool-urlshortener`: **35 of 35 passed** (4 test files: `shortener.spec.ts`, `shortener-filter.spec.ts`, `shortener-messages.spec.ts`, `app.component.spec.ts`).
+  - `node scripts/verify.mjs -A`: **PASSED**.
+  - `node scripts/verify.mjs -B`: **PASSED**.
+
+### 2.12 Clean Working Tree Check
 ```bash
 git diff --check
 ```

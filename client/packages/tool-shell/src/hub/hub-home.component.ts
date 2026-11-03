@@ -191,6 +191,7 @@ const RECENT_KEY = 'acklet.tools.recent';
                 [href]="getToolHref(tool.slug)"
                 class="hub-tool-row-link group"
                 role="listitem"
+                [class.is-favorite]="isFavorite(tool.slug)"
                 [attr.data-slug]="tool.slug"
                 [attr.data-index]="idx"
                 [class.is-entering]="enteringSlugs().has(tool.slug)"
@@ -254,15 +255,33 @@ const RECENT_KEY = 'acklet.tools.recent';
                     type="button"
                     class="hub-star-btn"
                     [class.is-favorite]="isFavorite(tool.slug)"
+                    [style.--star-gradient]="'url(#hub-star-grad-' + tool.slug + ')'"
                     (click)="toggleFavorite($event, tool.slug)"
                     [attr.aria-label]="isFavorite(tool.slug) ? 'Remove ' + tool.name + ' from favorites' : 'Add ' + tool.name + ' to favorites'"
                     title="Toggle favorite"
                   >
-                    <ts-icon 
-                      name="star" 
-                      [size]="16"
-                      class="hub-star-icon" 
-                    />
+                    <svg
+                      class="hub-star-icon"
+                      viewBox="0 0 24 24"
+                      width="16"
+                      height="16"
+                      aria-hidden="true"
+                    >
+                      <defs>
+                        <linearGradient [id]="'hub-star-grad-' + tool.slug" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" [attr.stop-color]="getToolAccent(tool).base" />
+                          <stop offset="100%" [attr.stop-color]="getToolAccent(tool).strong" />
+                        </linearGradient>
+                      </defs>
+                      <polygon
+                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+                        [attr.fill]="isFavorite(tool.slug) ? 'url(#hub-star-grad-' + tool.slug + ')' : 'none'"
+                        [attr.stroke]="isFavorite(tool.slug) ? 'url(#hub-star-grad-' + tool.slug + ')' : 'currentColor'"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
                   </button>
 
                   <div class="hub-open-arrow" aria-hidden="true">
@@ -581,7 +600,7 @@ const RECENT_KEY = 'acklet.tools.recent';
     .hub-tools-grid {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 12px;
+      gap: 15px;
       width: 100%;
       position: relative;
     }
@@ -598,6 +617,7 @@ const RECENT_KEY = 'acklet.tools.recent';
       text-decoration: none;
       display: flex;
       align-items: center;
+      height : 120px;
       gap: 14px;
       padding: 14px 16px;
       border-radius: 14px;
@@ -904,10 +924,39 @@ const RECENT_KEY = 'acklet.tools.recent';
       transform: scale(0.9);
     }
 
+    .hub-tool-row-link.is-favorite {
+      background: color-mix(in srgb, var(--row-accent) 4.5%, var(--surface)) !important;
+      border-color: color-mix(in srgb, var(--row-accent) 30%, var(--border)) !important;
+    }
+
+    :host-context([data-theme="dark"]) .hub-tool-row-link.is-favorite {
+      background: color-mix(in srgb, var(--row-accent) 6%, var(--surface)) !important;
+      border-color: color-mix(in srgb, var(--row-accent) 35%, var(--border)) !important;
+    }
+
     .hub-star-btn.is-favorite {
-      color: #F59E0B !important; /* Gold favorite star */
+      background: transparent !important;
+      border: none !important;
       opacity: 1 !important;
       animation: starPop 280ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .hub-star-btn.is-favorite:hover {
+      background: rgba(0, 0, 0, 0.05) !important;
+    }
+
+    :host-context([data-theme="dark"]) .hub-star-btn.is-favorite:hover {
+      background: rgba(255, 255, 255, 0.07) !important;
+    }
+
+    .hub-star-btn.is-favorite svg,
+    .hub-star-btn.is-favorite .hub-star-icon {
+      filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--row-accent) 35%, transparent));
+    }
+
+    .hub-star-btn.is-favorite polygon {
+      fill: var(--star-gradient) !important;
+      stroke: var(--star-gradient) !important;
     }
 
     .hub-open-arrow {

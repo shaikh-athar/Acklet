@@ -72,7 +72,7 @@ class ShortRedirectTest {
         ResponseEntity<?> res = redirectService.resolveAndRedirect("unknown", servletRequest);
 
         assertEquals(HttpStatus.NOT_FOUND, res.getStatusCode());
-        assertTrue(res.getBody().toString().contains("Link Not Found"));
+        assertTrue(res.getBody().toString().contains("Link unavailable"));
     }
 
     @Test
@@ -88,7 +88,7 @@ class ShortRedirectTest {
 
         ResponseEntity<?> res = redirectService.resolveAndRedirect("deact1", servletRequest);
         assertEquals(HttpStatus.GONE, res.getStatusCode());
-        assertTrue(res.getBody().toString().contains("Link Deactivated"));
+        assertTrue(res.getBody().toString().contains("Link unavailable"));
     }
 
     @Test
@@ -105,7 +105,7 @@ class ShortRedirectTest {
 
         ResponseEntity<?> res = redirectService.resolveAndRedirect("sched1", servletRequest);
         assertEquals(HttpStatus.FORBIDDEN, res.getStatusCode());
-        assertTrue(res.getBody().toString().contains("Not Yet Active"));
+        assertTrue(res.getBody().toString().contains("Not active yet"));
     }
 
     @Test
@@ -122,7 +122,7 @@ class ShortRedirectTest {
 
         ResponseEntity<?> res = redirectService.resolveAndRedirect("exp1", servletRequest);
         assertEquals(HttpStatus.GONE, res.getStatusCode());
-        assertTrue(res.getBody().toString().contains("Link Expired"));
+        assertTrue(res.getBody().toString().contains("Link expired"));
     }
 
     @Test
@@ -236,7 +236,7 @@ class ShortRedirectTest {
 
         ResponseEntity<?> res2 = redirectService.resolveAndRedirect("one1", servletRequest);
         assertEquals(HttpStatus.GONE, res2.getStatusCode());
-        assertTrue(res2.getBody().toString().contains("Limit Reached"));
+        assertTrue(res2.getBody().toString().contains("Visit limit reached"));
     }
 
     @Test

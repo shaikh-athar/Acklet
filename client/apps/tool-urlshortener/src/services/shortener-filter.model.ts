@@ -2,7 +2,7 @@
 import { ShortLinkRecord, computeLinkStatus, LinkStatus } from './shortener-storage.service';
 
 export type ActivityFilter = 'TRENDING' | 'POPULAR' | 'RECENTLY_OPENED' | 'NEVER_OPENED';
-export type ExpiryFilter = 'EXPIRING_SOON' | 'EXPIRING_30D' | 'NO_EXPIRY';
+export type ExpiryFilter = 'EXPIRING_SOON' | 'EXPIRING_30D' | 'NO_EXPIRY' | 'EXPIRED';
 export type ProtectionFilter = 'ANY' | 'PROTECTED' | 'NOT_PROTECTED';
 export type RuleFilter = 'ONE_TIME' | 'CLICK_LIMIT' | 'HAS_FALLBACK';
 export type CreatedRangePreset = 'ANY_TIME' | 'TODAY' | 'LAST_7D' | 'LAST_30D' | 'CUSTOM';
@@ -88,6 +88,10 @@ export function matchesFilterCriteria(
 
     for (const exp of criteria.expiry) {
       if (exp === 'NO_EXPIRY' && !link.expiresAt) {
+        matchedExpiry = true;
+        break;
+      }
+      if (exp === 'EXPIRED' && link.expiresAt && link.expiresAt <= nowMs) {
         matchedExpiry = true;
         break;
       }

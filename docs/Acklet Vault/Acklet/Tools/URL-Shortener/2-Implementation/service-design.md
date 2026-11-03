@@ -128,3 +128,54 @@ Confidential user-supplied fields are encrypted before writing to PostgreSQL via
 - Legacy PBKDF2 hashes are upgraded to BCrypt on the first successful password unlock.
 - Tokens (`ownerToken`, `manageToken`) are stored solely as SHA-256 hashes and compared in constant time (`MessageDigest.isEqual`).
 - IP addresses are converted into rate-limiting keys via HMAC-SHA256 with an environment pepper (`APP_SHORTENER_PEPPER`); raw IPs are never stored.
+
+---
+
+## 5. Client Resilience & Error Sanitization Architecture
+
+### 5.1 HTTP Error Interceptor (`shortener-error.interceptor.ts`)
+- Registered globally at application bootstrap (`client/src/main.ts`) via `provideHttpClient(withInterceptors([shortenerErrorInterceptor]))`.
+- Intercepts all outgoing requests and incoming `HttpErrorResponse` instances.
+- Passes errors through `sanitizeErrorMessage(error)` before emitting down the Observable stream, stripping raw server URLs, HTTP status numbers, SQL error bodies, and Java stack traces.
+
+### 5.2 Centralized Message Catalog (`shortener-messages.ts`)
+- Provides deterministic error mapping:
+  - Error code lookups (`SHORTENER_MESSAGE_CATALOG`).
+  - HTTP status fallbacks (400 -> "Please enter a valid destination link.", 401/403 -> "You don't have permission to modify this link.", 404/410 -> "This link is no longer available.", 409 -> "This custom alias is already in use.", 429 -> "Too many requests right now. Please wait a moment and try again.", 500+ -> "Something went wrong on our end. Please try again in a few moments.").
+  - Network disconnect / offline fallback (0 -> "Unable to reach the server. Please check your connection and try again.").
+- `isTechnicalErrorText(text)` detection pattern-matches and rejects server leakages.
+
+### 5.3 Custom Expiration Architecture
+- Frontend:
+  - Form & edit state: `formCustomExpiresAt = signal<string>('')` and `editCustomExpiresAt = signal<string>('')`.
+  - Date conversion: parses ISO timestamp into local datetime-local format (`YYYY-MM-DDTHH:mm`) and converts user selection to Unix epoch milliseconds.
+  - Live validation: `isCustomExpiryPast(val)` disables form submission and displays polite contextual guidance if a past time is chosen.
+- Backend:
+  - `ShortLinkService.createLink` and `ShortLinkService.updateLink` validate that non-null `expiresAt` timestamps are strictly in the future (`expiresAt.isBefore(now)` throws `HttpStatus.BAD_REQUEST`).
+  - Retains configurable maximum and default expirations from `ShortenerProperties`.
+
+### 5.4 Request Deduplication & Offline Resilience
+- **Single In-Flight Guard**: `ShortenerService.getMyLinks()` maintains a private `inFlightLinks$` Observable shared via `shareReplay(1)`. Multiple concurrent calls during route navigation or filter toggles subscribe to the same ongoing HTTP call, avoiding duplicate server loads and proxy connection saturations.
+- **Limited Exponential Backoff**: Uses RxJS `retry({ count: 2, delay: (err, count) => timer(count * 1000) })` for network errors (status 0, timeout, 502/503/504), ensuring automatic recovery for transient blips while strictly preventing infinite request loops.
+- **Service Unreachable State Transition**: When retries are exhausted, the service transitions `isServiceUnreachable` to `true`.
+  - The UI falls back to cached local storage records for read-only browsing, searching, and exporting.
+  - Destructive or write actions (Create, Edit, Delete, Deactivate, Bulk) are safely disabled with explanatory tooltips.
+  - Protected links whose destination URLs are not cached display `"Not available right now"` with external link icons hidden.
+  - Surfaces a calm notice banner with a manual **Try again** retry action.
+
+---
+
+## 6. Mobile Dropdown & Containing-Block Isolation Architecture
+
+### 6.1 The Containing-Block Defect
+In modern browser rendering engines (Chromium, WebKit, Gecko), any ancestor element with `backdrop-filter: blur(...)` or `transform` becomes the containing block for all `position: fixed` descendants.
+- When `.attribute-popover-panel` was nested inside `.links-unified-card.glass-panel` (which uses `backdrop-filter: blur(16px)`), setting `position: fixed; bottom: 0;` trapped the bottom sheet inside `.links-unified-card` rather than the viewport, pushing it off-screen at the bottom of the card list.
+
+### 6.2 Root-Level Viewport Projection
+To guarantee reliable viewport anchoring on mobile screens (<600px):
+1. **Template Sharing**: Filter attribute criteria are declared inside `<ng-template #attributeFiltersContent>` at the root template scope of `UrlShortenerComponent`.
+2. **Desktop Rendering (`>= 600px`)**: Projected into `.attribute-popover-panel.desktop-filter-popover` inside `.attribute-filters-wrap` via `<ng-container *ngTemplateOutlet="attributeFiltersContent"></ng-container>`, functioning as an anchored 480px popover.
+3. **Mobile Rendering (`< 600px`)**: Projected at the root template level into `.mobile-filter-drawer-backdrop` + `.mobile-filter-drawer-surface`, completely outside `.links-unified-card` and free from containing-block interference.
+4. **Stacking Elevation**:
+   - Status & Sort filter popovers are elevated to `z-index: 200 !important;` when open, painting over row 2's Filters button.
+   - `.mobile-link-card` uses `overflow: visible;` and dynamic z-index elevation (`z-index: 100 !important;`) on `.is-menu-open` / `:has(.action-dropdown-host.is-open)`, allowing the 3-dots action dropdown to extend over sibling cards without being clipped.

@@ -1,9 +1,10 @@
 // apps/tool-urlshortener/src/services/shortener.service.ts
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { SHORTENER_CONFIG, ExpiryPreset } from './shortener.config';
 import { ShortenerSecurityService } from './shortener-security.service';
 import { ShortenerStorageService, ShortLinkRecord, LinkStatus, computeLinkStatus } from './shortener-storage.service';
+import { SHORTENER_MESSAGE_CATALOG, sanitizeErrorMessage } from './shortener-messages';
 import { environment } from '../environments/environment';
 import { getToolUrl } from '@acklet/shared';
 import { firstValueFrom } from 'rxjs';
@@ -12,6 +13,7 @@ export interface ShortenRequest {
   url: string;
   customAlias?: string;
   expiryPreset: ExpiryPreset;
+  customExpiresAt?: number | null;
   password?: string;
   maxClicks?: number | null;
   isOneTime?: boolean;
@@ -46,6 +48,13 @@ export class ShortenerService {
   private readonly http: HttpClient;
 
   private readonly API_BASE = '/api/v1/short-links';
+
+  readonly isServiceUnreachable = signal<boolean>(false);
+  readonly isListLoading = signal<boolean>(false);
+  readonly isDevSampleMode = signal<boolean>(false);
+
+  private listInFlightPromise: Promise<ShortLinkRecord[]> | null = null;
+  private retryAttempts = 0;
 
   constructor(
     security?: ShortenerSecurityService,
@@ -83,9 +92,21 @@ export class ShortenerService {
 
     // 2. Compute expiration timestamp
     const now = Date.now();
-    const expiryOption = SHORTENER_CONFIG.expiryOptions.find(o => o.id === request.expiryPreset)
-      || SHORTENER_CONFIG.expiryOptions.find(o => o.id === SHORTENER_CONFIG.defaultExpiry)!;
-    const expiresAt = expiryOption.durationMs ? new Date(now + expiryOption.durationMs).toISOString() : null;
+    let expiresAt: string | null = null;
+
+    if (request.expiryPreset === 'custom') {
+      if (!request.customExpiresAt || request.customExpiresAt <= now) {
+        return { success: false, error: SHORTENER_MESSAGE_CATALOG.EXPIRY_INVALID };
+      }
+      expiresAt = new Date(request.customExpiresAt).toISOString();
+    } else if (request.expiryPreset === 'never') {
+      expiresAt = null;
+    } else {
+      const expiryOption = SHORTENER_CONFIG.expiryOptions.find(o => o.id === request.expiryPreset)
+        || SHORTENER_CONFIG.expiryOptions.find(o => o.id === SHORTENER_CONFIG.defaultExpiry)!;
+      expiresAt = expiryOption && expiryOption.durationMs ? new Date(now + expiryOption.durationMs).toISOString() : null;
+    }
+
     const startDate = request.startDate && request.startDate > now ? new Date(request.startDate).toISOString() : null;
 
     const ownerToken = this.storage.getOrCreateOwnerToken();
@@ -126,51 +147,208 @@ export class ShortenerService {
 
       return {
         success: false,
-        error: response?.message || 'Could not shorten link'
+        error: sanitizeErrorMessage(response?.message, SHORTENER_MESSAGE_CATALOG.SERVER_ERROR)
       };
     } catch (err: any) {
-      const status = err?.status;
-      if (status === 409) {
-        return { success: false, error: 'That alias is already taken. Try another.' };
-      }
-      if (status === 429) {
-        return { success: false, error: 'Rate limit reached. Try again in a moment.' };
-      }
       return {
         success: false,
-        error: err?.error?.message || err?.message || 'Could not shorten link. Try again in a moment.'
+        error: sanitizeErrorMessage(err, SHORTENER_MESSAGE_CATALOG.SERVER_ERROR)
       };
     }
   }
 
   /**
-   * Fetches the owner's links from the backend server.
+   * Enables or disables dev sample preview mode for testing without a backend.
+   */
+  setDevSampleMode(enabled: boolean): void {
+    this.isDevSampleMode.set(enabled);
+  }
+
+  toggleDevSampleMode(): boolean {
+    const next = !this.isDevSampleMode();
+    this.isDevSampleMode.set(next);
+    return next;
+  }
+
+  /**
+   * Fetches the owner's links from the backend server with single-flight deduplication,
+   * exponential backoff (max 2 retries), and calm unreachable-state management.
    */
   async getMyLinks(search?: string, status?: string): Promise<ShortLinkRecord[]> {
+    if (this.isDevSampleMode()) {
+      return this.filterSampleLinks(search, status);
+    }
+
+    // When querying with specific filters, bypass deduplication cache
+    if (search || status) {
+      return this.executeFetchRequest(search, status);
+    }
+
+    // Deduplicate concurrent in-flight list requests
+    if (this.listInFlightPromise) {
+      return this.listInFlightPromise;
+    }
+
+    this.listInFlightPromise = this.fetchLinksWithBackoff(0);
+    try {
+      return await this.listInFlightPromise;
+    } finally {
+      this.listInFlightPromise = null;
+    }
+  }
+
+  /**
+   * Triggers a manual retry to reload links, resetting backoff attempts.
+   */
+  async manualRetryLoad(): Promise<ShortLinkRecord[]> {
+    this.retryAttempts = 0;
+    this.isServiceUnreachable.set(false);
+    return this.getMyLinks();
+  }
+
+  private async fetchLinksWithBackoff(retryCount = 0): Promise<ShortLinkRecord[]> {
+    this.isListLoading.set(true);
+    try {
+      const records = await this.executeFetchRequest();
+      this.isServiceUnreachable.set(false);
+      this.retryAttempts = 0;
+      return records;
+    } catch (err: any) {
+      const isUnreachable = !err?.status || err.status === 0 || err.status === 502 || err.status === 503 || err.status === 504;
+      if (isUnreachable && retryCount < 2) {
+        this.retryAttempts = retryCount + 1;
+        const delayMs = (retryCount + 1) * 1000;
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        return this.fetchLinksWithBackoff(retryCount + 1);
+      }
+
+      if (isUnreachable) {
+        this.isServiceUnreachable.set(true);
+      }
+      return this.storage.getCachedMyLinks();
+    } finally {
+      this.isListLoading.set(false);
+    }
+  }
+
+  private async executeFetchRequest(search?: string, status?: string): Promise<ShortLinkRecord[]> {
     const ownerToken = this.storage.getOrCreateOwnerToken();
     const headers = new HttpHeaders({
       'X-Owner-Token': ownerToken
     });
 
-    let params: any = { page: 0, size: 50 };
+    const params: any = { page: 0, size: 50 };
     if (search) params.search = search;
     if (status) params.status = status;
 
-    try {
-      const res: any = await firstValueFrom(
-        this.http.get<any>(this.API_BASE, { headers, params })
-      );
+    const res: any = await firstValueFrom(
+      this.http.get<any>(this.API_BASE, { headers, params })
+    );
 
-      if (res && res.success && res.data && res.data.items) {
-        const records = res.data.items.map((i: any) => this.mapResponseToRecord(i));
-        this.storage.updateDisplayCache(records);
-        return records;
-      }
-    } catch (err) {
-      console.warn('[ShortenerService] Failed to fetch links from backend, falling back to cache:', err);
+    if (res && res.success && res.data && res.data.items) {
+      const records = res.data.items.map((i: any) => this.mapResponseToRecord(i));
+      this.storage.updateDisplayCache(records);
+      return records;
     }
 
     return this.storage.getCachedMyLinks();
+  }
+
+  private filterSampleLinks(search?: string, status?: string): ShortLinkRecord[] {
+    let list = this.getDevSampleLinks();
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(l =>
+        l.code.toLowerCase().includes(q) ||
+        (l.targetUrl && l.targetUrl.toLowerCase().includes(q)) ||
+        (l.label && l.label.toLowerCase().includes(q))
+      );
+    }
+    if (status && status !== 'ALL') {
+      list = list.filter(l => computeLinkStatus(l) === status);
+    }
+    return list;
+  }
+
+  getDevSampleLinks(): ShortLinkRecord[] {
+    const now = Date.now();
+    return [
+      {
+        code: 'nothing',
+        targetUrl: '',
+        domain: '',
+        isOwner: true,
+        createdAt: now - 86400000 * 3,
+        expiresAt: now + 86400000 * 25 + 3600000 * 4,
+        clicks: 1,
+        maxClicks: 1,
+        label: 'medium',
+        hasPassword: true,
+        isOneTime: true,
+        isDeactivated: false,
+        lastOpenedAt: now - 86400000 * 3
+      },
+      {
+        code: 'acklet-docs',
+        targetUrl: 'https://acklet.dev/docs/getting-started',
+        domain: 'acklet.dev',
+        isOwner: true,
+        createdAt: now - 86400000 * 7,
+        expiresAt: null,
+        clicks: 42,
+        maxClicks: null,
+        label: 'Documentation',
+        hasPassword: false,
+        isOneTime: false,
+        isDeactivated: false,
+        lastOpenedAt: now - 3600000 * 2
+      },
+      {
+        code: 'github-repo',
+        targetUrl: 'https://github.com/acklet/acklet',
+        domain: 'github.com',
+        isOwner: true,
+        createdAt: now - 86400000 * 14,
+        expiresAt: now + 86400000 * 5,
+        clicks: 128,
+        maxClicks: 500,
+        label: 'Repository',
+        hasPassword: false,
+        isOneTime: false,
+        isDeactivated: false,
+        lastOpenedAt: now - 1800000
+      },
+      {
+        code: 'promo-2026',
+        targetUrl: 'https://acklet.dev/pricing?ref=promo',
+        domain: 'acklet.dev',
+        isOwner: true,
+        createdAt: now - 86400000 * 30,
+        expiresAt: now - 86400000 * 2,
+        clicks: 89,
+        maxClicks: null,
+        label: 'Promo Launch',
+        hasPassword: false,
+        isOneTime: false,
+        isDeactivated: false,
+        lastOpenedAt: now - 86400000 * 2
+      },
+      {
+        code: 'client-draft',
+        targetUrl: '',
+        domain: '',
+        isOwner: true,
+        createdAt: now - 86400000,
+        expiresAt: now + 86400000 * 60,
+        clicks: 0,
+        maxClicks: 10,
+        label: 'Client Project',
+        hasPassword: true,
+        isOneTime: false,
+        isDeactivated: false,
+        lastOpenedAt: null
+      }
+    ];
   }
 
   /**
@@ -194,14 +372,18 @@ export class ShortenerService {
       body.startDate = updates.startDate ? new Date(updates.startDate).toISOString() : null;
     }
 
-    const res: any = await firstValueFrom(
-      this.http.put<any>(`${this.API_BASE}/${encodeURIComponent(code)}`, body, { headers })
-    );
+    try {
+      const res: any = await firstValueFrom(
+        this.http.put<any>(`${this.API_BASE}/${encodeURIComponent(code)}`, body, { headers })
+      );
 
-    if (res && res.success && res.data) {
-      return this.mapResponseToRecord(res.data);
+      if (res && res.success && res.data) {
+        return this.mapResponseToRecord(res.data);
+      }
+      throw new Error(sanitizeErrorMessage(res?.message, SHORTENER_MESSAGE_CATALOG.SAVE_FAILED));
+    } catch (err: any) {
+      throw new Error(sanitizeErrorMessage(err, SHORTENER_MESSAGE_CATALOG.SAVE_FAILED));
     }
-    throw new Error(res?.message || 'Failed to update link');
   }
 
   /**
@@ -213,14 +395,18 @@ export class ShortenerService {
       'X-Owner-Token': ownerToken
     });
 
-    const res: any = await firstValueFrom(
-      this.http.post<any>(`${this.API_BASE}/${encodeURIComponent(code)}/deactivate`, {}, { headers })
-    );
+    try {
+      const res: any = await firstValueFrom(
+        this.http.post<any>(`${this.API_BASE}/${encodeURIComponent(code)}/deactivate`, {}, { headers })
+      );
 
-    if (res && res.success && res.data) {
-      return this.mapResponseToRecord(res.data);
+      if (res && res.success && res.data) {
+        return this.mapResponseToRecord(res.data);
+      }
+      throw new Error(sanitizeErrorMessage(res?.message, SHORTENER_MESSAGE_CATALOG.SAVE_FAILED));
+    } catch (err: any) {
+      throw new Error(sanitizeErrorMessage(err, SHORTENER_MESSAGE_CATALOG.SAVE_FAILED));
     }
-    throw new Error(res?.message || 'Failed to deactivate link');
   }
 
   /**
@@ -232,14 +418,18 @@ export class ShortenerService {
       'X-Owner-Token': ownerToken
     });
 
-    const res: any = await firstValueFrom(
-      this.http.post<any>(`${this.API_BASE}/${encodeURIComponent(code)}/reactivate`, {}, { headers })
-    );
+    try {
+      const res: any = await firstValueFrom(
+        this.http.post<any>(`${this.API_BASE}/${encodeURIComponent(code)}/reactivate`, {}, { headers })
+      );
 
-    if (res && res.success && res.data) {
-      return this.mapResponseToRecord(res.data);
+      if (res && res.success && res.data) {
+        return this.mapResponseToRecord(res.data);
+      }
+      throw new Error(sanitizeErrorMessage(res?.message, SHORTENER_MESSAGE_CATALOG.SAVE_FAILED));
+    } catch (err: any) {
+      throw new Error(sanitizeErrorMessage(err, SHORTENER_MESSAGE_CATALOG.SAVE_FAILED));
     }
-    throw new Error(res?.message || 'Failed to reactivate link');
   }
 
   /**
@@ -251,9 +441,13 @@ export class ShortenerService {
       'X-Owner-Token': ownerToken
     });
 
-    await firstValueFrom(
-      this.http.delete<any>(`${this.API_BASE}/${encodeURIComponent(code)}`, { headers })
-    );
+    try {
+      await firstValueFrom(
+        this.http.delete<any>(`${this.API_BASE}/${encodeURIComponent(code)}`, { headers })
+      );
+    } catch (err: any) {
+      throw new Error(sanitizeErrorMessage(err, SHORTENER_MESSAGE_CATALOG.SERVER_ERROR));
+    }
   }
 
   /**
@@ -262,10 +456,14 @@ export class ShortenerService {
   async bulkDeactivate(codes: string[]): Promise<number> {
     const ownerToken = this.storage.getOrCreateOwnerToken();
     const headers = new HttpHeaders({ 'X-Owner-Token': ownerToken });
-    const res: any = await firstValueFrom(
-      this.http.post<any>(`${this.API_BASE}/bulk/deactivate`, { codes }, { headers })
-    );
-    return res?.data || 0;
+    try {
+      const res: any = await firstValueFrom(
+        this.http.post<any>(`${this.API_BASE}/bulk/deactivate`, { codes }, { headers })
+      );
+      return res?.data || 0;
+    } catch (err: any) {
+      throw new Error(sanitizeErrorMessage(err, SHORTENER_MESSAGE_CATALOG.SAVE_FAILED));
+    }
   }
 
   /**
@@ -274,10 +472,14 @@ export class ShortenerService {
   async bulkReactivate(codes: string[]): Promise<number> {
     const ownerToken = this.storage.getOrCreateOwnerToken();
     const headers = new HttpHeaders({ 'X-Owner-Token': ownerToken });
-    const res: any = await firstValueFrom(
-      this.http.post<any>(`${this.API_BASE}/bulk/reactivate`, { codes }, { headers })
-    );
-    return res?.data || 0;
+    try {
+      const res: any = await firstValueFrom(
+        this.http.post<any>(`${this.API_BASE}/bulk/reactivate`, { codes }, { headers })
+      );
+      return res?.data || 0;
+    } catch (err: any) {
+      throw new Error(sanitizeErrorMessage(err, SHORTENER_MESSAGE_CATALOG.SAVE_FAILED));
+    }
   }
 
   /**
@@ -286,19 +488,27 @@ export class ShortenerService {
   async bulkDelete(codes: string[]): Promise<number> {
     const ownerToken = this.storage.getOrCreateOwnerToken();
     const headers = new HttpHeaders({ 'X-Owner-Token': ownerToken });
-    const res: any = await firstValueFrom(
-      this.http.post<any>(`${this.API_BASE}/bulk/delete`, { codes }, { headers })
-    );
-    return res?.data || 0;
+    try {
+      const res: any = await firstValueFrom(
+        this.http.post<any>(`${this.API_BASE}/bulk/delete`, { codes }, { headers })
+      );
+      return res?.data || 0;
+    } catch (err: any) {
+      throw new Error(sanitizeErrorMessage(err, SHORTENER_MESSAGE_CATALOG.SERVER_ERROR));
+    }
   }
 
   async bulkRestore(codes: string[]): Promise<number> {
     const ownerToken = this.storage.getOrCreateOwnerToken();
     const headers = new HttpHeaders({ 'X-Owner-Token': ownerToken });
-    const res: any = await firstValueFrom(
-      this.http.post<any>(`${this.API_BASE}/bulk/restore`, { codes }, { headers })
-    );
-    return res?.data || 0;
+    try {
+      const res: any = await firstValueFrom(
+        this.http.post<any>(`${this.API_BASE}/bulk/restore`, { codes }, { headers })
+      );
+      return res?.data || 0;
+    } catch (err: any) {
+      throw new Error(sanitizeErrorMessage(err, SHORTENER_MESSAGE_CATALOG.SERVER_ERROR));
+    }
   }
 
   /**
@@ -307,19 +517,27 @@ export class ShortenerService {
   async getLinkStats(code: string): Promise<any> {
     const ownerToken = this.storage.getOrCreateOwnerToken();
     const headers = new HttpHeaders({ 'X-Owner-Token': ownerToken });
-    const res: any = await firstValueFrom(
-      this.http.get<any>(`${this.API_BASE}/${encodeURIComponent(code)}/stats`, { headers })
-    );
-    return res?.data || null;
+    try {
+      const res: any = await firstValueFrom(
+        this.http.get<any>(`${this.API_BASE}/${encodeURIComponent(code)}/stats`, { headers })
+      );
+      return res?.data || null;
+    } catch (err: any) {
+      throw new Error(sanitizeErrorMessage(err, SHORTENER_MESSAGE_CATALOG.SERVER_ERROR));
+    }
   }
 
   /**
    * Reports a link for policy violations.
    */
   async reportLink(code: string, reason: string, comment?: string): Promise<void> {
-    await firstValueFrom(
-      this.http.post<any>(`${this.API_BASE}/${encodeURIComponent(code)}/report`, { reason, comment })
-    );
+    try {
+      await firstValueFrom(
+        this.http.post<any>(`${this.API_BASE}/${encodeURIComponent(code)}/report`, { reason, comment })
+      );
+    } catch (err: any) {
+      throw new Error(sanitizeErrorMessage(err, SHORTENER_MESSAGE_CATALOG.REPORT_RECEIVED));
+    }
   }
 
   /**

@@ -31,15 +31,15 @@
             />
             <div class="status-code-badge">
               @if (redirectStatus() === 'EXPIRED') {
-                410
+                Expired
               } @else if (redirectStatus() === 'DEACTIVATED') {
-                410
+                Deactivated
               } @else if (redirectStatus() === 'SCHEDULED') {
-                403
+                Scheduled
               } @else if (redirectStatus() === 'LIMIT_REACHED') {
-                410
+                Limit reached
               } @else {
-                404
+                Not found
               }
             </div>
           </div>
@@ -299,6 +299,8 @@
             variant="default"
             class="ts-primary-btn new-link-btn"
             (click)="navigateTo('MAIN')"
+            [disabled]="isServiceUnreachable()"
+            [title]="isServiceUnreachable() ? 'Action unavailable while service is unreachable' : 'Create a new link'"
           >
             <ts-icon name="plus" [size]="16" />
             <span>New link</span>
@@ -345,6 +347,39 @@
         </div>
       </div>
 
+      <!-- Service Unreachable Calm Notice Banner -->
+      @if (isServiceUnreachable()) {
+        <div class="service-notice-banner animate-fade-in" role="status">
+          <div class="notice-icon-wrap">
+            <ts-icon name="alert-triangle" [size]="16" class="notice-icon" />
+          </div>
+          <div class="notice-text-content">
+            <span class="notice-title">Some details can't be loaded right now.</span>
+            <span class="notice-subtitle">Please try again in a few minutes.</span>
+          </div>
+          <div class="notice-actions-wrap">
+            <button
+              type="button"
+              class="notice-retry-btn"
+              (click)="retryLoadLinks()"
+              [disabled]="isListLoading()"
+            >
+              <ts-icon name="rotate-cw" [size]="13" [class.is-spinning]="isListLoading()" />
+              <span>Try again</span>
+            </button>
+            @if (!isProduction) {
+              <button
+                type="button"
+                class="notice-sample-btn"
+                (click)="toggleDevSampleMode()"
+              >
+                <span>{{ isDevSampleMode() ? 'Exit sample preview' : 'Load sample preview' }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+
       <!-- Unified Glass Card: Toolbar + Divider + Content (Table or Empty) -->
       <div class="links-unified-card glass-panel">
         <!-- Toolbar Row -->
@@ -373,18 +408,29 @@
             }
           </div>
 
-          <!-- Desktop / Medium Inline Filters & Popover (>=600px) -->
-          <div class="toolbar-filters-row desktop-filters">
+          <!-- Inline Filters & Popover -->
+          <div class="toolbar-filters-row">
+            <!-- Filter Dropdown Backdrop for outside clicks -->
+            @if (isStatusDropdownOpen() || isSortDropdownOpen()) {
+              <div
+                class="filter-dropdown-backdrop"
+                (click)="isStatusDropdownOpen.set(false); isSortDropdownOpen.set(false)"
+                aria-hidden="true"
+              ></div>
+            }
+
             <!-- Status Filter Dropdown -->
-            <div class="filter-dropdown status-dropdown-wrap">
+            <div class="filter-dropdown status-dropdown-wrap" [class.is-open]="isStatusDropdownOpen()">
               <label class="filter-label">Status:</label>
               <button
                 type="button"
                 class="filter-trigger-btn"
-                (click)="isStatusDropdownOpen.set(!isStatusDropdownOpen()); isSortDropdownOpen.set(false); isFiltersPopoverOpen.set(false)"
+                (click)="toggleStatusDropdown($event)"
                 [attr.aria-expanded]="isStatusDropdownOpen()"
+                aria-label="Status filter"
               >
-                <span>{{ statusFilter() === 'ALL' ? 'All' : getStatusLabel(statusFilter()) }}</span>
+                <span class="filter-prefix-mobile">Status: </span>
+                <span class="filter-active-val">{{ statusFilter() === 'ALL' ? 'All' : getStatusLabel(statusFilter()) }}</span>
                 <ts-icon name="chevron-down" [size]="13" class="filter-chevron" [class.rotated]="isStatusDropdownOpen()" />
               </button>
 
@@ -399,15 +445,17 @@
             </div>
 
             <!-- Sort Dropdown -->
-            <div class="filter-dropdown sort-dropdown-wrap">
+            <div class="filter-dropdown sort-dropdown-wrap" [class.is-open]="isSortDropdownOpen()">
               <label class="filter-label">Sort:</label>
               <button
                 type="button"
                 class="filter-trigger-btn"
-                (click)="isSortDropdownOpen.set(!isSortDropdownOpen()); isStatusDropdownOpen.set(false); isFiltersPopoverOpen.set(false)"
+                (click)="toggleSortDropdown($event)"
                 [attr.aria-expanded]="isSortDropdownOpen()"
+                aria-label="Sort order"
               >
-                <span>
+                <span class="filter-prefix-mobile">Sort: </span>
+                <span class="filter-active-val">
                   @if (sortOption() === 'newest') { Newest first }
                   @else if (sortOption() === 'oldest') { Oldest first }
                   @else if (sortOption() === 'clicks') { Most clicks }
@@ -425,13 +473,14 @@
             </div>
 
             <!-- Part C: Attribute Filters Popover Trigger (Neither Status nor Sort) -->
-            <div class="filter-dropdown attribute-filters-wrap">
+            <div class="filter-dropdown attribute-filters-wrap" [class.is-open]="isFiltersPopoverOpen()">
               <button
                 type="button"
                 class="filter-trigger-btn attribute-filter-trigger"
-                (click)="isFiltersPopoverOpen.set(!isFiltersPopoverOpen()); isStatusDropdownOpen.set(false); isSortDropdownOpen.set(false)"
+                (click)="toggleFiltersPopover($event)"
                 [class.has-active-filters]="activeAttributeFilterCount() > 0"
                 [attr.aria-expanded]="isFiltersPopoverOpen()"
+                aria-label="Filters"
               >
                 <ts-icon name="filter" [size]="14" />
                 <span>Filters</span>
@@ -440,111 +489,9 @@
                 }
               </button>
 
-              <!-- Desktop Two-Column Popover -->
-              <div class="attribute-popover-panel" [class.is-open]="isFiltersPopoverOpen()" role="dialog" aria-label="Attribute Filters">
-                <div class="popover-header">
-                  <span class="popover-title">Attribute Filters</span>
-                  @if (activeAttributeFilterCount() > 0) {
-                    <button type="button" class="popover-clear-btn" (click)="clearAllAttributeFilters()">Reset</button>
-                  }
-                </div>
-
-                <div class="popover-grid-body">
-                  <!-- Col 1: Activity & Expiry & Protection -->
-                  <div class="popover-column">
-                    <!-- Activity Group -->
-                    <div class="filter-attr-group">
-                      <div class="attr-group-label">Activity</div>
-                      <div class="attr-chip-row">
-                        <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().activity.has('TRENDING')" (click)="toggleActivityFilter('TRENDING')">Trending</button>
-                        <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().activity.has('POPULAR')" (click)="toggleActivityFilter('POPULAR')">Popular</button>
-                        <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().activity.has('RECENTLY_OPENED')" (click)="toggleActivityFilter('RECENTLY_OPENED')">Recent</button>
-                        <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().activity.has('NEVER_OPENED')" (click)="toggleActivityFilter('NEVER_OPENED')">Never</button>
-                      </div>
-                    </div>
-
-                    <!-- Expiry Group -->
-                    <div class="filter-attr-group">
-                      <div class="attr-group-label">Expiry</div>
-                      <div class="attr-chip-row">
-                        <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().expiry.has('EXPIRING_SOON')" (click)="toggleExpiryFilter('EXPIRING_SOON')">≤ 7 days</button>
-                        <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().expiry.has('EXPIRING_30D')" (click)="toggleExpiryFilter('EXPIRING_30D')">≤ 30 days</button>
-                        <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().expiry.has('NO_EXPIRY')" (click)="toggleExpiryFilter('NO_EXPIRY')">No expiry</button>
-                      </div>
-                    </div>
-
-                    <!-- Protection Group (Segmented) -->
-                    <div class="filter-attr-group">
-                      <div class="attr-group-label">Protection</div>
-                      <div class="attr-segmented-wrap">
-                        <button type="button" class="segmented-btn" [class.is-selected]="filterCriteria().protection === 'ANY'" (click)="setProtectionFilter('ANY')">Any</button>
-                        <button type="button" class="segmented-btn" [class.is-selected]="filterCriteria().protection === 'PROTECTED'" (click)="setProtectionFilter('PROTECTED')">Locked</button>
-                        <button type="button" class="segmented-btn" [class.is-selected]="filterCriteria().protection === 'NOT_PROTECTED'" (click)="setProtectionFilter('NOT_PROTECTED')">Public</button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Col 2: Rules & Created & Tags -->
-                  <div class="popover-column">
-                    <!-- Rules Group -->
-                    <div class="filter-attr-group">
-                      <div class="attr-group-label">Rules</div>
-                      <div class="attr-chip-row">
-                        <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().rules.has('ONE_TIME')" (click)="toggleRuleFilter('ONE_TIME')">One-time</button>
-                        <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().rules.has('CLICK_LIMIT')" (click)="toggleRuleFilter('CLICK_LIMIT')">Click limit</button>
-                        <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().rules.has('HAS_FALLBACK')" (click)="toggleRuleFilter('HAS_FALLBACK')">Fallback URL</button>
-                      </div>
-                    </div>
-
-                    <!-- Created Preset Group -->
-                    <div class="filter-attr-group">
-                      <div class="attr-group-label">Created</div>
-                      <div class="attr-chip-row">
-                        <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().createdPreset === 'ANY_TIME'" (click)="setCreatedPreset('ANY_TIME')">Any</button>
-                        <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().createdPreset === 'TODAY'" (click)="setCreatedPreset('TODAY')">Today</button>
-                        <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().createdPreset === 'LAST_7D'" (click)="setCreatedPreset('LAST_7D')">7d</button>
-                        <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().createdPreset === 'LAST_30D'" (click)="setCreatedPreset('LAST_30D')">30d</button>
-                      </div>
-                    </div>
-
-                    <!-- Tags Group (Only rendered if owner has tags) -->
-                    @if (availableTags().length > 0) {
-                      <div class="filter-attr-group">
-                        <div class="attr-group-label">Tags</div>
-                        <div class="attr-chip-row tags-chip-scroll">
-                          @for (tag of availableTags(); track tag) {
-                            <button type="button" class="attr-toggle-chip tag-pill" [class.is-active]="filterCriteria().tags.has(tag)" (click)="toggleTagFilter(tag)">#{{ tag }}</button>
-                          }
-                        </div>
-                      </div>
-                    }
-
-                    <!-- Domains Group (Rendered if >= 2 domains) -->
-                    @if (availableDomains().length >= 2) {
-                      <div class="filter-attr-group">
-                        <div class="attr-group-label">Destination Domain</div>
-                        <div class="attr-chip-row domains-chip-scroll">
-                          @for (dom of availableDomains(); track dom) {
-                            <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().domains.has(dom)" (click)="toggleDomainFilter(dom)">{{ dom }}</button>
-                          }
-                        </div>
-                      </div>
-                    }
-
-                    <!-- Needs Review (Rendered only if any reported/flagged exist) -->
-                    @if (hasReportedLinks()) {
-                      <div class="filter-attr-group">
-                        <div class="attr-group-label">Needs Review</div>
-                        <button type="button" class="attr-toggle-chip warning-chip" [class.is-active]="filterCriteria().needsReview" (click)="toggleNeedsReviewFilter()">Reported / Flagged</button>
-                      </div>
-                    }
-                  </div>
-                </div>
-
-                <div class="popover-footer">
-                  <span class="popover-results-count">{{ filteredLinks().length }} of {{ myLinks().length }} links</span>
-                  <button type="button" class="popover-done-btn" (click)="isFiltersPopoverOpen.set(false)">Apply</button>
-                </div>
+              <!-- Desktop Two-Column Popover (>=600px) -->
+              <div class="attribute-popover-panel desktop-filter-popover" [class.is-open]="isFiltersPopoverOpen()" role="dialog" aria-label="Attribute Filters">
+                <ng-container *ngTemplateOutlet="attributeFiltersContent"></ng-container>
               </div>
             </div>
           </div>
@@ -571,7 +518,7 @@
 
           @for (exp of filterCriteria().expiry; track exp) {
             <span class="active-filter-badge">
-              <span>{{ exp === 'EXPIRING_SOON' ? '≤ 7d' : exp === 'EXPIRING_30D' ? '≤ 30d' : 'No expiry' }}</span>
+              <span>{{ exp === 'EXPIRING_SOON' ? '≤ 7d' : exp === 'EXPIRING_30D' ? '≤ 30d' : exp === 'EXPIRED' ? 'Expired' : 'No expiry' }}</span>
               <button type="button" class="chip-remove-btn" (click)="toggleExpiryFilter(exp)">×</button>
             </span>
           }
@@ -609,15 +556,33 @@
             <span class="bulk-label">links selected</span>
           </div>
           <div class="bulk-actions-col">
-            <button type="button" class="bulk-action-btn" (click)="executeBulkDeactivate()" [disabled]="isProcessingBulk()">
+            <button
+              type="button"
+              class="bulk-action-btn"
+              (click)="executeBulkDeactivate()"
+              [disabled]="isProcessingBulk() || isServiceUnreachable()"
+              [title]="isServiceUnreachable() ? 'Action unavailable while service is unreachable' : ''"
+            >
               <ts-icon name="pause" [size]="14" />
               <span>Deactivate</span>
             </button>
-            <button type="button" class="bulk-action-btn" (click)="executeBulkReactivate()" [disabled]="isProcessingBulk()">
+            <button
+              type="button"
+              class="bulk-action-btn"
+              (click)="executeBulkReactivate()"
+              [disabled]="isProcessingBulk() || isServiceUnreachable()"
+              [title]="isServiceUnreachable() ? 'Action unavailable while service is unreachable' : ''"
+            >
               <ts-icon name="play" [size]="14" />
               <span>Reactivate</span>
             </button>
-            <button type="button" class="bulk-action-btn is-danger" (click)="isBulkDeleteModalOpen.set(true)" [disabled]="isProcessingBulk()">
+            <button
+              type="button"
+              class="bulk-action-btn is-danger"
+              (click)="isBulkDeleteModalOpen.set(true)"
+              [disabled]="isProcessingBulk() || isServiceUnreachable()"
+              [title]="isServiceUnreachable() ? 'Action unavailable while service is unreachable' : ''"
+            >
               <ts-icon name="trash" [size]="14" />
               <span>Delete</span>
             </button>
@@ -631,34 +596,67 @@
         <!-- Links Table / Cards Content Container -->
         <div class="links-scroll-container">
           @if (filteredLinks().length === 0) {
-            <div class="links-empty-surface">
-              <ts-icon name="link" [size]="36" class="empty-state-icon" />
-              <h3 class="empty-state-title">
-                @if (searchQuery().trim() || statusFilter() !== 'ALL') {
-                  No matching links
-                } @else {
-                  No links created yet
-                }
-              </h3>
-              <p class="empty-state-desc">
-                @if (searchQuery().trim() || statusFilter() !== 'ALL') {
-                  Try adjusting your search query or status filter.
-                } @else {
-                  Shortened links will appear here on this device.
-                }
-              </p>
-              <button
-                type="button"
-                hlmBtn
-                class="ts-primary-btn"
-                (click)="navigateTo('MAIN')"
-              >
-                <ts-icon name="plus" [size]="16" />
-                <span>Create a link</span>
-              </button>
-            </div>
+            @if (isServiceUnreachable()) {
+              <div class="links-empty-surface unreachable-empty-surface">
+                <ts-icon name="cloud-off" [size]="36" class="empty-state-icon" />
+                <h3 class="empty-state-title">Unable to reach the service</h3>
+                <p class="empty-state-desc">
+                  We couldn't connect to Acklet to load your links. Saved links on this device will appear once connection is restored.
+                </p>
+                <div class="unreachable-empty-actions">
+                  <button
+                    type="button"
+                    hlmBtn
+                    variant="outline"
+                    class="ts-outline-btn"
+                    (click)="retryLoadLinks()"
+                    [disabled]="isListLoading()"
+                  >
+                    <ts-icon name="rotate-cw" [size]="15" [class.is-spinning]="isListLoading()" />
+                    <span>Try again</span>
+                  </button>
+                  @if (!isProduction) {
+                    <button
+                      type="button"
+                      hlmBtn
+                      class="ts-primary-btn"
+                      (click)="toggleDevSampleMode()"
+                    >
+                      <span>Load sample preview</span>
+                    </button>
+                  }
+                </div>
+              </div>
+            } @else {
+              <div class="links-empty-surface">
+                <ts-icon name="link" [size]="36" class="empty-state-icon" />
+                <h3 class="empty-state-title">
+                  @if (searchQuery().trim() || statusFilter() !== 'ALL') {
+                    No matching links
+                  } @else {
+                    No links created yet
+                  }
+                </h3>
+                <p class="empty-state-desc">
+                  @if (searchQuery().trim() || statusFilter() !== 'ALL') {
+                    Try adjusting your search query or status filter.
+                  } @else {
+                    Shortened links will appear here on this device.
+                  }
+                </p>
+                <button
+                  type="button"
+                  hlmBtn
+                  class="ts-primary-btn"
+                  (click)="navigateTo('MAIN')"
+                >
+                  <ts-icon name="plus" [size]="16" />
+                  <span>Create a link</span>
+                </button>
+              </div>
+            }
           } @else {
-            <!-- Desktop / Medium Table -->
+            <!-- Desktop Table (>=1024px) -->
             <div class="links-table-wrapper">
               <table class="links-table" role="table">
                 <thead>
@@ -682,9 +680,9 @@
                   </tr>
                 </thead>
                 <tbody>
-                  @for (link of filteredLinks(); track link.code; let idx = $index) {
+                  @for (link of displayedLinks(); track link.code; let idx = $index) {
                     @let status = getLinkStatus(link);
-                    <tr class="link-table-row" [style.--row-index]="idx" [class.is-selected]="selectedCodes().has(link.code)">
+                    <tr class="link-table-row" [style.--row-index]="idx" [class.is-selected]="selectedCodes().has(link.code)" [class.is-menu-open]="activeMenuCode() === link.code">
                       <td class="cell-checkbox">
                         <input
                           type="checkbox"
@@ -696,7 +694,7 @@
                         />
                       </td>
 
-                      <!-- Short Link + (on medium) Original Link beneath -->
+                      <!-- Short Link -->
                       <td class="cell-short-link">
                         <div class="short-link-cell-content">
                           <a
@@ -707,17 +705,19 @@
                             [title]="'Open short link: ' + buildShortUrl(link.code)"
                             (click)="$event.stopPropagation()"
                           >/{{ link.code }}</a>
-                          <a
-                            [href]="link.targetUrl"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="dest-open-btn"
-                            [hlmTooltip]="'Open Short link'"
-                            aria-label="Open Shorten link in new tab"
-                            (click)="$event.stopPropagation()"
-                          >
-                            <ts-icon name="arrow-up-right" [size]="13" />
-                          </a>
+                          @if (link.targetUrl) {
+                            <a
+                              [href]="link.targetUrl"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="dest-open-btn"
+                              [hlmTooltip]="'Open target link'"
+                              aria-label="Open Shorten link in new tab"
+                              (click)="$event.stopPropagation()"
+                            >
+                              <ts-icon name="arrow-up-right" [size]="13" />
+                            </a>
+                          }
                           <span
                             class="link-created-time-text"
                             [hlmTooltip]="formatDateTime(link.createdAt)"
@@ -726,46 +726,39 @@
                             {{ formatRelativeTime(link.createdAt) }}
                           </span>
                         </div>
-                        <!-- Second line for original link on Medium (600-1023px) -->
-                        <div class="medium-orig-link-row">
-                          <a [href]="link.targetUrl" target="_blank" rel="noopener noreferrer" class="medium-orig-link text-truncate" [title]="link.targetUrl">
-                            {{ link.targetUrl }}
-                          </a>
-                        </div>
                       </td>
 
                       <!-- Original Link (Desktop column, >=1024px) -->
-                      <td class="cell-dest desktop-col" [title]="link.targetUrl">
-                        <div class="dest-link-row">
-                          <a [href]="link.targetUrl" target="_blank" rel="noopener noreferrer" class="table-dest-anchor text-truncate">
-                            {{ link.targetUrl }}
-                          </a>
-                          <a
-                            [href]="link.targetUrl"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="dest-open-btn"
-                            [hlmTooltip]="'Open original link'"
-                            aria-label="Open original link in new tab"
-                            (click)="$event.stopPropagation()"
-                          >
-                            <ts-icon name="arrow-up-right" [size]="13" />
-                          </a>
-                        </div>
+                      <td class="cell-dest desktop-col">
+                        @if (link.targetUrl) {
+                          <div class="dest-link-row">
+                            <a [href]="link.targetUrl" target="_blank" rel="noopener noreferrer" class="table-dest-anchor text-truncate" [title]="link.targetUrl">
+                              {{ link.targetUrl }}
+                            </a>
+                            <a
+                              [href]="link.targetUrl"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="dest-open-btn"
+                              [hlmTooltip]="'Open original link'"
+                              aria-label="Open original link in new tab"
+                              (click)="$event.stopPropagation()"
+                            >
+                              <ts-icon name="arrow-up-right" [size]="13" />
+                            </a>
+                          </div>
+                        } @else {
+                          <span class="missing-dest-placeholder">Not available right now</span>
+                        }
                         @if (link.label) {
                           <span class="table-label-tag text-truncate" [title]="link.label">{{ link.label }}</span>
                         }
                       </td>
 
-                      <!-- Status -->
+                      <!-- Status (Label only, no numeric codes) -->
                       <td class="cell-status">
                         <span class="url-status-badge" [ngClass]="'status-' + status.toLowerCase().replace('_', '-')">
                           <span class="status-dot"></span>
-                          @if (status === 'LIMIT_REACHED' || status === 'EXPIRED' || status === 'DEACTIVATED') {
-                            <span class="status-http-code">410</span>
-                          } @else if (status === 'SCHEDULED') {
-                            <span class="status-http-code">403</span>
-                          }
                           <span>{{ getStatusLabel(status) }}</span>
                         </span>
                       </td>
@@ -786,9 +779,28 @@
                             </span>
                           }
                           @if (link.maxClicks != null) {
-                            <span class="url-badge url-badge-limit">Max {{ link.maxClicks }} clicks</span>
+                            <span class="url-badge url-badge-limit">{{ formatMaxClicks(link.maxClicks) }}</span>
+                          }
+
+                          @if (isLinkExpired(link)) {
+                            <span class="url-badge url-badge-expired" [title]="formatFullDateTime(link.expiresAt)">
+                              <ts-icon name="alert-triangle" [size]="12" />
+                              <span>{{ formatExpiry(link.expiresAt) }}</span>
+                            </span>
+                          } @else if (isLinkExpiringSoon(link)) {
+                            <span class="url-badge url-badge-expiring" [title]="formatFullDateTime(link.expiresAt)">
+                              <ts-icon name="clock" [size]="12" />
+                              <span>{{ formatExpiry(link.expiresAt) }}</span>
+                            </span>
                           } @else if (link.expiresAt) {
-                            <span class="url-badge url-badge-neutral">{{ formatExpiry(link.expiresAt) }}</span>
+                            <span class="url-badge url-badge-neutral" [title]="formatFullDateTime(link.expiresAt)">
+                              <ts-icon name="calendar" [size]="12" />
+                              <span>{{ formatExpiry(link.expiresAt) }}</span>
+                            </span>
+                          } @else {
+                            <span class="url-badge url-badge-never" title="No expiration date set">
+                              <span>Never expires</span>
+                            </span>
                           }
                         </div>
                       </td>
@@ -804,16 +816,18 @@
                           <button
                             type="button"
                             class="action-icon-btn primary-copy-action"
-                            (click)="copyToClipboard(buildShortUrl(link.code))"
-                            [hlmTooltip]="'Copy link'"
-                            aria-label="Copy link"
+                            (click)="copyToClipboard(buildShortUrl(link.code), link.code)"
+                            [hlmTooltip]="isCodeCopied(link.code) ? 'Copied' : 'Copy link'"
+                            [attr.aria-label]="isCodeCopied(link.code) ? 'Link copied' : 'Copy link'"
                           >
-                            <ts-icon name="copy" [size]="15" />
+                            <ts-icon [name]="isCodeCopied(link.code) ? 'check' : 'copy'" [size]="15" />
                           </button>
 
                           <app-action-dropdown
                             [items]="getRowMenuItems(link, false)"
                             (itemSelect)="onRowMoreAction($event, link)"
+                            (opened)="activeMenuCode.set(link.code)"
+                            (closed)="activeMenuCode.set(null)"
                             triggerIcon="more-vertical"
                             triggerAriaLabel="More link actions"
                           ></app-action-dropdown>
@@ -826,102 +840,188 @@
               </table>
             </div>
 
-            <!-- Compact Cards Layout (<600px) -->
+            <!-- Structured Cards Layout (<1024px: 1-col on <600px, 2-col auto-fit on 600-1023px) -->
             <div class="links-cards-grid">
-              @for (link of filteredLinks(); track link.code; let idx = $index) {
+              @for (link of displayedLinks(); track link.code; let idx = $index) {
                 @let status = getLinkStatus(link);
-                <div class="mobile-link-card" [style.--row-index]="idx">
-                  <!-- Row 1: Short link (primary, with Copy icon button) + status + "More" (three dots) -->
-                  <div class="mobile-card-top">
+                <div
+                  class="mobile-link-card"
+                  [style.--row-index]="idx"
+                  [class.is-selected]="selectedCodes().has(link.code)"
+                  [class.is-menu-open]="activeMenuCode() === link.code"
+                >
+                  <!-- Row 1: Short link (monospace, bold bronze) + Copy button (bronze border) + Actions menu (three dots) -->
+                  <div class="mobile-card-row1">
                     <div class="mobile-short-code-group">
-                      <span class="mobile-code-prefix">{{ shortDomainPrefix() }}/</span>
+                      @if (selectedCodes().size > 0) {
+                        <input
+                          type="checkbox"
+                          class="row-checkbox mobile-card-checkbox"
+                          [checked]="selectedCodes().has(link.code)"
+                          (change)="toggleSelectLink(link.code)"
+                          (click)="$event.stopPropagation()"
+                          aria-label="Select link"
+                        />
+                      }
                       <a
                         [href]="buildShortUrl(link.code)"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="mobile-code-bold mobile-code-link"
                         [title]="'Open ' + buildShortUrl(link.code)"
-                      >{{ link.code }}</a>
-                      <button
-                        type="button"
-                        class="table-copy-btn mobile-primary-copy"
-                        (click)="copyToClipboard(buildShortUrl(link.code))"
-                        [hlmTooltip]="'Copy link'"
-                        aria-label="Copy link"
-                      >
-                        <ts-icon name="copy" [size]="15" />
-                      </button>
+                        (click)="$event.stopPropagation()"
+                      >/{{ link.code }}</a>
                     </div>
 
-                    <div class="mobile-card-top-right">
-                      <span class="url-status-badge" [ngClass]="'status-' + status.toLowerCase().replace('_', '-')">
-                        <span class="status-dot"></span>
-                        @if (status === 'LIMIT_REACHED' || status === 'EXPIRED' || status === 'DEACTIVATED') {
-                          <span class="status-http-code">410</span>
-                        } @else if (status === 'SCHEDULED') {
-                          <span class="status-http-code">403</span>
-                        }
-                        <span>{{ getStatusLabel(status) }}</span>
-                      </span>
+                    <div class="mobile-row1-actions">
+                      <button
+                        type="button"
+                        class="card-copy-btn"
+                        (click)="copyToClipboard(buildShortUrl(link.code), link.code)"
+                        [hlmTooltip]="isCodeCopied(link.code) ? 'Copied' : 'Copy link'"
+                        [attr.aria-label]="isCodeCopied(link.code) ? 'Link copied' : 'Copy link'"
+                      >
+                        <ts-icon [name]="isCodeCopied(link.code) ? 'check' : 'copy'" [size]="16" />
+                      </button>
 
                       <app-action-dropdown
                         [items]="getRowMenuItems(link, true)"
                         (itemSelect)="onRowMoreAction($event, link)"
+                        (opened)="activeMenuCode.set(link.code)"
+                        (closed)="activeMenuCode.set(null)"
                         triggerIcon="more-vertical"
                         triggerAriaLabel="Actions"
                       ></app-action-dropdown>
                     </div>
                   </div>
 
-                  <!-- Row 2: Original link (truncated, 1 line) -->
-                  <div class="mobile-card-dest" [title]="link.targetUrl">
-                    <a [href]="link.targetUrl" target="_blank" rel="noopener noreferrer" class="mobile-dest-text">
-                      {{ link.targetUrl }}
-                    </a>
-                    <a
-                      [href]="link.targetUrl"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="dest-open-btn mobile-dest-open"
-                      [hlmTooltip]="'Open in new tab'"
-                      aria-label="Open original link in new tab"
-                    >
-                      <ts-icon name="arrow-up-right" [size]="13" />
-                    </a>
+                  <!-- Row 2: Link icon + original link (truncated with ellipsis, tooltip only on link hover) OR 'Not available right now' -->
+                  <div class="mobile-card-row2">
+                    <ts-icon name="link" [size]="15" class="card-link-icon" />
+                    @if (link.targetUrl) {
+                      <a
+                        [href]="link.targetUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="card-dest-link text-truncate"
+                        [title]="link.targetUrl"
+                        (click)="$event.stopPropagation()"
+                      >{{ link.targetUrl }}</a>
+                      <a
+                        [href]="link.targetUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="dest-open-btn card-dest-open"
+                        [hlmTooltip]="'Open original link'"
+                        aria-label="Open original link in new tab"
+                        (click)="$event.stopPropagation()"
+                      >
+                        <ts-icon name="arrow-up-right" [size]="13" />
+                      </a>
+                    } @else {
+                      <span class="missing-dest-placeholder">Not available right now</span>
+                    }
                   </div>
 
-                  <!-- Row 3: Clicks + Protection / Expiry Badges (wrap cleanly) -->
-                  <div class="mobile-meta-pills-row">
-                    <span
-                      class="link-created-time-text mobile-created-time"
-                      [hlmTooltip]="formatDateTime(link.createdAt)"
-                      [attr.aria-label]="'Created: ' + formatDateTime(link.createdAt)"
-                    >
-                      {{ formatRelativeTime(link.createdAt) }}
+                  <!-- Row 3: Label Pill on its own line (if present) -->
+                  @if (link.label) {
+                    <div class="card-label-row">
+                      <span class="card-label-pill" [title]="link.label">
+                        <ts-icon name="tag" [size]="12" />
+                        <span class="text-truncate">{{ link.label }}</span>
+                      </span>
+                    </div>
+                  }
+
+                  <!-- Row 4: Badges Row wrapping with 8px gap (Status, Protected, One-time, Max clicks, Expiry) -->
+                  <div class="mobile-card-row4-badges">
+                    <span class="card-status-pill" [ngClass]="'status-' + status.toLowerCase().replace('_', '-')">
+                      {{ getStatusLabel(status) }}
                     </span>
-                    <span class="mobile-clicks-pill">{{ link.clicks }} clicks</span>
+
                     @if (link.hasPassword) {
-                      <span class="url-badge url-badge-protected">
+                      <span class="card-badge-pill badge-protected">
                         <ts-icon name="lock" [size]="12" />
                         <span>Protected</span>
                       </span>
                     }
+
                     @if (link.isOneTime) {
-                      <span class="url-badge url-badge-onetime">
+                      <span class="card-badge-pill badge-onetime">
                         <ts-icon name="zap" [size]="12" />
                         <span>One-time</span>
                       </span>
                     }
+
                     @if (link.maxClicks != null) {
-                      <span class="url-badge url-badge-limit">Max {{ link.maxClicks }}</span>
-                    } @else if (link.expiresAt) {
-                      <span class="url-badge url-badge-neutral">{{ formatExpiry(link.expiresAt) }}</span>
+                      <span class="card-badge-pill badge-outline">
+                        {{ formatMaxClicks(link.maxClicks) }}
+                      </span>
                     }
-                    @if (link.label) {
-                      <span class="table-label-tag">{{ link.label }}</span>
+
+                    @if (isLinkExpired(link)) {
+                      <span class="card-badge-pill badge-expired" [title]="formatFullDateTime(link.expiresAt)">
+                        <ts-icon name="alert-triangle" [size]="12" />
+                        <span>{{ formatExpiry(link.expiresAt) }}</span>
+                      </span>
+                    } @else if (isLinkExpiringSoon(link)) {
+                      <span class="card-badge-pill badge-expiring" [title]="formatFullDateTime(link.expiresAt)">
+                        <ts-icon name="clock" [size]="12" />
+                        <span>{{ formatExpiry(link.expiresAt) }}</span>
+                      </span>
+                    } @else if (link.expiresAt) {
+                      <span class="card-badge-pill badge-outline" [title]="formatFullDateTime(link.expiresAt)">
+                        <ts-icon name="calendar" [size]="12" />
+                        <span>Expires {{ formatExpiryDate(link.expiresAt) }}</span>
+                      </span>
+                    }
+
+                    @if (link.tags && link.tags.length > 0) {
+                      @for (tag of link.tags; track tag) {
+                        <span class="card-badge-pill badge-tag">#{{ tag }}</span>
+                      }
                     }
                   </div>
+
+                  <!-- Divider line -->
+                  <div class="card-stats-divider"></div>
+
+                  <!-- Row 5: 3-Column Stats Footer (Clicks, Created, Last visited) -->
+                  <div class="mobile-card-stats-grid">
+                    <div class="card-stat-col">
+                      <span class="stat-col-label">Clicks</span>
+                      <span class="stat-col-value">{{ link.clicks }}</span>
+                    </div>
+
+                    <div class="card-stat-col">
+                      <span class="stat-col-label">Created</span>
+                      <span class="stat-col-value" [title]="formatFullDateTime(link.createdAt)">
+                        {{ formatRelativeTime(link.createdAt) }}
+                      </span>
+                    </div>
+
+                    <div class="card-stat-col">
+                      <span class="stat-col-label">Last visited</span>
+                      <span class="stat-col-value" [title]="link.lastOpenedAt ? formatFullDateTime(link.lastOpenedAt) : ''">
+                        {{ formatLastVisited(link.lastOpenedAt) }}
+                      </span>
+                    </div>
+                  </div>
+
                 </div>
+              }
+            </div>
+
+            <!-- Pagination Footer Bar -->
+            <div class="links-pagination-bar">
+              <span class="pagination-info-text">
+                Showing {{ displayedLinks().length }} of {{ filteredLinks().length }} {{ filteredLinks().length === 1 ? 'link' : 'links' }}
+              </span>
+              @if (hasMore()) {
+                <button type="button" class="load-more-btn" (click)="loadMore()" aria-label="Load more links">
+                  <ts-icon name="chevron-down" [size]="14" />
+                  <span>Load more</span>
+                </button>
               }
             </div>
           }
@@ -1016,8 +1116,8 @@
                     title="Paste from clipboard"
                     aria-label="Paste link from clipboard"
                   >
-                    <ts-icon name="clipboard" [size]="14" />
-                    <span>Paste</span>
+                    <ts-icon name="clipboard" [size]="16" />
+                    <span class="paste-btn-text">Paste</span>
                   </button>
                 }
               </div>
@@ -1178,7 +1278,35 @@
                           }
                         </div>
                       </div>
-                      <span class="field-hint">Deactivates after this time</span>
+
+                      @if (selectedExpiry() === 'custom') {
+                        <div class="custom-expiry-picker-wrap">
+                          <div class="custom-expiry-header">
+                            <label for="formCustomExpiryInput" class="custom-expiry-sublabel">Exact expiry date & time</label>
+                            <span class="custom-expiry-timezone">Local time</span>
+                          </div>
+                          <div class="custom-datetime-input-wrap" [class.has-error]="isCustomExpiryPast(formCustomExpiresAt())">
+                            <ts-icon name="calendar" [size]="15" class="datetime-icon" />
+                            <input
+                              id="formCustomExpiryInput"
+                              type="datetime-local"
+                              hlmInput
+                              class="advanced-text-input custom-datetime-picker"
+                              [min]="minDatetimeLocal()"
+                              [value]="formCustomExpiresAt()"
+                              (input)="formCustomExpiresAt.set($any($event.target).value)"
+                              aria-label="Custom link expiration date and time"
+                            />
+                          </div>
+                          @if (isCustomExpiryPast(formCustomExpiresAt())) {
+                            <span class="field-error-text">Expiration date and time must be in the future.</span>
+                          } @else if (formCustomExpiresAt()) {
+                            <span class="field-hint-active">{{ formatCustomExpiryHint(formCustomExpiresAt()) }}</span>
+                          }
+                        </div>
+                      }
+
+                      <span class="field-hint">Deactivates automatically after this date & time</span>
                     </div>
 
                     <!-- 4. Max Clicks Limit -->
@@ -1257,12 +1385,13 @@
             </div>
 
             <!-- Shorten Action Button -->
-            <div class="shorten-action-row">
+            <div class="shorten-action-row" [class.is-sticky-mobile]="showOptions()">
               <button
                 type="button"
                 hlmBtn
                 class="ts-primary-btn shorten-cta-btn"
-                [disabled]="!isFormValid() || isSubmitting()"
+                [disabled]="!isFormValid() || isSubmitting() || isServiceUnreachable()"
+                [title]="isServiceUnreachable() ? 'Action unavailable while service is unreachable' : 'Shorten link'"
                 (click)="onShortenClick()"
                 aria-label="Shorten link"
               >
@@ -1397,6 +1526,138 @@
         </div>
       </div>
 
+    </div>
+  }
+
+  <!-- Shared Attribute Filter Content Template (Root Scope for Desktop Popover & Mobile Bottom Sheet) -->
+  <ng-template #attributeFiltersContent>
+    <div class="popover-header">
+      <div class="popover-header-title-row">
+        <span class="sheet-drag-handle-pill" aria-hidden="true"></span>
+        <span class="popover-title">Attribute Filters</span>
+      </div>
+      <div class="popover-header-actions">
+        @if (activeAttributeFilterCount() > 0) {
+          <button type="button" class="popover-clear-btn" (click)="clearAllAttributeFilters()">Reset</button>
+        }
+        <button
+          type="button"
+          class="popover-close-btn"
+          (click)="isFiltersPopoverOpen.set(false)"
+          aria-label="Close filters"
+        >
+          <ts-icon name="x" [size]="16" />
+        </button>
+      </div>
+    </div>
+
+    <div class="popover-grid-body">
+      <!-- Col 1: Activity & Expiry & Protection -->
+      <div class="popover-column">
+        <!-- Activity Group -->
+        <div class="filter-attr-group">
+          <div class="attr-group-label">Activity</div>
+          <div class="attr-chip-row">
+            <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().activity.has('TRENDING')" (click)="toggleActivityFilter('TRENDING')">Trending</button>
+            <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().activity.has('POPULAR')" (click)="toggleActivityFilter('POPULAR')">Popular</button>
+            <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().activity.has('RECENTLY_OPENED')" (click)="toggleActivityFilter('RECENTLY_OPENED')">Recent</button>
+            <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().activity.has('NEVER_OPENED')" (click)="toggleActivityFilter('NEVER_OPENED')">Never</button>
+          </div>
+        </div>
+
+        <!-- Expiry Group -->
+        <div class="filter-attr-group">
+          <div class="attr-group-label">Expiry</div>
+          <div class="attr-chip-row">
+            <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().expiry.has('EXPIRING_SOON')" (click)="toggleExpiryFilter('EXPIRING_SOON')">≤ 7 days</button>
+            <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().expiry.has('EXPIRING_30D')" (click)="toggleExpiryFilter('EXPIRING_30D')">≤ 30 days</button>
+            <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().expiry.has('EXPIRED')" (click)="toggleExpiryFilter('EXPIRED')">Expired</button>
+            <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().expiry.has('NO_EXPIRY')" (click)="toggleExpiryFilter('NO_EXPIRY')">No expiry</button>
+          </div>
+        </div>
+
+        <!-- Protection Group (Segmented) -->
+        <div class="filter-attr-group">
+          <div class="attr-group-label">Protection</div>
+          <div class="attr-segmented-wrap">
+            <button type="button" class="segmented-btn" [class.is-selected]="filterCriteria().protection === 'ANY'" (click)="setProtectionFilter('ANY')">Any</button>
+            <button type="button" class="segmented-btn" [class.is-selected]="filterCriteria().protection === 'PROTECTED'" (click)="setProtectionFilter('PROTECTED')">Locked</button>
+            <button type="button" class="segmented-btn" [class.is-selected]="filterCriteria().protection === 'NOT_PROTECTED'" (click)="setProtectionFilter('NOT_PROTECTED')">Public</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Col 2: Rules & Created & Tags -->
+      <div class="popover-column">
+        <!-- Rules Group -->
+        <div class="filter-attr-group">
+          <div class="attr-group-label">Rules</div>
+          <div class="attr-chip-row">
+            <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().rules.has('ONE_TIME')" (click)="toggleRuleFilter('ONE_TIME')">One-time</button>
+            <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().rules.has('CLICK_LIMIT')" (click)="toggleRuleFilter('CLICK_LIMIT')">Click limit</button>
+            <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().rules.has('HAS_FALLBACK')" (click)="toggleRuleFilter('HAS_FALLBACK')">Fallback URL</button>
+          </div>
+        </div>
+
+        <!-- Created Preset Group -->
+        <div class="filter-attr-group">
+          <div class="attr-group-label">Created</div>
+          <div class="attr-chip-row">
+            <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().createdPreset === 'ANY_TIME'" (click)="setCreatedPreset('ANY_TIME')">Any</button>
+            <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().createdPreset === 'TODAY'" (click)="setCreatedPreset('TODAY')">Today</button>
+            <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().createdPreset === 'LAST_7D'" (click)="setCreatedPreset('LAST_7D')">7d</button>
+            <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().createdPreset === 'LAST_30D'" (click)="setCreatedPreset('LAST_30D')">30d</button>
+          </div>
+        </div>
+
+        <!-- Tags Group (Only rendered if owner has tags) -->
+        @if (availableTags().length > 0) {
+          <div class="filter-attr-group">
+            <div class="attr-group-label">Tags</div>
+            <div class="attr-chip-row tags-chip-scroll">
+              @for (tag of availableTags(); track tag) {
+                <button type="button" class="attr-toggle-chip tag-pill" [class.is-active]="filterCriteria().tags.has(tag)" (click)="toggleTagFilter(tag)">#{{ tag }}</button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Domains Group (Rendered if >= 2 domains) -->
+        @if (availableDomains().length >= 2) {
+          <div class="filter-attr-group">
+            <div class="attr-group-label">Destination Domain</div>
+            <div class="attr-chip-row domains-chip-scroll">
+              @for (dom of availableDomains(); track dom) {
+                <button type="button" class="attr-toggle-chip" [class.is-active]="filterCriteria().domains.has(dom)" (click)="toggleDomainFilter(dom)">{{ dom }}</button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Needs Review (Rendered only if any reported/flagged exist) -->
+        @if (hasReportedLinks()) {
+          <div class="filter-attr-group">
+            <div class="attr-group-label">Needs Review</div>
+            <button type="button" class="attr-toggle-chip warning-chip" [class.is-active]="filterCriteria().needsReview" (click)="toggleNeedsReviewFilter()">Reported / Flagged</button>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="popover-footer">
+      <span class="popover-results-count">{{ filteredLinks().length }} of {{ myLinks().length }} links</span>
+      <button type="button" class="popover-done-btn" (click)="isFiltersPopoverOpen.set(false)">Apply</button>
+    </div>
+  </ng-template>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- 5B. MOBILE ATTRIBUTE FILTERS BOTTOM SHEET (<600px)             -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  @if (isFiltersPopoverOpen()) {
+    <div class="mobile-filter-drawer-backdrop mobile-only" (click)="isFiltersPopoverOpen.set(false)">
+      <div class="mobile-filter-drawer-surface glass-panel" (click)="$event.stopPropagation()" role="dialog" aria-label="Attribute Filters">
+        <ng-container *ngTemplateOutlet="attributeFiltersContent"></ng-container>
+      </div>
     </div>
   }
 
@@ -1590,7 +1851,7 @@
                     type="button"
                     class="dropdown-option-item"
                     [class.is-selected]="editExpiry() === opt.id"
-                    (click)="editExpiry.set(opt.id); editIsExpiryOpen.set(false)"
+                    (click)="selectEditExpiry(opt.id)"
                     role="option"
                   >
                     <span class="option-label">{{ opt.label }}</span>
@@ -1599,6 +1860,33 @@
                 }
               </div>
             </div>
+
+            @if (editExpiry() === 'custom') {
+              <div class="custom-expiry-picker-wrap edit-custom-expiry-wrap">
+                <div class="custom-expiry-header">
+                  <label for="editCustomExpiryInput" class="custom-expiry-sublabel">Exact expiry date & time</label>
+                  <span class="custom-expiry-timezone">Local time</span>
+                </div>
+                <div class="custom-datetime-input-wrap" [class.has-error]="isCustomExpiryPast(editCustomExpiresAt())">
+                  <ts-icon name="calendar" [size]="15" class="datetime-icon" />
+                  <input
+                    id="editCustomExpiryInput"
+                    type="datetime-local"
+                    hlmInput
+                    class="advanced-text-input custom-datetime-picker"
+                    [min]="minDatetimeLocal()"
+                    [value]="editCustomExpiresAt()"
+                    (input)="editCustomExpiresAt.set($any($event.target).value)"
+                    aria-label="Edit custom link expiration date and time"
+                  />
+                </div>
+                @if (isCustomExpiryPast(editCustomExpiresAt())) {
+                  <span class="field-error-text">Expiration date and time must be in the future.</span>
+                } @else if (editCustomExpiresAt()) {
+                  <span class="field-hint-active">{{ formatCustomExpiryHint(editCustomExpiresAt()) }}</span>
+                }
+              </div>
+            }
           </div>
 
           <!-- Max Clicks -->

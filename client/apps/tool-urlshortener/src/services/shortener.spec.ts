@@ -324,11 +324,108 @@ describe('URL Shortener - Client Specification Tests', () => {
       expect(cached[0].code).toBe('srv1');
     });
 
+    it('should support custom expiration date and time', async () => {
+      const futureDateMs = Date.now() + 14 * 24 * 60 * 60 * 1000;
+      const expectedIso = new Date(futureDateMs).toISOString();
+
+      const mockBackendResponse = {
+        success: true,
+        data: {
+          code: 'custom123',
+          shortUrl: 'http://localhost:8080/s/custom123',
+          targetUrl: 'https://example.com/target',
+          expiresAt: expectedIso,
+          status: 'ACTIVE'
+        }
+      };
+
+      mockHttp.post.mockReturnValue(of(mockBackendResponse));
+
+      const req: ShortenRequest = {
+        url: 'https://example.com/target',
+        expiryPreset: 'custom',
+        customExpiresAt: futureDateMs,
+        label: 'Custom Expiry Link'
+      };
+
+      const result = await service.shortenUrl(req);
+      expect(result.success).toBe(true);
+      expect(result.code).toBe('custom123');
+      expect(mockHttp.post).toHaveBeenCalled();
+      const sentBody = mockHttp.post.mock.calls[0][1];
+      expect(sentBody.expiresAt).toBe(expectedIso);
+    });
+
+    it('should reject past custom expiration with friendly error', async () => {
+      const pastDateMs = Date.now() - 3600 * 1000; // 1 hour ago
+      const req: ShortenRequest = {
+        url: 'https://example.com/target',
+        expiryPreset: 'custom',
+        customExpiresAt: pastDateMs
+      };
+
+      const result = await service.shortenUrl(req);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('future');
+      expect(mockHttp.post).not.toHaveBeenCalled();
+    });
+
+    it('should sanitize raw server 500 error when shortening fails', async () => {
+      const { throwError } = await import('rxjs');
+      mockHttp.post.mockReturnValue(throwError(() => ({
+        status: 500,
+        message: 'Http failure response for http://urlshortener.localhost:4200/api/v1/short-links: 500 Internal Server Error'
+      })));
+
+      const req: ShortenRequest = {
+        url: 'https://example.com/target',
+        expiryPreset: '30_days'
+      };
+
+      const result = await service.shortenUrl(req);
+      expect(result.success).toBe(false);
+      expect(result.error).not.toContain('Http failure');
+      expect(result.error).not.toContain('500');
+      expect(result.error).not.toContain('localhost');
+      expect(result.error).toBe('We couldn\'t complete that. Please try again in a few minutes.');
+    });
+
     it('should build QR Generator deep link handoff parameters correctly', () => {
       const handoffUrl = service.buildQrGeneratorHandoffUrl('http://localhost:4200/s/test');
       expect(handoffUrl).toContain('type=url');
       expect(handoffUrl).toContain('source=urlshortener');
       expect(handoffUrl).toContain(encodeURIComponent('http://localhost:4200/s/test'));
+    });
+
+    it('should transition to service unreachable on network / gateway failure', async () => {
+      const { throwError } = await import('rxjs');
+      mockHttp.get.mockReturnValue(throwError(() => ({
+        status: 0,
+        statusText: 'Unknown Error'
+      })));
+
+      expect(service.isServiceUnreachable()).toBe(false);
+      const links = await service.getMyLinks();
+      expect(Array.isArray(links)).toBe(true);
+      expect(service.isServiceUnreachable()).toBe(true);
+    });
+
+    it('should support dev sample preview mode with offline mock records', async () => {
+      expect(service.isDevSampleMode()).toBe(false);
+      service.setDevSampleMode(true);
+      expect(service.isDevSampleMode()).toBe(true);
+
+      const sampleLinks = await service.getMyLinks();
+      expect(sampleLinks.length).toBeGreaterThan(0);
+      const nothingLink = sampleLinks.find(l => l.code === 'nothing');
+      expect(nothingLink).toBeDefined();
+      expect(nothingLink?.targetUrl).toBe('');
+      expect(nothingLink?.hasPassword).toBe(true);
+      expect(nothingLink?.isOneTime).toBe(true);
+      expect(nothingLink?.maxClicks).toBe(1);
+
+      service.setDevSampleMode(false);
+      expect(service.isDevSampleMode()).toBe(false);
     });
   });
 

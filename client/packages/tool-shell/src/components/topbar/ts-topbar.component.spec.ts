@@ -123,6 +123,25 @@ describe('TsTopbarComponent - Responsive Navigation & Drawer Roles', () => {
       expect(component.isNavMenuOpen()).toBe(false);
       document.body.removeChild(outsideDiv);
     });
+
+    it('locks body scroll when navigation menu opens and restores when closed', () => {
+      component.toggleNavMenu();
+      expect(component.isNavMenuOpen()).toBe(true);
+      expect(document.body.style.overflow).toBe('hidden');
+
+      component.closeNavMenu();
+      expect(component.isNavMenuOpen()).toBe(false);
+      expect(document.body.style.overflow).toBe('');
+    });
+
+    it('closes navigation menu on swipe down gesture', () => {
+      component.isNavMenuOpen.set(true);
+      component.onTouchStart({ touches: [{ clientY: 100 }] } as any);
+      component.onTouchMove({ touches: [{ clientY: 180 }] } as any);
+      component.onTouchEnd({} as any);
+
+      expect(component.isNavMenuOpen()).toBe(false);
+    });
   });
 
   describe('Component Template & Styles Definition', () => {

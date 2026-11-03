@@ -130,8 +130,8 @@ export class ActionDropdownComponent {
 
     const rect = triggerBtn.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
-    const estHeight = Math.min((this.items.length || 3) * 44 + 24, 260);
-    const shouldFlip = spaceBelow < estHeight && rect.top > estHeight;
+    const estHeight = (this.items.length || 3) * 44 + 16;
+    const shouldFlip = spaceBelow < estHeight && rect.top > spaceBelow;
 
     this.flipUp.set(shouldFlip);
   }

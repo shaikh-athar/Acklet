@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { SHORTENER_MESSAGE_CATALOG, getShortenerMessage } from './shortener-messages';
+import {
+  SHORTENER_MESSAGE_CATALOG,
+  getShortenerMessage,
+  sanitizeErrorMessage,
+  isTechnicalErrorText
+} from './shortener-messages';
 
 describe('Shortener Messages Catalog & Error Handling', () => {
   it('should map known catalog codes to friendly text', () => {
@@ -12,12 +17,44 @@ describe('Shortener Messages Catalog & Error Handling', () => {
     expect(getShortenerMessage('RATE_LIMITED')).toBe(SHORTENER_MESSAGE_CATALOG.RATE_LIMITED);
     expect(getShortenerMessage('SERVER_ERROR')).toBe(SHORTENER_MESSAGE_CATALOG.SERVER_ERROR);
     expect(getShortenerMessage('OFFLINE_OR_NETWORK')).toBe(SHORTENER_MESSAGE_CATALOG.OFFLINE_OR_NETWORK);
+    expect(getShortenerMessage('EXPIRY_INVALID')).toBe(SHORTENER_MESSAGE_CATALOG.EXPIRY_INVALID);
   });
 
   it('should fallback to friendly server error on unknown or null codes', () => {
     expect(getShortenerMessage(null)).toBe(SHORTENER_MESSAGE_CATALOG.SERVER_ERROR);
     expect(getShortenerMessage(undefined)).toBe(SHORTENER_MESSAGE_CATALOG.SERVER_ERROR);
     expect(getShortenerMessage('UNKNOWN_CODE_XYZ')).toBe(SHORTENER_MESSAGE_CATALOG.SERVER_ERROR);
+  });
+
+  it('should sanitize raw Http failure responses into calm friendly text', () => {
+    const rawHttp500 = 'Http failure response for http://urlshortener.localhost:4200/api/v1/short-links: 500 Internal Server Error';
+    expect(isTechnicalErrorText(rawHttp500)).toBe(true);
+    expect(sanitizeErrorMessage(rawHttp500)).toBe(SHORTENER_MESSAGE_CATALOG.SERVER_ERROR);
+
+    const httpErrorObj = {
+      status: 500,
+      message: rawHttp500,
+      error: '<html><body>Internal Server Error</body></html>'
+    };
+    expect(sanitizeErrorMessage(httpErrorObj)).toBe(SHORTENER_MESSAGE_CATALOG.SERVER_ERROR);
+  });
+
+  it('should sanitize network/offline and client status codes safely', () => {
+    expect(sanitizeErrorMessage({ status: 0 })).toBe(SHORTENER_MESSAGE_CATALOG.OFFLINE_OR_NETWORK);
+    expect(sanitizeErrorMessage({ status: 404 })).toBe(SHORTENER_MESSAGE_CATALOG.LINK_UNAVAILABLE);
+    expect(sanitizeErrorMessage({ status: 409 })).toBe(SHORTENER_MESSAGE_CATALOG.NAME_TAKEN);
+    expect(sanitizeErrorMessage({ status: 429 })).toBe(SHORTENER_MESSAGE_CATALOG.RATE_LIMITED);
+    expect(sanitizeErrorMessage({ status: 403 })).toBe(SHORTENER_MESSAGE_CATALOG.NO_PERMISSION);
+  });
+
+  it('should block leaked stack traces, SQL, and exception messages', () => {
+    const sqlError = 'org.postgresql.util.PSQLException: ERROR: duplicate key value violates unique constraint';
+    expect(isTechnicalErrorText(sqlError)).toBe(true);
+    expect(sanitizeErrorMessage(sqlError)).toBe(SHORTENER_MESSAGE_CATALOG.SERVER_ERROR);
+
+    const nullPointer = 'NullPointerException: Cannot read field "code" because entity is null';
+    expect(isTechnicalErrorText(nullPointer)).toBe(true);
+    expect(sanitizeErrorMessage(nullPointer)).toBe(SHORTENER_MESSAGE_CATALOG.SERVER_ERROR);
   });
 
   it('should not contain banned technical words in user-facing message catalog', () => {

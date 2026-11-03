@@ -1,11 +1,11 @@
 // apps/tool-urlshortener/src/services/shortener.config.ts
 
-export type ExpiryPreset = '7_days' | '30_days' | '1_year' | 'never';
+export type ExpiryPreset = '7_days' | '30_days' | '1_year' | 'never' | 'custom';
 
 export interface ExpiryOption {
   id: ExpiryPreset;
   label: string;
-  durationMs: number | null; // null for never
+  durationMs: number | null; // null for never or custom
   badge: string;
 }
 
@@ -51,6 +51,7 @@ export const SHORTENER_CONFIG: ShortenerConfig = {
     { id: '7_days', label: '7 days', durationMs: 7 * 24 * 60 * 60 * 1000, badge: '7d' },
     { id: '30_days', label: '30 days (default)', durationMs: 30 * 24 * 60 * 60 * 1000, badge: '30d' },
     { id: '1_year', label: '1 year', durationMs: 365 * 24 * 60 * 60 * 1000, badge: '1y' },
+    { id: 'custom', label: 'Custom date & time', durationMs: null, badge: 'Custom' },
     { id: 'never', label: 'Never', durationMs: null, badge: '∞' }
   ],
   maxClicksOptions: [10, 50, 100, 500, 1000, null],

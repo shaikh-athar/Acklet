@@ -71,6 +71,9 @@ public class ShortLinkService {
 
         Instant now = Instant.now();
         Instant expiresAt = request.getExpiresAt();
+        if (expiresAt != null && expiresAt.isBefore(now)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Expiration must be in the future");
+        }
         if (expiresAt == null) {
             expiresAt = now.plus(properties.getDefaultExpiryDays(), ChronoUnit.DAYS);
         } else if (expiresAt.isAfter(now.plus(properties.getMaxExpiryDays(), ChronoUnit.DAYS))) {
@@ -154,6 +157,9 @@ public class ShortLinkService {
         }
 
         if (request.getExpiresAt() != null) {
+            if (request.getExpiresAt().isBefore(Instant.now())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Expiration must be in the future");
+            }
             entity.setExpiresAt(request.getExpiresAt());
         }
 

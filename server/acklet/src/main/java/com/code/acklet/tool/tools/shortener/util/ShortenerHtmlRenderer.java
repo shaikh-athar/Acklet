@@ -80,7 +80,7 @@ public final class ShortenerHtmlRenderer {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1.5rem;
+      padding: clamp(0.75rem, 3vw, 1.5rem);
       line-height: 1.5;
     }
     .card {
@@ -89,7 +89,7 @@ public final class ShortenerHtmlRenderer {
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 2.25rem 2rem;
+      padding: clamp(1.25rem, 5vw, 2.25rem) clamp(1rem, 4vw, 2rem);
       box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08);
     }
     .header {
@@ -140,6 +140,7 @@ public final class ShortenerHtmlRenderer {
     }
     input[type="password"] {
       width: 100%%;
+      min-height: 48px;
       padding: 0.75rem 1rem;
       font-size: 1rem;
       border: 1px solid var(--border);
@@ -155,6 +156,10 @@ public final class ShortenerHtmlRenderer {
     }
     button[type="submit"] {
       width: 100%%;
+      min-height: 48px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       padding: 0.8rem 1.25rem;
       font-size: 0.9375rem;
       font-weight: 600;
@@ -266,7 +271,7 @@ public final class ShortenerHtmlRenderer {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1.5rem;
+      padding: clamp(0.75rem, 3vw, 1.5rem);
       line-height: 1.5;
     }
     .card {
@@ -275,7 +280,7 @@ public final class ShortenerHtmlRenderer {
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 20px;
-      padding: 2.25rem 2rem;
+      padding: clamp(1.25rem, 5vw, 2.25rem) clamp(1rem, 4vw, 2rem);
       text-align: center;
       box-shadow: 0 16px 40px -4px rgba(0, 0, 0, 0.16);
       display: flex;
@@ -338,6 +343,8 @@ public final class ShortenerHtmlRenderer {
     a.btn-primary {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
+      min-height: 48px;
       gap: 0.45rem;
       padding: 0.65rem 1.35rem;
       font-size: 0.875rem;
@@ -355,6 +362,8 @@ public final class ShortenerHtmlRenderer {
     a.btn-secondary {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
+      min-height: 48px;
       gap: 0.45rem;
       padding: 0.65rem 1.25rem;
       font-size: 0.875rem;
@@ -415,7 +424,7 @@ public final class ShortenerHtmlRenderer {
   <main class="card">
     <div class="gif-wrap">
       <img src="/assets/shortener/lost-in-space-404.gif" alt="Lost in Space" loading="eager" />
-      <div class="badge">%d</div>
+      <div class="badge">%s</div>
     </div>
     <h1>%s</h1>
     <p class="desc">%s</p>
@@ -434,7 +443,7 @@ public final class ShortenerHtmlRenderer {
   </main>
 </body>
 </html>
-""".formatted(safeTitle, statusCode, safeTitle, safeMessage);
+""".formatted(safeTitle, safeTitle, safeTitle, safeMessage);
     }
 
     /**
@@ -498,7 +507,7 @@ public final class ShortenerHtmlRenderer {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1.5rem;
+      padding: clamp(0.75rem, 3vw, 1.5rem);
       line-height: 1.5;
     }
     .card {
@@ -507,7 +516,7 @@ public final class ShortenerHtmlRenderer {
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 2.25rem 2rem;
+      padding: clamp(1.25rem, 5vw, 2.25rem) clamp(1rem, 4vw, 2rem);
       box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08);
     }
     .header {
@@ -592,6 +601,7 @@ public final class ShortenerHtmlRenderer {
       display: flex;
       align-items: center;
       justify-content: center;
+      min-height: 48px;
       gap: 6px;
       width: 100%%;
       padding: 0.8rem 1.25rem;
@@ -610,6 +620,7 @@ public final class ShortenerHtmlRenderer {
       display: flex;
       align-items: center;
       justify-content: center;
+      min-height: 48px;
       width: 100%%;
       padding: 0.65rem 1.25rem;
       font-size: 0.875rem;

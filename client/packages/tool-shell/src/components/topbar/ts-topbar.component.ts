@@ -183,6 +183,10 @@ export interface SectionNavLink {
         aria-modal="true" 
         aria-label="Navigation menu"
         (click)="$event.stopPropagation()"
+        (touchstart)="onTouchStart($event)"
+        (touchmove)="onTouchMove($event)"
+        (touchend)="onTouchEnd($event)"
+        tabindex="-1"
       >
         <!-- Mobile Sheet Handle & Header (Visible on phone) -->
         <div class="ts-nav-sheet-header">
@@ -258,11 +262,11 @@ export interface SectionNavLink {
 
         <div class="ts-nav-panel-divider" role="separator"></div>
 
-        <!-- Dark / Light Theme Toggle in Navigation Sheet -->
+        <!-- Dark Mode Toggle Switch in Navigation Sheet -->
         <div class="ts-nav-theme-row" (click)="toggleTheme()" role="menuitem">
           <div class="ts-nav-theme-left">
-            <ts-icon [name]="isDark() ? 'moon' : 'sun'" [size]="18" class="ts-nav-action-icon" />
-            <span class="ts-nav-item-text">{{ isDark() ? 'Dark Mode' : 'Light Mode' }}</span>
+            <ts-icon name="moon" [size]="18" class="ts-nav-action-icon" />
+            <span class="ts-nav-item-text">Dark Mode</span>
           </div>
           <button
             type="button"
@@ -841,7 +845,7 @@ export interface SectionNavLink {
         padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px;
         box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.25);
         animation: tsSlideUp 200ms cubic-bezier(0.16, 1, 0.3, 1);
-        max-height: 82vh;
+        max-height: 85dvh;
         overflow-y: auto;
       }
 
@@ -994,14 +998,14 @@ export interface SectionNavLink {
     }
 
     .ts-save-btn.is-favorited {
-      background: linear-gradient(135deg, var(--accent, #0284C7) 0%, color-mix(in srgb, var(--accent, #0284C7) 70%, #2563EB) 100%) !important;
+      background: linear-gradient(135deg, var(--accent, #0284C7) 0%, color-mix(in srgb, var(--accent, #0284C7) 85%, #000000) 100%) !important;
       border-color: color-mix(in srgb, var(--accent, #0284C7) 90%, #ffffff) !important;
       color: #ffffff !important;
       box-shadow: 0 3px 12px color-mix(in srgb, var(--accent, #0284C7) 45%, transparent);
     }
 
     .ts-save-btn.is-favorited:hover {
-      background: linear-gradient(135deg, color-mix(in srgb, var(--accent, #0284C7) 90%, #000) 0%, color-mix(in srgb, var(--accent, #0284C7) 75%, #1D4ED8) 100%) !important;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--accent, #0284C7) 90%, #000000) 0%, color-mix(in srgb, var(--accent, #0284C7) 75%, #000000) 100%) !important;
       color: #ffffff !important;
     }
 
@@ -1141,7 +1145,7 @@ export interface SectionNavLink {
       }
     }
 
-    /* Small screens (Mobile <768px): Scrollable center navigation, hide desktop theme toggle */
+    /* Small screens (Mobile <768px): Hide center navigation tabs, display brand + tool name and menu button */
     @media (max-width: 767px) {
       .ts-tools-grid-btn {
         display: inline-flex !important;
@@ -1150,36 +1154,33 @@ export interface SectionNavLink {
         display: none !important;
       }
       .ts-zone-center {
-        display: flex !important;
-        min-width: 0;
-        max-width: 100%;
-        overflow: hidden;
-        margin: 0 4px;
+        display: none !important;
       }
       .ts-topbar-card {
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: 1fr auto;
         height: 56px;
-        padding: 0 8px;
+        padding: 0 12px;
         border-radius: 16px;
-      }
-      .ts-nav-link-btn {
-        padding: 4px 10px;
-        font-size: 12.5px;
       }
       .ts-zone-left {
         gap: 6px;
-      }
-      .ts-zone-right {
-        gap: 8px;
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
       }
       .ts-tool-chip {
-        max-width: 120px;
+        max-width: clamp(100px, 45vw, 220px);
         overflow: hidden;
+        display: flex !important;
       }
       .ts-tool-chip-name {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+      .ts-zone-right {
+        gap: 8px;
+        flex-shrink: 0;
       }
       .hide-mobile {
         display: none !important;
@@ -1195,13 +1196,6 @@ export interface SectionNavLink {
         font-size: 13px;
         height: 44px;
         min-height: 44px;
-      }
-    }
-
-    @media (max-width: 360px) {
-      .ts-breadcrumb-separator,
-      .ts-tool-chip {
-        display: none !important;
       }
     }
   `]
@@ -1242,15 +1236,78 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly elementRef = inject(ElementRef);
   readonly isNavMenuOpen = signal<boolean>(false);
 
+  private touchStartY = 0;
+  private touchCurrentY = 0;
+
   toggleNavMenu(event?: MouseEvent): void {
     if (event) {
       event.stopPropagation();
     }
-    this.isNavMenuOpen.update(v => !v);
+    const next = !this.isNavMenuOpen();
+    this.isNavMenuOpen.set(next);
+    this.updateBodyScrollLock(next);
   }
 
   closeNavMenu(): void {
-    this.isNavMenuOpen.set(false);
+    if (this.isNavMenuOpen()) {
+      this.isNavMenuOpen.set(false);
+      this.updateBodyScrollLock(false);
+    }
+  }
+
+  private updateBodyScrollLock(locked: boolean): void {
+    if (typeof document === 'undefined') return;
+    if (locked) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+  }
+
+  onTouchStart(event: TouchEvent): void {
+    if (event.touches.length > 0) {
+      this.touchStartY = event.touches[0].clientY;
+      this.touchCurrentY = this.touchStartY;
+    }
+  }
+
+  onTouchMove(event: TouchEvent): void {
+    if (event.touches.length > 0) {
+      this.touchCurrentY = event.touches[0].clientY;
+    }
+  }
+
+  onTouchEnd(event: TouchEvent): void {
+    const deltaY = this.touchCurrentY - this.touchStartY;
+    // Swipe down by at least 50px closes the navigation bottom sheet
+    if (deltaY > 50) {
+      this.closeNavMenu();
+    }
+    this.touchStartY = 0;
+    this.touchCurrentY = 0;
+  }
+
+  @HostListener('keydown', ['$event'])
+  onPanelKeyDown(event: KeyboardEvent): void {
+    if (!this.isNavMenuOpen() || event.key !== 'Tab') return;
+    const panel = this.elementRef.nativeElement.querySelector('.ts-nav-panel');
+    if (!panel) return;
+    const focusable = panel.querySelectorAll('button:not([disabled]), a:not([disabled]), [tabindex="0"]');
+    if (focusable.length === 0) return;
+    const first = focusable[0] as HTMLElement;
+    const last = focusable[focusable.length - 1] as HTMLElement;
+
+    if (event.shiftKey) {
+      if (document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
   }
 
   toggleTheme(): void {
@@ -1476,6 +1533,7 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.updateBodyScrollLock(false);
     this.intersectionObserver?.disconnect();
     if (this.scrollContainerEl && this.boundScrollListener) {
       this.scrollContainerEl.removeEventListener('scroll', this.boundScrollListener);
