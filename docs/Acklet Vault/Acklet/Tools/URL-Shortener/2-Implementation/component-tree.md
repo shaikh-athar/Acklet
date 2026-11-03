@@ -66,17 +66,23 @@ AppComponent (Standalone Shell Host)
         │   └── Any root path /{code} automatically redirects to canonical backend endpoint /s/{code}
         │
         ├── My Links Management View
-        │   ├── Merged Search + Filter Toolbar (Full-width search, "Filters" popover)
-        │   ├── Expanded View (>=1024px): Dense table with Original link, Short link, Status, Protection / Expiry (8px badge gap), Clicks, Copy + ActionDropdown
-        │   ├── Medium View (600-1023px): Two-line rows with original link below short link
-        │   └── Compact View (<600px): Card list, wrapped badges, touch-friendly Copy + three-dots ActionDropdown
+        │   ├── Merged Search + Filter Toolbar
+        │   │   ├── Search Input (100% on mobile, min-width 240px on desktop)
+        │   │   ├── Status Filter Dropdown (Col 1 on mobile, left-aligned popover, z-index: 200 when open)
+        │   │   ├── Sort Filter Dropdown (Col 2 on mobile, right-aligned popover, z-index: 200 when open)
+        │   │   └── Attribute Filters Button (Full width row 2 on mobile, triggers root-level bottom sheet)
+        │   ├── Expanded View (>=1024px): Full data table with Original link, Short link, Status, Protection / Expiry, Clicks, Copy + ActionDropdown
+        │   ├── Medium View (600-1023px): 2-column auto-fit structured card grid
+        │   └── Compact View (<600px): 1-column structured card grid (5-row card anatomy, overflow: visible, z-index elevation)
         │
         ├── Reusable Action Dropdown (ActionDropdownComponent)
         │   ├── CSS Absolute Anchoring: Positioned directly relative to trigger host, immune to containing block / backdrop-filter shifts
         │   ├── Flip Detection: Automatically opens above trigger when viewport bottom space is below threshold
+        │   ├── Momentum Scroll: max-height: min(340px, calc(100dvh - 32px)) with touch scrolling for all 6 actions
         │   └── Keyboard Navigation: Role menu/menuitem, Arrow Up/Down, Home/End, Esc, Enter/Space, outside pointer click dismissal
         │
         ├── Modals & Dialogs (Max-width 480px centered on desktop; bottom sheet on compact)
+        │   ├── Mobile Attribute Filters Bottom Sheet (Root-level isolation, fixed viewport bottom, drag handle, 1-col options)
         │   ├── Edit Link Modal Dialog / Bottom Sheet
         │   ├── Delete Confirmation Modal Dialog / Bottom Sheet (Stacked buttons on compact: delete on top)
         │   ├── Backup & Recovery Modal Dialog / Bottom Sheet
@@ -96,15 +102,24 @@ AppComponent (Standalone Shell Host)
 | `inputUrl` | `WritableSignal<string>` | Value of destination URL input field. |
 | `customAlias` | `WritableSignal<string>` | Value of optional custom slug. |
 | `selectedTtlDays` | `WritableSignal<number \| null>` | Selected expiration period in days. |
+| `customDateFrom` / `customDateTo` | `WritableSignal<string>` | ISO datetime strings for custom scheduling/expiry. |
 | `isLoading` | `WritableSignal<boolean>` | Loading spinner state during async shortening. |
 | `result` | `WritableSignal<ShortLinkRecord \| null>` | Active shortened result record. |
 | `copied` | `WritableSignal<boolean>` | Visual feedback trigger for 1-click copy (1500ms duration). |
-| `activeFilterCount` | `Signal<number>` | Computed count of active filters for compact badge. |
-| `isFilterSheetOpen` | `WritableSignal<boolean>` | State of mobile compact filters bottom sheet. |
+| `statusFilter` | `WritableSignal<FilterStatus>` | Active status filter (`ALL`, `ACTIVE`, `SCHEDULED`, `EXPIRED`, `LIMIT_REACHED`, `DEACTIVATED`). |
+| `sortOption` | `WritableSignal<SortOption>` | Active sort criteria (`newest`, `oldest`, `clicks`, `expiry`). |
+| `filterCriteria` | `WritableSignal<FilterCriteria>` | Multi-attribute criteria (Activity, Expiry, Protection, Rules, Created, Tags, Domains). |
+| `activeAttributeFilterCount` | `Signal<number>` | Computed count of active attribute filters for badge indicator. |
+| `isStatusDropdownOpen` | `WritableSignal<boolean>` | Visibility of Status filter dropdown. |
+| `isSortDropdownOpen` | `WritableSignal<boolean>` | Visibility of Sort filter dropdown. |
+| `isFiltersPopoverOpen` | `WritableSignal<boolean>` | State of desktop attribute filters popover / mobile bottom sheet. |
+| `activeMenuCode` | `WritableSignal<string \| null>` | Tracks which link card/row currently has its 3-dots action menu open for z-index stacking elevation. |
+| `isServiceUnreachable` | `WritableSignal<boolean>` | Flag indicating backend unreachable / offline state. |
 | `isEditDrawerOpen` | `WritableSignal<boolean>` | Visibility of edit link dialog/sheet. |
 | `linkPendingDelete` | `WritableSignal<string \| null>` | Target code for delete confirmation dialog. |
 | `isRecoveryModalOpen` | `WritableSignal<boolean>` | Visibility of backup & restore modal. |
 | `isReportModalOpen` | `WritableSignal<boolean>` | Visibility of "Report Link" dialog. |
+| `selectedCodes` | `WritableSignal<Set<string>>` | Multi-select codes for bulk operations. |
 | `redirectStatus` | `WritableSignal<RedirectStatus>` | Status during route inspection (`ACTIVE`, `EXPIRED`, etc.). |
 | `previewRecord` | `WritableSignal<ShortLinkRecord \| null>` | Target record when rendered in safe preview mode. |
 | `isUrlValid` | `Signal<boolean>` | Computed signal validating input URL syntax and protocol. |

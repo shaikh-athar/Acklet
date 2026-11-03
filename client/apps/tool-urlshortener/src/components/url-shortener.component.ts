@@ -5,6 +5,7 @@ import {
   OnDestroy,
   signal,
   computed,
+  effect,
   inject,
   ChangeDetectionStrategy,
   PLATFORM_ID,
@@ -32,6 +33,7 @@ import {
   CreatedRangePreset
 } from '../services/shortener-filter.model';
 import { SHORTENER_CONFIG, ExpiryPreset, ExpiryOption } from '../services/shortener.config';
+import { SHORTENER_MESSAGE_CATALOG, sanitizeErrorMessage } from '../services/shortener-messages';
 import { environment } from '../environments/environment';
 
 export type ToolPage = 'MAIN' | 'LINKS' | 'REDIRECT' | 'PREVIEW' | 'UNLOCK';
@@ -90,6 +92,7 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
   readonly formMaxClicks = signal<number | null>(null);
   readonly formIsOneTime = signal<boolean>(false);
   readonly formStartDate = signal<string>('');
+  readonly formCustomExpiresAt = signal<string>('');
   readonly formLabel = signal<string>('');
 
   // Alias Live Availability State
@@ -99,12 +102,26 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
 
   // "My Links" List View State
   readonly myLinks = signal<ShortLinkRecord[]>([]);
+  readonly pageSize = 50;
+  readonly displayedCount = signal<number>(50);
+  readonly copiedCode = signal<string | null>(null);
+  readonly isServiceUnreachable = this.shortener.isServiceUnreachable;
+  readonly isListLoading = this.shortener.isListLoading;
+  readonly isDevSampleMode = this.shortener.isDevSampleMode;
+  readonly isProduction = environment.production;
+
+  private readonly resetPaginationEffect = effect(() => {
+    this.filteredLinks();
+    this.displayedCount.set(this.pageSize);
+  }, { allowSignalWrites: true });
+
   readonly searchQuery = signal<string>('');
   readonly statusFilter = signal<FilterStatus>('ALL');
   readonly sortOption = signal<SortOption>('newest');
   readonly isStatusDropdownOpen = signal<boolean>(false);
   readonly isSortDropdownOpen = signal<boolean>(false);
   readonly isFiltersPopoverOpen = signal<boolean>(false);
+  readonly activeMenuCode = signal<string | null>(null);
 
   // Filter Redesign State (Attribute-Based)
   readonly filterCriteria = signal<FilterCriteria>(createDefaultFilterCriteria());
@@ -198,6 +215,7 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
   }
 
   getRowMenuItems(link: ShortLinkRecord, isCompact = false): ActionMenuItem[] {
+    const isUnreachable = this.isServiceUnreachable();
     const items: ActionMenuItem[] = [];
     if (isCompact) {
       items.push({ id: 'copy', label: 'Copy link', icon: 'copy' });
@@ -205,9 +223,9 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
     items.push(
       { id: 'qr', label: 'Make QR', icon: 'qr-code' },
       { id: 'preview', label: 'Preview', icon: 'eye' },
-      { id: 'edit', label: 'Edit', icon: 'pencil' },
-      { id: 'deactivate', label: link.isDeactivated ? 'Reactivate' : 'Deactivate', icon: link.isDeactivated ? 'play' : 'pause' },
-      { id: 'delete', label: 'Delete', icon: 'trash', destructive: true }
+      { id: 'edit', label: 'Edit', icon: 'pencil', disabled: isUnreachable },
+      { id: 'deactivate', label: link.isDeactivated ? 'Reactivate' : 'Deactivate', icon: link.isDeactivated ? 'play' : 'pause', disabled: isUnreachable },
+      { id: 'delete', label: 'Delete', icon: 'trash', destructive: true, disabled: isUnreachable }
     );
     return items;
   }
@@ -250,6 +268,7 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
   readonly editLabel = signal<string>('');
   readonly editExpiry = signal<ExpiryPreset>(SHORTENER_CONFIG.defaultExpiry);
   readonly editIsExpiryOpen = signal<boolean>(false);
+  readonly editCustomExpiresAt = signal<string>('');
   readonly editMaxClicks = signal<number | null>(null);
   readonly editIsOneTime = signal<boolean>(false);
   readonly editStartDate = signal<string>('');
@@ -311,6 +330,10 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
     const aliasValid = this.aliasValidation().isValid && this.aliasAvailable();
     const pw = this.formPassword().trim();
     const pwValid = !pw || pw.length >= SHORTENER_CONFIG.minPasswordLength;
+    if (this.selectedExpiry() === 'custom') {
+      const customMs = this.parseDatetimeLocal(this.formCustomExpiresAt());
+      if (!customMs || customMs <= Date.now()) return false;
+    }
     return urlValid && aliasValid && pwValid;
   });
 
@@ -321,6 +344,10 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
     if (this.editPasswordAction() === 'set') {
       const pw = this.editNewPassword().trim();
       if (!pw || pw.length < SHORTENER_CONFIG.minPasswordLength) return false;
+    }
+    if (this.editExpiry() === 'custom') {
+      const customMs = this.parseDatetimeLocal(this.editCustomExpiresAt());
+      if (!customMs || customMs <= Date.now()) return false;
     }
     return true;
   });
@@ -399,23 +426,45 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
     return list;
   });
 
+  readonly displayedLinks = computed<ShortLinkRecord[]>(() => {
+    return this.filteredLinks().slice(0, this.displayedCount());
+  });
+
+  readonly hasMore = computed<boolean>(() => {
+    return this.displayedCount() < this.filteredLinks().length;
+  });
+
+  loadMore(): void {
+    this.displayedCount.update(c => c + this.pageSize);
+  }
+
+  isCodeCopied(code: string): boolean {
+    return this.copiedCode() === code;
+  }
+
   async ngOnInit(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
+
+    if (!environment.production && window.location.search.includes('sample=true')) {
+      this.shortener.setDevSampleMode(true);
+    }
 
     // Silent one-time migration of any legacy client-side links
     this.shortener.migrateLocalLinks().catch(() => {});
 
-    // Load initial links from server
-    await this.refreshMyLinks();
+    // Initial route check (inspectRouteAndRedirect will trigger refreshMyLinks if on /links)
+    await this.inspectRouteAndRedirect();
+
+    // If on main page, preload links in background
+    if (this.activePage() === 'MAIN' && this.myLinks().length === 0) {
+      this.refreshMyLinks().catch(() => {});
+    }
 
     // Setup HTML5 popstate routing listener
     this.popstateListener = () => {
       this.inspectRouteAndRedirect();
     };
     window.addEventListener('popstate', this.popstateListener);
-
-    // Initial route check
-    this.inspectRouteAndRedirect();
   }
 
   ngOnDestroy(): void {
@@ -530,9 +579,60 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
     }, 250);
   }
 
+  toDatetimeLocal(dateInput: number | Date | null | undefined): string {
+    if (!dateInput) return '';
+    const d = typeof dateInput === 'number' ? new Date(dateInput) : dateInput;
+    if (isNaN(d.getTime())) return '';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
+  parseDatetimeLocal(val: string): number | null {
+    if (!val || !val.trim()) return null;
+    const d = new Date(val);
+    const time = d.getTime();
+    return isNaN(time) ? null : time;
+  }
+
+  minDatetimeLocal(): string {
+    return this.toDatetimeLocal(Date.now());
+  }
+
+  defaultCustomDatetime(): string {
+    const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    d.setMinutes(0, 0, 0);
+    return this.toDatetimeLocal(d);
+  }
+
+  isCustomExpiryPast(val: string): boolean {
+    const ms = this.parseDatetimeLocal(val);
+    return ms !== null && ms <= Date.now();
+  }
+
+  formatCustomExpiryHint(val: string): string {
+    const ms = this.parseDatetimeLocal(val);
+    if (!ms || ms <= Date.now()) return '';
+    return `Will deactivate on ${this.formatDateTime(ms)}`;
+  }
+
   selectExpiry(preset: ExpiryPreset): void {
     this.selectedExpiry.set(preset);
     this.isExpiryOpen.set(false);
+    if (preset === 'custom' && !this.formCustomExpiresAt()) {
+      this.formCustomExpiresAt.set(this.defaultCustomDatetime());
+    }
+  }
+
+  selectEditExpiry(preset: ExpiryPreset): void {
+    this.editExpiry.set(preset);
+    this.editIsExpiryOpen.set(false);
+    if (preset === 'custom' && !this.editCustomExpiresAt()) {
+      this.editCustomExpiresAt.set(this.defaultCustomDatetime());
+    }
   }
 
   getExpiryLabel(preset: ExpiryPreset): string {
@@ -572,11 +672,13 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
 
     try {
       const startDateMs = this.formStartDate() ? new Date(this.formStartDate()).getTime() : null;
+      const customMs = this.selectedExpiry() === 'custom' ? this.parseDatetimeLocal(this.formCustomExpiresAt()) : null;
 
       const res = await this.shortener.shortenUrl({
         url: this.longUrl(),
         customAlias: this.customAlias().trim() || undefined,
         expiryPreset: this.selectedExpiry(),
+        customExpiresAt: customMs,
         password: this.formPassword().trim() || undefined,
         maxClicks: this.formMaxClicks(),
         isOneTime: this.formIsOneTime(),
@@ -591,10 +693,10 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
         this.showToast('Link shortened');
         await this.refreshMyLinks();
       } else {
-        this.showToast(res.error || "We couldn't complete that. Please try again in a few minutes.");
+        this.showToast(sanitizeErrorMessage(res.error, "Something went wrong on our end. Please try again in a few moments."));
       }
     } catch (err: any) {
-      this.showToast(err?.message || "We couldn't complete that. Please try again in a few minutes.");
+      this.showToast(sanitizeErrorMessage(err, "Something went wrong on our end. Please try again in a few moments."));
     } finally {
       this.isSubmitting.set(false);
     }
@@ -609,6 +711,7 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
       this.longUrl.set('');
       this.customAlias.set('');
       this.selectedExpiry.set(SHORTENER_CONFIG.defaultExpiry);
+      this.formCustomExpiresAt.set('');
       this.formPassword.set('');
       this.formMaxClicks.set(null);
       this.formIsOneTime.set(false);
@@ -720,7 +823,7 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
       await this.refreshMyLinks();
       this.showToast(`${count} links deactivated`);
     } catch (err: any) {
-      this.showToast(err?.message || "Your changes weren't saved. Please try again.");
+      this.showToast(sanitizeErrorMessage(err, "Your changes weren't saved. Please try again."));
     } finally {
       this.isProcessingBulk.set(false);
     }
@@ -736,7 +839,7 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
       await this.refreshMyLinks();
       this.showToast(`${count} links reactivated`);
     } catch (err: any) {
-      this.showToast(err?.message || "Your changes weren't saved. Please try again.");
+      this.showToast(sanitizeErrorMessage(err, "Your changes weren't saved. Please try again."));
     } finally {
       this.isProcessingBulk.set(false);
     }
@@ -753,7 +856,7 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
       await this.refreshMyLinks();
       this.showToast(`${count} links deleted`);
     } catch (err: any) {
-      this.showToast(err?.message || "We couldn't complete that. Please try again in a few minutes.");
+      this.showToast(sanitizeErrorMessage(err, "Something went wrong on our end. Please try again in a few moments."));
     } finally {
       this.isProcessingBulk.set(false);
     }
@@ -767,7 +870,7 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
       const stats = await this.shortener.getLinkStats(code);
       this.linkStats.set(stats);
     } catch (err: any) {
-      this.showToast(err?.message || "We couldn't complete that. Please try again in a few minutes.");
+      this.showToast(sanitizeErrorMessage(err, "Something went wrong on our end. Please try again in a few moments."));
       this.linkStats.set(null);
     } finally {
       this.loadingStats.set(false);
@@ -798,7 +901,13 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
     this.openStatsModal(link.code);
 
     // Map existing expiresAt to preset if matches, else default
-    this.editExpiry.set(this.inferExpiryPreset(link.expiresAt));
+    const preset = this.inferExpiryPreset(link.expiresAt);
+    this.editExpiry.set(preset);
+    if (link.expiresAt) {
+      this.editCustomExpiresAt.set(this.toDatetimeLocal(link.expiresAt));
+    } else {
+      this.editCustomExpiresAt.set('');
+    }
 
     this.isEditDrawerOpen.set(true);
   }
@@ -812,10 +921,10 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
     if (!expiresAt) return 'never';
     const remainingMs = expiresAt - Date.now();
     const days = remainingMs / (24 * 60 * 60 * 1000);
-    if (days <= 8 && days >= 5) return '7_days';
-    if (days <= 32 && days >= 25) return '30_days';
-    if (days >= 300) return '1_year';
-    return '30_days';
+    if (days >= 6.8 && days <= 7.2) return '7_days';
+    if (days >= 29.5 && days <= 30.5) return '30_days';
+    if (days >= 364 && days <= 366) return '1_year';
+    return 'custom';
   }
 
   async saveEdit(): Promise<void> {
@@ -834,8 +943,20 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
       };
 
       // Expiry calculation
-      const expiryOpt = SHORTENER_CONFIG.expiryOptions.find(o => o.id === this.editExpiry());
-      updates.expiresAt = expiryOpt && expiryOpt.durationMs ? Date.now() + expiryOpt.durationMs : null;
+      if (this.editExpiry() === 'custom') {
+        const customMs = this.parseDatetimeLocal(this.editCustomExpiresAt());
+        if (!customMs || customMs <= Date.now()) {
+          this.showToast(SHORTENER_MESSAGE_CATALOG.EXPIRY_INVALID);
+          this.isSavingEdit.set(false);
+          return;
+        }
+        updates.expiresAt = customMs;
+      } else if (this.editExpiry() === 'never') {
+        updates.expiresAt = null;
+      } else {
+        const expiryOpt = SHORTENER_CONFIG.expiryOptions.find(o => o.id === this.editExpiry());
+        updates.expiresAt = expiryOpt && expiryOpt.durationMs ? Date.now() + expiryOpt.durationMs : null;
+      }
 
       // Password handling
       if (this.editPasswordAction() === 'remove') {
@@ -850,7 +971,7 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
       this.closeEditDrawer();
       this.showToast('Link updated');
     } catch (err: any) {
-      this.showToast(err?.message || "Your changes weren't saved. Please try again.");
+      this.showToast(sanitizeErrorMessage(err, "Your changes weren't saved. Please try again."));
     } finally {
       this.isSavingEdit.set(false);
     }
@@ -867,7 +988,7 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
       await this.refreshMyLinks();
       this.showToast(nextState ? 'Link deactivated' : 'Link reactivated');
     } catch (err: any) {
-      this.showToast(err?.message || "Your changes weren't saved. Please try again.");
+      this.showToast(sanitizeErrorMessage(err, "Your changes weren't saved. Please try again."));
     }
   }
 
@@ -878,10 +999,10 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
         await this.refreshMyLinks();
         this.showToast(`Link duplicated as ${res.code}`);
       } else {
-        this.showToast(res.error || "We couldn't complete that. Please try again in a few minutes.");
+        this.showToast(sanitizeErrorMessage(res.error, "Something went wrong on our end. Please try again in a few moments."));
       }
     } catch (err: any) {
-      this.showToast(err?.message || "We couldn't complete that. Please try again in a few minutes.");
+      this.showToast(sanitizeErrorMessage(err, "Something went wrong on our end. Please try again in a few moments."));
     }
   }
 
@@ -908,7 +1029,7 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
       }
       this.showToast('Link deleted');
     } catch (err: any) {
-      this.showToast(err?.message || "We couldn't complete that. Please try again in a few minutes.");
+      this.showToast(sanitizeErrorMessage(err, "Something went wrong on our end. Please try again in a few moments."));
     }
   }
 
@@ -1040,7 +1161,7 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
   // UTILITIES & FEEDBACK
   // ═════════════════════════════════════════════════════════════════════════
 
-  async copyToClipboard(text: string): Promise<void> {
+  async copyToClipboard(text: string, code?: string): Promise<void> {
     if (!text) return;
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -1053,9 +1174,17 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
         document.execCommand('copy');
         document.body.removeChild(textarea);
       }
+      if (code) {
+        this.copiedCode.set(code);
+      }
       this.isCopied.set(true);
       this.showToast('Link copied');
-      setTimeout(() => this.isCopied.set(false), 1500);
+      setTimeout(() => {
+        if (code && this.copiedCode() === code) {
+          this.copiedCode.set(null);
+        }
+        this.isCopied.set(false);
+      }, 1500);
     } catch {
       this.showToast("Couldn't copy. Select the link and copy it manually.");
     }
@@ -1209,14 +1338,57 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
     });
   }
 
+  isLinkExpired(link: ShortLinkRecord): boolean {
+    return !!link.expiresAt && link.expiresAt <= Date.now();
+  }
+
+  isLinkExpiringSoon(link: ShortLinkRecord): boolean {
+    if (!link.expiresAt) return false;
+    const diff = link.expiresAt - Date.now();
+    return diff > 0 && diff <= 7 * 24 * 60 * 60 * 1000;
+  }
+
   formatExpiry(expiresAt: number | null): string {
     if (!expiresAt) return 'Never expires';
     const remainingMs = expiresAt - Date.now();
-    if (remainingMs <= 0) return 'Expired';
+    if (remainingMs <= 0) {
+      return `Expired on ${this.formatDateTime(expiresAt)}`;
+    }
 
-    const days = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
-    if (days === 1) return 'Expires tomorrow';
-    return `Expires in ${days} days`;
+    // Under 1 hour
+    if (remainingMs < 60 * 60 * 1000) {
+      const mins = Math.max(1, Math.round(remainingMs / 60000));
+      return `Expires in ${mins}m`;
+    }
+
+    // Under 24 hours
+    if (remainingMs < 24 * 60 * 60 * 1000) {
+      const hours = Math.floor(remainingMs / (60 * 60 * 1000));
+      const mins = Math.floor((remainingMs % (60 * 60 * 1000)) / 60000);
+      return mins > 0 ? `Expires in ${hours}h ${mins}m` : `Expires in ${hours}h`;
+    }
+
+    // Under 7 days
+    if (remainingMs < 7 * 24 * 60 * 60 * 1000) {
+      const days = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
+      const hours = Math.floor((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+      return hours > 0 ? `Expires in ${days}d ${hours}h` : `Expires in ${days}d`;
+    }
+
+    // 7 days and beyond
+    return `Expires ${this.formatDateTime(expiresAt)}`;
+  }
+
+  formatFullDateTime(timestamp: number | null): string {
+    if (!timestamp) return 'No expiration set';
+    return new Date(timestamp).toLocaleString(undefined, {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
 
   getProtocolLabel(url: string): string {
@@ -1225,6 +1397,47 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
     } catch {
       return 'HTTPS';
     }
+  }
+
+  toggleStatusDropdown(event?: Event): void {
+    if (event) event.stopPropagation();
+    const next = !this.isStatusDropdownOpen();
+    this.isStatusDropdownOpen.set(next);
+    if (next) {
+      this.isSortDropdownOpen.set(false);
+      this.isFiltersPopoverOpen.set(false);
+    }
+  }
+
+  toggleSortDropdown(event?: Event): void {
+    if (event) event.stopPropagation();
+    const next = !this.isSortDropdownOpen();
+    this.isSortDropdownOpen.set(next);
+    if (next) {
+      this.isStatusDropdownOpen.set(false);
+      this.isFiltersPopoverOpen.set(false);
+    }
+  }
+
+  toggleFiltersPopover(event?: Event): void {
+    if (event) event.stopPropagation();
+    const next = !this.isFiltersPopoverOpen();
+    this.isFiltersPopoverOpen.set(next);
+    if (next) {
+      this.isStatusDropdownOpen.set(false);
+      this.isSortDropdownOpen.set(false);
+    }
+  }
+
+  closeAllFilterDropdowns(): void {
+    this.isStatusDropdownOpen.set(false);
+    this.isSortDropdownOpen.set(false);
+    this.isFiltersPopoverOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey(): void {
+    this.closeAllFilterDropdowns();
   }
 
   @HostListener('document:click', ['$event'])
@@ -1241,14 +1454,49 @@ export class UrlShortenerComponent implements OnInit, OnDestroy {
     if (this.isSortDropdownOpen() && !this.hostEl.nativeElement.querySelector('.sort-dropdown-wrap')?.contains(target)) {
       this.isSortDropdownOpen.set(false);
     }
+    if (this.isFiltersPopoverOpen() && !this.hostEl.nativeElement.querySelector('.attribute-filters-wrap')?.contains(target)) {
+      this.isFiltersPopoverOpen.set(false);
+    }
     if (this.editIsExpiryOpen() && !this.hostEl.nativeElement.querySelector('.edit-expiry-dropdown')?.contains(target)) {
       this.editIsExpiryOpen.set(false);
     }
   }
 
-  private async refreshMyLinks(): Promise<void> {
+  formatMaxClicks(maxClicks: number | null | undefined): string {
+    if (maxClicks == null) return '';
+    return maxClicks === 1 ? 'Max 1 click' : `Max ${maxClicks} clicks`;
+  }
+
+  formatLastVisited(timestamp: number | null | undefined): string {
+    if (!timestamp) return 'Never visited';
+    return this.formatRelativeTime(timestamp);
+  }
+
+  formatExpiryDate(timestamp: number | null): string {
+    if (!timestamp) return '';
+    return new Date(timestamp).toLocaleString(undefined, {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  }
+
+  toggleDevSampleMode(): void {
+    this.shortener.toggleDevSampleMode();
+    this.refreshMyLinks();
+  }
+
+  async retryLoadLinks(): Promise<void> {
+    await this.refreshMyLinks(true);
+  }
+
+  private async refreshMyLinks(forceManual = false): Promise<void> {
     try {
-      const links = await this.shortener.getMyLinks();
+      const links = forceManual
+        ? await this.shortener.manualRetryLoad()
+        : await this.shortener.getMyLinks();
       this.myLinks.set(links);
     } catch {
       this.myLinks.set(this.storage.getCachedMyLinks());

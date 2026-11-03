@@ -133,4 +133,32 @@ describe('HubHomeComponent - Clean Background & Tool Accent Preservation', () =>
     expect(joinedStyles).toContain('Scoutie Sans');
     expect(joinedStyles).not.toContain('Nunito');
   });
+
+  it('matches accent color on save, fills star with accent gradient and leaves outside button bg transparent', () => {
+    const annotations = (HubHomeComponent as any)['ɵcmp'];
+    const constsStr: string = JSON.stringify(annotations.consts || []) + (annotations.template?.toString() || '');
+    const styles: string[] = annotations.styles || [];
+    const joinedStyles = styles.join('\n');
+
+    // Template binds is-favorite on the card
+    expect(constsStr).toContain('is-favorite');
+
+    // Template renders per-tool gradient coordinate attributes and star polygon
+    expect(constsStr).toContain('hub-star-icon');
+    expect(constsStr).toContain('x1');
+    expect(constsStr).toContain('100%');
+    expect(constsStr).toContain('offset');
+
+    // Saved card fills background with subtle tool accent color
+    expect(joinedStyles).toContain('.hub-tool-row-link.is-favorite');
+    expect(joinedStyles).toContain('color-mix(in srgb, var(--row-accent');
+
+    // Star button does NOT fill outside background (transparent instead of solid accent fill)
+    expect(joinedStyles).toContain('.hub-star-btn.is-favorite');
+    expect(joinedStyles).toContain('background: transparent');
+    expect(joinedStyles).not.toContain('background: var(--row-accent) !important');
+
+    // Star shape inside fills with gradient
+    expect(joinedStyles).toContain('fill: var(--star-gradient)');
+  });
 });

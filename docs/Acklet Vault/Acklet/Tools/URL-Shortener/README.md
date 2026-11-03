@@ -1,7 +1,7 @@
 ---
 tool: URL Shortener
 phase: 1
-last-updated: 2026-10-28
+last-updated: 2026-11-03
 status: Production Ready
 ---
 
@@ -9,7 +9,7 @@ status: Production Ready
 
 This hub contains the engineering and architectural documentation for URL Shortener by Acklet (`urlshortener.localhost:<port>` / `https://urlshortener.acklet.com`).
 
-URL Shortener is an enterprise-grade link shortening service built inside the Acklet ecosystem. It provides server-side persistence in PostgreSQL, universal link resolution via `/s/{code}`, server-enforced expiration and scheduling, concurrency-safe click limits, server-rendered accessible password unlock with zero plaintext destination leakage, and deep handoff to QR Generator.
+URL Shortener is an enterprise-grade link shortening service built inside the Acklet ecosystem. It provides server-side persistence in PostgreSQL, universal link resolution via `/s/{code}`, server-enforced expiration and scheduling, concurrency-safe click limits, server-rendered accessible password unlock with zero plaintext destination leakage, resilient unreachable-service and offline state handling, friendly sanitized error messaging, and full multi-device responsive scaling down to 320px mobile screens.
 
 ---
 
@@ -17,6 +17,8 @@ URL Shortener is an enterprise-grade link shortening service built inside the Ac
 
 ```text
 docs/Acklet Vault/Acklet/Tools/URL-Shortener/
+├── dev-notes.md                  (Developer operations, startup, offline resilience, and responsive architecture)
+│
 ├── 0-Requirements/
 │   ├── features.md               (Feature scope, Phase 1 server capabilities, non-scope, user workflows)
 │   └── requirements.md           (Validation rules, SSRF guards, Base62 logic, backend config keys, V56 schema)
@@ -38,11 +40,12 @@ docs/Acklet Vault/Acklet/Tools/URL-Shortener/
 
 | Section | Key Document | Description | Status |
 | :--- | :--- | :--- | :--- |
-| **0. Requirements** | [features.md](0-Requirements/features.md) | Scope boundaries, Phase 1 server capabilities, user workflows | **Complete** |
+| **Operational & Architecture Guide** | [dev-notes.md](dev-notes.md) | Backend startup, offline resilience, containing block isolation, and mobile card anatomy | **Complete** |
+| **0. Requirements** | [features.md](0-Requirements/features.md) | Scope boundaries, Phase 1 server capabilities, user workflows, sanitized messaging | **Complete** |
 | | [requirements.md](0-Requirements/requirements.md) | Validation rules, security guards, backend config keys, V56 schema | **Complete** |
-| **1. Progress** | [phase-1-progress.md](1-Progress/phase-1-progress.md) | Phase 1 milestone deliverables, verification, test results | **Complete** |
-| **2. Implementation** | [service-design.md](2-Implementation/service-design.md) | REST endpoints, ShortRedirectService, atomic SQL, legacy upgrade | **Complete** |
-| | [component-tree.md](2-Implementation/component-tree.md) | Angular signals, client delegation, route forwarding to /s/code | **Complete** |
+| **1. Progress** | [phase-1-progress.md](1-Progress/phase-1-progress.md) | Phase 1 milestone deliverables, verification, test results, responsive pass log | **Complete** |
+| **2. Implementation** | [service-design.md](2-Implementation/service-design.md) | REST endpoints, ShortRedirectService, atomic SQL, error interceptor, legacy upgrade | **Complete** |
+| | [component-tree.md](2-Implementation/component-tree.md) | Angular signals, client delegation, route forwarding to /s/code, bottom sheet architecture | **Complete** |
 | **3. Reference** | [faq.md](3-Reference/faq.md) | Server storage, retention, password upgrade, IP privacy, FAQ | **Complete** |
 
 ---

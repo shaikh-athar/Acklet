@@ -201,4 +201,42 @@ class ShortLinkServiceTest {
         assertEquals("mig1", res.getCodeMapping().get("mig1"));
         verify(repository, times(1)).save(any(ShortLinkEntity.class));
     }
+
+    @Test
+    @DisplayName("Should reject link creation when custom expiresAt is in the past")
+    void testCreateLink_pastExpiryRejected() {
+        CreateShortLinkRequest req = CreateShortLinkRequest.builder()
+                .targetUrl("https://example.com/item")
+                .expiresAt(Instant.now().minusSeconds(120))
+                .build();
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                service.createLink(req, null, "192.0.2.1")
+        );
+        assertTrue(ex.getReason().contains("Expiration must be in the future"));
+    }
+
+    @Test
+    @DisplayName("Should reject link update when custom expiresAt is in the past")
+    void testUpdateLink_pastExpiryRejected() {
+        String token = "test_owner_token";
+        String tokenHash = securityHelper.hashOwnerToken(token);
+
+        ShortLinkEntity entity = ShortLinkEntity.builder()
+                .code("upd999")
+                .targetUrl("https://example.com")
+                .ownerTokenHash(tokenHash)
+                .build();
+
+        when(repository.findByCode("upd999")).thenReturn(Optional.of(entity));
+
+        UpdateShortLinkRequest req = UpdateShortLinkRequest.builder()
+                .expiresAt(Instant.now().minusSeconds(3600))
+                .build();
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                service.updateLink("upd999", req, token)
+        );
+        assertTrue(ex.getReason().contains("Expiration must be in the future"));
+    }
 }

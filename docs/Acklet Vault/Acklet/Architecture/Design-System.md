@@ -251,3 +251,12 @@ Craftsmanship requires inclusivity. The design system enforces:
       }
     }
     ```
+
+---
+
+## 4. Hub Card Favorite State & Tool Accent System
+
+When tools are favorited/saved in Hub Home:
+1. **Card Surface Background**: Tints subtly with the tool's accent token (`color-mix(in srgb, var(--row-accent) 4.5%, var(--surface))`).
+2. **Favorite Star Button (`.hub-star-btn`)**: Retains a clean, transparent background without solid circular pill fill (`background: transparent; border: none;`).
+3. **Star Icon Fill**: The star vector path itself is filled using an inline SVG linear gradient spanning `var(--row-accent)` to `var(--row-accent-strong)` with a soft accent drop shadow, providing high-contrast visual confirmation across light and dark themes.
