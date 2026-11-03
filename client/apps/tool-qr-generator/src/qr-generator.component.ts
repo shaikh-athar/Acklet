@@ -3599,6 +3599,21 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
 
   readonly inputPanel = viewChild(InputPanelComponent);
 
+  constructor() {
+    try {
+      effect(() => {
+        const panel = this.inputPanel();
+        const content = this.content();
+        const type = this.selectedType();
+        if (panel && content) {
+          panel.restorePayload(type, content);
+        }
+      });
+    } catch {
+      // In isolated unit tests with custom mock environment injectors lacking an effect scheduler, skip effect registration
+    }
+  }
+
   // QR Name (Assignable & Renamable by User)
   readonly qrName = signal<string>('My QR Code');
 

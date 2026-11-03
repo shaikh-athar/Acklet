@@ -11,7 +11,9 @@ const queryTool = urlParams?.get('tool')?.toLowerCase();
 const isQrPath = pathname === '/qr' || pathname === '/qr-generator';
 const isBarcodePath = pathname === '/barcode' || pathname === '/barcode-generator';
 const isDataLensPath = pathname === '/datalens' || pathname === '/data-lens' || pathname === '/json-formatter';
-const toolSlug = extractToolSlugFromHostname(hostname) || (queryTool && ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter'].includes(queryTool) ? queryTool : null);
+const isShortenerPath = pathname === '/urlshortener' || pathname === '/short';
+const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short'];
+const toolSlug = extractToolSlugFromHostname(hostname) || (queryTool && validQueryTools.includes(queryTool) ? queryTool : null);
 
 if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools') {
   // Bootstrap Tools Hub (apps/tools-hub)
@@ -66,6 +68,18 @@ if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools'
       });
     })
     .catch((err) => console.error('[Tool DataLens Bootstrap Error]', err));
+} else if (toolSlug === 'urlshortener' || toolSlug === 'short' || isShortenerPath) {
+  // Bootstrap URL Shortener tool (apps/tool-urlshortener)
+  Promise.all([
+    import('../apps/tool-urlshortener/src/app/app.component'),
+    import('@angular/common/http')
+  ])
+    .then(([{ AppComponent }, { provideHttpClient, withFetch }]) => {
+      return bootstrapApplication(AppComponent, {
+        providers: [provideHttpClient(withFetch())]
+      });
+    })
+    .catch((err) => console.error('[Tool URL Shortener Bootstrap Error]', err));
 } else {
   // Bootstrap Acklet Portal (default)
   Promise.all([

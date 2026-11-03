@@ -7,6 +7,8 @@ import {
   computed,
   signal,
   inject,
+  OnInit,
+  ChangeDetectorRef,
   effect
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -2421,10 +2423,11 @@ import { normalizeIosAppInput, normalizeAndroidAppInput } from '../../utils/stor
 
   `]
 })
-export class InputPanelComponent {
+export class InputPanelComponent implements OnInit {
   private qrService: QRGeneratorService;
   readonly dynamicService: QrDynamicService;
   readonly smartLinkService = inject(SmartLinkService);
+  private readonly cdr = inject(ChangeDetectorRef, { optional: true });
 
   constructor(
     qrService?: QRGeneratorService,
@@ -2432,21 +2435,35 @@ export class InputPanelComponent {
   ) {
     this.qrService = qrService ?? inject(QRGeneratorService);
     this.dynamicService = dynamicService ?? inject(QrDynamicService);
+
+    try {
+      effect(() => {
+        const type = this.selectedType();
+        const val = this.content();
+        if (val) {
+          if (type === 'url' && this.websiteData.url !== val) {
+            this.websiteData.url = val;
+            this.cdr?.markForCheck();
+          } else if (type === 'email' && !this.emailData.to) {
+            this.restorePayload('email', val);
+            this.cdr?.markForCheck();
+          } else if (type === 'phone' && !this.phoneData.number) {
+            this.restorePayload('phone', val);
+            this.cdr?.markForCheck();
+          }
+        }
+      });
+    } catch {
+      // In isolated unit tests with mocked environment injectors lacking an effect scheduler, skip effect registration
+    }
   }
 
-  private readonly syncContentEffect = effect(() => {
-    const c = this.content();
-    const type = this.selectedType();
-    if (c) {
-      if (type === 'url') {
-        if (this.websiteData.url !== c) {
-          this.websiteData.url = c;
-        }
-      } else {
-        this.restorePayload(type, c);
-      }
+  ngOnInit(): void {
+    const initialContent = this.content();
+    if (initialContent) {
+      this.restorePayload(this.selectedType(), initialContent);
     }
-  });
+  }
 
   readonly selectedType = input<ContentType>('url');
   readonly content = input<string>('');
@@ -3240,5 +3257,6 @@ export class InputPanelComponent {
       if (ssid) this.wifiData.ssid = ssid[1];
       if (pass) this.wifiData.password = pass[1];
     }
+    this.cdr?.markForCheck?.();
   }
 }

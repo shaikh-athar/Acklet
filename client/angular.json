@@ -168,11 +168,66 @@
             "allowedCommonJsDependencies": [
               "qrcode",
               "lottie-web",
+              "dijkstrajs",
+              "jsqr"
+            ]
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "2.5MB",
+                  "maximumError": "3MB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        }
+      }
+    },
+    "tool-urlshortener": {
+      "projectType": "application",
+      "schematics": {},
+      "root": "apps/tool-urlshortener",
+      "sourceRoot": "apps/tool-urlshortener/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "apps/tool-urlshortener/src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
+            ],
+            "styles": [
+              "apps/tool-urlshortener/src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "qrcode",
+              "lottie-web",
               "dijkstrajs"
             ]
           },
           "configurations": {
             "production": {
+              "fileReplacements": [
+                {
+                  "replace": "apps/tool-urlshortener/src/environments/environment.ts",
+                  "with": "apps/tool-urlshortener/src/environments/environment.prod.ts"
+                }
+              ],
               "budgets": [
                 {
                   "type": "initial",

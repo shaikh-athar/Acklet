@@ -1,11 +1,11 @@
 import { Directive, ElementRef, HostListener, input, OnDestroy, inject } from '@angular/core';
-import { BrnTooltip } from '@spartan-ng/brain/tooltip';
 
 @Directive({
   selector: '[hlmTooltip]',
   standalone: true,
   host: {
     'data-slot': 'tooltip-trigger',
+    '[attr.aria-label]': 'computedAriaLabel()'
   },
 })
 export class HlmTooltipDirective implements OnDestroy {
@@ -14,6 +14,16 @@ export class HlmTooltipDirective implements OnDestroy {
 
   private readonly el = inject(ElementRef);
   private tooltipEl: HTMLDivElement | null = null;
+  private showTimeout: any = null;
+
+  computedAriaLabel(): string | null {
+    const text = this.hlmTooltip();
+    const hostEl = this.el.nativeElement as HTMLElement;
+    if (hostEl && hostEl.getAttribute('aria-label')) {
+      return hostEl.getAttribute('aria-label');
+    }
+    return text || null;
+  }
 
   @HostListener('mouseenter')
   @HostListener('focusin')
@@ -21,7 +31,20 @@ export class HlmTooltipDirective implements OnDestroy {
     const text = this.hlmTooltip();
     if (!text || typeof document === 'undefined') return;
 
-    this.hide();
+    // Suppress on touch devices
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(hover: none), (pointer: coarse)').matches) {
+      return;
+    }
+
+    this.clearTimer();
+
+    this.showTimeout = setTimeout(() => {
+      this.renderTooltip(text);
+    }, 300);
+  }
+
+  private renderTooltip(text: string): void {
+    this.removeBubble();
 
     const div = document.createElement('div');
     div.className = 'ts-tooltip-bubble';
@@ -53,12 +76,31 @@ export class HlmTooltipDirective implements OnDestroy {
 
     div.style.top = `${Math.max(6, top)}px`;
     div.style.left = `${Math.max(6, left)}px`;
-    div.style.opacity = '1';
+
+    // Trigger 4px slide-in transition
+    requestAnimationFrame(() => {
+      if (this.tooltipEl) {
+        this.tooltipEl.classList.add('is-visible');
+      }
+    });
   }
 
   @HostListener('mouseleave')
   @HostListener('focusout')
+  @HostListener('pointerdown')
   hide(): void {
+    this.clearTimer();
+    this.removeBubble();
+  }
+
+  private clearTimer(): void {
+    if (this.showTimeout) {
+      clearTimeout(this.showTimeout);
+      this.showTimeout = null;
+    }
+  }
+
+  private removeBubble(): void {
     if (this.tooltipEl) {
       this.tooltipEl.remove();
       this.tooltipEl = null;

@@ -220,8 +220,8 @@ export const RECENT_KEY = 'acklet.tools.recent';
                           <a 
                             [href]="getToolUrl(tool.slug)" 
                             class="ts-tool-item" 
-                            [class.active]="tool.slug === currentSlug()"
-                            [attr.aria-current]="tool.slug === currentSlug() ? 'page' : null"
+                            [class.active]="isToolActive(tool.slug)"
+                            [attr.aria-current]="isToolActive(tool.slug) ? 'page' : null"
                             [attr.aria-label]="tool.name"
                             [style.--row-accent]="getToolAccent(tool)"
                             [style.--row-accent-soft]="getToolAccentSoft(tool)"
@@ -233,10 +233,37 @@ export const RECENT_KEY = 'acklet.tools.recent';
                               <ts-tool-tile [icon]="tool.icon" [name]="tool.name" [size]="20" [flat]="true" />
                             }
                             <span class="ts-tool-name">{{ tool.name }}</span>
-                            @if (tool.slug === currentSlug()) {
+                            @if (isToolActive(tool.slug)) {
                               <span class="ts-active-dot" aria-hidden="true"></span>
                             }
                           </a>
+
+                          @if (!isRail() && tool.subItems && tool.subItems.length > 0 && tool.slug === currentSlug()) {
+                            <ul class="ts-tool-sub-items" role="list">
+                              @for (sub of tool.subItems; track sub.id) {
+                                <li role="listitem">
+                                  <a
+                                    [href]="getToolUrl(tool.slug) + sub.path"
+                                    class="ts-sub-item"
+                                    [class.active]="isCurrentSubPath(sub.path)"
+                                    [attr.aria-current]="isCurrentSubPath(sub.path) ? 'page' : null"
+                                    [style.--row-accent]="getToolAccent(tool)"
+                                    [style.--row-accent-soft]="getToolAccentSoft(tool)"
+                                    (click)="onToolSelect()"
+                                  >
+                                    <span class="ts-sub-line" aria-hidden="true"></span>
+                                    @if (sub.icon) {
+                                      <ts-icon [name]="sub.icon" [size]="14" class="ts-sub-icon" />
+                                    }
+                                    <span class="ts-sub-name">{{ sub.label }}</span>
+                                    @if (isCurrentSubPath(sub.path)) {
+                                      <span class="ts-active-dot" aria-hidden="true"></span>
+                                    }
+                                  </a>
+                                </li>
+                              }
+                            </ul>
+                          }
                         </li>
                       }
                       @if (group.tools.length > 5) {
@@ -634,6 +661,81 @@ export const RECENT_KEY = 'acklet.tools.recent';
       border-radius: 10px;
     }
 
+    /* Sub-items styling */
+    .ts-tool-sub-items {
+      display: flex;
+      flex-direction: column;
+      list-style: none;
+      padding: 3px 0 3px 26px;
+      margin: 0;
+      gap: 2px;
+      position: relative;
+    }
+
+    .ts-sub-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 30px;
+      padding: 0 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--text-2, #6B7280);
+      text-decoration: none;
+      transition: all 150ms var(--ts-ease, cubic-bezier(0.16, 1, 0.3, 1));
+      position: relative;
+    }
+
+    .ts-sub-item:hover {
+      background: var(--ts-row-hover, rgba(0, 0, 0, 0.04));
+      color: var(--text, #111111);
+    }
+
+    .ts-sub-item.active {
+      background: var(--row-accent-soft, var(--accent-soft, rgba(0, 0, 0, 0.06)));
+      color: var(--text, #111111);
+      font-weight: 500;
+    }
+
+    :host-context([data-theme="dark"]) .ts-sub-item {
+      color: var(--text-3, #9CA3AF);
+    }
+
+    :host-context([data-theme="dark"]) .ts-sub-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text, #FCFCFC);
+    }
+
+    :host-context([data-theme="dark"]) .ts-sub-item.active {
+      background: var(--row-accent-soft, var(--accent-soft, rgba(255, 255, 255, 0.08)));
+      color: var(--text, #FCFCFC);
+    }
+
+    .ts-sub-line {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--border, rgba(0, 0, 0, 0.2));
+      flex-shrink: 0;
+    }
+
+    .ts-sub-item.active .ts-sub-line {
+      background: var(--row-accent, var(--accent));
+    }
+
+    .ts-sub-icon {
+      flex-shrink: 0;
+      opacity: 0.8;
+    }
+
+    .ts-sub-name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .ts-search-results-section {
       display: flex;
       flex-direction: column;
@@ -670,6 +772,18 @@ export class TsToolListComponent implements OnInit {
   getToolAccentSoft(tool: ToolRegistryItem): string {
     const mode = this.themeService.effectiveTheme();
     return resolveToolAccent(tool, mode).soft;
+  }
+
+  isToolActive(toolSlug: string): boolean {
+    if (this.currentSlug() !== toolSlug) return false;
+    if (typeof window === 'undefined') return true;
+    const path = window.location.pathname;
+    return path === '/' || path === '';
+  }
+
+  isCurrentSubPath(path: string): boolean {
+    if (typeof window === 'undefined') return false;
+    return window.location.pathname === path;
   }
 
   onToolSelect(): void {
@@ -741,6 +855,7 @@ export class TsToolListComponent implements OnInit {
     if (norm === 'media') return 'image';
     if (norm === 'calculators') return 'sliders';
     if (norm === 'ai') return 'sparkles';
+    if (norm === 'links/web' || norm === 'links' || norm === 'web') return 'link';
     return 'layers';
   }
 

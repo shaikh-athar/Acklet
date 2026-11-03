@@ -40,7 +40,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(requestHandler)
-                .ignoringRequestMatchers("/api/v1/auth/**", "/api/v1/github/webhooks", "/.well-known/**", "/api/v1/publish/**", "/api/v1/clipboard/**", "/api/v1/qr/**", "/api/v1/qr-links/**", "/q/**", "/qr", "/qr/**")
+                .ignoringRequestMatchers("/api/v1/auth/**", "/api/v1/github/webhooks", "/.well-known/**", "/api/v1/publish/**", "/api/v1/clipboard/**", "/api/v1/qr/**", "/api/v1/qr-links/**", "/q/**", "/qr", "/qr/**", "/s/**", "/api/v1/short-links/**")
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
@@ -54,6 +54,10 @@ public class SecurityConfig {
                 .requestMatchers("/q/**", "/qr", "/qr/**").permitAll()
                 .requestMatchers("/api/v1/qr/**").permitAll()
                 .requestMatchers("/api/v1/qr-links/**").permitAll()
+                // Public static assets & favicon
+                .requestMatchers("/assets/**", "/favicon.ico", "/error").permitAll()
+                // Public URL Shortener & redirection
+                .requestMatchers("/s/**", "/api/v1/short-links/**").permitAll()
                 // Public tools retrieval
                 .requestMatchers(HttpMethod.GET, "/api/v1/tools/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
