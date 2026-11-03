@@ -13,6 +13,7 @@ import {
 export class ResponsiveService implements OnDestroy {
   // Core reactive signals
   readonly deviceClass = signal<DeviceClass>('desktop');
+  readonly breakpoint = signal<'sm' | 'md' | 'lg' | 'xl'>('lg');
   readonly inputMode = signal<InputMode>('mouse');
   readonly orientation = signal<DeviceOrientation>('portrait');
   readonly keyboardOpen = signal<boolean>(false);
@@ -22,13 +23,16 @@ export class ResponsiveService implements OnDestroy {
   readonly prefersReducedMotion = signal<boolean>(false);
 
   // Convenience computed signals
-  readonly isPhone = computed(() => this.deviceClass() === 'phone');
-  readonly isTablet = computed(() =>
-    this.deviceClass() === 'tablet-portrait' || this.deviceClass() === 'tablet-landscape'
-  );
+  readonly isXs = computed(() => this.viewportWidth() < 400);
+  readonly isSm = computed(() => this.breakpoint() === 'sm');
+  readonly isMd = computed(() => this.breakpoint() === 'md');
+  readonly isLg = computed(() => this.breakpoint() === 'lg');
+  readonly isXl = computed(() => this.breakpoint() === 'xl');
+  readonly isPhone = computed(() => this.breakpoint() === 'sm');
+  readonly isTablet = computed(() => this.breakpoint() === 'md');
   readonly isTabletPortrait = computed(() => this.deviceClass() === 'tablet-portrait');
   readonly isTabletLandscape = computed(() => this.deviceClass() === 'tablet-landscape');
-  readonly isDesktop = computed(() => this.deviceClass() === 'desktop');
+  readonly isDesktop = computed(() => this.breakpoint() === 'lg' || this.breakpoint() === 'xl');
   readonly isTouch = computed(() => this.inputMode() === 'touch' || this.inputMode() === 'hybrid');
   readonly isMouse = computed(() => this.inputMode() === 'mouse' || this.inputMode() === 'hybrid');
   readonly isHybrid = computed(() => this.inputMode() === 'hybrid');
@@ -104,21 +108,28 @@ export class ResponsiveService implements OnDestroy {
     });
   }
 
-  private evaluateDimensions(): void {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+  public setViewportDimensions(width: number, height: number): void {
     this.viewportWidth.set(width);
     this.viewportHeight.set(height);
 
-    if (width <= 640) {
+    if (width <= 639) {
       this.deviceClass.set('phone');
+      this.breakpoint.set('sm');
     } else if (width <= 1023) {
       this.deviceClass.set('tablet-portrait');
-    } else if (width <= 1279) {
+      this.breakpoint.set('md');
+    } else if (width <= 1439) {
       this.deviceClass.set('tablet-landscape');
+      this.breakpoint.set('lg');
     } else {
       this.deviceClass.set('desktop');
+      this.breakpoint.set('xl');
     }
+  }
+
+  private evaluateDimensions(): void {
+    if (typeof window === 'undefined') return;
+    this.setViewportDimensions(window.innerWidth, window.innerHeight);
   }
 
   private evaluateInputMode(): void {

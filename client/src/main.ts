@@ -9,9 +9,10 @@ const pathname = typeof window !== 'undefined' ? window.location.pathname.toLowe
 const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
 const queryTool = urlParams?.get('tool')?.toLowerCase();
 const isQrPath = pathname === '/qr' || pathname === '/qr-generator';
+const isBarcodePath = pathname === '/barcode' || pathname === '/barcode-generator';
 const isDataLensPath = pathname === '/datalens' || pathname === '/data-lens' || pathname === '/json-formatter';
 const isShortenerPath = pathname === '/urlshortener' || pathname === '/short';
-const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short'];
+const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short'];
 const toolSlug = extractToolSlugFromHostname(hostname) || (queryTool && validQueryTools.includes(queryTool) ? queryTool : null);
 
 if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools') {
@@ -43,6 +44,18 @@ if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools'
       });
     })
     .catch((err) => console.error('[Tool QR Generator Bootstrap Error]', err));
+} else if (toolSlug === 'barcode' || toolSlug === 'barcode-generator' || isBarcodePath) {
+  // Bootstrap Barcode Generator tool (apps/tool-barcode-generator)
+  Promise.all([
+    import('../apps/tool-barcode-generator/src/app/app.component'),
+    import('@angular/common/http')
+  ])
+    .then(([{ AppComponent }, { provideHttpClient, withFetch }]) => {
+      return bootstrapApplication(AppComponent, {
+        providers: [provideHttpClient(withFetch())]
+      });
+    })
+    .catch((err) => console.error('[Tool Barcode Generator Bootstrap Error]', err));
 } else if (toolSlug === 'datalens' || toolSlug === 'data-lens' || toolSlug === 'json-formatter' || isDataLensPath) {
   // Bootstrap DataLens tool (apps/tool-datalens)
   Promise.all([

@@ -163,7 +163,10 @@ import {
   LucideShieldAlert,
   LucideWand2,
   LucideZoomIn,
-  LucideZoomOut
+  LucideZoomOut,
+  LucideBarcode,
+  LucideScanBarcode,
+  LucidePrinter
 } from '@lucide/angular';
 
 import {
@@ -258,6 +261,8 @@ export const LUCIDE_MOTION_MAP: Record<string, string> = {
   moon: 'motion-rotate-15',
   zap: 'motion-scale-up',
   'zap-off': 'motion-scale-up',
+  barcode: 'motion-scale-up',
+  'scan-barcode': 'motion-scale-up',
   link: 'motion-rotate-15',
   urlshortener: 'motion-rotate-15',
   chain: 'motion-rotate-15'
@@ -516,6 +521,12 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   'qr-code': {
     lucide: LucideQrCode
   },
+  barcode: {
+    lucide: LucideBarcode
+  },
+  'scan-barcode': {
+    lucide: LucideScanBarcode
+  },
 
   // Category & Tool Domains
   layers: {
@@ -585,6 +596,12 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   },
   login: {
     lucide: LucideLogIn
+  },
+  printer: {
+    lucide: LucidePrinter
+  },
+  print: {
+    lucide: LucidePrinter
   },
   'refresh-cw': {
     lucide: LucideRefreshCw

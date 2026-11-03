@@ -24,6 +24,7 @@ import { checkInputThreshold, formatByteSize } from '../../../app/core/config/to
 import { AirVaultDocSyncService } from '../services/airvault-doc-sync.service';
 import { AirVaultShortcutService } from '../services/airvault-shortcut.service';
 import { WordUndoManager } from '../services/airvault-undo.manager';
+import { getPortalUrl } from '@acklet/shared';
 import { AirVaultPreferencesService } from '../services/airvault-preferences.service';
 import { AirVaultInvitationService } from '../services/airvault-invitation.service';
 import { AirVaultLogger } from '../services/airvault-sync-debug.service';
@@ -1932,7 +1933,7 @@ export class AirVaultStagingComponent implements OnDestroy, AfterViewInit {
     } else if (type === 'phone') {
       this.payloadText = '+1 (415) 555-0198';
     } else {
-      this.payloadText = 'https://acklet.com/tools/app/airvault';
+      this.payloadText = `${getPortalUrl()}/tools/app/airvault`;
     }
     this.onTextChange();
   }

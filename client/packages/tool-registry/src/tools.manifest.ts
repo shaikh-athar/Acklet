@@ -3,11 +3,13 @@ import type { ToolRegistryItem } from './models';
 import { CLIPBOARD_MANIFEST } from './manifests/clipboard.manifest';
 import { QR_MANIFEST } from './manifests/qr.manifest';
 import { DATALENS_MANIFEST } from './manifests/datalens.manifest';
+import { BARCODE_MANIFEST } from './manifests/barcode.manifest';
 import { AMBER_ACCENT, BLUE_ACCENT, ROSE_ACCENT, VIOLET_ACCENT, EMERALD_ACCENT } from './accent-presets';
 
 export { CLIPBOARD_MANIFEST } from './manifests/clipboard.manifest';
 export { QR_MANIFEST } from './manifests/qr.manifest';
 export { DATALENS_MANIFEST } from './manifests/datalens.manifest';
+export { BARCODE_MANIFEST } from './manifests/barcode.manifest';
 
 /**
  * Single Source of Truth for all tools in Acklet.
@@ -15,6 +17,8 @@ export { DATALENS_MANIFEST } from './manifests/datalens.manifest';
 export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
   'clipboard': CLIPBOARD_MANIFEST,
   'qr': QR_MANIFEST,
+  'barcode': BARCODE_MANIFEST,
+  'barcode-generator': BARCODE_MANIFEST,
   'datalens': DATALENS_MANIFEST,
   'json-formatter': DATALENS_MANIFEST,
   'jwt-inspector': {

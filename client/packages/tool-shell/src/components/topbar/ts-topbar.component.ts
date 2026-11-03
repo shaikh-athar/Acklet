@@ -831,8 +831,8 @@ export interface SectionNavLink {
       transform: translateX(20px);
     }
 
-    /* Mobile Sheet Layout for Navigation Menu (<768px) */
-    @media (max-width: 767px) {
+    /* Mobile Sheet Layout for Navigation Menu (sm: <=639px) */
+    @media (max-width: 639px) {
       .ts-nav-panel {
         position: fixed;
         left: 0;
@@ -1083,17 +1083,28 @@ export interface SectionNavLink {
       }
     }
 
-    @media (max-width: 1099px) {
+    /* Large & XL screens (>=1024px): Full layout with text labels, 64px height */
+    @media (min-width: 1024px) {
+      .ts-topbar-card {
+        height: 64px;
+      }
+    }
+
+    /* Hide text labels below lg (<1024px): Share & Save become icon-only */
+    @media (max-width: 1023px) {
       .hide-below-1100 {
         display: none !important;
       }
       .ts-nav-action-btn {
         padding: 0;
         width: 40px;
+        min-width: 40px;
+        min-height: 40px;
       }
     }
 
-    @media (max-width: 479px) {
+    /* Small screens (<640px): Move Share/Save into "..." menu */
+    @media (max-width: 639px) {
       .hide-xs {
         display: none !important;
       }
@@ -1121,11 +1132,12 @@ export interface SectionNavLink {
       transform: scale(0.98);
     }
 
-    /* Responsive Breakpoints */
-    /* Medium screens (Tablet 768px - 1023px): Keep center navigation & theme toggle visible with tuned compact spacing */
-    @media (min-width: 768px) and (max-width: 1023px) {
+    /* Responsive Breakpoints: Exact standardized 4 breakpoints */
+    /* Medium screens (md: 640px - 1023px): Logo, title, center segmented Generator control, icon-only Share/Save, theme toggle visible, 56px height */
+    @media (min-width: 640px) and (max-width: 1023px) {
       .ts-topbar-card {
         padding: 0 12px;
+        height: 56px;
       }
       .ts-zone-left {
         gap: 8px;
@@ -1151,7 +1163,7 @@ export interface SectionNavLink {
         display: inline-flex !important;
       }
       ts-theme-toggle {
-        display: none !important;
+        display: inline-flex !important;
       }
       .ts-zone-center {
         display: none !important;
