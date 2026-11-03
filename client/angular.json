@@ -247,6 +247,52 @@
         }
       }
     },
+    "tool-barcode-generator": {
+      "projectType": "application",
+      "schematics": {},
+      "root": "apps/tool-barcode-generator",
+      "sourceRoot": "apps/tool-barcode-generator/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "apps/tool-barcode-generator/src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
+            ],
+            "styles": [
+              "apps/tool-barcode-generator/src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "lottie-web"
+            ]
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "1.5MB",
+                  "maximumError": "2MB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        }
+      }
+    },
     "tools-hub": {
       "projectType": "application",
       "schematics": {},

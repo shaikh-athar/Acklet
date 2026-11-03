@@ -127,6 +127,27 @@ export const ROSE_ACCENT: ToolAccentConfig = {
   }
 };
 
+export const BARCODE_ROSE_ACCENT: ToolAccentConfig = {
+  name: 'calm-rose',
+  hue: 348,
+  dark: {
+    base: '#E05D73',
+    ink: '#FFFFFF',
+    strong: '#EA7A8E',
+    soft: 'rgba(224, 93, 115, 0.14)',
+    border: 'rgba(224, 93, 115, 0.28)',
+    glow: 'rgba(224, 93, 115, 0.20)'
+  },
+  light: {
+    base: '#D6455D',
+    ink: '#FFFFFF',
+    strong: '#BF364E',
+    soft: 'rgba(214, 69, 93, 0.08)',
+    border: 'rgba(214, 69, 93, 0.22)',
+    glow: 'rgba(214, 69, 93, 0.15)'
+  }
+};
+
 export const DEFAULT_TOOL_ACCENT = BLUE_ACCENT;
 
 const ACCENT_MAP: Record<string, ToolAccentConfig> = {
@@ -139,7 +160,8 @@ const ACCENT_MAP: Record<string, ToolAccentConfig> = {
   violet: VIOLET_ACCENT,
   purple: VIOLET_ACCENT,
   rose: ROSE_ACCENT,
-  pink: ROSE_ACCENT
+  pink: ROSE_ACCENT,
+  'calm-rose': BARCODE_ROSE_ACCENT
 };
 
 /**

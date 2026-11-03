@@ -827,8 +827,8 @@ export interface SectionNavLink {
       transform: translateX(20px);
     }
 
-    /* Mobile Sheet Layout for Navigation Menu (<768px) */
-    @media (max-width: 767px) {
+    /* Mobile Sheet Layout for Navigation Menu (sm: <=639px) */
+    @media (max-width: 639px) {
       .ts-nav-panel {
         position: fixed;
         left: 0;
@@ -1079,17 +1079,28 @@ export interface SectionNavLink {
       }
     }
 
-    @media (max-width: 1099px) {
+    /* Large & XL screens (>=1024px): Full layout with text labels, 64px height */
+    @media (min-width: 1024px) {
+      .ts-topbar-card {
+        height: 64px;
+      }
+    }
+
+    /* Hide text labels below lg (<1024px): Share & Save become icon-only */
+    @media (max-width: 1023px) {
       .hide-below-1100 {
         display: none !important;
       }
       .ts-nav-action-btn {
         padding: 0;
         width: 40px;
+        min-width: 40px;
+        min-height: 40px;
       }
     }
 
-    @media (max-width: 479px) {
+    /* Small screens (<640px): Move Share/Save into "..." menu */
+    @media (max-width: 639px) {
       .hide-xs {
         display: none !important;
       }
@@ -1117,11 +1128,12 @@ export interface SectionNavLink {
       transform: scale(0.98);
     }
 
-    /* Responsive Breakpoints */
-    /* Medium screens (Tablet 768px - 1023px): Keep center navigation & theme toggle visible with tuned compact spacing */
-    @media (min-width: 768px) and (max-width: 1023px) {
+    /* Responsive Breakpoints: Exact standardized 4 breakpoints */
+    /* Medium screens (md: 640px - 1023px): Logo, title, center segmented Generator control, icon-only Share/Save, theme toggle visible, 56px height */
+    @media (min-width: 640px) and (max-width: 1023px) {
       .ts-topbar-card {
         padding: 0 12px;
+        height: 56px;
       }
       .ts-zone-left {
         gap: 8px;
@@ -1141,13 +1153,13 @@ export interface SectionNavLink {
       }
     }
 
-    /* Small screens (Mobile <768px): Scrollable center navigation, hide desktop theme toggle */
-    @media (max-width: 767px) {
+    /* Small screens (sm: <=639px): Logo mark + title, hide center nav, Share/Save into "..." menu, Theme toggle STAYS VISIBLE, 56px height */
+    @media (max-width: 639px) {
       .ts-tools-grid-btn {
         display: inline-flex !important;
       }
       ts-theme-toggle {
-        display: none !important;
+        display: inline-flex !important;
       }
       .ts-zone-center {
         display: flex !important;
@@ -1159,7 +1171,7 @@ export interface SectionNavLink {
       .ts-topbar-card {
         grid-template-columns: auto 1fr auto;
         height: 56px;
-        padding: 0 8px;
+        padding: 0 12px;
         border-radius: 16px;
       }
       .ts-nav-link-btn {
@@ -1173,7 +1185,7 @@ export interface SectionNavLink {
         gap: 8px;
       }
       .ts-tool-chip {
-        max-width: 120px;
+        max-width: 150px;
         overflow: hidden;
       }
       .ts-tool-chip-name {
@@ -1198,10 +1210,29 @@ export interface SectionNavLink {
       }
     }
 
-    @media (max-width: 360px) {
-      .ts-breadcrumb-separator,
-      .ts-tool-chip {
+    @media (max-width: 399px) {
+      .ts-brand-wordmark {
         display: none !important;
+      }
+      .ts-breadcrumb-separator {
+        display: none !important;
+      }
+      .ts-topbar-card {
+        height: 52px !important;
+        padding: 0 8px !important;
+        border-radius: 12px !important;
+      }
+      .ts-tool-chip {
+        max-width: 140px;
+        padding: 4px 8px;
+        font-size: 13px;
+      }
+      .ts-tools-grid-btn,
+      .ts-theme-toggle-btn {
+        min-width: 40px !important;
+        min-height: 40px !important;
+        width: 40px !important;
+        height: 40px !important;
       }
     }
   `]

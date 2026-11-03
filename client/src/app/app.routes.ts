@@ -12,6 +12,28 @@ export const routes: Routes = [
   },
   { path: 'qr-generator', redirectTo: 'qr', pathMatch: 'full' },
   {
+    path: 'barcode',
+    loadComponent: () => import('../../apps/tool-barcode-generator/src/app/app.component').then(m => m.AppComponent),
+    title: 'Barcode Generator — Acklet'
+  },
+  {
+    path: 'barcode/:slug',
+    loadComponent: () => import('../../apps/tool-barcode-generator/src/app/app.component').then(m => m.AppComponent),
+    title: 'Barcode Generator — Acklet'
+  },
+  { path: 'barcode-generator', redirectTo: 'barcode', pathMatch: 'full' },
+  {
+    path: 'tools/barcode-generator',
+    loadComponent: () => import('../../apps/tool-barcode-generator/src/app/app.component').then(m => m.AppComponent),
+    title: 'Barcode Generator — Acklet'
+  },
+  {
+    path: 'tools/barcode-generator/:slug',
+    loadComponent: () => import('../../apps/tool-barcode-generator/src/app/app.component').then(m => m.AppComponent),
+    title: 'Barcode Generator — Acklet'
+  },
+  { path: 'tools/barcode', redirectTo: 'tools/barcode-generator', pathMatch: 'full' },
+  {
     path: 'tools/qr-generator',
     loadComponent: () => import('../../apps/tool-qr-generator/src/app/app.component').then(m => m.AppComponent),
     title: 'QR Code Generator — Acklet'
