@@ -2541,7 +2541,7 @@ export class BarcodeBulkPreviewComponent {
     if (!inputEl.files || inputEl.files.length === 0) return;
     const file = inputEl.files[0];
     if (file.size > 2 * 1024 * 1024) {
-      alert('File size exceeds 2 MB limit.');
+      this.state.showBulkAlert('File too large', 'File size exceeds the 2 MB limit.');
       return;
     }
     const reader = new FileReader();

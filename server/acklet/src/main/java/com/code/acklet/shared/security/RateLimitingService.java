@@ -16,11 +16,15 @@ public class RateLimitingService {
     private static final String RATE_LIMIT_PREFIX = "rate_limit:";
 
     public boolean isAllowed(String key, int maxRequests, int windowSeconds) {
+        return isAllowed(key, 1, maxRequests, windowSeconds);
+    }
+
+    public boolean isAllowed(String key, int delta, int maxRequests, int windowSeconds) {
         if (key == null || key.isBlank()) return true;
         String redisKey = RATE_LIMIT_PREFIX + key;
         try {
-            Long count = redisTemplate.opsForValue().increment(redisKey);
-            if (count != null && count == 1) {
+            Long count = redisTemplate.opsForValue().increment(redisKey, Math.max(1, delta));
+            if (count != null && count == delta) {
                 redisTemplate.expire(redisKey, Duration.ofSeconds(windowSeconds));
             }
             return count != null && count <= maxRequests;

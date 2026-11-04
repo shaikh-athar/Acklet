@@ -20,6 +20,13 @@ import {
 import { BARCODE_REGISTRY, detectFormatSuggestion } from '../../config/barcode-registry';
 import { RETAIL_NOTICE } from '../../config/barcode-catalog.config';
 import { BarcodeFormatPickerComponent } from '../format-picker/format-picker.component';
+import {
+  PayloadMode,
+  TempContentType,
+  ExpiryMode,
+  TempCodeRecord
+} from '../../models/temp-code.models';
+import { TEMP_CODE_CONFIG } from '../../config/temp-code.config';
 
 @Component({
   selector: 'app-barcode-content-panel',
@@ -69,10 +76,184 @@ import { BarcodeFormatPickerComponent } from '../format-picker/format-picker.com
         <app-format-picker
           [value]="format()"
           [variant]="formatOptions().variant || ''"
+          [onlyTemporary]="false"
           (formatChange)="onFormatSelect($event)"
           (variantChange)="onVariantChange($event)"
         />
       </div>
+
+      <!-- 2b. Temporary code switch row -->
+      <div class="temporary-toggle-row">
+        <div class="toggle-text-col">
+          <label for="temp-code-toggle" class="toggle-title-label">Temporary code</label>
+          <span class="toggle-helper-text">Stops working after the time you set. Stored on Acklet until it expires.</span>
+        </div>
+        <label class="ts-switch">
+          <input
+            id="temp-code-toggle"
+            type="checkbox"
+            [checked]="isTemporary()"
+            (change)="onToggleTemporary($event)"
+          />
+          <span class="ts-switch-slider"></span>
+        </label>
+      </div>
+
+      <!-- Temporary Expiry Section (shown ONLY when isTemporary is true) -->
+      @if (isTemporary()) {
+        <div class="temporary-settings-block slide-fade-in">
+          <!-- Expires after -->
+          <div class="form-row">
+            <div class="form-label-row">
+              <label class="form-label">
+                <span>Expires after</span>
+              </label>
+              <div class="expiry-mode-toggle" role="radiogroup" aria-label="Expiry style">
+                <button
+                  type="button"
+                  class="mini-seg-btn"
+                  [class.active]="tempExpiryMode() === 'preset'"
+                  (click)="tempExpiryMode.set('preset')"
+                >
+                  Presets
+                </button>
+                <button
+                  type="button"
+                  class="mini-seg-btn"
+                  [class.active]="tempExpiryMode() === 'custom'"
+                  (click)="tempExpiryMode.set('custom')"
+                >
+                  Custom
+                </button>
+              </div>
+            </div>
+
+            @if (tempExpiryMode() === 'preset') {
+              <div class="presets-grid" role="radiogroup" aria-label="Expires after presets">
+                @for (preset of presets; track preset.id) {
+                  <button
+                    type="button"
+                    role="radio"
+                    class="preset-card-btn"
+                    [class.selected]="tempPreset() === preset.id"
+                    [attr.aria-checked]="tempPreset() === preset.id"
+                    (click)="selectPreset(preset.id)"
+                  >
+                    <span class="preset-label">{{ preset.label }}</span>
+                  </button>
+                }
+              </div>
+            } @else {
+              <!-- Custom: Duration vs Until -->
+              <div class="custom-expiry-wrap">
+                <div class="segmented-control" role="radiogroup" aria-label="Custom expiry style">
+                  <button
+                    type="button"
+                    role="radio"
+                    class="segment-btn"
+                    [class.active]="tempCustomStyle() === 'duration'"
+                    [attr.aria-checked]="tempCustomStyle() === 'duration'"
+                    (click)="tempCustomStyle.set('duration')"
+                  >
+                    <span>Duration</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    class="segment-btn"
+                    [class.active]="tempCustomStyle() === 'until'"
+                    [attr.aria-checked]="tempCustomStyle() === 'until'"
+                    (click)="tempCustomStyle.set('until')"
+                  >
+                    <span>Until</span>
+                  </button>
+                </div>
+
+                @if (tempCustomStyle() === 'duration') {
+                  <div class="duration-input-row">
+                    <input
+                      type="number"
+                      min="1"
+                      max="365"
+                      class="ts-input-field duration-num"
+                      [ngModel]="tempCustomDurationValue()"
+                      (ngModelChange)="onDurationValueChange($event)"
+                    />
+                    <select
+                      class="ts-select-field duration-unit"
+                      [ngModel]="tempCustomDurationUnit()"
+                      (ngModelChange)="onDurationUnitChange($event)"
+                    >
+                      <option value="minutes">Minutes</option>
+                      <option value="hours">Hours</option>
+                      <option value="days">Days</option>
+                    </select>
+                  </div>
+                } @else {
+                  <div class="until-input-row">
+                    <input
+                      type="datetime-local"
+                      class="ts-input-field until-input"
+                      [ngModel]="tempCustomUntilDate()"
+                      (ngModelChange)="onUntilDateChange($event)"
+                    />
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Expiry Preview Banner -->
+          <div class="expiry-preview-banner">
+            <ts-icon name="clock" [size]="16" class="expiry-banner-icon" />
+            <div class="expiry-banner-text">
+              <span class="expiry-abs-text">{{ formattedExpiryString() }}</span>
+              <span class="expiry-rel-text">{{ formattedRelativeString() }}</span>
+            </div>
+          </div>
+
+          @if (expiryValidationError()) {
+            <p class="error-notice-text">
+              {{ expiryValidationError() }}
+            </p>
+          }
+
+          <!-- Show expiry on the label Toggle -->
+          <div class="label-toggle-row">
+            <label class="toggle-checkbox-label">
+              <input
+                type="checkbox"
+                class="ts-checkbox"
+                [checked]="tempShowExpiryOnLabel()"
+                (change)="toggleShowExpiryOnLabel()"
+              />
+              <span class="toggle-text">Show expiry on the label</span>
+            </label>
+            <span class="label-subnote">
+              Adds "Valid until ..." under the barcode. If you extend the code later, the printed text does not change.
+            </span>
+          </div>
+
+          <!-- Storage Notice -->
+          <p class="acklet-storage-notice">
+            {{ storageNotice }}
+          </p>
+
+          <!-- Create Another CTA if code was created -->
+          @if (createdRecord()) {
+            <div class="create-another-wrap slide-fade-in">
+              <button
+                type="button"
+                class="create-another-btn"
+                (click)="createAnother.emit()"
+              >
+                <ts-icon name="plus" [size]="15" />
+                <span>Create another temporary barcode</span>
+              </button>
+            </div>
+          }
+        </div>
+      }
 
       <!-- 3. Value Input Field -->
       <div class="form-row">
@@ -1163,6 +1344,456 @@ import { BarcodeFormatPickerComponent } from '../format-picker/format-picker.com
         gap: 14px;
       }
     }
+
+    /* Temporary Code Styles */
+    .temporary-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--bg-surface, #1e1e24);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      border-radius: 10px;
+    }
+    :host-context([data-theme="light"]) .temporary-toggle-row {
+      background: #FFFFFF;
+      border-color: rgba(0, 0, 0, 0.08);
+    }
+    .toggle-title-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text, #fcfcfc);
+      cursor: pointer;
+    }
+    :host-context([data-theme="light"]) .toggle-title-label {
+      color: #0F172A;
+    }
+    .toggle-helper-text {
+      display: block;
+      font-size: 11.5px;
+      color: var(--text-muted, #94a3b8);
+      margin-top: 2px;
+    }
+    :host-context([data-theme="light"]) .toggle-helper-text {
+      color: #64748B;
+    }
+
+    .ts-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .ts-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .ts-switch-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--bg-base, #121216);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+      transition: 0.2s ease;
+      border-radius: 24px;
+    }
+    :host-context([data-theme="light"]) .ts-switch-slider {
+      background-color: #E2E8F0;
+      border-color: rgba(0, 0, 0, 0.15);
+    }
+    .ts-switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      bottom: 2px;
+      background-color: #FFFFFF;
+      transition: 0.2s ease;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .ts-switch input:checked + .ts-switch-slider {
+      background-color: var(--tool-accent, #3B82F6);
+      border-color: var(--tool-accent, #3B82F6);
+    }
+    :host-context([data-theme="light"]) .ts-switch input:checked + .ts-switch-slider {
+      background-color: #2563EB;
+      border-color: #2563EB;
+    }
+    .ts-switch input:checked + .ts-switch-slider:before {
+      transform: translateX(20px);
+    }
+
+    .quiet-format-note {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-muted, #94a3b8);
+    }
+    :host-context([data-theme="light"]) .quiet-format-note {
+      background: #F8FAFC;
+      border-color: rgba(0, 0, 0, 0.08);
+      color: #475569;
+    }
+
+    .temporary-settings-block {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .segmented-control {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      background: var(--bg-base, #121216);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      border-radius: 8px;
+      padding: 3px;
+      gap: 4px;
+    }
+    :host-context([data-theme="light"]) .segmented-control {
+      background: #F1F5F9;
+      border-color: rgba(0, 0, 0, 0.1);
+    }
+    .segmented-control.three-way {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .segment-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 12px;
+      min-height: 38px;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      color: var(--text-muted, #94a3b8);
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    :host-context([data-theme="light"]) .segment-btn {
+      color: #475569;
+    }
+    .segment-btn:hover:not(.active) {
+      color: var(--text, #fcfcfc) !important;
+      background: rgba(255, 255, 255, 0.08) !important;
+    }
+    :host-context([data-theme="light"]) .segment-btn:hover:not(.active) {
+      color: #0F172A !important;
+      background: rgba(0, 0, 0, 0.06) !important;
+    }
+    .segment-btn.active,
+    .segment-btn.active:hover {
+      background: var(--tool-accent, #3B82F6) !important;
+      color: #FFFFFF !important;
+      font-weight: 600;
+    }
+    :host-context([data-theme="light"]) .segment-btn.active,
+    :host-context([data-theme="light"]) .segment-btn.active:hover {
+      background: #2563EB !important;
+      color: #FFFFFF !important;
+    }
+
+    .expiry-mode-toggle {
+      display: inline-flex;
+      background: var(--bg-base, #121216);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }
+    :host-context([data-theme="light"]) .expiry-mode-toggle {
+      background: #F1F5F9;
+      border-color: rgba(0, 0, 0, 0.1);
+    }
+    .mini-seg-btn {
+      padding: 4px 10px;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--text-muted, #94a3b8);
+      cursor: pointer;
+    }
+    :host-context([data-theme="light"]) .mini-seg-btn {
+      color: #64748B;
+    }
+    .mini-seg-btn:hover:not(.active) {
+      color: var(--text, #fcfcfc) !important;
+    }
+    :host-context([data-theme="light"]) .mini-seg-btn:hover:not(.active) {
+      color: #0F172A !important;
+    }
+    .mini-seg-btn.active,
+    .mini-seg-btn.active:hover {
+      background: var(--tool-accent, #3B82F6) !important;
+      color: #FFFFFF !important;
+      font-weight: 600;
+    }
+    :host-context([data-theme="light"]) .mini-seg-btn.active,
+    :host-context([data-theme="light"]) .mini-seg-btn.active:hover {
+      background: #2563EB !important;
+      color: #FFFFFF !important;
+    }
+
+    .presets-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    @media (max-width: 480px) {
+      .presets-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    .preset-card-btn {
+      padding: 10px 8px;
+      min-height: 42px;
+      border-radius: 8px;
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+      background: var(--bg-base, #121216);
+      color: var(--text, #fcfcfc);
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+    :host-context([data-theme="light"]) .preset-card-btn {
+      background: #F8FAFC;
+      border-color: rgba(0, 0, 0, 0.1);
+      color: #0F172A;
+    }
+    .preset-card-btn:hover:not(.selected) {
+      border-color: var(--tool-accent, #3B82F6) !important;
+      background: rgba(59, 130, 246, 0.1) !important;
+      color: #60A5FA !important;
+    }
+    :host-context([data-theme="light"]) .preset-card-btn:hover:not(.selected) {
+      background: #EFF6FF !important;
+      border-color: #2563EB !important;
+      color: #1D4ED8 !important;
+    }
+    .preset-card-btn.selected,
+    .preset-card-btn.selected:hover {
+      border-color: var(--tool-accent, #3B82F6) !important;
+      background: var(--tool-accent, #3B82F6) !important;
+      color: #FFFFFF !important;
+      font-weight: 600;
+    }
+    :host-context([data-theme="light"]) .preset-card-btn.selected,
+    :host-context([data-theme="light"]) .preset-card-btn.selected:hover {
+      border-color: #2563EB !important;
+      background: #2563EB !important;
+      color: #FFFFFF !important;
+      font-weight: 600;
+    }
+    .preset-label {
+      color: inherit;
+    }
+
+    .custom-expiry-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .duration-input-row {
+      display: grid;
+      grid-template-columns: 1fr 140px;
+      gap: 8px;
+    }
+    .until-input-row {
+      display: flex;
+      width: 100%;
+    }
+    .ts-select-field {
+      height: 42px;
+      padding: 0 10px;
+      background: var(--bg-base, #121216);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--text, #fcfcfc);
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+    :host-context([data-theme="light"]) .ts-select-field {
+      background: #F8FAFC;
+      border-color: rgba(0, 0, 0, 0.12);
+      color: #0F172A;
+    }
+    .ts-textarea-field {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-base, #121216);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      border-radius: 8px;
+      font-size: 13.5px;
+      color: var(--text, #fcfcfc);
+      resize: vertical;
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+    :host-context([data-theme="light"]) .ts-textarea-field {
+      background: #F8FAFC;
+      border-color: rgba(0, 0, 0, 0.12);
+      color: #0F172A;
+    }
+
+    .expiry-preview-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: var(--bg-surface, #1e1e24);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+    }
+    :host-context([data-theme="light"]) .expiry-preview-banner {
+      background: #F1F5F9;
+      border-color: rgba(0, 0, 0, 0.08);
+    }
+    .expiry-banner-icon {
+      color: var(--tool-accent, #3B82F6);
+      flex-shrink: 0;
+    }
+    :host-context([data-theme="light"]) .expiry-banner-icon {
+      color: #2563EB;
+    }
+    .expiry-banner-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .expiry-abs-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text, #fcfcfc);
+    }
+    :host-context([data-theme="light"]) .expiry-abs-text {
+      color: #0F172A;
+    }
+    .expiry-rel-text {
+      font-size: 11.5px;
+      color: var(--text-muted, #94a3b8);
+    }
+    :host-context([data-theme="light"]) .expiry-rel-text {
+      color: #64748B;
+    }
+
+    .error-notice-text {
+      font-size: 12px;
+      color: #EF4444;
+      margin: 0;
+    }
+
+    .label-toggle-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 12px;
+      background: var(--bg-base, #121216);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+      border-radius: 8px;
+    }
+    :host-context([data-theme="light"]) .label-toggle-row {
+      background: #F8FAFC;
+      border-color: rgba(0, 0, 0, 0.06);
+    }
+    .toggle-checkbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+    .toggle-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text, #fcfcfc);
+    }
+    :host-context([data-theme="light"]) .toggle-text {
+      color: #0F172A;
+    }
+    .label-subnote {
+      font-size: 11.5px;
+      color: var(--text-muted, #94a3b8);
+      margin-left: 24px;
+    }
+    :host-context([data-theme="light"]) .label-subnote {
+      color: #64748B;
+    }
+
+    .acklet-storage-notice {
+      font-size: 11.5px;
+      color: var(--text-muted, #94a3b8);
+      line-height: 1.4;
+      padding: 8px 12px;
+      background: var(--bg-base, #121216);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+      border-radius: 6px;
+      margin: 0;
+    }
+    :host-context([data-theme="light"]) .acklet-storage-notice {
+      background: #F8FAFC;
+      border-color: rgba(0, 0, 0, 0.06);
+      color: #64748B;
+    }
+
+    .create-another-wrap {
+      display: flex;
+      width: 100%;
+      margin-top: 4px;
+    }
+    .create-another-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      min-height: 40px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px dashed var(--tool-accent, #3B82F6);
+      background: var(--tool-accent-soft, rgba(59, 130, 246, 0.08));
+      color: var(--tool-accent, #3B82F6);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    :host-context([data-theme="light"]) .create-another-btn {
+      border-color: #2563EB;
+      background: #EFF6FF;
+      color: #1D4ED8;
+    }
+    .create-another-btn:hover {
+      background: var(--tool-accent, #3B82F6);
+      color: #FFFFFF;
+    }
+    :host-context([data-theme="light"]) .create-another-btn:hover {
+      background: #2563EB;
+      color: #FFFFFF;
+    }
   `]
 })
 export class BarcodeContentPanelComponent {
@@ -1173,9 +1804,151 @@ export class BarcodeContentPanelComponent {
   readonly validation = input.required<BarcodeValidationResult>();
   readonly canSaveSeparate = input<boolean>(false);
 
+  // Temporary code inputs & models
+  readonly isTemporary = model<boolean>(false);
+  readonly tempPayloadMode = model<PayloadMode>('LINK');
+  readonly tempContentType = model<TempContentType>('MESSAGE');
+  readonly tempContent = model<string>('');
+  readonly tempReference = model<string>('');
+  readonly tempShowExpiryOnLabel = model<boolean>(false);
+  readonly tempExpiryMode = model<ExpiryMode>('preset');
+  readonly tempPreset = model<string>('24h');
+  readonly tempCustomStyle = model<'duration' | 'until'>('duration');
+  readonly tempCustomDurationValue = model<number>(2);
+  readonly tempCustomDurationUnit = model<'minutes' | 'hours' | 'days'>('hours');
+  readonly tempCustomUntilDate = model<string>(this.getDefaultUntilDate());
+
+  readonly createdRecord = input<TempCodeRecord | null>(null);
+  readonly isCreatingTemporary = input<boolean>(false);
+  readonly isServiceUnreachable = input<boolean>(false);
+
   readonly customizeClick = output<void>();
   readonly saveSeparate = output<void>();
   readonly formatChangeRequest = output<BarcodeFormat>();
+  readonly createAnother = output<void>();
+  readonly temporaryChange = output<void>();
+
+  readonly presets = TEMP_CODE_CONFIG.presets;
+  readonly storageNotice = TEMP_CODE_CONFIG.messages.storageNotice;
+  readonly formatSwitchNote = signal<string>('');
+  private getDefaultUntilDate(): string {
+    const d = new Date(Date.now() + 24 * 3600 * 1000);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  onToggleTemporary(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.isTemporary.set(checked);
+    this.temporaryChange.emit();
+  }
+
+  selectPreset(id: string): void {
+    this.tempPreset.set(id);
+    this.temporaryChange.emit();
+  }
+
+  onDurationValueChange(val: any): void {
+    const num = Math.max(1, parseInt(val, 10) || 1);
+    this.tempCustomDurationValue.set(num);
+    this.temporaryChange.emit();
+  }
+
+  onDurationUnitChange(unit: 'minutes' | 'hours' | 'days'): void {
+    this.tempCustomDurationUnit.set(unit);
+    this.temporaryChange.emit();
+  }
+
+  onUntilDateChange(val: string): void {
+    this.tempCustomUntilDate.set(val);
+    this.temporaryChange.emit();
+  }
+
+  toggleShowExpiryOnLabel(): void {
+    this.tempShowExpiryOnLabel.set(!this.tempShowExpiryOnLabel());
+    this.temporaryChange.emit();
+  }
+
+  readonly computedExpiryDate = computed<Date>(() => {
+    const now = Date.now();
+    if (this.tempExpiryMode() === 'preset') {
+      const p = this.presets.find(item => item.id === this.tempPreset()) || this.presets[3];
+      return new Date(now + p.seconds * 1000);
+    }
+
+    if (this.tempCustomStyle() === 'duration') {
+      const val = this.tempCustomDurationValue();
+      const unit = this.tempCustomDurationUnit();
+      let ms = val * 60 * 1000;
+      if (unit === 'hours') ms = val * 3600 * 1000;
+      if (unit === 'days') ms = val * 86400 * 1000;
+      return new Date(now + ms);
+    }
+
+    const dStr = this.tempCustomUntilDate();
+    if (!dStr) return new Date(now + 86400 * 1000);
+    const parsed = new Date(dStr);
+    return isNaN(parsed.getTime()) ? new Date(now + 86400 * 1000) : parsed;
+  });
+
+  readonly formattedExpiryString = computed<string>(() => {
+    const d = this.computedExpiryDate();
+    try {
+      const formatter = new Intl.DateTimeFormat(undefined, {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZoneName: 'long'
+      });
+      return `Expires ${formatter.format(d)}`;
+    } catch {
+      return `Expires ${d.toLocaleString()}`;
+    }
+  });
+
+  readonly formattedRelativeString = computed<string>(() => {
+    const target = this.computedExpiryDate().getTime();
+    const diffMs = target - Date.now();
+    if (diffMs <= 0) return 'Expired';
+
+    const diffMin = Math.round(diffMs / 60000);
+    if (diffMin < 60) return `in ${diffMin} min`;
+    const diffHrs = Math.floor(diffMin / 60);
+    const remMin = diffMin % 60;
+    if (diffHrs < 24) {
+      return remMin > 0 ? `in ${diffHrs} h ${remMin} min` : `in ${diffHrs} hours`;
+    }
+    const diffDays = Math.round(diffHrs / 24);
+    return `in ${diffDays} day${diffDays === 1 ? '' : 's'}`;
+  });
+
+  readonly expiryValidationError = computed<string | null>(() => {
+    const target = this.computedExpiryDate().getTime();
+    const now = Date.now();
+    const diffMs = target - now;
+    if (diffMs < 60 * 1000) {
+      return TEMP_CODE_CONFIG.messages.minExpiry;
+    }
+    if (diffMs > 365 * 86400 * 1000) {
+      return TEMP_CODE_CONFIG.messages.maxExpiry;
+    }
+    return null;
+  });
+
+  readonly canCreateTemporary = computed<boolean>(() => {
+    if (this.expiryValidationError()) return false;
+    const type = this.tempContentType();
+    if (type === 'MESSAGE' && !this.tempContent().trim()) return false;
+    if (type === 'LINK') {
+      const link = this.tempContent().trim();
+      if (!link) return false;
+      if (!/^https?:\/\//i.test(link)) return false;
+    }
+    return true;
+  });
 
   readonly retailNotice = RETAIL_NOTICE;
 

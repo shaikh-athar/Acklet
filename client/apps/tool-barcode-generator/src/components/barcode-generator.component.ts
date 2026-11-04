@@ -18,6 +18,7 @@ import { TsIconComponent, ResponsiveService } from '@acklet/tool-shell';
 
 import {
   BarcodeFormat,
+  BarcodeCatalogItem,
   BarcodeDesignOptions,
   FormatPerOptions,
   DEFAULT_DESIGN_OPTIONS,
@@ -43,8 +44,14 @@ import { BarcodeBulkPreviewComponent } from './bulk-preview/bulk-preview.compone
 import { BarcodePreviewPanelComponent } from './preview-panel/preview-panel.component';
 import { BarcodeHistoryModalComponent } from './history-modal/history-modal.component';
 import { BarcodeSettingsModalComponent } from './settings-modal/settings-modal.component';
+import { BarcodeTemporaryPanelComponent } from './temporary-panel/temporary-panel.component';
+import { TempCodeVerificationPageComponent } from './verification-page/verification-page.component';
+import { TempCodeService } from '../services/temp-code.service';
+import { TempCodeRecord, CreateTempCodePayload, PayloadMode, TempContentType, ExpiryMode } from '../models/temp-code.models';
+import { TEMP_CODE_CONFIG } from '../config/temp-code.config';
+import { firstValueFrom } from 'rxjs';
 
-export type GeneratorTab = 'content' | 'customize' | 'bulk' | 'preview';
+export type GeneratorTab = 'content' | 'customize' | 'bulk' | 'temporary' | 'preview';
 
 @Component({
   selector: 'app-barcode-generator',
@@ -58,207 +65,125 @@ export type GeneratorTab = 'content' | 'customize' | 'bulk' | 'preview';
     BarcodeBulkPreviewComponent,
     BarcodePreviewPanelComponent,
     BarcodeHistoryModalComponent,
-    BarcodeSettingsModalComponent
+    BarcodeSettingsModalComponent,
+    BarcodeTemporaryPanelComponent,
+    TempCodeVerificationPageComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="barcode-tool-workspace" [attr.data-view]="currentTab()">
-      <!-- ════════════════════════════════════════════════════════════ -->
-      <!-- DRAG AND DROP FILE GATHER SCREEN OVERLAY                     -->
-      <!-- ════════════════════════════════════════════════════════════ -->
-      @if (isDragOverScreen()) {
-        <div class="screen-file-gather-overlay" aria-modal="true" role="dialog" aria-label="Drop file to gather barcodes">
-          <div class="gather-drop-card animate-gather-pop">
-            <div class="gather-icon-wrapper">
-              <div class="gather-sonar-ring ring-1"></div>
-              <div class="gather-sonar-ring ring-2"></div>
-              <div class="gather-icon-circle">
-                <ts-icon name="upload-cloud" [size]="44" class="gather-icon" />
+    @if (activeView() === 'verify') {
+      <app-temp-code-verification-page
+        [token]="verifyToken()"
+        (navigateToGenerator)="activeView.set('generator')"
+      />
+    } @else {
+      <div class="barcode-tool-workspace" [attr.data-view]="currentTab()">
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- DRAG AND DROP FILE GATHER SCREEN OVERLAY                     -->
+        <!-- ════════════════════════════════════════════════════════════ -->
+        @if (isDragOverScreen()) {
+          <div class="screen-file-gather-overlay" aria-modal="true" role="dialog" aria-label="Drop file to gather barcodes">
+            <div class="gather-drop-card animate-gather-pop">
+              <div class="gather-icon-wrapper">
+                <div class="gather-sonar-ring ring-1"></div>
+                <div class="gather-sonar-ring ring-2"></div>
+                <div class="gather-icon-circle">
+                  <ts-icon name="upload-cloud" [size]="44" class="gather-icon" />
+                </div>
+              </div>
+
+              <div class="gather-text-col">
+                <h2 class="gather-headline">Drop file to gather barcodes</h2>
+                <p class="gather-subline">
+                  Release your CSV, TSV, or text file anywhere to parse and generate barcodes in bulk
+                </p>
+              </div>
+
+              <div class="gather-specs-row">
+                <span class="gather-chip">.csv</span>
+                <span class="gather-chip">.tsv</span>
+                <span class="gather-chip">.txt</span>
+                <span class="gather-chip-sep">•</span>
+                <span class="gather-meta-text">Max 2 MB</span>
+                <span class="gather-chip-sep">•</span>
+                <span class="gather-meta-text">Up to 500 records</span>
               </div>
             </div>
-
-            <div class="gather-text-col">
-              <h2 class="gather-headline">Drop file to gather barcodes</h2>
-              <p class="gather-subline">
-                Release your CSV, TSV, or text file anywhere to parse and generate barcodes in bulk
-              </p>
-            </div>
-
-            <div class="gather-specs-row">
-              <span class="gather-chip">.csv</span>
-              <span class="gather-chip">.tsv</span>
-              <span class="gather-chip">.txt</span>
-              <span class="gather-chip-sep">•</span>
-              <span class="gather-meta-text">Max 2 MB</span>
-              <span class="gather-chip-sep">•</span>
-              <span class="gather-meta-text">Up to 500 records</span>
-            </div>
           </div>
-        </div>
-      }
+        }
 
-      <!-- ════════════════════════════════════════════════════════════ -->
-      <!-- Workspace Container (Two-column Desktop / Compact Mobile)   -->
-      <!-- ════════════════════════════════════════════════════════════ -->
-      <!-- ════════════════════════════════════════════════════════════ -->
-      <!-- Workspace Container (Two-column Desktop / Stacked Tablet & Phone) -->
-      <!-- ════════════════════════════════════════════════════════════ -->
-      <div class="workspace-layout-grid">
-        
-        <!-- Small screens (sm: <=639px): Preview is rendered on dedicated Preview tab -->
-        @if (responsive.isSm() && currentTab() === 'preview') {
-          <section
-            class="workspace-card mobile-preview-card slide-fade-in"
-            [attr.aria-label]="lastFormTab() === 'bulk' ? 'Bulk live preview' : 'Barcode live preview'"
-          >
-            <!-- Card Tab Navigation Strip (allows switching back to form tabs) -->
-            <div class="card-tabs-header" role="tablist">
-              <button
-                type="button"
-                role="tab"
-                id="tab-content-m"
-                class="tab-strip-btn"
-                [class.active]="currentTab() === 'content'"
-                [attr.aria-selected]="currentTab() === 'content'"
-                aria-controls="panel-content"
-                (click)="setTab('content')"
-              >
-                <ts-icon name="file-text" [size]="16" class="tab-icon" />
-                <span class="tab-label">Content</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                id="tab-customize-m"
-                class="tab-strip-btn"
-                [class.active]="currentTab() === 'customize'"
-                [attr.aria-selected]="currentTab() === 'customize'"
-                aria-controls="panel-customize"
-                (click)="setTab('customize')"
-              >
-                <ts-icon name="sliders" [size]="16" class="tab-icon" />
-                <span class="tab-label">Customize</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                id="tab-bulk-m"
-                class="tab-strip-btn"
-                [class.active]="currentTab() === 'bulk'"
-                [attr.aria-selected]="currentTab() === 'bulk'"
-                aria-controls="panel-bulk"
-                (click)="setTab('bulk')"
-              >
-                <ts-icon name="layers" [size]="16" class="tab-icon" />
-                <span class="tab-label">Bulk</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                id="tab-preview-m"
-                class="tab-strip-btn"
-                [class.active]="currentTab() === 'preview'"
-                [attr.aria-selected]="currentTab() === 'preview'"
-                aria-controls="panel-preview"
-                (click)="setTab('preview')"
-              >
-                <ts-icon name="eye" [size]="16" class="tab-icon" />
-                <span class="tab-label">Preview</span>
-              </button>
-            </div>
-
-            <!-- Preview Card Content -->
-            <div class="card-content-area custom-scrollbar">
-              @if (lastFormTab() === 'bulk') {
-                <app-barcode-bulk-preview />
-              } @else {
-                <app-barcode-preview-panel
-                  [barcodeName]="barcodeName()"
-                  [format]="format()"
-                  [isValid]="validation().valid && !!svgResult()?.svg"
-                  [hasValue]="!!value().trim()"
-                  [validationError]="validation().errorMessage || null"
-                  [isGenerating]="isGenerating()"
-                  [shouldAnimate]="shouldAnimateScan()"
-                  [svgContent]="svgResult()?.svg || ''"
-                  [renderError]="renderError()"
-                  [verification]="verificationResult()"
-                  [historyCount]="historyService.items().length"
-                  [rawValue]="value()"
-                  [encodedValue]="svgResult()?.encodedValue || validation().cleanValue"
-                  [canSaveSeparate]="canSaveSeparate()"
-                  (saveSeparate)="onSaveSeparate()"
-                  (download)="onDownload($event)"
-                  (copyImageClick)="onCopyImage()"
-                  (shareClick)="onShare()"
-                  (saveClick)="onSave()"
-                  (openHistory)="isHistoryModalOpen.set(true)"
-                  (openSettings)="isSettingsModalOpen.set(true)"
-                />
-              }
-            </div>
-          </section>
-        } @else {
-          <!-- ══════════════════════════════════════════════════════════ -->
-          <!-- FORM CARD: Tabs (Content, Customize, Bulk, Preview on sm)  -->
-          <!-- ══════════════════════════════════════════════════════════ -->
-          <section
-            class="workspace-card left-card"
-            aria-label="Barcode configuration"
-          >
-            <!-- Card Tab Navigation Strip -->
-            <div class="card-tabs-header" role="tablist">
-              <button
-                type="button"
-                role="tab"
-                id="tab-content"
-                class="tab-strip-btn"
-                [class.active]="currentTab() === 'content'"
-                [attr.aria-selected]="currentTab() === 'content'"
-                aria-controls="panel-content"
-                (click)="setTab('content')"
-              >
-                <ts-icon name="file-text" [size]="16" class="tab-icon" />
-                <span class="tab-label">Content</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                id="tab-customize"
-                class="tab-strip-btn"
-                [class.active]="currentTab() === 'customize'"
-                [attr.aria-selected]="currentTab() === 'customize'"
-                aria-controls="panel-customize"
-                (click)="setTab('customize')"
-              >
-                <ts-icon name="sliders" [size]="16" class="tab-icon" />
-                <span class="tab-label">Customize</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                id="tab-bulk"
-                class="tab-strip-btn"
-                [class.active]="currentTab() === 'bulk'"
-                [attr.aria-selected]="currentTab() === 'bulk'"
-                aria-controls="panel-bulk"
-                (click)="setTab('bulk')"
-              >
-                <ts-icon name="layers" [size]="16" class="tab-icon" />
-                <span class="tab-label">Bulk</span>
-              </button>
-
-              <!-- Dedicated Preview Tab on small screens (<640px) -->
-              @if (responsive.isSm()) {
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- Workspace Container (Two-column Desktop / Stacked Tablet & Phone) -->
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <div class="workspace-layout-grid" [class.is-full-width]="currentTab() === 'temporary'">
+          <!-- Small screens (sm: <=639px): Preview is rendered on dedicated Preview tab -->
+          @if (responsive.isSm() && currentTab() === 'preview') {
+            <section
+              class="workspace-card mobile-preview-card slide-fade-in"
+              [attr.aria-label]="lastFormTab() === 'bulk' ? 'Bulk live preview' : 'Barcode live preview'"
+            >
+              <!-- Card Tab Navigation Strip (allows switching back to form tabs) -->
+              <div class="card-tabs-header" role="tablist">
                 <button
                   type="button"
                   role="tab"
-                  id="tab-preview-strip"
+                  id="tab-content-m"
+                  class="tab-strip-btn"
+                  [class.active]="currentTab() === 'content'"
+                  [attr.aria-selected]="currentTab() === 'content'"
+                  aria-controls="panel-content"
+                  (click)="setTab('content')"
+                >
+                  <ts-icon name="file-text" [size]="16" class="tab-icon" />
+                  <span class="tab-label">Content</span>
+                </button>
+
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-customize-m"
+                  class="tab-strip-btn"
+                  [class.active]="currentTab() === 'customize'"
+                  [attr.aria-selected]="currentTab() === 'customize'"
+                  aria-controls="panel-customize"
+                  (click)="setTab('customize')"
+                >
+                  <ts-icon name="sliders" [size]="16" class="tab-icon" />
+                  <span class="tab-label">Customize</span>
+                </button>
+
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-bulk-m"
+                  class="tab-strip-btn"
+                  [class.active]="currentTab() === 'bulk'"
+                  [attr.aria-selected]="currentTab() === 'bulk'"
+                  aria-controls="panel-bulk"
+                  (click)="setTab('bulk')"
+                >
+                  <ts-icon name="layers" [size]="16" class="tab-icon" />
+                  <span class="tab-label">Bulk</span>
+                </button>
+
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-temporary-m"
+                  class="tab-strip-btn"
+                  [class.active]="currentTab() === 'temporary'"
+                  [attr.aria-selected]="currentTab() === 'temporary'"
+                  aria-controls="panel-temporary"
+                  (click)="setTab('temporary')"
+                >
+                  <ts-icon name="clock" [size]="16" class="tab-icon" />
+                  <span class="tab-label">Temporary</span>
+                </button>
+
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-preview-m"
                   class="tab-strip-btn"
                   [class.active]="currentTab() === 'preview'"
                   [attr.aria-selected]="currentTab() === 'preview'"
@@ -268,132 +193,11 @@ export type GeneratorTab = 'content' | 'customize' | 'bulk' | 'preview';
                   <ts-icon name="eye" [size]="16" class="tab-icon" />
                   <span class="tab-label">Preview</span>
                 </button>
-              }
-            </div>
-
-            <!-- Card Scrollable Content Area -->
-            <div class="card-content-area custom-scrollbar">
-              <!-- 1. Content Tab -->
-              @if (currentTab() === 'content') {
-                <div id="panel-content" role="tabpanel" aria-labelledby="tab-content" class="tab-panel slide-fade-in">
-                  <app-barcode-content-panel
-                    [(barcodeName)]="barcodeName"
-                    [format]="format()"
-                    [(value)]="value"
-                    [(formatOptions)]="formatOptions"
-                    [validation]="validation()"
-                    [canSaveSeparate]="canSaveSeparate()"
-                    (saveSeparate)="onSaveSeparate()"
-                    (formatChangeRequest)="handleFormatChangeRequest($event)"
-                    (customizeClick)="setTab('customize')"
-                  />
-                </div>
-              }
-
-              <!-- 2. Customize Tab -->
-              @if (currentTab() === 'customize') {
-                <div id="panel-customize" role="tabpanel" aria-labelledby="tab-customize" class="tab-panel slide-fade-in">
-                  <app-barcode-customize-panel
-                    [(options)]="designOptions"
-                    [format]="format()"
-                  />
-                </div>
-              }
-
-              <!-- 3. Bulk Tab -->
-              @if (currentTab() === 'bulk') {
-                <div id="panel-bulk" role="tabpanel" aria-labelledby="tab-bulk" class="tab-panel slide-fade-in">
-                  <app-barcode-bulk-panel
-                    [format]="format()"
-                    [formatOptions]="formatOptions()"
-                    [designOptions]="designOptions()"
-                    [barcodeName]="barcodeName()"
-                    (formatChangeRequest)="handleFormatChangeRequest($event)"
-                    (switchToCustomize)="setTab('customize')"
-                  />
-                </div>
-              }
-            </div>
-
-            <!-- Compact Mobile Sticky Bottom Bar: Case 1 (Show preview) vs Case 2 (Generate) -->
-            @if (responsive.isSm() && currentTab() !== 'bulk') {
-              <div class="mobile-sticky-action-bar">
-                @if (!hasContentToGenerate()) {
-                  <!-- Case 1: When nothing generated with the content: Show Preview button with collapse and expand -->
-                  <button
-                    type="button"
-                    class="mobile-show-preview-btn"
-                    (click)="setTab('preview')"
-                    aria-label="Show barcode preview"
-                  >
-                    <span class="preview-btn-label-group">
-                      <ts-icon name="eye" [size]="16" />
-                      <span>Show Preview</span>
-                    </span>
-                    <ts-icon name="chevron-right" [size]="14" />
-                  </button>
-                } @else {
-                  <!-- Case 2: Something is added in input or customized: Show Generate button -->
-                  <button
-                    type="button"
-                    class="mobile-generate-btn"
-                    [disabled]="!validation().valid || !value().trim()"
-                    (click)="onMobileGenerate()"
-                    aria-label="Generate barcode and view preview"
-                  >
-                    <ts-icon name="barcode" [size]="18" />
-                    <span>Generate</span>
-                  </button>
-                }
               </div>
-            }
-          </section>
-        }
 
-        <!-- ══════════════════════════════════════════════════════════ -->
-        <!-- TABLET (md: 640px-1023px): Collapsible Preview Below Form  -->
-        <!-- ══════════════════════════════════════════════════════════ -->
-        @if (responsive.isMd()) {
-          <div class="md-preview-collapsible-section">
-            <div class="md-preview-header-bar">
-              <div class="md-preview-title-row">
-                <ts-icon name="eye" [size]="16" />
-                <span class="md-preview-title">{{ currentTab() === 'bulk' ? 'Bulk Preview' : 'Barcode Preview' }}</span>
-              </div>
-              <div class="md-preview-actions-row">
-                @if (!hasContentToGenerate() || !isMdPreviewCollapsed()) {
-                  <!-- Case 1: Nothing generated OR preview is already open: Show collapse/expand toggle -->
-                  <button
-                    type="button"
-                    class="md-preview-toggle-btn"
-                    (click)="toggleMdPreview()"
-                    [attr.aria-expanded]="!isMdPreviewCollapsed()"
-                  >
-                    <ts-icon [name]="isMdPreviewCollapsed() ? 'chevron-down' : 'chevron-up'" [size]="14" />
-                    <span>{{ isMdPreviewCollapsed() ? 'Show preview' : 'Hide preview' }}</span>
-                  </button>
-                } @else {
-                  <!-- Case 2: Input or customization added and preview collapsed: Show Generate button -->
-                  <button
-                    type="button"
-                    class="md-generate-btn"
-                    [disabled]="!validation().valid || !value().trim()"
-                    (click)="onMdGenerate()"
-                    aria-label="Generate barcode and open preview"
-                  >
-                    <ts-icon name="barcode" [size]="15" />
-                    <span>Generate</span>
-                  </button>
-                }
-              </div>
-            </div>
-
-            @if (!isMdPreviewCollapsed()) {
-              <section
-                class="workspace-card right-card md-preview-card slide-fade-in"
-                [attr.aria-label]="currentTab() === 'bulk' ? 'Bulk live preview' : 'Barcode live preview'"
-              >
-                @if (currentTab() === 'bulk') {
+              <!-- Preview Card Content -->
+              <div class="card-content-area custom-scrollbar">
+                @if (lastFormTab() === 'bulk') {
                   <app-barcode-bulk-preview />
                 } @else {
                   <app-barcode-preview-panel
@@ -411,6 +215,12 @@ export type GeneratorTab = 'content' | 'customize' | 'bulk' | 'preview';
                     [rawValue]="value()"
                     [encodedValue]="svgResult()?.encodedValue || validation().cleanValue"
                     [canSaveSeparate]="canSaveSeparate()"
+                    [isTemporary]="isContentTemporary()"
+                    [temporaryRecord]="activeTemporaryRecord()"
+                    [temporaryCountdown]="temporaryCountdown()"
+                    [isCreatingTemporary]="isCreatingTemporary()"
+                    [isServiceUnreachable]="tempCodeService.isServiceUnreachable()"
+                    [canCreateTemporary]="canCreateTemporary()"
                     (saveSeparate)="onSaveSeparate()"
                     (download)="onDownload($event)"
                     (copyImageClick)="onCopyImage()"
@@ -418,74 +228,382 @@ export type GeneratorTab = 'content' | 'customize' | 'bulk' | 'preview';
                     (saveClick)="onSave()"
                     (openHistory)="isHistoryModalOpen.set(true)"
                     (openSettings)="isSettingsModalOpen.set(true)"
+                    (createTemporary)="onCreateTemporaryFromPreview()"
+                    (viewInDashboard)="onViewInDashboard()"
+                    (print)="onPrintBarcode()"
                   />
                 }
-              </section>
-            }
+              </div>
+            </section>
+          } @else {
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!-- FORM CARD: Tabs (Content, Customize, Bulk, Temporary, Preview on sm) -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <section
+              class="workspace-card left-card"
+              aria-label="Barcode configuration"
+            >
+              <!-- Card Tab Navigation Strip -->
+              <div class="card-tabs-header" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-content"
+                  class="tab-strip-btn"
+                  [class.active]="currentTab() === 'content'"
+                  [attr.aria-selected]="currentTab() === 'content'"
+                  aria-controls="panel-content"
+                  (click)="setTab('content')"
+                >
+                  <ts-icon name="file-text" [size]="16" class="tab-icon" />
+                  <span class="tab-label">Content</span>
+                </button>
+
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-customize"
+                  class="tab-strip-btn"
+                  [class.active]="currentTab() === 'customize'"
+                  [attr.aria-selected]="currentTab() === 'customize'"
+                  aria-controls="panel-customize"
+                  (click)="setTab('customize')"
+                >
+                  <ts-icon name="sliders" [size]="16" class="tab-icon" />
+                  <span class="tab-label">Customize</span>
+                </button>
+
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-bulk"
+                  class="tab-strip-btn"
+                  [class.active]="currentTab() === 'bulk'"
+                  [attr.aria-selected]="currentTab() === 'bulk'"
+                  aria-controls="panel-bulk"
+                  (click)="setTab('bulk')"
+                >
+                  <ts-icon name="layers" [size]="16" class="tab-icon" />
+                  <span class="tab-label">Bulk</span>
+                </button>
+
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-temporary"
+                  class="tab-strip-btn"
+                  [class.active]="currentTab() === 'temporary'"
+                  [attr.aria-selected]="currentTab() === 'temporary'"
+                  aria-controls="panel-temporary"
+                  (click)="setTab('temporary')"
+                >
+                  <ts-icon name="clock" [size]="16" class="tab-icon" />
+                  <span class="tab-label">Temporary</span>
+                </button>
+
+                <!-- Dedicated Preview Tab on small screens (<640px) -->
+                @if (responsive.isSm()) {
+                  <button
+                    type="button"
+                    role="tab"
+                    id="tab-preview-strip"
+                    class="tab-strip-btn"
+                    [class.active]="currentTab() === 'preview'"
+                    [attr.aria-selected]="currentTab() === 'preview'"
+                    aria-controls="panel-preview"
+                    (click)="setTab('preview')"
+                  >
+                    <ts-icon name="eye" [size]="16" class="tab-icon" />
+                    <span class="tab-label">Preview</span>
+                  </button>
+                }
+              </div>
+
+              <!-- Card Scrollable Content Area -->
+              <div class="card-content-area custom-scrollbar">
+                <!-- 1. Content Tab -->
+                @if (currentTab() === 'content') {
+                  <div id="panel-content" role="tabpanel" aria-labelledby="tab-content" class="tab-panel slide-fade-in">
+                    <app-barcode-content-panel
+                      [(barcodeName)]="barcodeName"
+                      [format]="format()"
+                      [(value)]="value"
+                      [(formatOptions)]="formatOptions"
+                      [validation]="validation()"
+                      [canSaveSeparate]="canSaveSeparate()"
+                      [(isTemporary)]="isContentTemporary"
+                      [(tempShowExpiryOnLabel)]="tempShowExpiryOnLabel"
+                      [(tempExpiryMode)]="tempExpiryMode"
+                      [(tempPreset)]="tempPreset"
+                      [(tempCustomStyle)]="tempCustomStyle"
+                      [(tempCustomDurationValue)]="tempCustomDurationValue"
+                      [(tempCustomDurationUnit)]="tempCustomDurationUnit"
+                      [(tempCustomUntilDate)]="tempCustomUntilDate"
+                      [createdRecord]="activeTemporaryRecord()"
+                      [isCreatingTemporary]="isCreatingTemporary()"
+                      [isServiceUnreachable]="tempCodeService.isServiceUnreachable()"
+                      (saveSeparate)="onSaveSeparate()"
+                      (formatChangeRequest)="handleFormatChangeRequest($event)"
+                      (customizeClick)="setTab('customize')"
+                      (createAnother)="onCreateAnotherTemporary()"
+                      (temporaryChange)="onTemporarySettingsChange()"
+                    />
+                  </div>
+                }
+
+                <!-- 2. Customize Tab -->
+                @if (currentTab() === 'customize') {
+                  <div id="panel-customize" role="tabpanel" aria-labelledby="tab-customize" class="tab-panel slide-fade-in">
+                    <app-barcode-customize-panel
+                      [(options)]="designOptions"
+                      [format]="format()"
+                    />
+                  </div>
+                }
+
+                <!-- 3. Bulk Tab -->
+                @if (currentTab() === 'bulk') {
+                  <div id="panel-bulk" role="tabpanel" aria-labelledby="tab-bulk" class="tab-panel slide-fade-in">
+                    <app-barcode-bulk-panel
+                      [format]="format()"
+                      [formatOptions]="formatOptions()"
+                      [designOptions]="designOptions()"
+                      [barcodeName]="barcodeName()"
+                      (formatChangeRequest)="handleFormatChangeRequest($event)"
+                      (switchToCustomize)="setTab('customize')"
+                      (viewBatchInDashboard)="onViewBatchInDashboard($event)"
+                    />
+                  </div>
+                }
+
+                <!-- 4. Temporary Tab -->
+                @if (currentTab() === 'temporary') {
+                  <div id="panel-temporary" role="tabpanel" aria-labelledby="tab-temporary" class="tab-panel slide-fade-in">
+                    <app-barcode-temporary-panel
+                      [filterBatchId]="dashboardBatchFilter()"
+                      (newTemporaryCode)="onNewTemporaryCode()"
+                    />
+                  </div>
+                }
+              </div>
+
+              <!-- Compact Mobile Sticky Bottom Bar: Case 1 (Show preview) vs Case 2 (Generate) -->
+              @if (responsive.isSm() && currentTab() !== 'bulk' && currentTab() !== 'temporary') {
+                <div class="mobile-sticky-action-bar">
+                  @if (!hasContentToGenerate()) {
+                    <!-- Case 1: When nothing generated with the content: Show Preview button with collapse and expand -->
+                    <button
+                      type="button"
+                      class="mobile-show-preview-btn"
+                      (click)="setTab('preview')"
+                      aria-label="Show barcode preview"
+                    >
+                      <span class="preview-btn-label-group">
+                        <ts-icon name="eye" [size]="16" />
+                        <span>Show Preview</span>
+                      </span>
+                      <ts-icon name="chevron-right" [size]="14" />
+                    </button>
+                  } @else {
+                    <!-- Case 2: Something is added in input or customized: Show Generate button -->
+                    <button
+                      type="button"
+                      class="mobile-generate-btn"
+                      [disabled]="!validation().valid || !value().trim()"
+                      (click)="onMobileGenerate()"
+                      aria-label="Generate barcode and view preview"
+                    >
+                      <ts-icon name="barcode" [size]="18" />
+                      <span>Generate</span>
+                    </button>
+                  }
+                </div>
+              }
+            </section>
+          }
+
+          <!-- ══════════════════════════════════════════════════════════ -->
+          <!-- TABLET (md: 640px-1023px): Collapsible Preview Below Form  -->
+          <!-- ══════════════════════════════════════════════════════════ -->
+          @if (responsive.isMd() && currentTab() !== 'temporary') {
+            <div class="md-preview-collapsible-section">
+              <div class="md-preview-header-bar">
+                <div class="md-preview-title-row">
+                  <ts-icon name="eye" [size]="16" />
+                  <span class="md-preview-title">{{ currentTab() === 'bulk' ? 'Bulk Preview' : 'Barcode Preview' }}</span>
+                </div>
+                <div class="md-preview-actions-row">
+                  @if (!hasContentToGenerate() || !isMdPreviewCollapsed()) {
+                    <!-- Case 1: Nothing generated OR preview is already open: Show collapse/expand toggle -->
+                    <button
+                      type="button"
+                      class="md-preview-toggle-btn"
+                      (click)="toggleMdPreview()"
+                      [attr.aria-expanded]="!isMdPreviewCollapsed()"
+                    >
+                      <ts-icon [name]="isMdPreviewCollapsed() ? 'chevron-down' : 'chevron-up'" [size]="14" />
+                      <span>{{ isMdPreviewCollapsed() ? 'Show preview' : 'Hide preview' }}</span>
+                    </button>
+                  } @else {
+                    <!-- Case 2: Input or customization added and preview collapsed: Show Generate button -->
+                    <button
+                      type="button"
+                      class="md-generate-btn"
+                      [disabled]="!validation().valid || !value().trim()"
+                      (click)="onMdGenerate()"
+                      aria-label="Generate barcode and open preview"
+                    >
+                      <ts-icon name="barcode" [size]="15" />
+                      <span>Generate</span>
+                    </button>
+                  }
+                </div>
+              </div>
+
+              @if (!isMdPreviewCollapsed()) {
+                <section
+                  class="workspace-card right-card md-preview-card slide-fade-in"
+                  [attr.aria-label]="currentTab() === 'bulk' ? 'Bulk live preview' : 'Barcode live preview'"
+                >
+                  @if (currentTab() === 'bulk') {
+                    <app-barcode-bulk-preview />
+                  } @else {
+                    <app-barcode-preview-panel
+                      [barcodeName]="barcodeName()"
+                      [format]="format()"
+                      [isValid]="validation().valid && !!svgResult()?.svg"
+                      [hasValue]="!!value().trim()"
+                      [validationError]="validation().errorMessage || null"
+                      [isGenerating]="isGenerating()"
+                      [shouldAnimate]="shouldAnimateScan()"
+                      [svgContent]="svgResult()?.svg || ''"
+                      [renderError]="renderError()"
+                      [verification]="verificationResult()"
+                      [historyCount]="historyService.items().length"
+                      [rawValue]="value()"
+                      [encodedValue]="svgResult()?.encodedValue || validation().cleanValue"
+                      [canSaveSeparate]="canSaveSeparate()"
+                      [isTemporary]="isContentTemporary()"
+                      [temporaryRecord]="activeTemporaryRecord()"
+                      [temporaryCountdown]="temporaryCountdown()"
+                      [isCreatingTemporary]="isCreatingTemporary()"
+                      [isServiceUnreachable]="tempCodeService.isServiceUnreachable()"
+                      [canCreateTemporary]="canCreateTemporary()"
+                      (saveSeparate)="onSaveSeparate()"
+                      (download)="onDownload($event)"
+                      (copyImageClick)="onCopyImage()"
+                      (shareClick)="onShare()"
+                      (saveClick)="onSave()"
+                      (openHistory)="isHistoryModalOpen.set(true)"
+                      (openSettings)="isSettingsModalOpen.set(true)"
+                      (createTemporary)="onCreateTemporaryFromPreview()"
+                      (viewInDashboard)="onViewInDashboard()"
+                      (print)="onPrintBarcode()"
+                    />
+                  }
+                </section>
+              }
+            </div>
+          }
+
+          <!-- ══════════════════════════════════════════════════════════ -->
+          <!-- DESKTOP & LARGE (lg, xl: >=1024px): Sticky Right Preview   -->
+          <!-- ══════════════════════════════════════════════════════════ -->
+          @if (!responsive.isSm() && !responsive.isMd() && currentTab() !== 'temporary') {
+            <section
+              class="workspace-card right-card"
+              [attr.aria-label]="currentTab() === 'bulk' ? 'Bulk live preview' : 'Barcode live preview'"
+            >
+              @if (currentTab() === 'bulk') {
+                <app-barcode-bulk-preview />
+              } @else {
+                <app-barcode-preview-panel
+                  [barcodeName]="barcodeName()"
+                  [format]="format()"
+                  [isValid]="validation().valid && !!svgResult()?.svg"
+                  [hasValue]="!!value().trim()"
+                  [validationError]="validation().errorMessage || null"
+                  [isGenerating]="isGenerating()"
+                  [shouldAnimate]="shouldAnimateScan()"
+                  [svgContent]="svgResult()?.svg || ''"
+                  [renderError]="renderError()"
+                  [verification]="verificationResult()"
+                  [historyCount]="historyService.items().length"
+                  [rawValue]="value()"
+                  [encodedValue]="svgResult()?.encodedValue || validation().cleanValue"
+                  [canSaveSeparate]="canSaveSeparate()"
+                  [isTemporary]="isContentTemporary()"
+                  [temporaryRecord]="activeTemporaryRecord()"
+                  [temporaryCountdown]="temporaryCountdown()"
+                  [isCreatingTemporary]="isCreatingTemporary()"
+                  [isServiceUnreachable]="tempCodeService.isServiceUnreachable()"
+                  [canCreateTemporary]="canCreateTemporary()"
+                  (saveSeparate)="onSaveSeparate()"
+                  (download)="onDownload($event)"
+                  (copyImageClick)="onCopyImage()"
+                  (shareClick)="onShare()"
+                  (saveClick)="onSave()"
+                  (openHistory)="isHistoryModalOpen.set(true)"
+                  (openSettings)="isSettingsModalOpen.set(true)"
+                  (createTemporary)="onCreateTemporaryFromPreview()"
+                  (viewInDashboard)="onViewInDashboard()"
+                  (print)="onPrintBarcode()"
+                />
+              }
+            </section>
+          }
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- Modals: History & Settings                                   -->
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <app-barcode-history-modal
+          [isOpen]="isHistoryModalOpen()"
+          [items]="historyService.items()"
+          [dontSaveHistory]="historyService.dontSaveHistory()"
+          [totalGenerated]="historyService.totalGeneratedCount()"
+          (close)="isHistoryModalOpen.set(false)"
+          (restore)="restoreHistoryItem($event)"
+          (deleteItem)="historyService.deleteItem($event)"
+          (clearAll)="historyService.clearAll()"
+          (toggleDontSaveHistory)="historyService.setDontSaveHistory($event)"
+          (renameItem)="onRenameHistoryItem($event)"
+        />
+
+        <app-barcode-settings-modal
+          [isOpen]="isSettingsModalOpen()"
+          (close)="isSettingsModalOpen.set(false)"
+          (resetAll)="resetAllSettings()"
+        />
+
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- Custom Alert / Error Modal                                   -->
+        <!-- ════════════════════════════════════════════════════════════ -->
+        @if (activeAlertDialog(); as alert) {
+          <div class="acklet-dialog-backdrop" (click)="closeAlertDialog()" role="alertdialog" aria-modal="true" [attr.aria-label]="alert.title">
+            <div class="acklet-dialog-card" (click)="$event.stopPropagation()">
+              <div class="acklet-dialog-header">
+                <div class="acklet-dialog-icon-wrapper" [class.is-warning]="alert.type === 'warning'">
+                  <ts-icon [name]="alert.type === 'warning' ? 'circle-alert' : 'circle-alert'" [size]="20" />
+                </div>
+                <div class="acklet-dialog-title-group">
+                  <h3 class="acklet-dialog-title">{{ alert.title }}</h3>
+                  <p class="acklet-dialog-message">{{ alert.message }}</p>
+                </div>
+                <button type="button" class="acklet-dialog-close-btn" (click)="closeAlertDialog()" aria-label="Close dialog">
+                  <ts-icon name="x" [size]="16" />
+                </button>
+              </div>
+              <div class="acklet-dialog-footer">
+                <button type="button" class="acklet-dialog-action-btn" (click)="closeAlertDialog()">
+                  OK
+                </button>
+              </div>
+            </div>
           </div>
         }
-
-        <!-- ══════════════════════════════════════════════════════════ -->
-        <!-- DESKTOP & LARGE (lg, xl: >=1024px): Sticky Right Preview   -->
-        <!-- ══════════════════════════════════════════════════════════ -->
-        @if (!responsive.isSm() && !responsive.isMd()) {
-          <section
-            class="workspace-card right-card"
-            [attr.aria-label]="currentTab() === 'bulk' ? 'Bulk live preview' : 'Barcode live preview'"
-          >
-            @if (currentTab() === 'bulk') {
-              <app-barcode-bulk-preview />
-            } @else {
-              <app-barcode-preview-panel
-                [barcodeName]="barcodeName()"
-                [format]="format()"
-                [isValid]="validation().valid && !!svgResult()?.svg"
-                [hasValue]="!!value().trim()"
-                [validationError]="validation().errorMessage || null"
-                [isGenerating]="isGenerating()"
-                [shouldAnimate]="shouldAnimateScan()"
-                [svgContent]="svgResult()?.svg || ''"
-                [renderError]="renderError()"
-                [verification]="verificationResult()"
-                [historyCount]="historyService.items().length"
-                [rawValue]="value()"
-                [encodedValue]="svgResult()?.encodedValue || validation().cleanValue"
-                [canSaveSeparate]="canSaveSeparate()"
-                (saveSeparate)="onSaveSeparate()"
-                (download)="onDownload($event)"
-                (copyImageClick)="onCopyImage()"
-                (shareClick)="onShare()"
-                (saveClick)="onSave()"
-                (openHistory)="isHistoryModalOpen.set(true)"
-                (openSettings)="isSettingsModalOpen.set(true)"
-              />
-            }
-          </section>
-        }
       </div>
-
-      <!-- ════════════════════════════════════════════════════════════ -->
-      <!-- Modals: History & Settings                                   -->
-      <!-- ════════════════════════════════════════════════════════════ -->
-      <app-barcode-history-modal
-        [isOpen]="isHistoryModalOpen()"
-        [items]="historyService.items()"
-        [dontSaveHistory]="historyService.dontSaveHistory()"
-        [totalGenerated]="historyService.totalGeneratedCount()"
-        (close)="isHistoryModalOpen.set(false)"
-        (restore)="restoreHistoryItem($event)"
-        (deleteItem)="historyService.deleteItem($event)"
-        (clearAll)="historyService.clearAll()"
-        (toggleDontSaveHistory)="historyService.setDontSaveHistory($event)"
-        (renameItem)="onRenameHistoryItem($event)"
-      />
-
-      <app-barcode-settings-modal
-        [isOpen]="isSettingsModalOpen()"
-        (close)="isSettingsModalOpen.set(false)"
-        (resetAll)="resetAllSettings()"
-      />
-    </div>
+    }
   `,
   styles: [`
     :host {
@@ -525,6 +643,15 @@ export type GeneratorTab = 'content' | 'customize' | 'bulk' | 'preview';
         height: 100%;
         min-height: 0;
         box-sizing: border-box;
+      }
+
+      .workspace-layout-grid.is-full-width {
+        grid-template-columns: 1fr;
+      }
+
+      .workspace-layout-grid.is-full-width .workspace-card.left-card {
+        width: 100%;
+        max-width: 100%;
       }
 
       .right-card {
@@ -1231,6 +1358,173 @@ export type GeneratorTab = 'content' | 'customize' | 'bulk' | 'preview';
     :host-context([data-theme="light"]) .gather-meta-text {
       color: #64748B;
     }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Acklet Custom Alert / Error Popup Dialog                       */
+    /* ═══════════════════════════════════════════════════════════════ */
+    .acklet-dialog-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 16px;
+      animation: tsFadeIn 150ms ease-out;
+    }
+
+    .acklet-dialog-card {
+      width: 100%;
+      max-width: 440px;
+      background: var(--bg-card, #18191E);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.6);
+      color: var(--text, #fcfcfc);
+      animation: tsSlideUp 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    :host-context([data-theme="light"]) .acklet-dialog-card {
+      background: #FFFFFF;
+      border-color: rgba(0, 0, 0, 0.12);
+      color: #0F172A;
+      box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.15);
+    }
+
+    .acklet-dialog-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      position: relative;
+    }
+
+    .acklet-dialog-icon-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      flex-shrink: 0;
+      background: rgba(239, 68, 68, 0.12);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+    .acklet-dialog-icon-wrapper.is-warning {
+      background: rgba(245, 158, 11, 0.12);
+      color: #f59e0b;
+      border-color: rgba(245, 158, 11, 0.25);
+    }
+    :host-context([data-theme="light"]) .acklet-dialog-icon-wrapper {
+      background: #FEE2E2;
+      color: #DC2626;
+      border-color: rgba(220, 38, 38, 0.2);
+    }
+    :host-context([data-theme="light"]) .acklet-dialog-icon-wrapper.is-warning {
+      background: #FEF3C7;
+      color: #D97706;
+      border-color: rgba(217, 119, 6, 0.2);
+    }
+
+    .acklet-dialog-title-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .acklet-dialog-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin: 0;
+      line-height: 1.3;
+      color: var(--text, #fcfcfc);
+      letter-spacing: -0.01em;
+    }
+    :host-context([data-theme="light"]) .acklet-dialog-title {
+      color: #0F172A;
+    }
+
+    .acklet-dialog-message {
+      font-size: 13px;
+      line-height: 1.5;
+      margin: 0;
+      color: var(--text-muted, #94a3b8);
+      word-break: break-word;
+    }
+    :host-context([data-theme="light"]) .acklet-dialog-message {
+      color: #475569;
+    }
+
+    .acklet-dialog-close-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted, #94a3b8);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 120ms ease, color 120ms ease;
+    }
+    .acklet-dialog-close-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text, #fcfcfc);
+    }
+    :host-context([data-theme="light"]) .acklet-dialog-close-btn:hover {
+      background: rgba(0, 0, 0, 0.06);
+      color: #0F172A;
+    }
+
+    .acklet-dialog-footer {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .acklet-dialog-action-btn {
+      min-width: 80px;
+      height: 36px;
+      padding: 0 16px;
+      border-radius: 8px;
+      background: var(--tool-accent, var(--accent, #3b82f6));
+      border: none;
+      color: #FFFFFF;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 120ms ease, filter 120ms ease;
+    }
+    .acklet-dialog-action-btn:hover {
+      filter: brightness(1.08);
+    }
+
+    @keyframes tsFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes tsSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
   `]
 })
 export class BarcodeGeneratorComponent implements OnInit, OnDestroy {
@@ -1244,6 +1538,40 @@ export class BarcodeGeneratorComponent implements OnInit, OnDestroy {
   private analyticsService = inject(AnalyticsService);
   private formatRegistry = inject(FormatRegistryService);
   readonly bulkState = inject(BulkStateService);
+  readonly tempCodeService = inject(TempCodeService);
+
+  // Temporary Barcode State & View Management
+  readonly activeView = signal<'generator' | 'verify'>('generator');
+  readonly verifyToken = signal<string>('');
+  readonly isContentTemporary = signal<boolean>(false);
+  readonly tempBarcodeName = signal<string>('Temporary 1');
+  readonly tempPayloadMode = signal<PayloadMode>('LINK');
+  readonly tempContentType = signal<TempContentType>('MESSAGE');
+  readonly tempContent = signal<string>('');
+  readonly alertDialog = signal<{ title: string; message: string; type?: 'error' | 'warning' } | null>(null);
+  readonly activeAlertDialog = computed<{ title: string; message: string; type?: 'error' | 'warning' } | null>(() => this.alertDialog() || this.bulkState.bulkAlert());
+
+  showAlertDialog(title: string, message: string, type: 'error' | 'warning' = 'error'): void {
+    this.alertDialog.set({ title, message, type });
+  }
+
+  closeAlertDialog(): void {
+    this.alertDialog.set(null);
+    this.bulkState.clearBulkAlert();
+  }
+  readonly tempReference = signal<string>('');
+  readonly tempShowExpiryOnLabel = signal<boolean>(false);
+  readonly tempExpiryMode = signal<ExpiryMode>('preset');
+  readonly tempPreset = signal<string>('24h');
+  readonly tempCustomStyle = signal<'duration' | 'until'>('duration');
+  readonly tempCustomDurationValue = signal<number>(2);
+  readonly tempCustomDurationUnit = signal<'minutes' | 'hours' | 'days'>('hours');
+  readonly tempCustomUntilDate = signal<string>('');
+  readonly temporaryCountdown = signal<string | null>(null);
+  readonly dashboardBatchFilter = signal<string | null>(null);
+  readonly isCreatingTemporary = signal<boolean>(false);
+  readonly activeTemporaryRecord = signal<TempCodeRecord | null>(null);
+  private countdownTimer: any = null;
 
   // Drag-and-Drop Screen File Gather State
   readonly isDragOverScreen = signal<boolean>(false);
@@ -1322,6 +1650,10 @@ export class BarcodeGeneratorComponent implements OnInit, OnDestroy {
       const val = this.value();
       const fo = this.formatOptions();
       const d = this.designOptions();
+      const isTemp = this.isContentTemporary();
+      const tempMode = this.tempPayloadMode();
+      const tempRec = this.activeTemporaryRecord();
+      const tempExpLabel = this.tempShowExpiryOnLabel();
 
       untracked(() => {
         this.analyticsService.recordFormatSelection(fmt);
@@ -1351,12 +1683,19 @@ export class BarcodeGeneratorComponent implements OnInit, OnDestroy {
     );
 
     this.readUrlParams();
+
+    this.countdownTimer = setInterval(() => {
+      this.updateTemporaryCountdown();
+    }, 1000);
   }
 
   ngOnDestroy(): void {
     this.sub.unsubscribe();
     if (this.scanAnimationTimeout) {
       clearTimeout(this.scanAnimationTimeout);
+    }
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
     }
   }
 
@@ -1439,7 +1778,7 @@ export class BarcodeGeneratorComponent implements OnInit, OnDestroy {
 
   handleDroppedFile(file: File): void {
     if (file.size > 2 * 1024 * 1024) {
-      alert('File size exceeds 2 MB limit.');
+      this.showAlertDialog('File too large', 'File size exceeds the 2 MB limit.');
       return;
     }
 
@@ -1472,22 +1811,47 @@ export class BarcodeGeneratorComponent implements OnInit, OnDestroy {
   }
 
   private async renderBarcode(): Promise<void> {
+    const isTemp = this.isContentTemporary();
+    const item = this.getEffectiveCatalogItem(this.format());
     const val = this.validation();
-    const item = this.formatRegistry.getFormat(this.format());
-    if (!val.valid || !val.cleanValue || !item) {
+
+    const rec = isTemp ? this.activeTemporaryRecord() : null;
+    if (!rec && (!val.valid || !val.cleanValue || !item)) {
       this.svgResult.set(null);
       this.verificationResult.set(null);
       this.renderError.set(null);
       return;
     }
 
+    let cleanValue = '';
+    let displayValue = '';
+    let design = { ...this.designOptions() };
+
+    if (isTemp && rec) {
+      cleanValue = rec.payload;
+      displayValue = rec.payloadMode === 'LINK' ? rec.verifyUrl : rec.token;
+    } else {
+      cleanValue = val.cleanValue;
+      displayValue = val.displayValue;
+    }
+
+    if (isTemp && this.tempShowExpiryOnLabel()) {
+      const exp = rec?.expiresAt ? new Date(rec.expiresAt) : this.computeTemporaryExpiryDate();
+      const dateStr = exp.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+      design.captionText = `Valid until ${dateStr}`;
+      design.captionPosition = 'below';
+    }
+
     const currentReqId = ++this.latestRequestId;
     const cacheKey = JSON.stringify({
       format: this.format(),
       variant: this.formatOptions().variant,
-      cleanValue: val.cleanValue,
+      cleanValue,
+      displayValue,
+      isTemp,
+      recId: this.activeTemporaryRecord()?.id,
       formatOptions: this.formatOptions(),
-      designOptions: this.designOptions()
+      designOptions: design
     });
 
     if (this.renderCache.has(cacheKey)) {
@@ -1504,9 +1868,9 @@ export class BarcodeGeneratorComponent implements OnInit, OnDestroy {
     try {
       const result = await this.renderer.render(
         item,
-        val.cleanValue,
-        val.displayValue,
-        this.designOptions(),
+        cleanValue,
+        displayValue,
+        design,
         this.formatOptions()
       );
 
@@ -1527,8 +1891,7 @@ export class BarcodeGeneratorComponent implements OnInit, OnDestroy {
       this.renderCache.set(cacheKey, result);
 
       // Trigger laser scan animation whenever the barcode output content changes
-      // Excludes purely layout/size changes (sizePreset, quietZone, frame)
-      const currentBarcodeContent = `${this.format()}:${this.formatOptions().variant || ''}:${val.cleanValue}:${JSON.stringify(this.formatOptions())}`;
+      const currentBarcodeContent = `${this.format()}:${this.formatOptions().variant || ''}:${cleanValue}:${JSON.stringify(this.formatOptions())}`;
       const isBarcodeOutputChanged = !this.lastRenderedBarcodeContent || this.lastRenderedBarcodeContent !== currentBarcodeContent;
 
       if (isBarcodeOutputChanged) {
@@ -1538,8 +1901,8 @@ export class BarcodeGeneratorComponent implements OnInit, OnDestroy {
 
       this.svgResult.set(result);
 
-      // Save initial render to history and establish tracking
-      if (!this.savedBarcodeState()) {
+      // Save initial render to history and establish tracking (DISABLED for temporary barcodes)
+      if (!isTemp && !this.savedBarcodeState()) {
         const saved = this.historyService.addItem({
           name: this.barcodeName() || 'Barcode 1',
           format: this.format(),
@@ -1562,8 +1925,7 @@ export class BarcodeGeneratorComponent implements OnInit, OnDestroy {
       }
 
       // Silent verification in background - never hides or blocks a rendered barcode
-      // Compares against the actual encodedValue from render result (e.g. 977 EAN-13 for ISSN, (01) GTIN for DataBar)
-      const verifyTarget = result.encodedValue || val.cleanValue;
+      const verifyTarget = result.encodedValue || cleanValue;
       this.verifier
         .verify(result.svg, verifyTarget, this.format(), this.formatOptions())
         .then((vRes: BarcodeVerificationResult) => {
@@ -1770,6 +2132,25 @@ export class BarcodeGeneratorComponent implements OnInit, OnDestroy {
 
   @HostListener('window:keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      if (this.activeAlertDialog()) {
+        this.closeAlertDialog();
+        return;
+      }
+      if (this.isHistoryModalOpen()) {
+        this.isHistoryModalOpen.set(false);
+        return;
+      }
+      if (this.isSettingsModalOpen()) {
+        this.isSettingsModalOpen.set(false);
+        return;
+      }
+    }
+    if (event.key === 'Enter' && this.activeAlertDialog()) {
+      event.preventDefault();
+      this.closeAlertDialog();
+      return;
+    }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
       event.preventDefault();
       if (this.validation().valid && this.svgResult()) {
@@ -1782,9 +2163,196 @@ export class BarcodeGeneratorComponent implements OnInit, OnDestroy {
     }
   }
 
+  getEffectiveCatalogItem(fmt: string): BarcodeCatalogItem {
+    if (fmt === 'qrcode') {
+      return {
+        id: 'qrcode',
+        slug: 'qr-code',
+        label: 'QR Code',
+        engineId: 'qrcode',
+        family: '2D Matrix',
+        category: '2D',
+        tier: 1,
+        enabled: true,
+        description: 'Quick Response 2D matrix',
+        inputMode: 'text',
+        charset: 'Alphanumeric, byte and Kanji',
+        charsetRegex: /^[\x00-\xFF]{1,2048}$/,
+        caseMode: 'preserve',
+        normalizeSeparators: false,
+        length: { min: 1, max: 2048 },
+        checksum: 'Reed-Solomon error correction',
+        checksumType: 'none',
+        exampleValue: 'https://acklet.com',
+        invalidExampleValue: '',
+        expectedEncoded: (v: string) => v,
+        expectedDecoded: (v: string) => v,
+        defaultOptions: {},
+        is2D: true,
+        supportsHumanReadable: false
+      } as BarcodeCatalogItem;
+    }
+    return this.formatRegistry.getFormat(fmt) || ({
+      id: fmt,
+      engineId: fmt === 'aztec' ? 'azteccode' : fmt,
+      label: fmt.toUpperCase(),
+      is2D: ['qrcode', 'datamatrix', 'aztec', 'pdf417'].includes(fmt)
+    } as any);
+  }
+
+  private computeTemporaryExpiryDate(): Date {
+    const now = Date.now();
+    if (this.tempExpiryMode() === 'preset') {
+      const p = TEMP_CODE_CONFIG.presets.find(item => item.id === this.tempPreset()) || TEMP_CODE_CONFIG.presets[3];
+      return new Date(now + p.seconds * 1000);
+    }
+    if (this.tempCustomStyle() === 'duration') {
+      const val = this.tempCustomDurationValue();
+      const unit = this.tempCustomDurationUnit();
+      let ms = val * 60 * 1000;
+      if (unit === 'hours') ms = val * 3600 * 1000;
+      if (unit === 'days') ms = val * 86400 * 1000;
+      return new Date(now + ms);
+    }
+    const dStr = this.tempCustomUntilDate();
+    if (!dStr) return new Date(now + 86400 * 1000);
+    const parsed = new Date(dStr);
+    return isNaN(parsed.getTime()) ? new Date(now + 86400 * 1000) : parsed;
+  }
+
+  private updateTemporaryCountdown(): void {
+    const rec = this.activeTemporaryRecord();
+    if (!rec || !rec.expiresAt) {
+      this.temporaryCountdown.set(null);
+      return;
+    }
+    const diffSec = Math.floor((new Date(rec.expiresAt).getTime() - Date.now()) / 1000);
+    if (diffSec <= 0) {
+      this.temporaryCountdown.set('Expired');
+      return;
+    }
+    if (diffSec < 60) {
+      this.temporaryCountdown.set(`Expires in ${diffSec}s`);
+      return;
+    }
+    const min = Math.floor(diffSec / 60);
+    if (min < 60) {
+      this.temporaryCountdown.set(`Expires in ${min} min`);
+      return;
+    }
+    const hrs = Math.floor(min / 60);
+    const remMin = min % 60;
+    if (hrs < 24) {
+      this.temporaryCountdown.set(remMin > 0 ? `Expires in ${hrs} h ${remMin} min` : `Expires in ${hrs} h`);
+      return;
+    }
+    const days = Math.floor(hrs / 24);
+    this.temporaryCountdown.set(`Expires in ${days} d`);
+  }
+
+  canCreateTemporary(): boolean {
+    const raw = this.value().trim();
+    if (!raw || !this.validation().valid) return false;
+    const expiry = this.computeTemporaryExpiryDate();
+    const diffSec = Math.floor((expiry.getTime() - Date.now()) / 1000);
+    return diffSec >= TEMP_CODE_CONFIG.limits.minSeconds && diffSec <= TEMP_CODE_CONFIG.limits.maxSeconds;
+  }
+
+  onCreateTemporaryFromPreview(): void {
+    if (this.isCreatingTemporary() || !this.canCreateTemporary()) return;
+    this.isCreatingTemporary.set(true);
+
+    const expiryDate = this.computeTemporaryExpiryDate();
+    const payload: CreateTempCodePayload = {
+      name: this.barcodeName() || 'Temporary 1',
+      payloadMode: 'LINK',
+      contentType: 'MESSAGE',
+      content: this.value().trim(),
+      reference: this.format(),
+      barcodeFormat: this.format(),
+      showExpiryOnLabel: this.tempShowExpiryOnLabel(),
+      expiresAt: expiryDate.toISOString()
+    };
+
+    this.tempCodeService.createCode(payload).subscribe({
+      next: (record) => {
+        this.isCreatingTemporary.set(false);
+        this.activeTemporaryRecord.set(record);
+        this.updateTemporaryCountdown();
+        this.renderBarcode();
+        if (this.responsive.isSm()) {
+          this.setTab('preview');
+        }
+      },
+      error: (err) => {
+        this.isCreatingTemporary.set(false);
+        const msg = err?.message || 'Temporary codes need a connection. Try again later.';
+        this.showAlertDialog('Unable to create temporary barcode', msg);
+      }
+    });
+  }
+
+  onCreateAnotherTemporary(): void {
+    this.activeTemporaryRecord.set(null);
+    this.temporaryCountdown.set(null);
+    this.barcodeName.set(this.historyService.getNextFreeBarcodeName());
+    this.renderBarcode();
+  }
+
+  onTemporarySettingsChange(): void {
+    if (!this.activeTemporaryRecord()) {
+      this.triggerDebouncedGeneration();
+    }
+  }
+
+  onNewTemporaryCode(): void {
+    this.isContentTemporary.set(true);
+    this.activeTemporaryRecord.set(null);
+    this.temporaryCountdown.set(null);
+    this.barcodeName.set(this.historyService.getNextFreeBarcodeName());
+    this.setTab('content');
+    this.renderBarcode();
+  }
+
+  onViewBatchInDashboard(batchId: string): void {
+    this.dashboardBatchFilter.set(batchId);
+    this.setTab('temporary');
+  }
+
+  onViewInDashboard(): void {
+    this.setTab('temporary');
+  }
+
+  onPrintBarcode(): void {
+    if (typeof window !== 'undefined') {
+      window.print();
+    }
+  }
+
   private readUrlParams(): void {
     if (typeof window === 'undefined') return;
+
+    const pathname = window.location.pathname;
+    const vMatch = pathname.match(/\/v\/([a-zA-Z0-9_-]+)/);
+    if (vMatch && vMatch[1]) {
+      this.verifyToken.set(vMatch[1]);
+      this.activeView.set('verify');
+      return;
+    }
+
     const params = new URLSearchParams(window.location.search);
+    const vParam = params.get('v');
+    if (vParam) {
+      this.verifyToken.set(vParam);
+      this.activeView.set('verify');
+      return;
+    }
+
+    if (params.get('view') === 'my-codes') {
+      this.setTab('temporary');
+      return;
+    }
+
     const fmt = params.get('format');
     const val = params.get('value');
     const name = params.get('name');

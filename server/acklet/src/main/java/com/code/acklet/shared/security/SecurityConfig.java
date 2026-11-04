@@ -40,7 +40,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(requestHandler)
-                .ignoringRequestMatchers("/api/v1/auth/**", "/api/v1/github/webhooks", "/.well-known/**", "/api/v1/publish/**", "/api/v1/clipboard/**", "/api/v1/qr/**", "/api/v1/qr-links/**", "/q/**", "/qr", "/qr/**", "/s/**", "/api/v1/short-links/**")
+                .ignoringRequestMatchers("/api/v1/auth/**", "/api/v1/github/webhooks", "/.well-known/**", "/api/v1/publish/**", "/api/v1/clipboard/**", "/api/v1/qr/**", "/api/v1/qr-links/**", "/q/**", "/qr", "/qr/**", "/s/**", "/api/v1/short-links/**", "/api/v1/temp-codes/**", "/v/**")
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
@@ -54,6 +54,8 @@ public class SecurityConfig {
                 .requestMatchers("/q/**", "/qr", "/qr/**").permitAll()
                 .requestMatchers("/api/v1/qr/**").permitAll()
                 .requestMatchers("/api/v1/qr-links/**").permitAll()
+                // Public temporary expiring barcodes & QR codes
+                .requestMatchers("/v/**", "/api/v1/temp-codes/**").permitAll()
                 // Public static assets & favicon
                 .requestMatchers("/assets/**", "/favicon.ico", "/error").permitAll()
                 // Public URL Shortener & redirection
@@ -77,7 +79,7 @@ public class SecurityConfig {
                 .contentTypeOptions(contentType -> {})
                 .referrerPolicy(referrer -> referrer.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
                 .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000))
-                .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:8080 https://accounts.google.com https://challenges.cloudflare.com"))
+                .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:8080 http://*.localhost:8080 https://accounts.google.com https://challenges.cloudflare.com"))
                 .permissionsPolicy(permissions -> permissions.policy("camera=(), microphone=(), geolocation=()"))
             )
             .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
@@ -91,7 +93,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "X-Correlation-ID", "X-XSRF-TOKEN", "X-Turnstile-Token", "X-Owner-Token", "X-Manage-Token"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "X-Correlation-ID", "X-XSRF-TOKEN", "X-Turnstile-Token", "X-Owner-Token", "X-Manage-Token", "Cache-Control", "Pragma"));
         configuration.setExposedHeaders(List.of("Authorization", "X-Correlation-ID", "X-XSRF-TOKEN", "Retry-After", "X-Owner-Token", "X-Manage-Token"));
         configuration.setAllowCredentials(true);
 

@@ -110,6 +110,7 @@ export interface BarcodeCatalogItem {
   options?: FormatOptionDeclaration[];
   engineId: string;
   supportsHumanReadable: boolean;
+  supportsTemporary?: boolean;
   is2D: boolean;
   standardRef: string;
   shortHelper?: string;
@@ -266,10 +267,17 @@ export interface BarcodeHistoryItem {
 export interface BulkItemResult {
   index: number;
   value: string;
+  cleanValue?: string;
   status: 'success' | 'error';
   errorMessage?: string;
   svg?: string;
   fileName: string;
+  verified?: boolean;
+  verifyError?: string;
+  token?: string;
+  checkUrl?: string;
+  expiresAt?: string;
+  name?: string;
 }
 
 export type BulkOutputType =
@@ -295,6 +303,10 @@ export interface BulkRecord {
   errorMessage?: string;
   isDuplicate?: boolean;
   svg?: string;
+  token?: string;
+  checkUrl?: string;
+  expiresAt?: string;
+  name?: string;
 }
 
 export interface BulkRunOptions {

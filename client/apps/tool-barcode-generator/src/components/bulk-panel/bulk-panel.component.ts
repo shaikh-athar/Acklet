@@ -14,6 +14,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { TsIconComponent, ResponsiveService } from '@acklet/tool-shell';
+import { firstValueFrom } from 'rxjs';
 import {
   BarcodeDesignOptions,
   FormatPerOptions,
@@ -33,6 +34,9 @@ import {
 import { BulkGeneratorService, BulkProgress } from '../../services/bulk-generator.service';
 import { BulkStateService } from '../../services/bulk-state.service';
 import { FormatRegistryService } from '../../services/format-registry.service';
+import { TempCodeService } from '../../services/temp-code.service';
+import { TEMP_CODE_CONFIG } from '../../config/temp-code.config';
+import { PayloadMode, TempContentType } from '../../models/temp-code.models';
 import { BarcodeFormatPickerComponent } from '../format-picker/format-picker.component';
 
 @Component({
@@ -130,10 +134,271 @@ import { BarcodeFormatPickerComponent } from '../format-picker/format-picker.com
           <app-format-picker
             [value]="state.formatId()"
             [variant]="state.formatOptions().variant || ''"
+            [onlyTemporary]="isTemporary()"
             (formatChange)="onFormatChange($event)"
             (variantChange)="onVariantChange($event)"
           />
         </div>
+
+        <!-- Format quiet note when auto-switched -->
+        @if (isTemporary() && formatSwitchNote()) {
+          <div class="quiet-format-note slide-fade-in" role="status">
+            <ts-icon name="info" [size]="14" />
+            <span>{{ formatSwitchNote() }}</span>
+          </div>
+        }
+
+        <!-- Switch after Format: Make these barcodes temporary -->
+        <div class="temporary-toggle-row">
+          <div class="toggle-text-col">
+            <label for="bulk-temp-toggle" class="toggle-title-label">Make these barcodes temporary</label>
+            <span class="toggle-helper-text">Stops working after the time you set. Stored on Acklet until it expires.</span>
+          </div>
+          <label class="ts-switch">
+            <input
+              id="bulk-temp-toggle"
+              type="checkbox"
+              [disabled]="isRunning()"
+              [checked]="isTemporary()"
+              (change)="onToggleTemporary($event)"
+            />
+            <span class="ts-switch-slider"></span>
+          </label>
+        </div>
+
+        <!-- Temporary settings for bulk when isTemporary() is true -->
+        @if (isTemporary()) {
+          <div class="bulk-temp-settings-block slide-fade-in">
+            <!-- 1. Show each value when checked -->
+            <div class="form-row">
+              <label class="form-label">
+                <span>Show each value when checked</span>
+              </label>
+              <div class="segmented-control" role="radiogroup" aria-label="Show each value when checked">
+                <button
+                  type="button"
+                  role="radio"
+                  class="segment-btn"
+                  [disabled]="isRunning()"
+                  [class.active]="tempContentType() === 'MESSAGE'"
+                  [attr.aria-checked]="tempContentType() === 'MESSAGE'"
+                  (click)="tempContentType.set('MESSAGE')"
+                >
+                  <ts-icon name="message-square" [size]="14" />
+                  <span>Value as message</span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  class="segment-btn"
+                  [disabled]="isRunning()"
+                  [class.active]="tempContentType() === 'REFERENCE_ONLY'"
+                  [attr.aria-checked]="tempContentType() === 'REFERENCE_ONLY'"
+                  (click)="tempContentType.set('REFERENCE_ONLY')"
+                >
+                  <ts-icon name="shield-check" [size]="14" />
+                  <span>Reference only</span>
+                </button>
+              </div>
+              <p class="field-hint-text">
+                {{ tempContentType() === 'MESSAGE' ? 'Each value is displayed as text on its check page while valid.' : 'The check page confirms validity without showing the value.' }}
+              </p>
+            </div>
+
+            <!-- Optional reference text when Reference Only is selected -->
+            @if (tempContentType() === 'REFERENCE_ONLY') {
+              <div class="form-row">
+                <label for="bulk-temp-ref" class="form-label">
+                  <span>Reference text</span>
+                  <span class="label-hint">Optional</span>
+                </label>
+                <input
+                  id="bulk-temp-ref"
+                  type="text"
+                  class="ts-input-field"
+                  placeholder="Bulk upload"
+                  maxlength="64"
+                  [disabled]="isRunning()"
+                  [ngModel]="tempReference()"
+                  (ngModelChange)="tempReference.set($event)"
+                />
+              </div>
+            }
+
+            <!-- 2. Encode as -->
+            <div class="form-row">
+              <label class="form-label">
+                <span>Encode as</span>
+                <span class="label-hint">What the barcodes encode</span>
+              </label>
+              <div class="segmented-control" role="radiogroup" aria-label="Encode as">
+                <button
+                  type="button"
+                  role="radio"
+                  class="segment-btn"
+                  [disabled]="isRunning()"
+                  [class.active]="tempPayloadMode() === 'LINK'"
+                  [attr.aria-checked]="tempPayloadMode() === 'LINK'"
+                  (click)="setTempPayloadMode('LINK')"
+                >
+                  <ts-icon name="link" [size]="14" />
+                  <span>Link (verification URL)</span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  class="segment-btn"
+                  [disabled]="isRunning()"
+                  [class.active]="tempPayloadMode() === 'CODE'"
+                  [attr.aria-checked]="tempPayloadMode() === 'CODE'"
+                  (click)="setTempPayloadMode('CODE')"
+                >
+                  <ts-icon name="hash" [size]="14" />
+                  <span>Code (token only)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 3. Expires after -->
+            <div class="form-row">
+              <div class="form-label-row">
+                <label class="form-label">
+                  <span>Expires after</span>
+                </label>
+                <div class="expiry-mode-toggle" role="radiogroup" aria-label="Expiry style">
+                  <button
+                    type="button"
+                    class="mini-seg-btn"
+                    [disabled]="isRunning()"
+                    [class.active]="tempExpiryMode() === 'preset'"
+                    (click)="tempExpiryMode.set('preset')"
+                  >
+                    Presets
+                  </button>
+                  <button
+                    type="button"
+                    class="mini-seg-btn"
+                    [disabled]="isRunning()"
+                    [class.active]="tempExpiryMode() === 'custom'"
+                    (click)="tempExpiryMode.set('custom')"
+                  >
+                    Custom
+                  </button>
+                </div>
+              </div>
+
+              @if (tempExpiryMode() === 'preset') {
+                <div class="presets-grid" role="radiogroup" aria-label="Expires after presets">
+                  @for (preset of presets; track preset.id) {
+                    <button
+                      type="button"
+                      role="radio"
+                      class="preset-card-btn"
+                      [disabled]="isRunning()"
+                      [class.selected]="tempPreset() === preset.id"
+                      [attr.aria-checked]="tempPreset() === preset.id"
+                      (click)="selectPreset(preset.id)"
+                    >
+                      <span class="preset-label">{{ preset.label }}</span>
+                    </button>
+                  }
+                </div>
+              } @else {
+                <div class="custom-expiry-wrap">
+                  <div class="segmented-control" role="radiogroup" aria-label="Custom expiry style">
+                    <button
+                      type="button"
+                      role="radio"
+                      class="segment-btn"
+                      [disabled]="isRunning()"
+                      [class.active]="customSubMode() === 'duration'"
+                      [attr.aria-checked]="customSubMode() === 'duration'"
+                      (click)="customSubMode.set('duration')"
+                    >
+                      <span>Duration</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      class="segment-btn"
+                      [disabled]="isRunning()"
+                      [class.active]="customSubMode() === 'until'"
+                      [attr.aria-checked]="customSubMode() === 'until'"
+                      (click)="customSubMode.set('until')"
+                    >
+                      <span>Until</span>
+                    </button>
+                  </div>
+
+                  @if (customSubMode() === 'duration') {
+                    <div class="duration-inputs-row">
+                      <input
+                        type="number"
+                        class="ts-input-field number-input"
+                        [disabled]="isRunning()"
+                        [ngModel]="customDurationValue()"
+                        (ngModelChange)="onCustomDurationValueChange($event)"
+                        min="1"
+                        max="525600"
+                      />
+                      <select
+                        class="ts-select unit-select"
+                        [disabled]="isRunning()"
+                        [ngModel]="customDurationUnit()"
+                        (ngModelChange)="onCustomDurationUnitChange($event)"
+                      >
+                        <option value="minutes">Minutes</option>
+                        <option value="hours">Hours</option>
+                        <option value="days">Days</option>
+                      </select>
+                    </div>
+                  } @else {
+                    <div class="until-inputs-row">
+                      <input
+                        type="datetime-local"
+                        class="ts-input-field datetime-input"
+                        [disabled]="isRunning()"
+                        [ngModel]="customUntilDateTime()"
+                        (ngModelChange)="onCustomUntilChange($event)"
+                      />
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Formatted Expiry Output Text -->
+              <div class="expiry-result-strip" role="status">
+                <ts-icon name="clock" [size]="13" />
+                <span class="expiry-result-text">{{ formattedExpiryString() }} ({{ formattedRelativeString() }})</span>
+              </div>
+            </div>
+
+            <!-- Density Warning Banner when payload doesn't fit layout -->
+            @if (densityWarning()) {
+              <div class="density-warning-banner slide-fade-in" role="alert">
+                <ts-icon name="circle-alert" [size]="15" class="warning-icon" />
+                <div class="warning-text-col">
+                  <span class="warning-title">Barcode density warning</span>
+                  <span class="warning-desc">Switch to QR Code or choose a larger label preset.</span>
+                </div>
+                <button
+                  type="button"
+                  class="density-fix-btn"
+                  [disabled]="isRunning()"
+                  (click)="onFormatChange('qrcode')"
+                >
+                  Switch to QR Code
+                </button>
+              </div>
+            }
+
+            <!-- Notice: Stored on Acklet -->
+            <div class="plain-notice-box" role="note">
+              <ts-icon name="info" [size]="14" class="notice-icon" />
+              <span>These codes are stored on Acklet until they expire and are then deleted.</span>
+            </div>
+          </div>
+        }
 
         <!-- Customize link -->
         <div class="customize-link-row">
@@ -862,6 +1127,24 @@ import { BarcodeFormatPickerComponent } from '../format-picker/format-picker.com
           }
         </button>
       </div>
+
+      <!-- Batch Completed Summary with View Batch in Dashboard CTA -->
+      @if (generatedBatchSummary(); as bSummary) {
+        <div class="batch-completed-summary slide-fade-in" role="status">
+          <div class="summary-info-row">
+            <ts-icon name="check" [size]="16" class="summary-check-icon" />
+            <span class="summary-text">{{ bSummary.count }} temporary barcodes generated. Batch expires {{ bSummary.expiryFormatted }}.</span>
+          </div>
+          <button
+            type="button"
+            class="view-batch-dashboard-btn"
+            (click)="onViewBatchInDashboard()"
+          >
+            <ts-icon name="layout-dashboard" [size]="14" />
+            <span>View batch in dashboard</span>
+          </button>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -2330,6 +2613,424 @@ import { BarcodeFormatPickerComponent } from '../format-picker/format-picker.com
         padding: 12px;
       }
     }
+
+    /* Temporary Code in Bulk Styles */
+    .temporary-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      margin-top: 10px;
+      background: var(--bg-surface, #1e1e24);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      border-radius: 10px;
+    }
+    :host-context([data-theme="light"]) .temporary-toggle-row {
+      background: #FFFFFF;
+      border-color: rgba(0, 0, 0, 0.08);
+    }
+    .toggle-title-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text, #fcfcfc);
+      cursor: pointer;
+    }
+    :host-context([data-theme="light"]) .toggle-title-label {
+      color: #0F172A;
+    }
+    .toggle-helper-text {
+      display: block;
+      font-size: 11.5px;
+      color: var(--text-muted, #94a3b8);
+      margin-top: 2px;
+    }
+    :host-context([data-theme="light"]) .toggle-helper-text {
+      color: #64748B;
+    }
+
+    .ts-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .ts-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .ts-switch-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--bg-base, #121216);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+      transition: 0.2s ease;
+      border-radius: 24px;
+    }
+    :host-context([data-theme="light"]) .ts-switch-slider {
+      background-color: #E2E8F0;
+      border-color: rgba(0, 0, 0, 0.15);
+    }
+    .ts-switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      bottom: 2px;
+      background-color: #FFFFFF;
+      transition: 0.2s ease;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .ts-switch input:checked + .ts-switch-slider {
+      background-color: var(--tool-accent, #3B82F6);
+      border-color: var(--tool-accent, #3B82F6);
+    }
+    :host-context([data-theme="light"]) .ts-switch input:checked + .ts-switch-slider {
+      background-color: #2563EB;
+      border-color: #2563EB;
+    }
+    .ts-switch input:checked + .ts-switch-slider:before {
+      transform: translateX(20px);
+    }
+
+    .quiet-format-note {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      margin-top: 8px;
+      background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-muted, #94a3b8);
+    }
+    :host-context([data-theme="light"]) .quiet-format-note {
+      background: #F8FAFC;
+      border-color: rgba(0, 0, 0, 0.08);
+      color: #475569;
+    }
+
+    .bulk-temp-settings-block {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 14px;
+      margin-top: 10px;
+      border-radius: 10px;
+      background: var(--bg-elevated, rgba(255, 255, 255, 0.02));
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+    }
+    :host-context([data-theme="light"]) .bulk-temp-settings-block {
+      background: #F8FAFC;
+      border-color: rgba(0, 0, 0, 0.06);
+    }
+
+    .segmented-control {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      background: var(--bg-base, #121216);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      border-radius: 8px;
+      padding: 3px;
+      gap: 4px;
+    }
+    :host-context([data-theme="light"]) .segmented-control {
+      background: #F1F5F9;
+      border-color: rgba(0, 0, 0, 0.1);
+    }
+    .segment-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 12px;
+      min-height: 38px;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      color: var(--text-muted, #94a3b8);
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    :host-context([data-theme="light"]) .segment-btn {
+      color: #475569;
+    }
+    .segment-btn:hover:not(.active) {
+      color: var(--text, #fcfcfc) !important;
+      background: rgba(255, 255, 255, 0.08) !important;
+    }
+    :host-context([data-theme="light"]) .segment-btn:hover:not(.active) {
+      color: #0F172A !important;
+      background: rgba(0, 0, 0, 0.06) !important;
+    }
+    .segment-btn.active,
+    .segment-btn.active:hover {
+      background: var(--tool-accent, #3B82F6) !important;
+      color: #FFFFFF !important;
+      font-weight: 600;
+    }
+    :host-context([data-theme="light"]) .segment-btn.active,
+    :host-context([data-theme="light"]) .segment-btn.active:hover {
+      background: #2563EB !important;
+      color: #FFFFFF !important;
+    }
+
+    .expiry-mode-toggle {
+      display: inline-flex;
+      background: var(--bg-base, #121216);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }
+    :host-context([data-theme="light"]) .expiry-mode-toggle {
+      background: #F1F5F9;
+      border-color: rgba(0, 0, 0, 0.1);
+    }
+    .mini-seg-btn {
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 500;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--text-muted, #94a3b8);
+      cursor: pointer;
+    }
+    :host-context([data-theme="light"]) .mini-seg-btn {
+      color: #475569;
+    }
+    .mini-seg-btn:hover:not(.active) {
+      color: var(--text, #fcfcfc) !important;
+    }
+    :host-context([data-theme="light"]) .mini-seg-btn:hover:not(.active) {
+      color: #0F172A !important;
+    }
+    .mini-seg-btn.active,
+    .mini-seg-btn.active:hover {
+      background: var(--tool-accent, #3B82F6) !important;
+      color: #FFFFFF !important;
+      font-weight: 600;
+    }
+    :host-context([data-theme="light"]) .mini-seg-btn.active,
+    :host-context([data-theme="light"]) .mini-seg-btn.active:hover {
+      background: #2563EB !important;
+      color: #FFFFFF !important;
+    }
+
+    .presets-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    @media (max-width: 500px) {
+      .presets-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    .preset-card-btn {
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: var(--bg-surface, #1e1e24);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+      color: var(--text, #fcfcfc);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+    :host-context([data-theme="light"]) .preset-card-btn {
+      background: #FFFFFF;
+      border-color: rgba(0, 0, 0, 0.1);
+      color: #0F172A;
+    }
+    .preset-card-btn:hover:not(.selected) {
+      border-color: var(--tool-accent, #3B82F6) !important;
+      background: rgba(59, 130, 246, 0.1) !important;
+      color: #60A5FA !important;
+    }
+    :host-context([data-theme="light"]) .preset-card-btn:hover:not(.selected) {
+      background: #EFF6FF !important;
+      border-color: #2563EB !important;
+      color: #1D4ED8 !important;
+    }
+    .preset-card-btn.selected,
+    .preset-card-btn.selected:hover {
+      border-color: var(--tool-accent, #3B82F6) !important;
+      background: var(--tool-accent, #3B82F6) !important;
+      color: #FFFFFF !important;
+      font-weight: 600;
+    }
+    :host-context([data-theme="light"]) .preset-card-btn.selected,
+    :host-context([data-theme="light"]) .preset-card-btn.selected:hover {
+      border-color: #2563EB !important;
+      background: #2563EB !important;
+      color: #FFFFFF !important;
+      font-weight: 600;
+    }
+    .preset-label {
+      color: inherit;
+    }
+
+    .custom-expiry-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .duration-inputs-row,
+    .until-inputs-row {
+      display: flex;
+      gap: 8px;
+    }
+    .duration-inputs-row .number-input {
+      flex: 1;
+    }
+    .duration-inputs-row .unit-select {
+      flex: 1;
+    }
+
+    .expiry-result-strip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      background: var(--bg-surface, #1e1e24);
+      color: var(--tool-accent, #3B82F6);
+      font-size: 11.5px;
+      font-weight: 500;
+    }
+    :host-context([data-theme="light"]) .expiry-result-strip {
+      background: #F1F5F9;
+      color: #2563EB;
+    }
+
+    .density-warning-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #F59E0B;
+    }
+    .warning-icon {
+      flex-shrink: 0;
+    }
+    .warning-text-col {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+    }
+    .warning-title {
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+    .warning-desc {
+      font-size: 11px;
+      opacity: 0.9;
+      line-height: 1.3;
+    }
+    .density-fix-btn {
+      padding: 5px 10px;
+      border-radius: 6px;
+      background: #F59E0B;
+      color: #000000;
+      border: none;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .plain-notice-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: var(--bg-surface, #1e1e24);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      font-size: 11.5px;
+      color: var(--text-muted, #94a3b8);
+    }
+    :host-context([data-theme="light"]) .plain-notice-box {
+      background: #FFFFFF;
+      border-color: rgba(0, 0, 0, 0.08);
+      color: #64748B;
+    }
+
+    .batch-completed-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+    :host-context([data-theme="light"]) .batch-completed-summary {
+      background: #ECFDF5;
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+    .summary-info-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: #10B981;
+      font-weight: 500;
+    }
+    :host-context([data-theme="light"]) .summary-info-row {
+      color: #047857;
+    }
+    .summary-check-icon {
+      color: #10B981;
+      flex-shrink: 0;
+    }
+    :host-context([data-theme="light"]) .summary-check-icon {
+      color: #047857;
+    }
+    .view-batch-dashboard-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: var(--bg-surface, #1e1e24);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+      color: var(--text, #fcfcfc);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    :host-context([data-theme="light"]) .view-batch-dashboard-btn {
+      background: #FFFFFF;
+      border-color: rgba(0, 0, 0, 0.15);
+      color: #0F172A;
+    }
+    .view-batch-dashboard-btn:hover {
+      background: var(--bg-elevated, rgba(255, 255, 255, 0.08));
+    }
+    :host-context([data-theme="light"]) .view-batch-dashboard-btn:hover {
+      background: #F1F5F9;
+    }
   `]
 })
 export class BarcodeBulkPanelComponent implements OnInit {
@@ -2338,6 +3039,7 @@ export class BarcodeBulkPanelComponent implements OnInit {
   readonly formatRegistry = inject(FormatRegistryService);
   readonly state = inject(BulkStateService);
   readonly sanitizer = inject(DomSanitizer);
+  readonly tempCodeService = inject(TempCodeService);
 
   readonly format = input<BarcodeFormat>('code128');
   readonly formatOptions = input<FormatPerOptions>({});
@@ -2346,6 +3048,7 @@ export class BarcodeBulkPanelComponent implements OnInit {
 
   readonly formatChangeRequest = output<BarcodeFormat>();
   readonly switchToCustomize = output<void>();
+  readonly viewBatchInDashboard = output<string>();
 
   readonly maxItems = BARCODE_SYSTEM_LIMITS.maxListItems;
   readonly rollPresets = LABEL_ROLL_PRESETS;
@@ -2355,6 +3058,93 @@ export class BarcodeBulkPanelComponent implements OnInit {
   readonly listRawText = signal<string>('');
   readonly listSeparator = signal<'newline' | 'comma' | 'semicolon' | 'tab'>('newline');
   readonly listHasHeader = signal<boolean>(false);
+
+  // Temporary Codes in Bulk
+  readonly isTemporary = signal<boolean>(false);
+  readonly previousFormat = signal<string>('code128');
+  readonly formatSwitchNote = signal<string | null>(null);
+  readonly tempContentType = signal<TempContentType>('MESSAGE');
+  readonly tempReference = signal<string>('Bulk upload');
+  readonly tempPayloadMode = signal<PayloadMode>('LINK');
+  readonly tempExpiryMode = signal<'preset' | 'custom'>('preset');
+  readonly tempPreset = signal<string>('24h');
+  readonly customSubMode = signal<'duration' | 'until'>('duration');
+  readonly customDurationValue = signal<number>(24);
+  readonly customDurationUnit = signal<'minutes' | 'hours' | 'days'>('hours');
+  readonly customUntilDateTime = signal<string>('');
+  readonly presets = TEMP_CODE_CONFIG.presets;
+  private bulkBatchRunId = `bulk-batch-${Date.now()}`;
+  readonly generatedBatchSummary = signal<{ batchId: string; count: number; expiryFormatted: string } | null>(null);
+
+  readonly computedExpiryDate = computed<Date>(() => {
+    const now = Date.now();
+    if (this.tempExpiryMode() === 'preset') {
+      const p = this.presets.find(item => item.id === this.tempPreset()) || this.presets[3];
+      return new Date(now + p.seconds * 1000);
+    }
+
+    if (this.customSubMode() === 'duration') {
+      const val = this.customDurationValue();
+      const unit = this.customDurationUnit();
+      let ms = val * 60 * 1000;
+      if (unit === 'hours') ms = val * 3600 * 1000;
+      if (unit === 'days') ms = val * 86400 * 1000;
+      return new Date(now + ms);
+    }
+
+    const dStr = this.customUntilDateTime();
+    if (!dStr) return new Date(now + 86400 * 1000);
+    const parsed = new Date(dStr);
+    return isNaN(parsed.getTime()) ? new Date(now + 86400 * 1000) : parsed;
+  });
+
+  readonly formattedExpiryString = computed<string>(() => {
+    const d = this.computedExpiryDate();
+    try {
+      const formatter = new Intl.DateTimeFormat(undefined, {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZoneName: 'long'
+      });
+      return `Expires ${formatter.format(d)}`;
+    } catch {
+      return `Expires ${d.toLocaleString()}`;
+    }
+  });
+
+  readonly formattedRelativeString = computed<string>(() => {
+    const target = this.computedExpiryDate().getTime();
+    const diffMs = target - Date.now();
+    if (diffMs <= 0) return 'Expired';
+    const diffMin = Math.round(diffMs / 60000);
+    if (diffMin < 60) return `in ${diffMin} min`;
+    const diffHrs = Math.floor(diffMin / 60);
+    const remMin = diffMin % 60;
+    if (diffHrs < 24) {
+      return remMin > 0 ? `in ${diffHrs} h ${remMin} min` : `in ${diffHrs} hours`;
+    }
+    const diffDays = Math.round(diffHrs / 24);
+    return `in ${diffDays} day${diffDays === 1 ? '' : 's'}`;
+  });
+
+  readonly densityWarning = computed<boolean>(() => {
+    if (!this.isTemporary()) return false;
+    const fmt = this.state.formatId();
+    if (fmt === 'qrcode' || fmt === 'datamatrix' || fmt === 'aztec' || fmt === 'pdf417') {
+      return false;
+    }
+    if (this.tempPayloadMode() === 'LINK') {
+      const preset = this.state.currentPreset();
+      if (preset && preset.labelWidthMm < 90) {
+        return true;
+      }
+    }
+    return false;
+  });
 
   // Mode 2: CSV
   readonly csvFileName = this.state.csvFileName;
@@ -2681,7 +3471,7 @@ export class BarcodeBulkPanelComponent implements OnInit {
 
   processFile(file: File): void {
     if (file.size > 2 * 1024 * 1024) {
-      alert('File size exceeds 2 MB limit.');
+      this.state.showBulkAlert('File too large', 'File size exceeds the 2 MB limit.');
       return;
     }
 
@@ -2760,6 +3550,115 @@ export class BarcodeBulkPanelComponent implements OnInit {
     this.progress.set(null);
   }
 
+  onToggleTemporary(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.isTemporary.set(checked);
+    this.bulkBatchRunId = `bulk-batch-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    this.generatedBatchSummary.set(null);
+
+    if (checked) {
+      this.previousFormat.set(this.state.formatId());
+      const supported = this.formatRegistry.getTemporaryFormats();
+      const current = this.state.formatId();
+      if (!supported.some(f => f.id === current)) {
+        const target = this.tempPayloadMode() === 'LINK' ? 'qrcode' : 'code128';
+        this.onFormatChange(target as BarcodeFormat);
+        this.formatSwitchNote.set('Switched to QR Code. Links need a 2D code or a long barcode.');
+      }
+    } else {
+      this.formatSwitchNote.set(null);
+      const prev = this.previousFormat();
+      if (prev && prev !== this.state.formatId()) {
+        this.onFormatChange(prev as BarcodeFormat);
+      }
+    }
+  }
+
+  selectPreset(id: string): void {
+    this.tempPreset.set(id);
+  }
+
+  setTempPayloadMode(mode: PayloadMode): void {
+    this.tempPayloadMode.set(mode);
+    if (this.isTemporary()) {
+      const current = this.state.formatId();
+      if (mode === 'LINK' && current === 'code128') {
+        this.onFormatChange('qrcode');
+        this.formatSwitchNote.set('Switched to QR Code. Links need a 2D code or a long barcode.');
+      } else if (mode === 'CODE' && current === 'qrcode') {
+        this.onFormatChange('code128');
+        this.formatSwitchNote.set(null);
+      }
+    }
+  }
+
+  onCustomDurationValueChange(val: any): void {
+    this.customDurationValue.set(Math.max(1, parseInt(val, 10) || 1));
+  }
+
+  onCustomDurationUnitChange(unit: 'minutes' | 'hours' | 'days'): void {
+    this.customDurationUnit.set(unit);
+  }
+
+  onCustomUntilChange(val: string): void {
+    this.customUntilDateTime.set(val);
+  }
+
+  onViewBatchInDashboard(): void {
+    const summary = this.generatedBatchSummary();
+    if (summary) {
+      this.viewBatchInDashboard.emit(summary.batchId);
+    }
+  }
+
+  async prepareTemporaryRecordsIfActive(records: BulkRecord[]): Promise<BulkRecord[]> {
+    if (!this.isTemporary() || records.length === 0) {
+      return records;
+    }
+
+    const items = records.map((r, i) => ({
+      name: r.labelText || `Barcode ${i + 1}`,
+      content: this.tempContentType() === 'MESSAGE' ? r.value : undefined,
+      reference: this.tempContentType() === 'REFERENCE_ONLY' ? (this.tempReference() || 'Bulk upload') : undefined
+    }));
+
+    const durationSeconds = Math.max(60, Math.floor((this.computedExpiryDate().getTime() - Date.now()) / 1000));
+    const expiresAt = this.computedExpiryDate().toISOString();
+
+    const batchRes = await firstValueFrom(
+      this.tempCodeService.createBatch({
+        items,
+        idempotencyKey: this.bulkBatchRunId,
+        payloadMode: this.tempPayloadMode(),
+        contentType: this.tempContentType(),
+        barcodeFormat: this.state.formatId(),
+        durationSeconds,
+        expiresAt,
+        showExpiryOnLabel: false
+      })
+    );
+
+    this.generatedBatchSummary.set({
+      batchId: batchRes.batchId,
+      count: batchRes.totalCount,
+      expiryFormatted: this.formattedExpiryString().replace('Expires ', '')
+    });
+
+    return records.map((r, i) => {
+      const bItem = batchRes.items[i];
+      if (!bItem) return r;
+      return {
+        ...r,
+        cleanValue: bItem.payload,
+        displayValue: bItem.payload,
+        token: bItem.token,
+        checkUrl: bItem.verifyUrl,
+        expiresAt: bItem.expiresAt,
+        name: bItem.name
+      };
+    });
+  }
+
   async onGenerateBulk(): Promise<void> {
     if (this.isGenerateDisabled() || this.isRunning()) return;
 
@@ -2767,12 +3666,17 @@ export class BarcodeBulkPanelComponent implements OnInit {
     this.state.isRunning.set(true);
 
     try {
+      let activeRecords = this.state.reviewedRecords();
+      if (this.isTemporary()) {
+        activeRecords = await this.prepareTemporaryRecordsIfActive(activeRecords);
+      }
+
       const runResult = (await this.bulkService.runBulk(
         {
           formatId: this.state.formatId(),
           formatOptions: this.state.formatOptions(),
           designOptions: this.designOptions(),
-          records: this.state.reviewedRecords(),
+          records: activeRecords,
           outputType: this.state.outputType(),
           labelPreset: this.state.currentPreset(),
           rollPreset: this.state.currentRollPreset(),
@@ -2830,6 +3734,10 @@ export class BarcodeBulkPanelComponent implements OnInit {
 
     this.state.isRunning.set(true);
     try {
+      if (this.isTemporary()) {
+        recordsToExport = await this.prepareTemporaryRecordsIfActive(recordsToExport);
+      }
+
       await this.bulkService.runBulk(
         {
           formatId: this.state.formatId(),

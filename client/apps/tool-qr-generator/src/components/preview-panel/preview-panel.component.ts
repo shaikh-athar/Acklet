@@ -18,6 +18,7 @@ import {
   QRHistoryItem,
   QRVerificationResult
 } from '../../models/qr-generator.models';
+import { TempQrRecord } from '../../models/temp-qr.models';
 import { QRVerifierService } from '../../services/qr-verifier.service';
 import { QRGeneratorService } from '../../services/qr-generator.service';
 import { QrAssembleEffectComponent } from '../qr-assemble-effect/qr-assemble-effect.component';
@@ -46,7 +47,25 @@ import { AdvancedModalComponent } from '../advanced-modal/advanced-modal.compone
                 <span class="preview-subtitle">Live Preview</span>
               }
             </div>
-            @if (qrDataUrl() && !isGenerating() && !isCreatingHostedLink()) {
+            @if (isTemporary()) {
+              <div class="header-status-badges fade-in-badges">
+                @if (temporaryRecord()) {
+                  <span class="preview-status-pill">
+                    <span class="live-dot"></span> Active
+                  </span>
+                  @if (temporaryCountdown()) {
+                    <span class="countdown-chip">
+                      <ts-icon name="clock" [size]="12" />
+                      <span>{{ temporaryCountdown() }}</span>
+                    </span>
+                  }
+                } @else if (qrDataUrl() && !isGenerating()) {
+                  <span class="preview-status-pill">
+                    <span class="live-dot"></span> Ready
+                  </span>
+                }
+              </div>
+            } @else if (qrDataUrl() && !isGenerating() && !isCreatingHostedLink()) {
               <div class="header-status-badges fade-in-badges">
                 @if (isSmartLink()) {
                   <span
@@ -66,20 +85,22 @@ import { AdvancedModalComponent } from '../advanced-modal/advanced-modal.compone
 
           <!-- Top-right icon buttons cluster -->
           <div class="preview-header-actions">
-            <!-- History button with count badge -->
-            <button
-              type="button"
-              class="header-icon-btn"
-              [class.active]="isHistoryOpen()"
-              (click)="isHistoryOpen.set(!isHistoryOpen())"
-              title="Recent QR codes"
-              aria-label="Recent QR codes"
-            >
-              <ts-icon name="history" [size]="18" />
-              @if (historyItems().length > 0) {
-                <span class="btn-badge">{{ historyItems().length }}</span>
-              }
-            </button>
+            <!-- History button with count badge (hidden in temporary mode) -->
+            @if (!isTemporary()) {
+              <button
+                type="button"
+                class="header-icon-btn"
+                [class.active]="isHistoryOpen()"
+                (click)="isHistoryOpen.set(!isHistoryOpen())"
+                title="Recent QR codes"
+                aria-label="Recent QR codes"
+              >
+                <ts-icon name="history" [size]="18" />
+                @if (historyItems().length > 0) {
+                  <span class="btn-badge">{{ historyItems().length }}</span>
+                }
+              </button>
+            }
 
 
             <!-- Advanced Settings button (settings icon) -->
@@ -326,96 +347,125 @@ import { AdvancedModalComponent } from '../advanced-modal/advanced-modal.compone
 
         <!-- Bottom Action Bar (Always Visible) -->
         <div class="preview-action-bar">
-          <div class="action-buttons-cluster">
-            <!-- Split Download Button -->
-            <div class="split-btn-group">
+          @if (isTemporary() && !temporaryRecord()) {
+            <div class="temporary-create-cluster">
               <button
                 type="button"
-                class="split-primary-btn"
-                [disabled]="!qrDataUrl() || isGenerating()"
-                (click)="onDownload('png')"
-                [title]="!qrDataUrl() ? 'Enter content to download' : 'Download high-resolution PNG'"
-                aria-label="Download high-resolution PNG"
+                class="primary-create-temp-btn"
+                [disabled]="!canCreateTemporary() || isCreatingTemporary()"
+                (click)="createTemporary.emit()"
+                aria-label="Create temporary QR code"
               >
-                <ts-icon name="download" class="btn-icon" />
-                <span>Download PNG</span>
+                <ts-icon [name]="isCreatingTemporary() ? 'loader' : 'clock'" [class.spin-animation]="isCreatingTemporary()" class="btn-icon" />
+                <span>{{ isCreatingTemporary() ? 'Creating...' : 'Create temporary QR code' }}</span>
               </button>
+            </div>
+          } @else {
+            <div class="action-buttons-cluster">
+              <!-- Split Download Button -->
+              <div class="split-btn-group">
+                <button
+                  type="button"
+                  class="split-primary-btn"
+                  [disabled]="!qrDataUrl() || isGenerating()"
+                  (click)="onDownload('png')"
+                  [title]="!qrDataUrl() ? 'Enter content to download' : 'Download high-resolution PNG'"
+                  aria-label="Download high-resolution PNG"
+                >
+                  <ts-icon name="download" class="btn-icon" />
+                  <span>Download PNG</span>
+                </button>
+                <button
+                  type="button"
+                  class="split-arrow-btn"
+                  (click)="toggleFormatMenu($event)"
+                  [attr.aria-expanded]="isFormatMenuOpen()"
+                  title="Export in other formats (SVG, JPEG, Copy)"
+                  aria-label="Export in other formats"
+                >
+                  <ts-icon name="chevron-down" class="btn-chevron" />
+                </button>
+
+                <!-- Split Dropdown Menu -->
+                @if (isFormatMenuOpen()) {
+                  <div class="split-menu slide-fade-up" role="menu" (click)="$event.stopPropagation()">
+                    <button type="button" role="menuitem" class="split-menu-item" (click)="onDownload('svg'); isFormatMenuOpen.set(false)">
+                      <ts-icon name="file-code" />
+                      <div class="menu-item-info">
+                        <span class="menu-item-name">SVG Vector</span>
+                        <span class="menu-item-desc">Infinite scaling, perfect for print</span>
+                      </div>
+                    </button>
+                    <button type="button" role="menuitem" class="split-menu-item" (click)="onDownload('jpeg'); isFormatMenuOpen.set(false)">
+                      <ts-icon name="image" />
+                      <div class="menu-item-info">
+                        <span class="menu-item-name">JPEG Image</span>
+                        <span class="menu-item-desc">Standard compressed raster</span>
+                      </div>
+                    </button>
+                    <button type="button" role="menuitem" class="split-menu-item" (click)="copyImageToClipboard(); isFormatMenuOpen.set(false)">
+                      <ts-icon [name]="copiedImage() ? 'check' : 'clipboard'" />
+                      <div class="menu-item-info">
+                        <span class="menu-item-name">{{ copiedImage() ? 'Copied to Clipboard!' : 'Copy Image' }}</span>
+                        <span class="menu-item-desc">Direct paste into Figma, docs, chats</span>
+                      </div>
+                    </button>
+                    @if (!isTemporary()) {
+                      <button type="button" role="menuitem" class="split-menu-item" (click)="onShare(); isFormatMenuOpen.set(false)">
+                        <ts-icon name="share-2" />
+                        <div class="menu-item-info">
+                          <span class="menu-item-name">Share QR Code</span>
+                          <span class="menu-item-desc">Share via system apps or copy</span>
+                        </div>
+                      </button>
+                    }
+                    <div class="print-recommendation-note">
+                      <ts-icon name="info" class="print-icon" />
+                      <span>Recommended print size: &ge; 3.5 &times; 3.5 cm (1.4 &times; 1.4 in) for guaranteed camera readability.</span>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Quick SVG Vector Export -->
               <button
                 type="button"
-                class="split-arrow-btn"
-                (click)="toggleFormatMenu($event)"
-                [attr.aria-expanded]="isFormatMenuOpen()"
-                title="Export in other formats (SVG, JPEG, Copy)"
-                aria-label="Export in other formats"
+                class="quick-svg-btn"
+                [disabled]="!qrDataUrl() || isGenerating()"
+                (click)="onDownload('svg')"
+                [title]="!qrDataUrl() ? 'Enter content to download' : 'Download vector SVG'"
+                aria-label="Download vector SVG"
               >
-                <ts-icon name="chevron-down" class="btn-chevron" />
+                <ts-icon name="file-code" class="btn-icon" />
+                <span>SVG</span>
               </button>
 
-              <!-- Split Dropdown Menu -->
-              @if (isFormatMenuOpen()) {
-                <div class="split-menu slide-fade-up" role="menu" (click)="$event.stopPropagation()">
-                  <button type="button" role="menuitem" class="split-menu-item" (click)="onDownload('svg'); isFormatMenuOpen.set(false)">
-                    <ts-icon name="file-code" />
-                    <div class="menu-item-info">
-                      <span class="menu-item-name">SVG Vector</span>
-                      <span class="menu-item-desc">Infinite scaling, perfect for print</span>
-                    </div>
-                  </button>
-                  <button type="button" role="menuitem" class="split-menu-item" (click)="onDownload('jpeg'); isFormatMenuOpen.set(false)">
-                    <ts-icon name="image" />
-                    <div class="menu-item-info">
-                      <span class="menu-item-name">JPEG Image</span>
-                      <span class="menu-item-desc">Standard compressed raster</span>
-                    </div>
-                  </button>
-                  <button type="button" role="menuitem" class="split-menu-item" (click)="copyImageToClipboard(); isFormatMenuOpen.set(false)">
-                    <ts-icon [name]="copiedImage() ? 'check' : 'clipboard'" />
-                    <div class="menu-item-info">
-                      <span class="menu-item-name">{{ copiedImage() ? 'Copied to Clipboard!' : 'Copy Image' }}</span>
-                      <span class="menu-item-desc">Direct paste into Figma, docs, chats</span>
-                    </div>
-                  </button>
-                  <button type="button" role="menuitem" class="split-menu-item" (click)="onShare(); isFormatMenuOpen.set(false)">
-                    <ts-icon name="share-2" />
-                    <div class="menu-item-info">
-                      <span class="menu-item-name">Share QR Code</span>
-                      <span class="menu-item-desc">Share via system apps or copy</span>
-                    </div>
-                  </button>
-                  <div class="print-recommendation-note">
-                    <ts-icon name="info" class="print-icon" />
-                    <span>Recommended print size: &ge; 3.5 &times; 3.5 cm (1.4 &times; 1.4 in) for guaranteed camera readability.</span>
-                  </div>
-                </div>
+              @if (!isTemporary()) {
+                <!-- Quick Share Button -->
+                <button
+                  type="button"
+                  class="quick-share-btn"
+                  [disabled]="!qrDataUrl() || isGenerating()"
+                  (click)="onShare()"
+                  [title]="!qrDataUrl() ? 'Enter content to share' : (copiedShare() ? 'Link / image copied!' : 'Share QR code')"
+                  aria-label="Share QR code"
+                >
+                  <ts-icon [name]="copiedShare() ? 'check' : 'share-2'" class="btn-icon" />
+                  <span>{{ copiedShare() ? 'Copied' : 'Share' }}</span>
+                </button>
+              } @else if (temporaryRecord()) {
+                <button
+                  type="button"
+                  class="view-dashboard-btn"
+                  (click)="viewInDashboard.emit()"
+                  title="View in dashboard"
+                >
+                  <ts-icon name="layout-dashboard" [size]="15" />
+                  <span>View in dashboard</span>
+                </button>
               }
             </div>
-
-            <!-- Quick SVG Vector Export -->
-            <button
-              type="button"
-              class="quick-svg-btn"
-              [disabled]="!qrDataUrl() || isGenerating()"
-              (click)="onDownload('svg')"
-              [title]="!qrDataUrl() ? 'Enter content to download' : 'Download vector SVG'"
-              aria-label="Download vector SVG"
-            >
-              <ts-icon name="file-code" class="btn-icon" />
-              <span>SVG</span>
-            </button>
-
-            <!-- Quick Share Button -->
-            <button
-              type="button"
-              class="quick-share-btn"
-              [disabled]="!qrDataUrl() || isGenerating()"
-              (click)="onShare()"
-              [title]="!qrDataUrl() ? 'Enter content to share' : (copiedShare() ? 'Link / image copied!' : 'Share QR code')"
-              aria-label="Share QR code"
-            >
-              <ts-icon [name]="copiedShare() ? 'check' : 'share-2'" class="btn-icon" />
-              <span>{{ copiedShare() ? 'Copied' : 'Share' }}</span>
-            </button>
-          </div>
+          }
 
           <!-- Clean Footer Note -->
           <div class="preview-footer-note">
@@ -599,6 +649,126 @@ import { AdvancedModalComponent } from '../advanced-modal/advanced-modal.compone
       background: var(--tool-accent-soft, rgba(59, 130, 246, 0.12));
       color: var(--tool-accent, #60a5fa);
       border: 1px solid var(--tool-accent-border, rgba(59, 130, 246, 0.25));
+    }
+
+    .preview-status-pill.sample-pill {
+      background: var(--bg-elevated, rgba(255, 255, 255, 0.08));
+      color: var(--text-muted, #94a3b8);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+    }
+    :host-context([data-theme="light"]) .preview-status-pill.sample-pill {
+      background: #F1F5F9;
+      color: #64748B;
+      border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .sample-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--text-muted, #94a3b8);
+    }
+
+    .countdown-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: rgba(59, 130, 246, 0.12);
+      color: var(--tool-accent, #3B82F6);
+      font-size: 10.5px;
+      font-weight: 600;
+      margin-left: 4px;
+    }
+
+    .sample-notice-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      margin-top: 10px;
+      border-radius: 8px;
+      background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      color: var(--text-muted, #94a3b8);
+      font-size: 12px;
+      line-height: 1.4;
+      max-width: 90%;
+      text-align: center;
+      justify-content: center;
+    }
+    :host-context([data-theme="light"]) .sample-notice-banner {
+      background: #F8FAFC;
+      border-color: rgba(0, 0, 0, 0.08);
+      color: #64748B;
+    }
+
+    .temporary-create-cluster {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .primary-create-temp-btn {
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 10px 20px;
+      border-radius: 10px;
+      background: var(--tool-accent, #3B82F6);
+      color: #FFFFFF;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: background var(--ts-dur-fast, 150ms) ease,
+                  transform var(--ts-dur-press, 100ms) ease;
+    }
+    .primary-create-temp-btn:hover:not(:disabled) {
+      background: var(--tool-accent-hover, #2563EB);
+    }
+    .primary-create-temp-btn:active:not(:disabled) {
+      transform: scale(0.99);
+    }
+    .primary-create-temp-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .service-unreachable-text {
+      font-size: 12px;
+      color: #EF4444;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    .view-dashboard-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 44px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: var(--bg-surface, #1e1e24);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      color: var(--text, #fcfcfc);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all var(--ts-dur-fast, 150ms) ease;
+    }
+    :host-context([data-theme="light"]) .view-dashboard-btn {
+      background: #FFFFFF;
+      border-color: rgba(0, 0, 0, 0.12);
+      color: #0F172A;
     }
 
     .smart-link-chip {
@@ -2096,7 +2266,16 @@ export class PreviewPanelComponent {
   readonly isCreatingHostedLink = input<boolean>(false);
   readonly fallbackNotice = input<string | null>(null);
   readonly isDevAddressWarning = input<boolean>(false);
+  readonly isTemporary = input<boolean>(false);
+  readonly temporaryRecord = input<TempQrRecord | null>(null);
+  readonly temporaryCountdown = input<string | null>(null);
+  readonly isCreatingTemporary = input<boolean>(false);
+  readonly isServiceUnreachable = input<boolean>(false);
+  readonly canCreateTemporary = input<boolean>(true);
   readonly retryClick = output<void>();
+  readonly createTemporary = output<void>();
+  readonly viewInDashboard = output<void>();
+  readonly print = output<void>();
 
   readonly sizeTier = computed<'sm' | 'md' | 'lg' | 'xl'>(() => {
     const s = this.size();

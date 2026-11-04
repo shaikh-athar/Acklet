@@ -9,7 +9,7 @@ export const BARCODE_MANIFEST: ToolRegistryItem = {
   category: 'Utilities',
   categorySlug: 'utilities',
   shortDescription: 'Generate standards-compliant 1D and 2D barcodes locally in your browser with vector export.',
-  about: 'A barcode is an optical, machine-readable representation of data in parallel lines or two-dimensional matrices. This generator supports standard retail, industrial, and logistics symbologies including Code 128, EAN-13, UPC-A, UPC-E, EAN-8, ISBN-13, Code 39, Code 93, ITF-14, Interleaved 2 of 5, and Codabar.\n\nAll encoding, check-digit calculations, and vector rendering happen entirely inside your browser. No data ever leaves your device, no backend server is contacted, and no entered values are tracked or stored.',
+  about: 'A barcode is an optical, machine-readable representation of data in parallel lines or two-dimensional matrices. This generator supports standard retail, industrial, and logistics symbologies including Code 128, EAN-13, UPC-A, UPC-E, EAN-8, ISBN-13, Code 39, Code 93, ITF-14, Interleaved 2 of 5, and Codabar, plus temporary expiring barcodes.\n\nStandard barcodes and bulk files are processed 100% in your browser memory: no data leaves your device and no server is contacted. Temporary expiring barcodes store verification details encrypted on Acklet servers until their expiry time, after which they are permanently deleted.',
   description: 'Create standards-compliant retail, logistics, and industrial barcodes. Calculate check digits automatically, customize dimensions, colors, and human-readable text, and export crisp PNG, SVG, or PDF files completely in the browser.',
   icon: 'barcode',
   version: '1.0.0',
@@ -119,7 +119,7 @@ export const BARCODE_MANIFEST: ToolRegistryItem = {
     {
       id: 'faq-privacy',
       question: 'Is my data stored?',
-      answer: 'No. Everything is generated client-side in your browser memory. No barcode numbers, names, or values are sent to any remote server or stored in external databases.'
+      answer: 'Standard barcodes are generated entirely client-side in your browser memory; no numbers, names, or values are sent to any server. When you create a Temporary barcode, its verification record is stored encrypted on Acklet until the expiration date you chose, after which it is automatically deleted.'
     },
     {
       id: 'faq-barcode-vs-qr',
