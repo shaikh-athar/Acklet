@@ -41,6 +41,13 @@ export class FormatRegistryService implements IFormatRegistryService {
     return Object.values(BARCODE_CATALOG);
   }
 
+  getTemporaryFormats(): BarcodeCatalogItem[] {
+    const order = ['qrcode', 'datamatrix', 'aztec', 'pdf417', 'code128'];
+    return order
+      .map(id => BARCODE_CATALOG[id])
+      .filter((f): f is BarcodeCatalogItem => !!f && !!f.supportsTemporary);
+  }
+
   getEnabled(): BarcodeCatalogItem[] {
     return Object.values(BARCODE_CATALOG).filter(f => f.enabled);
   }

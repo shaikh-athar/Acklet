@@ -51,6 +51,18 @@ import { QrDynamicManagerComponent } from './components/dynamic-manager/dynamic-
 import { DynamicLinksComponent } from './components/dynamic-links/dynamic-links.component';
 import { QrAssembleEffectComponent } from './components/qr-assemble-effect/qr-assemble-effect.component';
 import { AdvancedModalComponent } from './components/advanced-modal/advanced-modal.component';
+import { QrTemporaryPanelComponent } from './components/temporary-panel/temporary-panel.component';
+import { QrTemporarySettingsComponent } from './components/temporary-settings/temporary-settings.component';
+import { QrVerificationPageComponent } from './components/verification-page/verification-page.component';
+import { TempQrService } from './services/temp-qr.service';
+import {
+  TempQrRecord,
+  CreateTempQrPayload,
+  PayloadMode,
+  TempContentType,
+  ExpiryMode
+} from './models/temp-qr.models';
+import { TEMP_QR_CONFIG } from './config/temp-qr.config';
 import { LiveSmartLink } from './services/smart-link.service';
 import {
   TsIconComponent,
@@ -62,6 +74,7 @@ import {
   HapticService
 } from '@acklet/tool-shell';
 import { getToolsHubUrl } from '@acklet/shared';
+import { isLaunchableType } from './utils/launchable.util';
 
 const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string; desc: string }> = [
   { type: 'url', label: 'URL', icon: 'globe', desc: 'Website link or dynamic shortlink' },
@@ -94,12 +107,21 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
     BottomSheetComponent,
     StickyActionBarComponent,
     AdvancedModalComponent,
+    QrTemporaryPanelComponent,
+    QrTemporarySettingsComponent,
+    QrVerificationPageComponent,
     TsLongPressDirective,
     TsDoubleTapDirective
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="qr-page-shell" data-accent="blue">
+    @if (activeView() === 'verify') {
+      <app-qr-verification-page
+        [token]="verifyToken()"
+        (navigateToGenerator)="activeView.set('generator')"
+      />
+    } @else {
+      <div class="qr-page-shell" data-accent="blue">
       <!-- Left Ad Gutter (>= 1280px) -->
       <aside class="ad-gutter ad-gutter-left" aria-label="Advertisement slot left">
         <div class="ad-slot-placeholder" data-ad-slot="skyscraper-left"></div>
@@ -153,6 +175,17 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
                   <span class="nav-count-badge">{{ smartLinkService.storedLinks().length }}</span>
                 }
               </button>
+              <button
+                type="button"
+                role="tab"
+                class="workspace-mode-btn"
+                [class.active]="activeTab() === 'temporary'"
+                [attr.aria-selected]="activeTab() === 'temporary'"
+                (click)="onSwitchTab('temporary')"
+              >
+                <ts-icon name="clock" class="mode-btn-icon" />
+                <span>Temporary</span>
+              </button>
             </div>
 
             <!-- TAB 1: Content Input Card -->
@@ -189,6 +222,23 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
                     }
                   </div>
 
+                  <!-- Temporary QR code switch row -->
+                  <div class="temporary-toggle-row">
+                    <div class="toggle-text-col">
+                      <label for="temp-qr-toggle" class="toggle-title-label">Temporary QR code</label>
+                      <span class="toggle-helper-text">Stops working after the time you set. Stored on Acklet until it expires.</span>
+                    </div>
+                    <label class="ts-switch">
+                      <input
+                        id="temp-qr-toggle"
+                        type="checkbox"
+                        [checked]="isContentTemporary()"
+                        (change)="onToggleTemporary($event)"
+                      />
+                      <span class="ts-switch-slider"></span>
+                    </label>
+                  </div>
+
                   <div class="studio-type-bar">
                     <!-- Centered Content Type Selector Trigger matching input width -->
                     <div class="content-type-dropdown-container">
@@ -208,7 +258,12 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
                             <ts-icon [name]="typeConfigs[selectedType()]?.icon || 'globe'" class="type-trigger-icon" />
                           </div>
                           <div class="type-trigger-text">
-                            <span class="type-trigger-label">{{ typeConfigs[selectedType()]?.label || selectedType() }}</span>
+                            <div class="type-trigger-label-row">
+                              <span class="type-trigger-label">{{ typeConfigs[selectedType()]?.label || selectedType() }}</span>
+                              @if (isLaunchableType(selectedType())) {
+                                <ts-icon name="arrow-up-right" class="trigger-launch-icon" [size]="12" title="Opens or redirects on scan" />
+                              }
+                            </div>
                             <span class="type-trigger-desc">{{ getSelectedTypeDesc() }}</span>
                           </div>
                         </div>
@@ -262,7 +317,12 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
                                   <ts-icon [name]="item.icon" class="item-icon" />
                                 </div>
                                 <div class="item-details">
-                                  <span class="item-title">{{ item.label }}</span>
+                                  <div class="item-title-row">
+                                    <span class="item-title">{{ item.label }}</span>
+                                    @if (isLaunchableType(item.type)) {
+                                      <ts-icon name="arrow-up-right" class="item-launch-icon" [size]="12" title="Opens or redirects on scan" />
+                                    }
+                                  </div>
                                   <span class="item-desc">{{ item.desc }}</span>
                                 </div>
                                 @if (selectedType() === item.type) {
@@ -277,13 +337,27 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
                         </div>
                       }
                     </div>
-
                   </div>
                 </header>
 
                 <!-- Input Body: Always Active -->
                 <div class="studio-body custom-scrollbar">
                   <div class="tab-pane">
+                    @if (isContentTemporary()) {
+                      <app-qr-temporary-settings
+                        [(showExpiryOnLabel)]="tempShowExpiryOnLabel"
+                        [(expiryMode)]="tempExpiryMode"
+                        [(preset)]="tempPreset"
+                        [(customStyle)]="tempCustomStyle"
+                        [(customDurationValue)]="tempCustomDurationValue"
+                        [(customDurationUnit)]="tempCustomDurationUnit"
+                        [(customUntilDate)]="tempCustomUntilDate"
+                        [createdRecord]="activeTemporaryRecord()"
+                        [isCreating]="isCreatingTemporary()"
+                        (createAnother)="onCreateAnotherTemporary()"
+                        (temporaryChange)="onTemporarySettingsChanged()"
+                      />
+                    }
                     <app-qr-input-panel
                       [selectedType]="selectedType()"
                       [content]="content()"
@@ -460,46 +534,66 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
                 />
               </div>
             }
+
+            <!-- TAB 4: Temporary QR Codes Dashboard -->
+            @if (activeTab() === 'temporary') {
+              <div class="qr-studio-panel qr-temporary-panel-card slide-fade-up">
+                <app-qr-temporary-panel
+                  (newTemporaryCode)="onNewTemporaryCode()"
+                />
+              </div>
+            }
           </section>
 
           <!-- Column 2: Center Hero QR Preview & Actions (Always Fixed on Right Side) -->
-          <section class="qr-col qr-col-preview qr-col-hero" aria-label="QR Code Hero Preview & Actions">
-            <app-qr-preview-panel
-              [qrName]="qrName()"
-              [qrDataUrl]="qrDataUrl()"
-              [shouldAnimateQR]="shouldAnimateQR()"
-              [isGenerating]="isGenerating()"
-              [error]="error()"
-              [formattedPayload]="formattedPayload()"
-              [encodedPayload]="activeEncodedPayload()"
-              [content]="content()"
-              [metadata]="metadata()"
-              [size]="size()"
-              [errorCorrection]="errorCorrection()"
-              [margin]="margin()"
-              [isAutoEc]="isAutoEc()"
-              [autoEcReason]="autoEcReason()"
-              [historyItems]="historyItems()"
-              [dynamicCount]="dynamicService.managedItems().length"
-              [isSmartLink]="smartLinkService.isSmartLink()"
-              [isCreatingHostedLink]="isCreatingHostedLink()"
-              [fallbackNotice]="fallbackNotice()"
-              [isDevAddressWarning]="isDevAddressWarning()"
-              (retryClick)="retryHostedLink()"
-              (downloadClick)="onDownload($event)"
-              (restoreItem)="onRestoreHistory($event)"
-              (clearHistory)="onClearHistory()"
-              (sizeChange)="onSizeChange($event)"
-              (errorCorrectionChange)="onErrorCorrectionChange($event)"
-              (marginChange)="onMarginChange($event)"
-              (isAutoEcChange)="onIsAutoEcChange($event)"
-              (resetDefaults)="onResetAdvancedDefaults()"
-              (openDynamicLinks)="onSwitchTab('dynamic')"
-              (openDynamicManager)="isDynamicManagerOpen.set(true)"
-              (loadSampleClick)="loadSample()"
-              (autoFixClick)="onAutoFixScan()"
-            />
-          </section>
+          @if (activeTab() !== 'temporary') {
+            <section class="qr-col qr-col-preview qr-col-hero" aria-label="QR Code Hero Preview & Actions">
+              <app-qr-preview-panel
+                [qrName]="qrName()"
+                [qrDataUrl]="qrDataUrl()"
+                [shouldAnimateQR]="shouldAnimateQR()"
+                [isGenerating]="isGenerating()"
+                [error]="error()"
+                [formattedPayload]="formattedPayload()"
+                [encodedPayload]="activeEncodedPayload()"
+                [content]="content()"
+                [metadata]="metadata()"
+                [size]="size()"
+                [errorCorrection]="errorCorrection()"
+                [margin]="margin()"
+                [isAutoEc]="isAutoEc()"
+                [autoEcReason]="autoEcReason()"
+                [historyItems]="historyItems()"
+                [dynamicCount]="dynamicService.managedItems().length"
+                [isSmartLink]="smartLinkService.isSmartLink()"
+                [isCreatingHostedLink]="isCreatingHostedLink()"
+                [fallbackNotice]="fallbackNotice()"
+                [isDevAddressWarning]="isDevAddressWarning()"
+                [isTemporary]="isContentTemporary()"
+                [temporaryRecord]="activeTemporaryRecord()"
+                [temporaryCountdown]="temporaryCountdown()"
+                [isCreatingTemporary]="isCreatingTemporary()"
+                [isServiceUnreachable]="tempQrService.isServiceUnreachable()"
+                [canCreateTemporary]="canCreateTemporary()"
+                (retryClick)="retryHostedLink()"
+                (downloadClick)="onDownload($event)"
+                (restoreItem)="onRestoreHistory($event)"
+                (clearHistory)="onClearHistory()"
+                (sizeChange)="onSizeChange($event)"
+                (errorCorrectionChange)="onErrorCorrectionChange($event)"
+                (marginChange)="onMarginChange($event)"
+                (isAutoEcChange)="onIsAutoEcChange($event)"
+                (resetDefaults)="onResetAdvancedDefaults()"
+                (openDynamicLinks)="onSwitchTab('dynamic')"
+                (openDynamicManager)="isDynamicManagerOpen.set(true)"
+                (loadSampleClick)="loadSample()"
+                (autoFixClick)="onAutoFixScan()"
+                (createTemporary)="onCreateTemporaryFromPreview()"
+                (viewInDashboard)="onViewInDashboard()"
+                (print)="onPrintQr()"
+              />
+            </section>
+          }
         </main>
 
       } @else {
@@ -542,6 +636,23 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
                 }
               </div>
 
+              <!-- Temporary QR code switch row -->
+              <div class="temporary-toggle-row">
+                <div class="toggle-text-col">
+                  <label for="mobile-temp-qr-toggle" class="toggle-title-label">Temporary QR code</label>
+                  <span class="toggle-helper-text">Stops working after the time you set. Stored on Acklet until it expires.</span>
+                </div>
+                <label class="ts-switch">
+                  <input
+                    id="mobile-temp-qr-toggle"
+                    type="checkbox"
+                    [checked]="isContentTemporary()"
+                    (change)="onToggleTemporary($event)"
+                  />
+                  <span class="ts-switch-slider"></span>
+                </label>
+              </div>
+
               <!-- Top Row: Content Type Selector Dropdown -->
               <div class="studio-type-bar studio-type-bar-mobile">
                 <div class="content-type-dropdown-container">
@@ -561,7 +672,12 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
                         <ts-icon [name]="typeConfigs[selectedType()]?.icon || 'globe'" class="type-trigger-icon" />
                       </div>
                       <div class="type-trigger-text">
-                        <span class="type-trigger-label">{{ typeConfigs[selectedType()]?.label || selectedType() }}</span>
+                        <div class="type-trigger-label-row">
+                          <span class="type-trigger-label">{{ typeConfigs[selectedType()]?.label || selectedType() }}</span>
+                          @if (isLaunchableType(selectedType())) {
+                            <ts-icon name="arrow-up-right" class="trigger-launch-icon" [size]="12" title="Opens or redirects on scan" />
+                          }
+                        </div>
                         <span class="type-trigger-desc">{{ getSelectedTypeDesc() }}</span>
                       </div>
                     </div>
@@ -612,7 +728,12 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
                               <ts-icon [name]="item.icon" class="item-icon" />
                             </div>
                             <div class="item-details">
-                              <span class="item-title">{{ item.label }}</span>
+                              <div class="item-title-row">
+                                <span class="item-title">{{ item.label }}</span>
+                                @if (isLaunchableType(item.type)) {
+                                  <ts-icon name="arrow-up-right" class="item-launch-icon" [size]="12" title="Opens or redirects on scan" />
+                                }
+                              </div>
                               <span class="item-desc">{{ item.desc }}</span>
                             </div>
                             @if (selectedType() === item.type) {
@@ -629,9 +750,23 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
                 </div>
               </div>
 
-
               <!-- Input Form Panel -->
               <div class="mobile-input-card">
+                @if (isContentTemporary()) {
+                  <app-qr-temporary-settings
+                    [(showExpiryOnLabel)]="tempShowExpiryOnLabel"
+                    [(expiryMode)]="tempExpiryMode"
+                    [(preset)]="tempPreset"
+                    [(customStyle)]="tempCustomStyle"
+                    [(customDurationValue)]="tempCustomDurationValue"
+                    [(customDurationUnit)]="tempCustomDurationUnit"
+                    [(customUntilDate)]="tempCustomUntilDate"
+                    [createdRecord]="activeTemporaryRecord()"
+                    [isCreating]="isCreatingTemporary()"
+                    (createAnother)="onCreateAnotherTemporary()"
+                    (temporaryChange)="onTemporarySettingsChanged()"
+                  />
+                }
                 <app-qr-input-panel
                   [selectedType]="selectedType()"
                   [content]="content()"
@@ -652,34 +787,47 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
 
               <!-- Sticky Generate Action Bar with Quick Access Links -->
               <ts-sticky-action-bar ariaLabel="Generate QR code action bar">
-                <button
-                  type="button"
-                  class="mobile-action-icon-btn mobile-quick-btn"
-                  (click)="isMobileHistoryOpen.set(true)"
-                  aria-label="Recent QR Codes History"
-                  title="Recent QR History"
-                >
-                  <ts-icon name="history" [size]="18" />
-                </button>
-                <button
-                  type="button"
-                  class="mobile-action-icon-btn mobile-quick-btn"
-                  (click)="isMobileSettingsOpen.set(true)"
-                  aria-label="QR Code Settings"
-                  title="Advanced QR Settings"
-                >
-                  <ts-icon name="settings" [size]="18" />
-                </button>
-                <button
-                  type="button"
-                  class="mobile-primary-btn mobile-generate-btn"
-                  [disabled]="!content().trim() || !!validationError()"
-                  (click)="goToResultState()"
-                >
-                  <ts-icon name="qr-code" [size]="18" />
-                  <span class="mobile-generate-label-full">Generate QR Code</span>
-                  <span class="mobile-generate-label-short">Generate</span>
-                </button>
+                @if (!isContentTemporary()) {
+                  <button
+                    type="button"
+                    class="mobile-action-icon-btn mobile-quick-btn"
+                    (click)="isMobileHistoryOpen.set(true)"
+                    aria-label="Recent QR Codes History"
+                    title="Recent QR History"
+                  >
+                    <ts-icon name="history" [size]="18" />
+                  </button>
+                  <button
+                    type="button"
+                    class="mobile-action-icon-btn mobile-quick-btn"
+                    (click)="isMobileSettingsOpen.set(true)"
+                    aria-label="QR Code Settings"
+                    title="Advanced QR Settings"
+                  >
+                    <ts-icon name="settings" [size]="18" />
+                  </button>
+                  <button
+                    type="button"
+                    class="mobile-primary-btn mobile-generate-btn"
+                    [disabled]="!content().trim() || !!validationError()"
+                    (click)="goToResultState()"
+                  >
+                    <ts-icon name="qr-code" [size]="18" />
+                    <span class="mobile-generate-label-full">Generate QR Code</span>
+                    <span class="mobile-generate-label-short">Generate</span>
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="mobile-primary-btn mobile-generate-btn"
+                    [disabled]="!canCreateTemporary() || isCreatingTemporary()"
+                    (click)="onCreateTemporaryFromPreview()"
+                  >
+                    <ts-icon [name]="isCreatingTemporary() ? 'loader' : 'clock'" [size]="18" [class.spin-animation]="isCreatingTemporary()" />
+                    <span class="mobile-generate-label-full">{{ isCreatingTemporary() ? 'Creating...' : 'Create Temporary QR Code' }}</span>
+                    <span class="mobile-generate-label-short">{{ isCreatingTemporary() ? 'Creating...' : 'Create' }}</span>
+                  </button>
+                }
               </ts-sticky-action-bar>
             </div>
           }
@@ -694,7 +842,12 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
                 <div class="summary-meta">
                   <div class="summary-name-row">
                     <span class="summary-qr-name">{{ qrName() || 'Untitled QR' }}</span>
-                    <span class="summary-type-badge">{{ typeConfigs[selectedType()]?.label || selectedType() }}</span>
+                    <span class="summary-type-badge">
+                      {{ typeConfigs[selectedType()]?.label || selectedType() }}
+                      @if (isLaunchableType(selectedType())) {
+                        <ts-icon name="arrow-up-right" [size]="11" class="summary-launch-icon" />
+                      }
+                    </span>
                   </div>
                   <span class="summary-text">{{ contentSummary() }}</span>
                 </div>
@@ -996,6 +1149,23 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
             </div>
           }
 
+          <!-- ============================================== -->
+          <!-- STATE E: TEMPORARY QR DASHBOARD                -->
+          <!-- ============================================== -->
+          @if (phoneState() === 'temporary') {
+            <div class="mobile-temporary-view slide-fade-up">
+              <div class="mobile-temp-top-nav">
+                <button type="button" class="back-to-edit-btn" (click)="onSwitchTab('content')">
+                  <ts-icon name="arrow-left" [size]="14" />
+                  <span>Back to Generator</span>
+                </button>
+              </div>
+              <app-qr-temporary-panel
+                (newTemporaryCode)="onNewTemporaryCode()"
+              />
+            </div>
+          }
+
           <!-- Mobile Recent History Bottom Sheet -->
           <ts-bottom-sheet
             [isOpen]="isMobileHistoryOpen()"
@@ -1074,6 +1244,31 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
         </div>
       }
 
+      <!-- Custom Alert / Error Modal -->
+      @if (alertDialog(); as alert) {
+        <div class="acklet-dialog-backdrop" (click)="closeAlertDialog()" role="alertdialog" aria-modal="true" [attr.aria-label]="alert.title">
+          <div class="acklet-dialog-card" (click)="$event.stopPropagation()">
+            <div class="acklet-dialog-header">
+              <div class="acklet-dialog-icon-wrapper" [class.is-warning]="alert.type === 'warning'">
+                <ts-icon [name]="alert.type === 'warning' ? 'circle-alert' : 'circle-alert'" [size]="20" />
+              </div>
+              <div class="acklet-dialog-title-group">
+                <h3 class="acklet-dialog-title">{{ alert.title }}</h3>
+                <p class="acklet-dialog-message">{{ alert.message }}</p>
+              </div>
+              <button type="button" class="acklet-dialog-close-btn" (click)="closeAlertDialog()" aria-label="Close dialog">
+                <ts-icon name="x" [size]="16" />
+              </button>
+            </div>
+            <div class="acklet-dialog-footer">
+              <button type="button" class="acklet-dialog-action-btn" (click)="closeAlertDialog()">
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
       </div>
 
       <!-- Right Ad Gutter (>= 1280px) -->
@@ -1086,7 +1281,8 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
         <app-qr-dynamic-manager (close)="isDynamicManagerOpen.set(false)" />
       }
 
-    </div>
+      </div>
+    }
   `,
   styles: [`
     :host {
@@ -1449,6 +1645,95 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
       border-radius: var(--ts-radius-card, 20px);
       overflow: hidden;
       box-sizing: border-box;
+    }
+
+    .qr-temporary-panel-card {
+      padding: 16px 20px;
+      overflow-y: auto;
+    }
+
+    .temporary-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--bg-surface, #1e1e24);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      border-radius: 10px;
+    }
+    :host-context([data-theme="light"]) .temporary-toggle-row {
+      background: #FFFFFF;
+      border-color: rgba(0, 0, 0, 0.08);
+    }
+    .toggle-title-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text, #fcfcfc);
+      cursor: pointer;
+    }
+    :host-context([data-theme="light"]) .toggle-title-label {
+      color: #0F172A;
+    }
+    .toggle-helper-text {
+      display: block;
+      font-size: 11.5px;
+      color: var(--text-muted, #94a3b8);
+      margin-top: 2px;
+    }
+    :host-context([data-theme="light"]) .toggle-helper-text {
+      color: #64748B;
+    }
+
+    .ts-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .ts-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .ts-switch-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--bg-base, #121216);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+      transition: 0.2s ease;
+      border-radius: 24px;
+    }
+    :host-context([data-theme="light"]) .ts-switch-slider {
+      background-color: #E2E8F0;
+      border-color: rgba(0, 0, 0, 0.15);
+    }
+    .ts-switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      bottom: 2px;
+      background-color: #FFFFFF;
+      transition: 0.2s ease;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .ts-switch input:checked + .ts-switch-slider {
+      background-color: var(--tool-accent, #3B82F6);
+      border-color: var(--tool-accent, #3B82F6);
+    }
+    :host-context([data-theme="light"]) .ts-switch input:checked + .ts-switch-slider {
+      background-color: #2563EB;
+      border-color: #2563EB;
+    }
+    .ts-switch input:checked + .ts-switch-slider:before {
+      transform: translateX(20px);
     }
 
     /* Studio Header */
@@ -2037,6 +2322,33 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
       flex-direction: column;
       min-width: 0;
       flex: 1 1 0%;
+    }
+
+    .item-title-row,
+    .type-trigger-label-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .item-launch-icon,
+    .trigger-launch-icon,
+    .summary-launch-icon {
+      color: var(--text-muted, #94a3b8);
+      opacity: 0.7;
+      flex-shrink: 0;
+    }
+    :host-context([data-theme="light"]) .item-launch-icon,
+    :host-context([data-theme="light"]) .trigger-launch-icon,
+    :host-context([data-theme="light"]) .summary-launch-icon {
+      color: #64748B;
+    }
+    .more-menu-item.selected .item-launch-icon {
+      color: var(--accent-strong, #60a5fa);
+      opacity: 0.9;
+    }
+    :host-context([data-theme="light"]) .more-menu-item.selected .item-launch-icon {
+      color: #2563EB;
     }
 
     .item-title {
@@ -3559,9 +3871,178 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
         transition: none !important;
       }
     }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Acklet Custom Alert / Error Popup Dialog                       */
+    /* ═══════════════════════════════════════════════════════════════ */
+    .acklet-dialog-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 16px;
+      animation: tsFadeIn 150ms ease-out;
+    }
+
+    .acklet-dialog-card {
+      width: 100%;
+      max-width: 440px;
+      background: var(--bg-card, #18191E);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.6);
+      color: var(--text, #fcfcfc);
+      animation: tsSlideUp 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    :host-context([data-theme="light"]) .acklet-dialog-card {
+      background: #FFFFFF;
+      border-color: rgba(0, 0, 0, 0.12);
+      color: #0F172A;
+      box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.15);
+    }
+
+    .acklet-dialog-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      position: relative;
+    }
+
+    .acklet-dialog-icon-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      flex-shrink: 0;
+      background: rgba(239, 68, 68, 0.12);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+    .acklet-dialog-icon-wrapper.is-warning {
+      background: rgba(245, 158, 11, 0.12);
+      color: #f59e0b;
+      border-color: rgba(245, 158, 11, 0.25);
+    }
+    :host-context([data-theme="light"]) .acklet-dialog-icon-wrapper {
+      background: #FEE2E2;
+      color: #DC2626;
+      border-color: rgba(220, 38, 38, 0.2);
+    }
+    :host-context([data-theme="light"]) .acklet-dialog-icon-wrapper.is-warning {
+      background: #FEF3C7;
+      color: #D97706;
+      border-color: rgba(217, 119, 6, 0.2);
+    }
+
+    .acklet-dialog-title-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .acklet-dialog-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin: 0;
+      line-height: 1.3;
+      color: var(--text, #fcfcfc);
+      letter-spacing: -0.01em;
+    }
+    :host-context([data-theme="light"]) .acklet-dialog-title {
+      color: #0F172A;
+    }
+
+    .acklet-dialog-message {
+      font-size: 13px;
+      line-height: 1.5;
+      margin: 0;
+      color: var(--text-muted, #94a3b8);
+      word-break: break-word;
+    }
+    :host-context([data-theme="light"]) .acklet-dialog-message {
+      color: #475569;
+    }
+
+    .acklet-dialog-close-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted, #94a3b8);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 120ms ease, color 120ms ease;
+    }
+    .acklet-dialog-close-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text, #fcfcfc);
+    }
+    :host-context([data-theme="light"]) .acklet-dialog-close-btn:hover {
+      background: rgba(0, 0, 0, 0.06);
+      color: #0F172A;
+    }
+
+    .acklet-dialog-footer {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .acklet-dialog-action-btn {
+      min-width: 80px;
+      height: 36px;
+      padding: 0 16px;
+      border-radius: 8px;
+      background: var(--tool-accent, var(--accent, #3b82f6));
+      border: none;
+      color: #FFFFFF;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 120ms ease, filter 120ms ease;
+    }
+    .acklet-dialog-action-btn:hover {
+      filter: brightness(1.08);
+    }
+
+    @keyframes tsFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes tsSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
   `]
 })
 export class QRGeneratorComponent implements OnInit, OnDestroy {
+  readonly activeView = signal<'generator' | 'verify'>('generator');
+  readonly verifyToken = signal<string>('');
   private readonly qrService = inject(QRGeneratorService);
   private readonly historyService = inject(QRHistoryService);
   readonly dynamicService = inject(QrDynamicService);
@@ -3572,8 +4053,17 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
   readonly hubUrl = getToolsHubUrl();
 
   readonly isMobileFlow = computed(() => this.responsive.isPhone() || this.responsive.isTabletPortrait());
-  readonly phoneState = signal<'input' | 'result' | 'design' | 'dynamic'>('input');
+  readonly phoneState = signal<'input' | 'result' | 'design' | 'dynamic' | 'temporary'>('input');
   readonly isFullScreenModalOpen = signal<boolean>(false);
+  readonly alertDialog = signal<{ title: string; message: string; type?: 'error' | 'warning' } | null>(null);
+
+  showAlertDialog(title: string, message: string, type: 'error' | 'warning' = 'error'): void {
+    this.alertDialog.set({ title, message, type });
+  }
+
+  closeAlertDialog(): void {
+    this.alertDialog.set(null);
+  }
   readonly isQrContextMenuOpen = signal<boolean>(false);
   readonly isMobileHistoryOpen = signal<boolean>(false);
   readonly isMobileSettingsOpen = signal<boolean>(false);
@@ -3626,9 +4116,30 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
     this.qrName.set('');
   }
 
-  // Active Studio Tab: 'content' | 'design' | 'dynamic'
-  readonly activeTab = signal<'content' | 'design' | 'dynamic'>('content');
+  // Active Studio Tab: 'content' | 'design' | 'dynamic' | 'temporary'
+  readonly activeTab = signal<'content' | 'design' | 'dynamic' | 'temporary'>('content');
   readonly designSubTab = signal<'frame' | 'shapes' | 'logo' | 'colors'>('frame');
+
+  // Temporary QR Code Studio Signals
+  readonly tempQrService = inject(TempQrService);
+  readonly isContentTemporary = signal<boolean>(false);
+  readonly tempQrName = signal<string>('Temporary QR 1');
+  readonly tempPayloadMode = signal<PayloadMode>('LINK');
+  readonly tempContentType = signal<TempContentType>('MESSAGE');
+  readonly tempContent = signal<string>('');
+  readonly tempReference = signal<string>('');
+  readonly tempShowExpiryOnLabel = signal<boolean>(false);
+  readonly tempExpiryMode = signal<ExpiryMode>('preset');
+  readonly tempPreset = signal<string>('24h');
+  readonly tempCustomStyle = signal<'duration' | 'until'>('duration');
+  readonly tempCustomDurationValue = signal<number>(2);
+  readonly tempCustomDurationUnit = signal<'minutes' | 'hours' | 'days'>('hours');
+  readonly tempCustomUntilDate = signal<string>(this.getDefaultUntilDate());
+
+  readonly isCreatingTemporary = signal<boolean>(false);
+  readonly activeTemporaryRecord = signal<TempQrRecord | null>(null);
+  readonly temporaryCountdown = signal<string | null>(null);
+  private temporaryCountdownTimer: any = null;
 
   // Content Type Dropdown State
   readonly isTypeMenuOpen = signal<boolean>(false);
@@ -3639,6 +4150,7 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
   // 5 Visible Chips track for mobile flow
   readonly visibleTypes = signal<ContentType[]>(['url', 'text', 'wifi', 'vcard', 'email']);
   readonly typeConfigs = CONTENT_TYPE_CONFIGS;
+  readonly isLaunchableType = isLaunchableType;
 
   readonly allContentTypes = ALL_CONTENT_TYPES;
 
@@ -3794,14 +4306,30 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      if (this.alertDialog()) {
+        this.closeAlertDialog();
+        return;
+      }
+      if (this.isFullScreenModalOpen()) {
+        this.closeFullScreen();
+        return;
+      }
+      if (this.isMoreMenuOpen()) {
+        this.closeMoreMenu();
+        return;
+      }
+    }
+    if (event.key === 'Enter' && this.alertDialog()) {
+      event.preventDefault();
+      this.closeAlertDialog();
+      return;
+    }
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
       event.preventDefault();
       if (this.qrDataUrl() && !this.isGenerating()) {
         this.onDownload('png');
       }
-    }
-    if (event.key === 'Escape' && this.isMoreMenuOpen()) {
-      this.closeMoreMenu();
     }
   }
 
@@ -3939,6 +4467,13 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
         const inputCol = document.getElementById('screen1Hero') || document.querySelector('.qr-col-input');
         inputCol?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+    } else if (tab === 'temporary') {
+      this.activeTab.set('temporary');
+      this.phoneState.set('temporary');
+      if (typeof document !== 'undefined') {
+        const inputCol = document.getElementById('screen1Hero') || document.querySelector('.qr-col-input');
+        inputCol?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
   }
 
@@ -4030,6 +4565,27 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname;
+      const vMatch = pathname.match(/\/v\/([a-zA-Z0-9_-]+)/);
+      if (vMatch && vMatch[1]) {
+        this.verifyToken.set(vMatch[1]);
+        this.activeView.set('verify');
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const vParam = params.get('v');
+      if (vParam) {
+        this.verifyToken.set(vParam);
+        this.activeView.set('verify');
+        return;
+      }
+    }
+
+    this.temporaryCountdownTimer = setInterval(() => {
+      this.updateTemporaryCountdown();
+    }, 1000);
     // Restore persistent advanced settings if available
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
@@ -4200,6 +4756,10 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.temporaryCountdownTimer) {
+      clearInterval(this.temporaryCountdownTimer);
+      this.temporaryCountdownTimer = null;
+    }
     if (this.themeObserver) {
       this.themeObserver.disconnect();
       this.themeObserver = null;
@@ -4216,6 +4776,165 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
       window.removeEventListener('popstate', this.popstateListener);
     }
     this.sub.unsubscribe();
+  }
+
+  canCreateTemporary(): boolean {
+    const raw = this.content().trim();
+    if (!raw || !!this.validationError()) return false;
+    const expiry = this.computeTemporaryExpiryDate();
+    const diffSec = Math.floor((expiry.getTime() - Date.now()) / 1000);
+    return diffSec >= TEMP_QR_CONFIG.limits.minSeconds && diffSec <= TEMP_QR_CONFIG.limits.maxSeconds;
+  }
+
+  getNextFreeQrName(): string {
+    const items = this.historyItems();
+    const usedNumbers = new Set<number>();
+    const regex = /^temporary\s+qr\s+(\d+)$/i;
+    for (const it of items) {
+      const match = regex.exec((it.name || '').trim());
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > 0) usedNumbers.add(num);
+      }
+    }
+    let n = 1;
+    while (usedNumbers.has(n)) n++;
+    return `Temporary QR ${n}`;
+  }
+
+  getDefaultUntilDate(): string {
+    const d = new Date(Date.now() + 86400 * 1000);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  private computeTemporaryExpiryDate(): Date {
+    const now = Date.now();
+    if (this.tempExpiryMode() === 'preset') {
+      const p = TEMP_QR_CONFIG.presets.find(item => item.id === this.tempPreset()) || TEMP_QR_CONFIG.presets[3];
+      return new Date(now + p.seconds * 1000);
+    }
+    if (this.tempCustomStyle() === 'duration') {
+      const val = this.tempCustomDurationValue();
+      const unit = this.tempCustomDurationUnit();
+      let ms = val * 60 * 1000;
+      if (unit === 'hours') ms = val * 3600 * 1000;
+      if (unit === 'days') ms = val * 86400 * 1000;
+      return new Date(now + ms);
+    }
+    const dStr = this.tempCustomUntilDate();
+    if (!dStr) return new Date(now + 86400 * 1000);
+    const parsed = new Date(dStr);
+    return isNaN(parsed.getTime()) ? new Date(now + 86400 * 1000) : parsed;
+  }
+
+  private updateTemporaryCountdown(): void {
+    const rec = this.activeTemporaryRecord();
+    if (!rec || !rec.expiresAt) {
+      this.temporaryCountdown.set(null);
+      return;
+    }
+    const diffSec = Math.floor((new Date(rec.expiresAt).getTime() - Date.now()) / 1000);
+    if (diffSec <= 0) {
+      this.temporaryCountdown.set('Expired');
+      return;
+    }
+    if (diffSec < 60) {
+      this.temporaryCountdown.set(`Expires in ${diffSec}s`);
+      return;
+    }
+    const min = Math.floor(diffSec / 60);
+    if (min < 60) {
+      this.temporaryCountdown.set(`Expires in ${min} min`);
+      return;
+    }
+    const hrs = Math.floor(min / 60);
+    const remMin = min % 60;
+    if (hrs < 24) {
+      this.temporaryCountdown.set(remMin > 0 ? `Expires in ${hrs} h ${remMin} min` : `Expires in ${hrs} h`);
+      return;
+    }
+    const days = Math.floor(hrs / 24);
+    this.temporaryCountdown.set(`Expires in ${days} d`);
+  }
+
+  onCreateTemporaryFromPreview(): void {
+    if (this.isCreatingTemporary()) return;
+    this.isCreatingTemporary.set(true);
+
+    const expiryDate = this.computeTemporaryExpiryDate();
+    const payload: CreateTempQrPayload = {
+      name: this.qrName().trim() || this.getNextFreeQrName(),
+      payloadMode: 'LINK',
+      contentType: 'MESSAGE',
+      content: this.formattedPayload() || this.content().trim(),
+      reference: this.selectedType(),
+      barcodeFormat: 'qrcode',
+      showExpiryOnLabel: this.tempShowExpiryOnLabel(),
+      expiresAt: expiryDate.toISOString()
+    };
+
+    this.tempQrService.createCode(payload).subscribe({
+      next: (record) => {
+        this.isCreatingTemporary.set(false);
+        this.activeTemporaryRecord.set(record);
+        this.updateTemporaryCountdown();
+        this.triggerRegeneration();
+        if (this.isMobileFlow()) {
+          this.phoneState.set('result');
+        }
+      },
+      error: (err) => {
+        this.isCreatingTemporary.set(false);
+        const msg = err?.message || 'Temporary codes need a connection. Try again later.';
+        this.showAlertDialog('Unable to create temporary QR code', msg);
+      }
+    });
+  }
+
+  onCreateAnotherTemporary(): void {
+    this.activeTemporaryRecord.set(null);
+    this.temporaryCountdown.set(null);
+    this.qrName.set(this.getNextFreeQrName());
+    this.triggerRegeneration();
+  }
+
+  onTemporarySettingsChanged(): void {
+    if (!this.activeTemporaryRecord()) {
+      this.triggerRegeneration();
+    }
+  }
+
+  onNewTemporaryCode(): void {
+    this.isContentTemporary.set(true);
+    this.activeTemporaryRecord.set(null);
+    this.temporaryCountdown.set(null);
+    this.qrName.set(this.getNextFreeQrName());
+    this.activeTab.set('content');
+    this.phoneState.set('input');
+    this.triggerRegeneration();
+  }
+
+  onViewInDashboard(): void {
+    this.activeTab.set('temporary');
+    this.phoneState.set('temporary');
+  }
+
+  onToggleTemporary(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.isContentTemporary.set(checked);
+    if (checked) {
+      if (!this.qrName().trim() || this.qrName() === 'My QR Code') {
+        this.qrName.set(this.getNextFreeQrName());
+      }
+    }
+    this.triggerRegeneration();
+  }
+
+  onPrintQr(): void {
+    if (typeof window !== 'undefined') {
+      window.print();
+    }
   }
 
   goToResultState(): void {
@@ -4648,41 +5367,52 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
     const trimmed = rawContent.trim();
     console.log(`[QR-DIAGNOSTIC] [${new Date().toISOString()}] generateQR() called: content="${trimmed.slice(0, 30)}..."`);
 
-    if (!trimmed) {
-      this.qrDataUrl.set(null);
-      this.validationError.set(null);
-      this.error.set(null);
-      this.isGenerating.set(false);
-      this.isCreatingHostedLink.set(false);
-      this.shouldAnimateQR.set(false);
-      this.shouldAnimateQR$.next(false);
-      this.smartLinkService.resetActiveSession();
-      this.hasGeneratedFirstQr = false;
-      return;
-    }
-
-    // Validate
-    const activePlatform = type === 'social' ? this.inputPanel()?.socialData?.platform : undefined;
-    const validation = this.qrService.validateContent(trimmed, type, activePlatform);
-    if (!validation.isValid) {
-      this.validationError.set(validation.error ?? 'Invalid input format.');
-      // Keep existing QR on screen during later edits; only clear if no QR has ever been rendered
-      if (!this.hasGeneratedFirstQr) {
-        this.qrDataUrl.set(null);
-      }
-      this.isGenerating.set(false);
-      this.isCreatingHostedLink.set(false);
-      this.shouldAnimateQR.set(false);
-      this.shouldAnimateQR$.next(false);
-      return;
-    }
-
-    this.validationError.set(null);
-    this.error.set(null);
-    this.isGenerating.set(true);
-
     let contentToEncode = type === 'text' ? normalizeLineEndings(rawContent) : trimmed;
     let encodeType: ContentType = type;
+
+    if (this.isContentTemporary()) {
+      const rec = this.activeTemporaryRecord();
+      if (rec && rec.verifyUrl) {
+        contentToEncode = rec.verifyUrl;
+        encodeType = 'url';
+      }
+      this.validationError.set(null);
+      this.error.set(null);
+      this.isGenerating.set(true);
+    } else {
+      if (!trimmed) {
+        this.qrDataUrl.set(null);
+        this.validationError.set(null);
+        this.error.set(null);
+        this.isGenerating.set(false);
+        this.isCreatingHostedLink.set(false);
+        this.shouldAnimateQR.set(false);
+        this.shouldAnimateQR$.next(false);
+        this.smartLinkService.resetActiveSession();
+        this.hasGeneratedFirstQr = false;
+        return;
+      }
+
+      // Validate
+      const activePlatform = type === 'social' ? this.inputPanel()?.socialData?.platform : undefined;
+      const validation = this.qrService.validateContent(trimmed, type, activePlatform);
+      if (!validation.isValid) {
+        this.validationError.set(validation.error ?? 'Invalid input format.');
+        // Keep existing QR on screen during later edits; only clear if no QR has ever been rendered
+        if (!this.hasGeneratedFirstQr) {
+          this.qrDataUrl.set(null);
+        }
+        this.isGenerating.set(false);
+        this.isCreatingHostedLink.set(false);
+        this.shouldAnimateQR.set(false);
+        this.shouldAnimateQR$.next(false);
+        return;
+      }
+
+      this.validationError.set(null);
+      this.error.set(null);
+      this.isGenerating.set(true);
+    }
 
     // Render token to cancel stale renders
     const renderToken = ++this.currentRenderToken;
@@ -4740,6 +5470,18 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
       this.errorCorrection.set(autoEc.level);
     }
 
+    let activeFrame = this.frame();
+    if (this.isContentTemporary() && this.tempShowExpiryOnLabel()) {
+      const rec = this.activeTemporaryRecord();
+      const exp = rec?.expiresAt ? new Date(rec.expiresAt) : this.computeTemporaryExpiryDate();
+      const dateStr = exp.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+      activeFrame = {
+        ...activeFrame,
+        style: activeFrame.style === 'none' ? 'bottom-banner' : activeFrame.style,
+        text: `Valid until ${dateStr}`
+      };
+    }
+
     const options: Partial<QROptions> = {
       type: encodeType,
       size: this.size(),
@@ -4757,7 +5499,7 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
       logo: this.logo() || undefined,
       logoSize: this.logoSize(),
       logoMargin: this.logoMargin(),
-      frame: this.frame(),
+      frame: activeFrame,
       artShape: this.artShape()
     };
 
@@ -4814,15 +5556,17 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
         }, 500);
       }
 
-      // Record to history
-      this.historyService.addItem({
-        name: this.qrName().trim() || undefined,
-        type,
-        content: trimmed,
-        formattedPayload: (encodeType === 'url' && type === 'text') ? contentToEncode : this.formattedPayload(),
-        dataUrl: result,
-        options
-      });
+      // Record to history (skipped for temporary codes)
+      if (!this.isContentTemporary()) {
+        this.historyService.addItem({
+          name: this.qrName().trim() || undefined,
+          type,
+          content: trimmed,
+          formattedPayload: (encodeType === 'url' && type === 'text') ? contentToEncode : this.formattedPayload(),
+          dataUrl: result,
+          options
+        });
+      }
     } catch (err: unknown) {
       if (renderToken !== this.currentRenderToken) return;
       const message = err instanceof Error ? err.message : 'Failed to generate QR code.';
@@ -4861,14 +5605,16 @@ export class QRGeneratorComponent implements OnInit, OnDestroy {
       };
       const result = await this.qrService.generate(contentToEncode, options);
       this.qrDataUrl.set(result);
-      this.historyService.addItem({
-        name: this.qrName().trim() || undefined,
-        type,
-        content: trimmed,
-        formattedPayload: contentToEncode,
-        dataUrl: result,
-        options
-      });
+      if (!this.isContentTemporary()) {
+        this.historyService.addItem({
+          name: this.qrName().trim() || undefined,
+          type,
+          content: trimmed,
+          formattedPayload: contentToEncode,
+          dataUrl: result,
+          options
+        });
+      }
     } catch {
       this.qrDataUrl.set(null);
       this.error.set('Failed to generate static QR code.');

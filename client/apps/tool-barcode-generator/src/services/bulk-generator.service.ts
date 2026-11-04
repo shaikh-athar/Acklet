@@ -735,11 +735,22 @@ export class BulkGeneratorService {
    * Generates manifest CSV for export archives with formula injection defense.
    */
   generateManifestCsv(results: BulkItemResult[]): string {
+    const hasTemp = results.some(r => !!r.token);
+    if (hasTemp) {
+      const header = 'Index,Name,Value,Token,Check Link,Expires At (UTC),File Name,Status\n';
+      const lines = results
+        .map(
+          r =>
+            `${r.index + 1},${formatCsvCell(r.name || `Barcode ${r.index + 1}`)},${formatCsvCell(r.value)},${formatCsvCell(r.token || '')},${formatCsvCell(r.checkUrl || '')},${formatCsvCell(r.expiresAt || '')},${formatCsvCell(r.fileName)},${formatCsvCell(r.status)}`
+        )
+        .join('\n');
+      return header + lines;
+    }
     const header = 'Index,Value,Encoded Value,File Name,Status\n';
     const lines = results
       .map(
         r =>
-          `${r.index + 1},${formatCsvCell(r.value)},${formatCsvCell(r.value)},${formatCsvCell(r.fileName)},${formatCsvCell(r.status)}`
+          `${r.index + 1},${formatCsvCell(r.value)},${formatCsvCell(r.cleanValue || r.value)},${formatCsvCell(r.fileName)},${formatCsvCell(r.status)}`
       )
       .join('\n');
     return header + lines;
@@ -825,9 +836,14 @@ export class BulkGeneratorService {
           renderedResults.push({
             index: idx,
             value: rec.value,
+            cleanValue: rec.cleanValue,
             status: 'error',
             errorMessage: rec.errorMessage || 'Invalid value',
             fileName: `item-${idx + 1}`,
+            token: rec.token,
+            checkUrl: rec.checkUrl,
+            expiresAt: rec.expiresAt,
+            name: rec.name || rec.labelText || `Barcode ${idx + 1}`,
             labelItem: {
               value: rec.value,
               displayValue: rec.value,
@@ -872,27 +888,37 @@ export class BulkGeneratorService {
 
           renderedResults.push({
             index: idx,
-            value: rec.cleanValue,
+            value: rec.value,
+            cleanValue: rec.cleanValue,
             status: 'success',
             svg: renderRes.svg,
             fileName,
             verified: isVerified,
             verifyError,
+            token: rec.token,
+            checkUrl: rec.checkUrl,
+            expiresAt: rec.expiresAt,
+            name: rec.name || rec.labelText || `Barcode ${idx + 1}`,
             labelItem: {
               value: rec.cleanValue,
               displayValue: rec.displayValue,
               labelText: rec.labelText,
               svg: renderRes.svg
             }
-          } as any);
+          });
         } catch {
           skippedCount++;
           renderedResults.push({
             index: idx,
             value: rec.value,
+            cleanValue: rec.cleanValue,
             status: 'error',
             errorMessage: 'Render error',
             fileName: `item-${idx + 1}`,
+            token: rec.token,
+            checkUrl: rec.checkUrl,
+            expiresAt: rec.expiresAt,
+            name: rec.name || rec.labelText || `Barcode ${idx + 1}`,
             labelItem: {
               value: rec.value,
               displayValue: rec.value,

@@ -20,6 +20,7 @@ import {
 } from '../../models/barcode.models';
 import { BARCODE_REGISTRY } from '../../config/barcode-registry';
 import { ShareService, SHARE_PRIVACY_NOTICE } from '../../services/share.service';
+import { TempCodeRecord } from '../../models/temp-code.models';
 
 @Component({
   selector: 'app-barcode-preview-panel',
@@ -47,6 +48,24 @@ import { ShareService, SHARE_PRIVACY_NOTICE } from '../../services/share.service
                   <span class="error-dot"></span> Error
                 </span>
               </div>
+            } @else if (isTemporary()) {
+              <div class="status-pill-wrap">
+                @if (temporaryRecord()) {
+                  <span class="status-pill">
+                    <span class="live-dot"></span> Active
+                  </span>
+                  @if (temporaryCountdown()) {
+                    <span class="countdown-chip">
+                      <ts-icon name="clock" [size]="12" />
+                      <span>{{ temporaryCountdown() }}</span>
+                    </span>
+                  }
+                } @else if (hasValidRender() && !isGenerating()) {
+                  <span class="status-pill">
+                    <span class="live-dot"></span> Ready
+                  </span>
+                }
+              </div>
             } @else if (hasValidRender() && !isGenerating()) {
               <div class="status-pill-wrap">
                 <span class="status-pill">
@@ -64,19 +83,21 @@ import { ShareService, SHARE_PRIVACY_NOTICE } from '../../services/share.service
 
           <!-- Top-Right Actions -->
           <div class="header-actions">
-            <!-- History / Saved Barcodes Button with Counter Badge -->
-            <button
-              type="button"
-              class="header-icon-btn"
-              (click)="openHistory.emit()"
-              title="Saved barcodes"
-              aria-label="Saved barcodes"
-            >
-              <ts-icon name="history" [size]="18" />
-              @if (historyCount() > 0) {
-                <span class="btn-badge">{{ historyCount() }}</span>
-              }
-            </button>
+            <!-- History / Saved Barcodes Button with Counter Badge (hidden in temporary mode) -->
+            @if (!isTemporary()) {
+              <button
+                type="button"
+                class="header-icon-btn"
+                (click)="openHistory.emit()"
+                title="Saved barcodes"
+                aria-label="Saved barcodes"
+              >
+                <ts-icon name="history" [size]="18" />
+                @if (historyCount() > 0) {
+                  <span class="btn-badge">{{ historyCount() }}</span>
+                }
+              </button>
+            }
 
             <!-- Settings Button -->
             <button
@@ -196,99 +217,138 @@ import { ShareService, SHARE_PRIVACY_NOTICE } from '../../services/share.service
         <!-- Action Row: Download primary + More dropdown                 -->
         <!-- ════════════════════════════════════════════════════════════ -->
         <div class="preview-action-bar">
-          <div class="action-buttons-cluster">
-            <!-- Single Primary Action: Download PNG -->
-            <button
-              type="button"
-              class="primary-download-btn"
-              [disabled]="!isValid() || isGenerating()"
-              (click)="onDownload('png')"
-              aria-label="Download"
-            >
-              <ts-icon name="download" class="btn-icon" />
-              <span>Download</span>
-            </button>
-
-            <!-- More Adaptive Dropdown (Popover on desktop, bottom sheet on phone) -->
-            <ts-adaptive-dropdown
-              [isOpen]="isMoreOpen()"
-              (isOpenChange)="isMoreOpen.set($event)"
-              title="More actions"
-              menuWidth="240px"
-              placement="top"
-              align="right"
-            >
+          @if (isTemporary() && !temporaryRecord()) {
+            <div class="temporary-create-cluster">
               <button
                 type="button"
-                trigger
-                class="more-action-trigger"
-                [disabled]="!isValid() || isGenerating()"
-                aria-label="More"
-                (click)="toggleMore($event)"
+                class="primary-create-temp-btn"
+                [disabled]="!canCreateTemporary() || isCreatingTemporary()"
+                (click)="createTemporary.emit()"
+                aria-label="Create temporary barcode"
               >
-                <span>More</span>
-                <ts-icon name="chevron-down" [size]="14" [class.rotated]="isMoreOpen()" />
+                <ts-icon [name]="isCreatingTemporary() ? 'loader' : 'clock'" [class.spin-animation]="isCreatingTemporary()" class="btn-icon" />
+                <span>{{ isCreatingTemporary() ? 'Creating...' : 'Create temporary barcode' }}</span>
+              </button>
+            </div>
+          } @else {
+            <div class="action-buttons-cluster">
+              <!-- Single Primary Action: Download PNG -->
+              <button
+                type="button"
+                class="primary-download-btn"
+                [disabled]="(!isValid() && !isTemporary()) || isGenerating()"
+                (click)="onDownload('png')"
+                aria-label="Download"
+              >
+                <ts-icon name="download" class="btn-icon" />
+                <span>Download</span>
               </button>
 
-              <div class="more-menu-list" role="menu">
+              <!-- More Adaptive Dropdown (Popover on desktop, bottom sheet on phone) -->
+              <ts-adaptive-dropdown
+                [isOpen]="isMoreOpen()"
+                (isOpenChange)="isMoreOpen.set($event)"
+                title="More actions"
+                menuWidth="240px"
+                placement="top"
+                align="right"
+              >
                 <button
                   type="button"
-                  role="menuitem"
-                  class="more-menu-item"
-                  (click)="onDownload('svg'); isMoreOpen.set(false)"
+                  trigger
+                  class="more-action-trigger"
+                  [disabled]="(!isValid() && !isTemporary()) || isGenerating()"
+                  aria-label="More"
+                  (click)="toggleMore($event)"
                 >
-                  <ts-icon name="file-code" [size]="16" />
-                  <span>Download SVG</span>
+                  <span>More</span>
+                  <ts-icon name="chevron-down" [size]="14" [class.rotated]="isMoreOpen()" />
                 </button>
 
-                <button
-                  type="button"
-                  role="menuitem"
-                  class="more-menu-item"
-                  (click)="onDownload('pdf'); isMoreOpen.set(false)"
-                >
-                  <ts-icon name="file-down" [size]="16" />
-                  <span>Download PDF</span>
-                </button>
-
-                <button
-                  type="button"
-                  role="menuitem"
-                  class="more-menu-item"
-                  (click)="copyImage(); isMoreOpen.set(false)"
-                >
-                  <ts-icon [name]="copiedImage() ? 'check' : 'copy'" [size]="16" />
-                  <span>{{ copiedImage() ? 'Image copied' : 'Copy image' }}</span>
-                </button>
-
-                <button
-                  type="button"
-                  role="menuitem"
-                  class="more-menu-item"
-                  (click)="onSave(); isMoreOpen.set(false)"
-                >
-                  <ts-icon [name]="savedBarcode() ? 'check' : 'bookmark'" [size]="16" />
-                  <span>{{ savedBarcode() ? 'Saved to history' : 'Save' }}</span>
-                </button>
-
-                <div class="menu-divider"></div>
-
-                <div class="share-action-wrap">
+                <div class="more-menu-list" role="menu">
                   <button
                     type="button"
                     role="menuitem"
                     class="more-menu-item"
-                    [disabled]="!isShareable()"
-                    (click)="onShare(); isMoreOpen.set(false)"
+                    (click)="onDownload('svg'); isMoreOpen.set(false)"
                   >
-                    <ts-icon [name]="copiedLink() ? 'check' : 'share-2'" [size]="16" />
-                    <span>{{ copiedLink() ? 'Link copied' : 'Share' }}</span>
+                    <ts-icon name="file-code" [size]="16" />
+                    <span>Download SVG</span>
                   </button>
-                  <span class="share-privacy-line">{{ sharePrivacyNotice }}</span>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    class="more-menu-item"
+                    (click)="onDownload('pdf'); isMoreOpen.set(false)"
+                  >
+                    <ts-icon name="file-down" [size]="16" />
+                    <span>Download PDF</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    class="more-menu-item"
+                    (click)="copyImage(); isMoreOpen.set(false)"
+                  >
+                    <ts-icon [name]="copiedImage() ? 'check' : 'copy'" [size]="16" />
+                    <span>{{ copiedImage() ? 'Image copied' : 'Copy image' }}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    class="more-menu-item"
+                    (click)="onPrint(); isMoreOpen.set(false)"
+                  >
+                    <ts-icon name="printer" [size]="16" />
+                    <span>Print</span>
+                  </button>
+
+                  @if (!isTemporary()) {
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="more-menu-item"
+                      (click)="onSave(); isMoreOpen.set(false)"
+                    >
+                      <ts-icon [name]="savedBarcode() ? 'check' : 'bookmark'" [size]="16" />
+                      <span>{{ savedBarcode() ? 'Saved to history' : 'Save' }}</span>
+                    </button>
+
+                    <div class="menu-divider"></div>
+
+                    <div class="share-action-wrap">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        class="more-menu-item"
+                        [disabled]="!isShareable()"
+                        (click)="onShare(); isMoreOpen.set(false)"
+                      >
+                        <ts-icon [name]="copiedLink() ? 'check' : 'share-2'" [size]="16" />
+                        <span>{{ copiedLink() ? 'Link copied' : 'Share' }}</span>
+                      </button>
+                      <span class="share-privacy-line">{{ sharePrivacyNotice }}</span>
+                    </div>
+                  }
                 </div>
-              </div>
-            </ts-adaptive-dropdown>
-          </div>
+              </ts-adaptive-dropdown>
+
+              @if (isTemporary() && temporaryRecord()) {
+                <button
+                  type="button"
+                  class="view-dashboard-btn"
+                  (click)="viewInDashboard.emit()"
+                  title="View in dashboard"
+                >
+                  <ts-icon name="layout-dashboard" [size]="15" />
+                  <span>View in dashboard</span>
+                </button>
+              }
+            </div>
+          }
         </div>
       </div>
     </div>
@@ -417,6 +477,149 @@ import { ShareService, SHARE_PRIVACY_NOTICE } from '../../services/share.service
       height: 5px;
       border-radius: 50%;
       background: #F59E0B;
+    }
+
+    .status-pill.sample-pill {
+      background: var(--bg-elevated, rgba(255, 255, 255, 0.08));
+      color: var(--text-muted, #94a3b8);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+    }
+
+    :host-context([data-theme="light"]) .status-pill.sample-pill {
+      background: #F1F5F9;
+      color: #64748B;
+      border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .sample-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--text-muted, #94a3b8);
+    }
+
+    .countdown-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: rgba(59, 130, 246, 0.12);
+      color: var(--tool-accent, #3B82F6);
+      font-size: 10.5px;
+      font-weight: 600;
+      margin-left: 4px;
+    }
+
+    .sample-notice-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      margin-top: 10px;
+      border-radius: 8px;
+      background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      color: var(--text-muted, #94a3b8);
+      font-size: 12px;
+      line-height: 1.4;
+      max-width: 90%;
+      text-align: center;
+      justify-content: center;
+    }
+
+    :host-context([data-theme="light"]) .sample-notice-banner {
+      background: #F8FAFC;
+      border-color: rgba(0, 0, 0, 0.08);
+      color: #64748B;
+    }
+
+    .temporary-create-cluster {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .primary-create-temp-btn {
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 10px 20px;
+      border-radius: 10px;
+      background: var(--tool-accent, #3B82F6);
+      color: #FFFFFF;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: background var(--ts-dur-fast, 150ms) ease,
+                  transform var(--ts-dur-press, 100ms) ease;
+    }
+
+    .primary-create-temp-btn:hover:not(:disabled) {
+      background: var(--tool-accent-hover, #2563EB);
+    }
+
+    .primary-create-temp-btn:active:not(:disabled) {
+      transform: scale(0.99);
+    }
+
+    .primary-create-temp-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .service-unreachable-text {
+      font-size: 12px;
+      color: #EF4444;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    .view-dashboard-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 44px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: var(--bg-surface, #1e1e24);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      color: var(--text, #fcfcfc);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all var(--ts-dur-fast, 150ms) ease;
+    }
+
+    :host-context([data-theme="light"]) .view-dashboard-btn {
+      background: #FFFFFF;
+      border-color: rgba(0, 0, 0, 0.12);
+      color: #0F172A;
+    }
+
+    .view-dashboard-btn:hover {
+      background: var(--bg-elevated, rgba(255, 255, 255, 0.08));
+    }
+
+    :host-context([data-theme="light"]) .view-dashboard-btn:hover {
+      background: #F1F5F9;
+    }
+
+    .spin-animation {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
 
     .header-actions {
@@ -1009,6 +1212,12 @@ export class BarcodePreviewPanelComponent implements OnDestroy {
   readonly rawValue = input<string>('');
   readonly encodedValue = input<string>('');
   readonly canSaveSeparate = input<boolean>(false);
+  readonly isTemporary = input<boolean>(false);
+  readonly temporaryRecord = input<TempCodeRecord | null>(null);
+  readonly temporaryCountdown = input<string | null>(null);
+  readonly isCreatingTemporary = input<boolean>(false);
+  readonly isServiceUnreachable = input<boolean>(false);
+  readonly canCreateTemporary = input<boolean>(true);
 
   readonly download = output<'png' | 'svg' | 'pdf'>();
   readonly copyImageClick = output<void>();
@@ -1017,6 +1226,9 @@ export class BarcodePreviewPanelComponent implements OnDestroy {
   readonly openHistory = output<void>();
   readonly openSettings = output<void>();
   readonly saveSeparate = output<void>();
+  readonly createTemporary = output<void>();
+  readonly viewInDashboard = output<void>();
+  readonly print = output<void>();
 
   readonly isMoreOpen = signal<boolean>(false);
   readonly copiedImage = signal<boolean>(false);
@@ -1041,6 +1253,9 @@ export class BarcodePreviewPanelComponent implements OnDestroy {
   });
 
   readonly hasValidRender = computed<boolean>(() => {
+    if (this.isTemporary()) {
+      return !this.renderError() && !!this.svgContent() && !!this.barcodeImageUrl();
+    }
     return !this.renderError() && !!this.svgContent() && !!this.barcodeImageUrl() && this.isValid();
   });
 
@@ -1067,8 +1282,9 @@ export class BarcodePreviewPanelComponent implements OnDestroy {
       effect(() => {
         const svg = this.svgContent();
         const valid = this.isValid();
+        const isTemp = this.isTemporary();
         untracked(() => {
-          this.updateBlobUrl(svg, valid);
+          this.updateBlobUrl(svg, valid || isTemp);
         });
       });
     } catch {
@@ -1111,6 +1327,10 @@ export class BarcodePreviewPanelComponent implements OnDestroy {
 
   onDownload(format: 'png' | 'svg' | 'pdf'): void {
     this.download.emit(format);
+  }
+
+  onPrint(): void {
+    this.print.emit();
   }
 
   copyImage(): void {

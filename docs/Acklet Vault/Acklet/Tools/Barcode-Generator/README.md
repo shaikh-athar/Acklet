@@ -68,6 +68,7 @@ docs/Acklet Vault/Acklet/Tools/Barcode-Generator/
 - Label Templates & Roll Presets: [label-templates.md](./label-templates.md)
 - Format Matrix: [format-matrix.md](./format-matrix.md)
 - Format Registry: [format-registry.md](./format-registry.md)
+- Temporary Expiring Barcodes: [temporary-codes.md](./temporary-codes.md)
 - Security Baseline: [security.md](./security.md)
 - Test Vectors: [test-vectors.md](./test-vectors.md)
 - Changelog: [changelog.md](./changelog.md)
@@ -76,7 +77,8 @@ docs/Acklet Vault/Acklet/Tools/Barcode-Generator/
 
 ## 3. Core Architectural Principles
 
-1. **100% Client-Side Execution**: All checksum calculations, character validations, binary module encodings, and vector SVG renderings execute entirely in browser memory. Zero user telemetry, zero network tracking, and zero server storage.
+1. **100% Client-Side Execution for Standard & Bulk Barcodes**: All standard 1D and 2D barcodes, check digits, and batch CSV sheets execute completely in browser memory. Zero user telemetry, zero network tracking, and zero server storage.
+2. **Server-Enforced Temporary Expiring Barcodes**: Temporary codes encode random verification tokens whose time-based expiry and confidentiality are strictly enforced by the Acklet backend clock, with AES-256-GCM encryption at rest, rate limiting, and automated nightly purges (see [temporary-codes.md](./temporary-codes.md)).
 2. **Unified Rendering Pipeline Parity**: Single barcode generation (`Content` tab) and bulk batch generation (`Bulk` tab) consume the identical [`RenderService`](../../../../client/apps/tool-barcode-generator/src/services/render.service.ts) pipeline. Every record produces a byte-identical vector SVG with identical quiet zones, bar geometry, and human-readable text styling.
 3. **Single Page Model Engine (`SheetLayoutService`)**: A single authoritative layout calculator creates `SheetPageModel[]` and `RollLabelModel[]` containing all positions, margins, barcode boxes, captions, and cut guides in millimeters. The live preview, vector PDF generator, canvas rasterizer, and isolated iframe print engine all consume this exact model.
 4. **Generate-Gated Preview**: Before the user clicks "Generate N barcodes", the preview displays clean layout placeholder grids with empty dashed slots. Modifying settings does not alter the preview or show intrusive warning banners; the last generated output remains stable until explicit regeneration.

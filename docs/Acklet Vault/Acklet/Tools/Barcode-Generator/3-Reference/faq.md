@@ -34,7 +34,11 @@ Common causes include:
 4. **Incorrect check digit**: Scanners will beep in error and reject mismatched checksums.
 
 ### Is my entered data stored or transmitted anywhere?
-No. All encoding, validation, and rendering happen 100% locally in your browser memory. No data ever leaves your computer, and no network requests are made.
+Standard barcodes and bulk spreadsheets are processed 100% locally in your browser memory: no data ever leaves your computer, and no network requests are made.
+When creating Temporary expiring barcodes, the verification payload (message, link, or reference) is encrypted with AES-256-GCM and stored on Acklet until the configured expiration date, after which it is permanently purged.
+
+### How do Temporary expiring barcodes work?
+Temporary barcodes encode a cryptographic verification token or URL. When scanned, the verification service checks the server clock. While valid, it displays the message, confirmation link, or reference. Once expired or deactivated, the content is never served again and the record is scheduled for deletion.
 
 ### What is the difference between a Barcode and a QR Code?
 1D barcodes encode small amounts of data (such as product GTINs or serial numbers) along a single horizontal axis and require dedicated linear optical scanners or camera apps. QR codes encode rich 2D data (such as long URLs, WiFi credentials, or contact cards) in both horizontal and vertical axes and can be scanned from any angle by standard smartphone cameras.

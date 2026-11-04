@@ -104,7 +104,7 @@ import { BARCODE_SYSTEM_LIMITS } from '../../config/barcode-catalog.config';
             </div>
 
             <!-- Category Pills Filter Strip (Phone) -->
-            @if (!searchQuery()) {
+            @if (!searchQuery() && !onlyTemporary()) {
               <div class="phone-category-scroll custom-scrollbar">
                 @for (cat of categories(); track cat) {
                   <button
@@ -151,11 +151,13 @@ import { BARCODE_SYSTEM_LIMITS } from '../../config/barcode-catalog.config';
             </div>
 
             <!-- Footer Quiet Link -->
-            <div class="picker-footer-note">
-              <a [href]="qrToolUrl" target="_blank" rel="noopener" class="qr-cross-link">
-                Need a QR code? Open QR Generator
-              </a>
-            </div>
+            @if (!onlyTemporary()) {
+              <div class="picker-footer-note">
+                <a [href]="qrToolUrl" target="_blank" rel="noopener" class="qr-cross-link">
+                  Need a QR code? Open QR Generator
+                </a>
+              </div>
+            }
           </div>
         </ts-bottom-sheet>
       } @else {
@@ -198,7 +200,7 @@ import { BARCODE_SYSTEM_LIMITS } from '../../config/barcode-catalog.config';
             <!-- Two-Pane Body -->
             <div class="two-pane-body">
               <!-- Left Pane: Categories -->
-              @if (!searchQuery()) {
+              @if (!searchQuery() && !onlyTemporary()) {
                 <div class="left-category-pane custom-scrollbar" role="tablist">
                   @for (cat of categories(); track cat) {
                     <button
@@ -218,7 +220,7 @@ import { BARCODE_SYSTEM_LIMITS } from '../../config/barcode-catalog.config';
               <!-- Right Pane: Formats List -->
               <div
                 class="right-format-pane custom-scrollbar"
-                [class.full-width]="!!searchQuery()"
+                [class.full-width]="!!searchQuery() || onlyTemporary()"
                 role="listbox"
               >
                 <!-- Recent Section (when on Popular category and not searching) -->
@@ -286,11 +288,13 @@ import { BARCODE_SYSTEM_LIMITS } from '../../config/barcode-catalog.config';
             </div>
 
             <!-- Footer Quiet Link -->
-            <div class="picker-footer-note">
-              <a [href]="qrToolUrl" target="_blank" rel="noopener" class="qr-cross-link">
-                Need a QR code? Open QR Generator
-              </a>
-            </div>
+            @if (!onlyTemporary()) {
+              <div class="picker-footer-note">
+                <a [href]="qrToolUrl" target="_blank" rel="noopener" class="qr-cross-link">
+                  Need a QR code? Open QR Generator
+                </a>
+              </div>
+            }
           </div>
         }
       }
@@ -843,6 +847,7 @@ export class BarcodeFormatPickerComponent implements OnInit, OnDestroy {
 
   readonly value = model<string>('code128');
   readonly variant = model<string>('');
+  readonly onlyTemporary = input<boolean>(false);
   readonly formatChange = output<string>();
 
   readonly isOpen = signal<boolean>(false);
@@ -853,6 +858,9 @@ export class BarcodeFormatPickerComponent implements OnInit, OnDestroy {
   readonly qrToolUrl = BARCODE_SYSTEM_LIMITS.qrToolUrl;
 
   readonly categories = computed<BarcodeCategory[]>(() => {
+    if (this.onlyTemporary()) {
+      return ['Supported' as BarcodeCategory];
+    }
     return this.registry.getCategories();
   });
 
@@ -871,6 +879,16 @@ export class BarcodeFormatPickerComponent implements OnInit, OnDestroy {
   });
 
   readonly displayedFormats = computed<BarcodeCatalogItem[]>(() => {
+    if (this.onlyTemporary()) {
+      const temps = this.registry.getTemporaryFormats();
+      const q = this.searchQuery().trim().toLowerCase();
+      if (!q) return temps;
+      return temps.filter(f =>
+        f.label.toLowerCase().includes(q) ||
+        f.id.toLowerCase().includes(q) ||
+        f.description.toLowerCase().includes(q)
+      );
+    }
     const q = this.searchQuery().trim();
     if (q) {
       return this.registry.search(q);
@@ -922,10 +940,13 @@ export class BarcodeFormatPickerComponent implements OnInit, OnDestroy {
     this.isOpen.set(true);
     this.searchQuery.set('');
     this.focusedIndex.set(-1);
-    // If the current format has a category, select it
-    const item = this.currentItem();
-    if (item && item.category) {
-      this.selectedCategory.set(item.category);
+    if (this.onlyTemporary()) {
+      this.selectedCategory.set('Supported' as BarcodeCategory);
+    } else {
+      const item = this.currentItem();
+      if (item && item.category) {
+        this.selectedCategory.set(item.category);
+      }
     }
   }
 

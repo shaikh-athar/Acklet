@@ -132,7 +132,7 @@ html[data-theme="light"] body:has(.ts-root),
     color var(--ts-dur-fast, 150ms) var(--ts-ease);
 }
 
-.ts-root button:not([data-variant="primary"]):not([data-variant="destructive"]):not(.spartan-button-variant-destructive):not(.split-primary-btn):not(.split-arrow-btn):not(.guided-next-btn):not(.btn-primary):not([class*="primary"]):not([class*="accent"]):not([class*="destructive"]):not([class*="danger"]):not([class*="delete"]):not(.copied):not(.dark-pill-add-btn):not(.join-open-btn):not(.empty-action-btn):not(.view-toggle-btn):hover,
+.ts-root button:not([data-variant="primary"]):not([data-variant="destructive"]):not(.spartan-button-variant-destructive):not(.split-primary-btn):not(.split-arrow-btn):not(.guided-next-btn):not(.btn-primary):not([class*="primary"]):not([class*="accent"]):not([class*="destructive"]):not([class*="danger"]):not([class*="delete"]):not(.copied):not(.dark-pill-add-btn):not(.join-open-btn):not(.empty-action-btn):not(.empty-cta-btn):not([class*="cta"]):not(.view-toggle-btn):not(.segment-btn):not([class*="segment"]):hover,
 .ts-root .ts-btn:hover,
 .ts-root .ts-icon-btn:hover,
 .ts-root .ts-action-btn:hover {
@@ -140,7 +140,7 @@ html[data-theme="light"] body:has(.ts-root),
   outline: none !important;
 }
 
-.ts-root button:not([data-variant="primary"]):not([data-variant="destructive"]):not(.spartan-button-variant-destructive):not(.split-primary-btn):not(.split-arrow-btn):not(.guided-next-btn):not(.btn-primary):not([class*="primary"]):not([class*="accent"]):not([class*="destructive"]):not([class*="danger"]):not([class*="delete"]):not(.copied):not(.dark-pill-add-btn):not(.join-open-btn):not(.empty-action-btn):not(.view-toggle-btn):active,
+.ts-root button:not([data-variant="primary"]):not([data-variant="destructive"]):not(.spartan-button-variant-destructive):not(.split-primary-btn):not(.split-arrow-btn):not(.guided-next-btn):not(.btn-primary):not([class*="primary"]):not([class*="accent"]):not([class*="destructive"]):not([class*="danger"]):not([class*="delete"]):not(.copied):not(.dark-pill-add-btn):not(.join-open-btn):not(.empty-action-btn):not(.empty-cta-btn):not([class*="cta"]):not(.view-toggle-btn):not(.segment-btn):not([class*="segment"]):active,
 .ts-root .ts-btn:active,
 .ts-root .ts-icon-btn:active,
 .ts-root .ts-action-btn:active {

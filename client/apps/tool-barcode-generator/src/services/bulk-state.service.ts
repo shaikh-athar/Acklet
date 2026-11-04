@@ -58,6 +58,15 @@ export class BulkStateService {
   readonly csvHasHeader = signal<boolean>(true);
   readonly csvValueColIdx = signal<number>(0);
   readonly csvCaptionColIdx = signal<number>(-1);
+  readonly bulkAlert = signal<{ title: string; message: string; type?: 'error' | 'warning' } | null>(null);
+
+  showBulkAlert(title: string, message: string, type: 'error' | 'warning' = 'error'): void {
+    this.bulkAlert.set({ title, message, type });
+  }
+
+  clearBulkAlert(): void {
+    this.bulkAlert.set(null);
+  }
 
   loadCsvFile(fileName: string, content: string): void {
     this.sourceMode.set('csv');

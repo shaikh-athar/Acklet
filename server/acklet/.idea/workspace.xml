@@ -5,27 +5,30 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8cc24f72-cf76-4714-94a5-20cada12dd6d" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/components/url-shortener.component.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/components/url-shortener.component.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/components/url-shortener.component.html" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/components/url-shortener.component.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/components/url-shortener.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/components/url-shortener.component.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/services/shortener-error.interceptor.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/services/shortener-error.interceptor.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/services/shortener-filter.model.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/services/shortener-filter.model.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/services/shortener-messages.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/services/shortener-messages.spec.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/services/shortener-messages.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/services/shortener-messages.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/services/shortener.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/services/shortener.config.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/services/shortener.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/services/shortener.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/services/shortener.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-urlshortener/src/services/shortener.spec.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/topbar/ts-topbar.component.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/topbar/ts-topbar.component.spec.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/topbar/ts-topbar.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/components/topbar/ts-topbar.component.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/hub/hub-home-gradient-phase1.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/hub/hub-home-gradient-phase1.spec.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/hub/hub-home.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/hub/hub-home.component.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../client/src/main.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/main.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/URL-Shortener/0-Requirements/features.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/URL-Shortener/0-Requirements/features.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/URL-Shortener/2-Implementation/service-design.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/URL-Shortener/2-Implementation/service-design.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/shortener/service/ShortLinkService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/shortener/service/ShortLinkService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/shortener/util/ShortenerHtmlRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/tool/tools/shortener/util/ShortenerHtmlRenderer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/com/code/acklet/tool/tools/shortener/ShortLinkServiceTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/com/code/acklet/tool/tools/shortener/ShortLinkServiceTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/com/code/acklet/tool/tools/shortener/ShortRedirectTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/com/code/acklet/tool/tools/shortener/ShortRedirectTest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/angular.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/angular.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/components/barcode-generator.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/components/barcode-generator.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/components/bulk-panel/bulk-panel.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/components/bulk-panel/bulk-panel.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/components/bulk-preview/bulk-preview.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/components/bulk-preview/bulk-preview.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/components/content-panel/content-panel.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/components/content-panel/content-panel.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/components/format-picker/format-picker.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/components/format-picker/format-picker.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/components/preview-panel/preview-panel.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/components/preview-panel/preview-panel.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/config/barcode-catalog.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/config/barcode-catalog.config.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/models/barcode.models.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/models/barcode.models.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/services/bulk-generator.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/services/bulk-generator.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/services/bulk-state.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/services/bulk-state.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/services/format-registry.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-barcode-generator/src/services/format-registry.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/preview-panel/preview-panel.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/components/preview-panel/preview-panel.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/qr-generator.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/apps/tool-qr-generator/src/qr-generator.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-registry/src/manifests/barcode.manifest.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-registry/src/manifests/barcode.manifest.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/packages/tool-shell/src/styles/base.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/packages/tool-shell/src/styles/base.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../client/src/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../client/src/styles.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/Barcode-Generator/3-Reference/faq.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/Barcode-Generator/3-Reference/faq.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/Barcode-Generator/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../docs/Acklet Vault/Acklet/Tools/Barcode-Generator/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/security/RateLimitingService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/security/RateLimitingService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/security/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/code/acklet/shared/security/SecurityConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/application.properties" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -51,23 +54,23 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Application.Acklet.executor": "Run",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "Spring Boot.AckletApplication.executor": "Run",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "tools/url-shortener",
-    "kotlin-language-version-configured": "true",
-    "nodejs_package_manager_path": "npm",
-    "ts.external.directory.path": "/Applications/IntelliJ IDEA.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Application.Acklet.executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;Spring Boot.AckletApplication.executor&quot;: &quot;Run&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;tools/barcode&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/Applications/IntelliJ IDEA.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration name="Acklet" type="Application" factoryName="Application">
       <option name="MAIN_CLASS_NAME" value="com.code.acklet.AckletApplication" />

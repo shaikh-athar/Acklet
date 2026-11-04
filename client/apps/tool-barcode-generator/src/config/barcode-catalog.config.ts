@@ -704,6 +704,7 @@ export const BARCODE_CATALOG: Record<string, BarcodeCatalogItem> = {
     defaultOptions: {},
     engineId: 'code128',
     supportsHumanReadable: true,
+    supportsTemporary: true,
     is2D: false,
     standardRef: 'ISO/IEC 15417',
     messages: {
@@ -1370,6 +1371,7 @@ export const BARCODE_CATALOG: Record<string, BarcodeCatalogItem> = {
     ],
     engineId: 'datamatrix',
     supportsHumanReadable: false,
+    supportsTemporary: true,
     is2D: true,
     standardRef: 'ISO/IEC 16022',
     messages: {
@@ -1436,6 +1438,7 @@ export const BARCODE_CATALOG: Record<string, BarcodeCatalogItem> = {
     ],
     engineId: 'pdf417',
     supportsHumanReadable: false,
+    supportsTemporary: true,
     is2D: true,
     standardRef: 'ISO/IEC 15438',
     messages: {
@@ -1502,6 +1505,7 @@ export const BARCODE_CATALOG: Record<string, BarcodeCatalogItem> = {
     ],
     engineId: 'azteccode',
     supportsHumanReadable: false,
+    supportsTemporary: true,
     is2D: true,
     standardRef: 'ISO/IEC 24778',
     messages: {
@@ -1527,6 +1531,48 @@ export const BARCODE_CATALOG: Record<string, BarcodeCatalogItem> = {
           answer: 'The standard recommended level is 23%, providing high resistance against folded or scratched ticket paper.'
         }
       ]
+    }
+  },
+
+  qrcode: {
+    id: 'qrcode',
+    slug: 'qr-code',
+    label: 'QR Code',
+    aliases: ['qr', '2d', 'matrix', 'mobile', 'url'],
+    category: '2D',
+    family: '2D Matrix',
+    tier: 1,
+    enabled: false,
+    supportsTemporary: true,
+    description: 'Quick Response 2D matrix',
+    inputMode: 'text',
+    charset: 'Full ASCII, binary and Unicode',
+    charsetRegex: /^[\x00-\xFF]{1,2048}$/,
+    caseMode: 'preserve',
+    normalizeSeparators: false,
+    length: { min: 1, max: 2048 },
+    checksum: 'Reed-Solomon error correction',
+    checksumType: 'none',
+    checksumOptional: false,
+    exampleValue: 'https://acklet.com',
+    invalidExampleValue: '',
+    expectedEncoded: (inp) => inp,
+    expectedDecoded: (inp) => inp,
+    defaultOptions: {},
+    engineId: 'qrcode',
+    supportsHumanReadable: false,
+    is2D: true,
+    standardRef: 'ISO/IEC 18004',
+    messages: {
+      length: 'Enter between 1 and 2048 characters.'
+    },
+    usePageContent: {
+      summary: 'Quick Response matrix code for fast scanning on mobile devices.',
+      commonUses: 'Website links, temporary codes, and contact details.',
+      characterSet: 'Full ASCII and UTF-8.',
+      length: 'Up to 2,048 characters.',
+      checkDigit: 'Reed-Solomon error correction.',
+      faqs: []
     }
   },
 
