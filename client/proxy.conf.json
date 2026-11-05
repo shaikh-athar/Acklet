@@ -16,5 +16,14 @@
     "secure": false,
     "changeOrigin": true,
     "logLevel": "debug"
+  },
+  "/mail-api": {
+    "target": "https://api.mail.tm",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/mail-api": ""
+    },
+    "logLevel": "debug"
   }
 }

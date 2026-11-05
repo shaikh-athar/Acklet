@@ -4,12 +4,14 @@ import { CLIPBOARD_MANIFEST } from './manifests/clipboard.manifest';
 import { QR_MANIFEST } from './manifests/qr.manifest';
 import { DATALENS_MANIFEST } from './manifests/datalens.manifest';
 import { BARCODE_MANIFEST } from './manifests/barcode.manifest';
+import { TEMP_EMAIL_MANIFEST } from './manifests/temp-email.manifest';
 import { AMBER_ACCENT, BLUE_ACCENT, ROSE_ACCENT, VIOLET_ACCENT, EMERALD_ACCENT } from './accent-presets';
 
 export { CLIPBOARD_MANIFEST } from './manifests/clipboard.manifest';
 export { QR_MANIFEST } from './manifests/qr.manifest';
 export { DATALENS_MANIFEST } from './manifests/datalens.manifest';
 export { BARCODE_MANIFEST } from './manifests/barcode.manifest';
+export { TEMP_EMAIL_MANIFEST } from './manifests/temp-email.manifest';
 
 /**
  * Single Source of Truth for all tools in Acklet.
@@ -21,6 +23,8 @@ export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
   'barcode-generator': BARCODE_MANIFEST,
   'datalens': DATALENS_MANIFEST,
   'json-formatter': DATALENS_MANIFEST,
+  'temp-email': TEMP_EMAIL_MANIFEST,
+  'temp-mail': TEMP_EMAIL_MANIFEST,
   'jwt-inspector': {
     id: 'jwt-inspector',
     name: 'JWT Inspector',

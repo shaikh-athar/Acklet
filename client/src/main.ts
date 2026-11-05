@@ -12,7 +12,8 @@ const isQrPath = pathname === '/qr' || pathname === '/qr-generator';
 const isBarcodePath = pathname === '/barcode' || pathname === '/barcode-generator';
 const isDataLensPath = pathname === '/datalens' || pathname === '/data-lens' || pathname === '/json-formatter';
 const isShortenerPath = pathname === '/urlshortener' || pathname === '/short';
-const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short'];
+const isTempEmailPath = pathname === '/temp-email' || pathname === '/temp-mail' || pathname === '/mail' || pathname.startsWith('/tools/temp-email') || pathname.startsWith('/tools/temp-mail');
+const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short', 'temp-email', 'temp-mail', 'tempmail'];
 const toolSlug = extractToolSlugFromHostname(hostname) || (queryTool && validQueryTools.includes(queryTool) ? queryTool : null);
 
 if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools') {
@@ -81,6 +82,18 @@ if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools'
       });
     })
     .catch((err) => console.error('[Tool URL Shortener Bootstrap Error]', err));
+} else if (toolSlug === 'temp-email' || toolSlug === 'temp-mail' || toolSlug === 'tempmail' || isTempEmailPath) {
+  // Bootstrap Temporary Email tool (apps/tool-temp-email)
+  Promise.all([
+    import('../apps/tool-temp-email/src/app/app.component'),
+    import('@angular/common/http')
+  ])
+    .then(([{ AppComponent }, { provideHttpClient, withFetch }]) => {
+      return bootstrapApplication(AppComponent, {
+        providers: [provideHttpClient(withFetch())]
+      });
+    })
+    .catch((err) => console.error('[Tool Temp Email Bootstrap Error]', err));
 } else {
   // Bootstrap Acklet Portal (default)
   Promise.all([

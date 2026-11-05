@@ -19,6 +19,8 @@ public class QrRedirectController {
 
     @GetMapping("/q/{code}")
     public ResponseEntity<?> resolve(@PathVariable String code, HttpServletRequest request) {
+        log.info("[QrRedirectController] GET /q/{} - incoming dynamic QR scan from ip={}, userAgent='{}'",
+                code, request.getRemoteAddr(), request.getHeader("User-Agent"));
         return resolutionService.resolveShortlink(code, request);
     }
 

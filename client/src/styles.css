@@ -1239,7 +1239,8 @@ html[data-theme="dark"] {
 }
 
 app-clipboard-tool,
-app-json-lens {
+app-json-lens,
+app-temp-email-tool {
   display: flex !important;
   flex-direction: column !important;
   height: 100% !important;

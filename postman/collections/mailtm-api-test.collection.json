@@ -1,0 +1,353 @@
+{
+  "info": {
+    "_postman_id": "mailtm-api-validation-collection",
+    "name": "Mail.tm API Test Suite",
+    "description": "Validation collection for Mail.tm temporary email APIs used in Acklet Temporary Email tool with soft dynamic runtime variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api.mail.tm",
+      "type": "string"
+    },
+    {
+      "key": "domain",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testAddress",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testAccountId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. GET /domains",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const jsonData = pm.response.json();",
+              "const list = Array.isArray(jsonData) ? jsonData : (jsonData['hydra:member'] || []);",
+              "const activeList = list.filter(d => d.isActive);",
+              "",
+              "pm.test('Has active domain available', function () {",
+              "    pm.expect(activeList.length).to.be.above(0);",
+              "});",
+              "",
+              "if (activeList.length > 0) {",
+              "    const domain = activeList[0].domain;",
+              "    const rand = Math.random().toString(36).substring(2, 8);",
+              "    const testEmail = 'acklet_' + rand + '@' + domain;",
+              "    const testPass = 'SecPass!' + Math.random().toString(36).substring(2, 8) + '9A';",
+              "",
+              "    // Soft variable assignments (dynamic in-memory runtime scoping)",
+              "    pm.variables.set('domain', domain);",
+              "    pm.collectionVariables.set('domain', domain);",
+              "    pm.variables.set('testAddress', testEmail);",
+              "    pm.collectionVariables.set('testAddress', testEmail);",
+              "    pm.variables.set('testPassword', testPass);",
+              "    pm.collectionVariables.set('testPassword', testPass);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/domains?page=1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "domains"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "2. POST /accounts",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Account creation status code is 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "const jsonData = pm.response.json();",
+              "pm.test('Returns account id and registered address', function () {",
+              "    pm.expect(jsonData.id).to.be.a('string');",
+              "    pm.expect(jsonData.address).to.be.a('string');",
+              "});",
+              "",
+              "if (jsonData.id) {",
+              "    // Store account ID and exact registered address dynamically",
+              "    pm.variables.set('testAccountId', jsonData.id);",
+              "    pm.collectionVariables.set('testAccountId', jsonData.id);",
+              "    if (jsonData.address) {",
+              "        pm.variables.set('testAddress', jsonData.address);",
+              "        pm.collectionVariables.set('testAddress', jsonData.address);",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"address\": \"{{testAddress}}\",\n  \"password\": \"{{testPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/accounts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "accounts"
+          ]
+        }
+      }
+    },
+    {
+      "name": "3. POST /token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Token endpoint status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const jsonData = pm.response.json();",
+              "pm.test('Returns valid JWT token', function () {",
+              "    pm.expect(jsonData.token).to.be.a('string');",
+              "    pm.expect(jsonData.token.length).to.be.above(20);",
+              "});",
+              "",
+              "if (jsonData.token) {",
+              "    // Soft-code the authentication token as a transient runtime variable",
+              "    pm.variables.set('token', jsonData.token);",
+              "    pm.collectionVariables.set('token', jsonData.token);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"address\": \"{{testAddress}}\",\n  \"password\": \"{{testPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/token",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "token"
+          ]
+        }
+      }
+    },
+    {
+      "name": "4. GET /me",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Authenticated account retrieval status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const jsonData = pm.response.json();",
+              "pm.test('Profile matches created account', function () {",
+              "    pm.expect(jsonData.id).to.eql(pm.variables.get('testAccountId'));",
+              "    pm.expect(jsonData.address).to.eql(pm.variables.get('testAddress'));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "me"
+          ]
+        }
+      }
+    },
+    {
+      "name": "5. GET /messages",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Messages list status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const jsonData = pm.response.json();",
+              "pm.test('Response is valid message collection', function () {",
+              "    const isArr = Array.isArray(jsonData);",
+              "    const isHydra = jsonData && Array.isArray(jsonData['hydra:member']);",
+              "    pm.expect(isArr || isHydra).to.be.true;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/messages?page=1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "messages"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "6. DELETE /accounts/{{testAccountId}}",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Account deletion status code is 204 or 200', function () {",
+              "    pm.expect([200, 204]).to.include(pm.response.code);",
+              "});",
+              "",
+              "// Clear the soft-coded token and account info from memory",
+              "pm.variables.set('token', '');",
+              "pm.collectionVariables.set('token', '');",
+              "pm.variables.set('testAccountId', '');",
+              "pm.collectionVariables.set('testAccountId', '');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/accounts/{{testAccountId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "accounts",
+            "{{testAccountId}}"
+          ]
+        }
+      }
+    }
+  ]
+}

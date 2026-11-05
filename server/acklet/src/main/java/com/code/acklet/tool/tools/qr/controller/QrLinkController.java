@@ -26,6 +26,8 @@ public class QrLinkController {
             @Valid @RequestBody CreateQrLinkRequest request,
             HttpServletRequest servletRequest) {
         String clientIp = extractClientIp(servletRequest);
+        log.info("[QrLinkController] POST /api/v1/qr-links - type={}, payloadLength={}, ip={}",
+                request.getType(), request.getPayload() != null ? request.getPayload().length() : 0, clientIp);
         QrLinkResponse response = qrLinkService.createLink(request, clientIp);
         return ResponseEntity.ok(ApiResponse.success(response, "QR link created successfully"));
     }
@@ -37,6 +39,7 @@ public class QrLinkController {
             @RequestHeader(value = "X-Manage-Token", required = false) String manageTokenHeader,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         String token = resolveToken(manageTokenHeader, authHeader);
+        log.info("[QrLinkController] PUT /api/v1/qr-links/{} - updating dynamic QR link", code);
         QrLinkResponse response = qrLinkService.updateLink(code, request, token);
         return ResponseEntity.ok(ApiResponse.success(response, "QR link updated successfully"));
     }

@@ -29,12 +29,15 @@ public class QrManagementController {
 
     @PostMapping("/create")
     public ResponseEntity<ApiResponse<DynamicQrResponse>> create(@Valid @RequestBody CreateDynamicQrRequest request) {
+        log.info("[QrManagementController] POST /api/v1/qr/create - targetUrl='{}', title='{}'",
+                request.getTargetUrl(), request.getTitle());
         DynamicQrResponse response = qrCodeService.createDynamicQr(request);
         return ResponseEntity.ok(ApiResponse.success(response, "Dynamic QR code created successfully"));
     }
 
     @GetMapping("/manage/{manageKey}")
     public ResponseEntity<ApiResponse<DynamicQrResponse>> getByManageKey(@PathVariable String manageKey) {
+        log.debug("[QrManagementController] GET /api/v1/qr/manage/{}", manageKey);
         DynamicQrResponse response = qrCodeService.getByManageKey(manageKey);
         return ResponseEntity.ok(ApiResponse.success(response, "QR code details retrieved"));
     }
@@ -43,6 +46,8 @@ public class QrManagementController {
     public ResponseEntity<ApiResponse<DynamicQrResponse>> updateByManageKey(
             @PathVariable String manageKey,
             @Valid @RequestBody UpdateDynamicQrRequest request) {
+        log.info("[QrManagementController] PUT /api/v1/qr/manage/{} - targetUrl='{}'",
+                manageKey, request.getTargetUrl());
         DynamicQrResponse response = qrCodeService.updateByManageKey(manageKey, request);
         return ResponseEntity.ok(ApiResponse.success(response, "Dynamic QR code updated successfully"));
     }

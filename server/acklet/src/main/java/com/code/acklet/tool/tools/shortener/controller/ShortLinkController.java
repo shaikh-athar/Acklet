@@ -27,6 +27,8 @@ public class ShortLinkController {
             @RequestHeader(value = "X-Owner-Token", required = false) String ownerTokenHeader,
             HttpServletRequest servletRequest) {
         String clientIp = extractClientIp(servletRequest);
+        log.info("[ShortLinkController] POST /api/v1/short-links - target='{}', customAlias='{}', ip={}",
+                request.getTargetUrl(), request.getCustomAlias(), clientIp);
         ShortLinkResponse response = shortLinkService.createLink(request, ownerTokenHeader, clientIp);
         HttpHeaders headers = createSecureHeaders();
         if (response.getOwnerToken() != null) {
@@ -44,6 +46,8 @@ public class ShortLinkController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size) {
+        log.debug("[ShortLinkController] GET /api/v1/short-links - page={}, size={}, search='{}', status='{}'",
+                page, size, search, status);
         ShortLinkListResponse response = shortLinkService.listOwnerLinks(ownerTokenHeader, search, status, page, size);
         return ResponseEntity.ok()
                 .headers(createSecureHeaders())
@@ -55,6 +59,7 @@ public class ShortLinkController {
             @RequestParam String code,
             HttpServletRequest servletRequest) {
         String clientIp = extractClientIp(servletRequest);
+        log.debug("[ShortLinkController] GET /api/v1/short-links/availability - code='{}', ip={}", code, clientIp);
         ShortLinkAvailabilityResponse response = shortLinkService.checkAvailability(code, clientIp);
         return ResponseEntity.ok()
                 .headers(createSecureHeaders())
@@ -109,6 +114,7 @@ public class ShortLinkController {
             @PathVariable String code,
             @Valid @RequestBody UpdateShortLinkRequest request,
             @RequestHeader(value = "X-Owner-Token", required = false) String ownerTokenHeader) {
+        log.info("[ShortLinkController] PUT /api/v1/short-links/{} - updating short link", code);
         ShortLinkResponse response = shortLinkService.updateLink(code, request, ownerTokenHeader);
         return ResponseEntity.ok()
                 .headers(createSecureHeaders())
@@ -119,6 +125,7 @@ public class ShortLinkController {
     public ResponseEntity<ApiResponse<Void>> deleteLink(
             @PathVariable String code,
             @RequestHeader(value = "X-Owner-Token", required = false) String ownerTokenHeader) {
+        log.info("[ShortLinkController] DELETE /api/v1/short-links/{} - deleting short link", code);
         shortLinkService.deleteLink(code, ownerTokenHeader);
         return ResponseEntity.ok()
                 .headers(createSecureHeaders())

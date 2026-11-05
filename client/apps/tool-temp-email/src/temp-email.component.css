@@ -1,0 +1,189 @@
+/* apps/tool-temp-email/src/temp-email.component.css */
+
+:host {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  flex: 1 1 0% !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.temp-email-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  flex: 1 1 0%;
+  overflow: hidden;
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* Toast Notification */
+.temp-email-toast {
+  position: fixed;
+  top: 76px;
+  right: 24px;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--ts-surface-raised, #141416);
+  border: 1px solid var(--accent, #8B5CF6);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 15px var(--accent-glow, rgba(139, 92, 246, 0.25));
+  color: var(--text, #FCFCFC);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+:host-context([data-theme="light"]) .temp-email-toast,
+[data-theme="light"] .temp-email-toast {
+  background: #FFFFFF;
+  border-color: #7C3AED;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15), 0 0 15px rgba(124, 58, 237, 0.15);
+  color: #0F172A;
+}
+
+.toast-check-icon {
+  color: #10B981;
+}
+
+/* Error Alert Banner */
+.temp-email-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #EF4444;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+:host-context([data-theme="light"]) .temp-email-error-banner,
+[data-theme="light"] .temp-email-error-banner {
+  background: #FEF2F2;
+  border-color: #FCA5A5;
+  color: #DC2626;
+}
+
+.error-alert-icon {
+  flex-shrink: 0;
+}
+
+.error-text {
+  flex: 1;
+}
+
+.error-dismiss-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.error-dismiss-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* SINGLE CENTERED WORKSPACE (Generous Whitespace on Wide Screens) */
+/* ═══════════════════════════════════════════════════════════════ */
+.temp-email-centered-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding-top: 10px;
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 0%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.temp-email-workspace-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 0%;
+  overflow: hidden;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.workspace-panel {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 0%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.workspace-panel.is-hidden {
+  display: none !important;
+}
+
+/* Animations */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 920px) {
+  .temp-email-centered-shell {
+    max-width: 100%;
+    padding: 0 4px;
+  }
+}
+
+@media (max-width: 640px) {
+  .temp-email-centered-shell {
+    padding: 0;
+    gap: 8px;
+  }
+}

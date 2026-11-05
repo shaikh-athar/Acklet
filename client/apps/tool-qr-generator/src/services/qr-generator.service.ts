@@ -2,6 +2,7 @@
 import { Injectable } from '@angular/core';
 import type QRCodeStyling from 'qr-code-styling';
 import type { Options as QRCodeStylingOptions } from 'qr-code-styling';
+import { createToolLogger } from '@acklet/shared';
 import {
   ContentType,
   ErrorCorrectionLevel,
@@ -58,6 +59,8 @@ import {
   encodeURIComponentStrict,
   parseMapCoordinates
 } from './qr-payload-builders';
+
+const log = createToolLogger('QrGenerator');
 
 const MAX_QR_CHARACTERS = 2953;
 
@@ -536,11 +539,13 @@ export class QRGeneratorService {
     const payload = this.formatPayload(content, type);
 
     if (!payload) {
+      log.error('Cannot generate QR code: Payload is empty.');
       throw new Error('Cannot generate QR code: Payload is empty.');
     }
 
     const size = options?.size ?? 300;
     const bgColor = options?.backgroundColor ?? '#FFFFFF';
+    log.info(`Generating QR code: type='${type}', size=${size}x${size}, payload='${payload.slice(0, 30)}${payload.length > 30 ? '...' : ''}'`);
 
     // Render using in-house vector engine
     const renderResult = renderQrToSvg(payload, options);
@@ -553,6 +558,7 @@ export class QRGeneratorService {
     const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
     this.lastDataUrl = dataUrl;
     this.lastOptions = options || null;
+    log.debug(`QR code generated successfully: dataUrl length=${dataUrl.length}`);
     return dataUrl;
   }
 
@@ -562,6 +568,7 @@ export class QRGeneratorService {
   async download(format: ExportFormat = 'png', customFilename?: string): Promise<void> {
     const filename = customFilename ?? `qr-code-${Date.now()}`;
     const nameWithoutExt = filename.replace(/\.(png|jpe?g|svg)$/i, '');
+    log.info(`Downloading QR code: format='${format}', filename='${filename}'`);
 
     // Check if currentQRCode download method is mocked/active (for unit tests / external hooks)
     if (this.currentQRCode && typeof (this.currentQRCode as any).download === 'function') {
