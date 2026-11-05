@@ -515,10 +515,10 @@ kbd,
 }
 
 /* Keyboard Navigation Focus Rings — Theme Harmonious */
-*:focus-visible {
+/* *:focus-visible {
   outline: 2px solid #818cf8;
   outline-offset: 2px;
-}
+} */
 
 /* Browser Autofill Theme Harmony Overrides */
 input:-webkit-autofill,
@@ -1239,7 +1239,8 @@ html[data-theme="dark"] {
 }
 
 app-clipboard-tool,
-app-json-lens {
+app-json-lens,
+app-temp-email-tool {
   display: flex !important;
   flex-direction: column !important;
   height: 100% !important;

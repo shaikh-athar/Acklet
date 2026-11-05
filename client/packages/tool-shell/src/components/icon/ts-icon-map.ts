@@ -25,6 +25,10 @@ import {
   LucideCircleHelp,
   LucideCommand,
   LucideSend,
+  LucideBell,
+  LucideBellOff,
+  LucideVolume2,
+  LucideVolumeX,
   LucideDownload,
   LucideUpload,
   LucideUploadCloud,
@@ -58,6 +62,7 @@ import {
   LucideMinus,
   LucideEye,
   LucideEyeOff,
+  LucideInbox,
   LucideLink,
   LucideFlag,
   LucideArchive,
@@ -265,7 +270,11 @@ export const LUCIDE_MOTION_MAP: Record<string, string> = {
   'scan-barcode': 'motion-scale-up',
   link: 'motion-rotate-15',
   urlshortener: 'motion-rotate-15',
-  chain: 'motion-rotate-15'
+  chain: 'motion-rotate-15',
+  'temp-email': 'motion-scale-up',
+  'temp-mail': 'motion-scale-up',
+  mail: 'motion-scale-up',
+  inbox: 'motion-scale-up'
 };
 
 /**
@@ -425,6 +434,18 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   },
 
   // Tools & Operations
+  bell: {
+    lucide: LucideBell
+  },
+  'bell-off': {
+    lucide: LucideBellOff
+  },
+  'volume-2': {
+    lucide: LucideVolume2
+  },
+  'volume-x': {
+    lucide: LucideVolumeX
+  },
   send: {
     animated: SendIcon,
     lucide: LucideSend
@@ -751,6 +772,15 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   },
   mail: {
     lucide: LucideMail
+  },
+  'temp-email': {
+    lucide: LucideMail
+  },
+  'temp-mail': {
+    lucide: LucideMail
+  },
+  inbox: {
+    lucide: LucideInbox
   },
   phone: {
     lucide: LucidePhone

@@ -12,6 +12,7 @@ Welcome to the **Acklet Tools Documentation Hub**. This directory documents the 
 | **QR Generator** | [QR-Generator/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/QR-Generator/README.md) | Client-Side QR Code Studio & Customizer | Text, URL, Email, Phone, PNG, Custom Styling | **Production Ready (Phase 1)** |
 | **Barcode Generator** | [Barcode-Generator/](Barcode-Generator/README.md) | In-Browser Vector Barcode Studio | Code 128, EAN, UPC, ISBN, ITF, Codabar, SVG, PNG, PDF | **Production Ready (Phase 1)** |
 | **URL Shortener** | [URL-Shortener/](URL-Shortener/README.md) | Privacy-First Fast URL Shortener & Link Studio | Base62 URLs, Custom Slugs, TTL, QR Handoff | **Production Ready** |
+| **Temporary Email** | [Temp-Email/](Temp-Email/README.md) | Disposable Email Generator & Real-Time Inbox | Mail.tm API, Smart OTP Extractor, Verification Links | **Production Ready** |
 | **DataLens** | [data-lens/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/data-lens/README.md) | Structured Data Workbench & Inspector | JSON, YAML, XML, CSV, TOML, cURL | **Production Ready** |
 | **AirVault** | [airvault/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/README.md) | Cross-Device Clipboard & Sync Platform | Text, Code, URLs, Images, Files, E2EE | **Production Ready** |
 
@@ -67,7 +68,17 @@ All tools adhere to the standard 4-subfolder structure defined in [DOCUMENTATION
 
 ---
 
-## 5. DataLens Overview
+## 5. Temporary Email Overview
+
+**Temporary Email by Acklet** is a modern, responsive, privacy-focused disposable email generator and real-time inbox powered by the Mail.tm API. Features instant creation, live inbox with configurable auto-refresh, smart OTP extractor with one-click copy, confirmation link detection, multi-inbox switching, QR sharing, and tracking protection.
+
+- **Primary URL**: `http://mail.localhost:4200` / `https://mail.acklet.com` (Fallback route: `/tools/temp-email` or `/temp-email`)
+- **Component Root**: [client/apps/tool-temp-email/](file:///Users/ayaz/Acklet/client/apps/tool-temp-email/)
+- **Documentation Root**: [Temp-Email/](Temp-Email/README.md)
+
+---
+
+## 6. DataLens Overview
 
 **DataLens by Acklet** is a multi-format structured data workbench and inspection engine engineered for modern software engineers, DevOps specialists, and API developers.
 

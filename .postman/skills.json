@@ -1,0 +1,293 @@
+{
+  "schemaVersion": 1,
+  "origin": "remote",
+  "source": "https://raw.githubusercontent.com/postmanlabs/postman-plugin/main/",
+  "fetchedAt": "2026-11-04T13:19:42.195Z",
+  "etag": "W/\"f56f71cec98bd561ca026124b131c29e848135f839f90149a731d069095cab66\"",
+  "skills": {
+    "api-engineer": {
+      "files": {
+        "SKILL.md": {
+          "source": "dc3f8fd25a0d24ba836dc7a5ab1178ec5087d5141e9e45e14cfa353770bfd93a",
+          "written": "dc3f8fd25a0d24ba836dc7a5ab1178ec5087d5141e9e45e14cfa353770bfd93a"
+        }
+      }
+    },
+    "ai-readiness": {
+      "files": {
+        "SKILL.md": {
+          "source": "ac93e38506048982897f70d47db53165759922dc050e8d8b51e54678ef208d25",
+          "written": "ac93e38506048982897f70d47db53165759922dc050e8d8b51e54678ef208d25"
+        }
+      }
+    },
+    "api-discovery": {
+      "files": {
+        "SKILL.md": {
+          "source": "539c705809c5dbdf5d6e747415e40adf21f85b15ef2519dade849a92d195f57e",
+          "written": "539c705809c5dbdf5d6e747415e40adf21f85b15ef2519dade849a92d195f57e"
+        },
+        "reference/orbit.md": {
+          "source": "792c6c96db431afb508435e60c1f957cbb6a629320b7b61c26a8f78d477844dc",
+          "written": "792c6c96db431afb508435e60c1f957cbb6a629320b7b61c26a8f78d477844dc"
+        }
+      }
+    },
+    "api-documentation": {
+      "files": {
+        "SKILL.md": {
+          "source": "c7e4eef6d451f556caca2cfebdf9ac82448cce19c617006bfb8eaff9203b0832",
+          "written": "c7e4eef6d451f556caca2cfebdf9ac82448cce19c617006bfb8eaff9203b0832"
+        },
+        "reference/rest-api-best-practices.md": {
+          "source": "af4f5bb2ec4f7ece778c3f9bf47743b3a3c7959ae19152b6f04b91587122a3c5",
+          "written": "af4f5bb2ec4f7ece778c3f9bf47743b3a3c7959ae19152b6f04b91587122a3c5"
+        }
+      }
+    },
+    "api-mocking": {
+      "files": {
+        "SKILL.md": {
+          "source": "9a567c14a964b4122d98f728ada8bce169cdcab8be9e96d2cee905ecfa8e713c",
+          "written": "9a567c14a964b4122d98f728ada8bce169cdcab8be9e96d2cee905ecfa8e713c"
+        }
+      }
+    },
+    "api-monitoring": {
+      "files": {
+        "SKILL.md": {
+          "source": "17d55bdbac883272e0f6f3c84d237788a16d375a44912b7ffda3b3225b38a05d",
+          "written": "17d55bdbac883272e0f6f3c84d237788a16d375a44912b7ffda3b3225b38a05d"
+        }
+      }
+    },
+    "api-simulation": {
+      "files": {
+        "SKILL.md": {
+          "source": "59fe5420433120baf84078151ff56ebb3964952ec0847f14ee74386acbf7e958",
+          "written": "59fe5420433120baf84078151ff56ebb3964952ec0847f14ee74386acbf7e958"
+        },
+        "reference/context_file.md": {
+          "source": "e3c98791c833a0a967c60c06c8519a7dabd04f03e29c6ca7bca4431fcea85c62",
+          "written": "e3c98791c833a0a967c60c06c8519a7dabd04f03e29c6ca7bca4431fcea85c62"
+        },
+        "reference/sim_yaml_schema.md": {
+          "source": "70d5973bfc8ff39efd455f89fc40e05b16507c17b236594bcc87979fc0d6ee02",
+          "written": "70d5973bfc8ff39efd455f89fc40e05b16507c17b236594bcc87979fc0d6ee02"
+        }
+      }
+    },
+    "api-testing": {
+      "files": {
+        "SKILL.md": {
+          "source": "9ff9bda768a1d544dabbd4cbb0213f4eac0eb5638efbd55728a02224959a37dd",
+          "written": "9ff9bda768a1d544dabbd4cbb0213f4eac0eb5638efbd55728a02224959a37dd"
+        }
+      }
+    },
+    "application-testing": {
+      "files": {
+        "SKILL.md": {
+          "source": "7188c4b5811908f3f4560bcb78710261171fb66e66050d0b0a4bc76ee5001b1f",
+          "written": "7188c4b5811908f3f4560bcb78710261171fb66e66050d0b0a4bc76ee5001b1f"
+        }
+      }
+    },
+    "ci-integration": {
+      "files": {
+        "SKILL.md": {
+          "source": "15d9ae2b57cd422d8f4a9e921814bbef403e07b8bdf11f118d94eb48c0ca929b",
+          "written": "15d9ae2b57cd422d8f4a9e921814bbef403e07b8bdf11f118d94eb48c0ca929b"
+        }
+      }
+    },
+    "cli-install": {
+      "files": {
+        "SKILL.md": {
+          "source": "41a2036b49bfca591d8a96b8f617d1cdc714439a016025cd2c0f57f1b2967adc",
+          "written": "41a2036b49bfca591d8a96b8f617d1cdc714439a016025cd2c0f57f1b2967adc"
+        }
+      }
+    },
+    "collection-schema-v3": {
+      "files": {
+        "SKILL.md": {
+          "source": "0a9c241db87b59d43c9674c920d69b4e9530f61d39ee73ada84d44b48a5f6201",
+          "written": "0a9c241db87b59d43c9674c920d69b4e9530f61d39ee73ada84d44b48a5f6201"
+        },
+        "reference/environment.md": {
+          "source": "b2a34943987af5345d97cd01acbe1eeed56ce27ab905055291d626c530fbff50",
+          "written": "b2a34943987af5345d97cd01acbe1eeed56ce27ab905055291d626c530fbff50"
+        },
+        "reference/globals.md": {
+          "source": "0d5f8526e88521ae111733eecd1aa55e1dfbad40e6ddf7a263a08220f2ac8919",
+          "written": "0d5f8526e88521ae111733eecd1aa55e1dfbad40e6ddf7a263a08220f2ac8919"
+        },
+        "reference/http.md": {
+          "source": "8079ddfdb443d90bbed094e4d1719f3c5badd9bb5f8219fa5d7d1b4f8fea34c2",
+          "written": "8079ddfdb443d90bbed094e4d1719f3c5badd9bb5f8219fa5d7d1b4f8fea34c2"
+        },
+        "reference/other_protocols.md": {
+          "source": "9f9d6e8e3c5a5bdf0efcdbd6b5cca8c55e1fa637e89d42cf9e579276da5a0e9f",
+          "written": "9f9d6e8e3c5a5bdf0efcdbd6b5cca8c55e1fa637e89d42cf9e579276da5a0e9f"
+        }
+      }
+    },
+    "datasets": {
+      "files": {
+        "SKILL.md": {
+          "source": "01284a2267e06d6dfb7f51367f766dc14122b9b190fb048563d5ed28476b7a17",
+          "written": "01284a2267e06d6dfb7f51367f766dc14122b9b190fb048563d5ed28476b7a17"
+        },
+        "reference/schema.md": {
+          "source": "69daa658202bed710004c2864e79d914b331ac7ce77d86241ea897f72947127e",
+          "written": "69daa658202bed710004c2864e79d914b331ac7ce77d86241ea897f72947127e"
+        },
+        "reference/spreadsheets.md": {
+          "source": "c2a058263b3bfa12c453c11df9d24343d7274dbb338ed7ad99d9a82894f337f1",
+          "written": "c2a058263b3bfa12c453c11df9d24343d7274dbb338ed7ad99d9a82894f337f1"
+        }
+      }
+    },
+    "flows": {
+      "files": {
+        "SKILL.md": {
+          "source": "535ba20cf1a3506136682938b926b1c183ddcbb098abb863a3e6f0259365db6b",
+          "written": "535ba20cf1a3506136682938b926b1c183ddcbb098abb863a3e6f0259365db6b"
+        },
+        "reference/flow_cli_flags.md": {
+          "source": "aa75d1ad929351bc4ef37e96b2a1cfef80ec1cced0003242bd1129f00618e221",
+          "written": "aa75d1ad929351bc4ef37e96b2a1cfef80ec1cced0003242bd1129f00618e221"
+        }
+      }
+    },
+    "performance-testing": {
+      "files": {
+        "SKILL.md": {
+          "source": "3d80d9a6097e449be988951ac37b297c30b02c0bb98f69cd9edda01202dd1fc2",
+          "written": "3d80d9a6097e449be988951ac37b297c30b02c0bb98f69cd9edda01202dd1fc2"
+        },
+        "references/gatling-import/README.md": {
+          "source": "366f80efde1beba5c32a93ffeb881256163d586c6bbc7dfeaddd37147353378c",
+          "written": "366f80efde1beba5c32a93ffeb881256163d586c6bbc7dfeaddd37147353378c"
+        },
+        "references/gatling-import/feeders.md": {
+          "source": "036465bcbfd648bc07ab18de2346aa1915e07e7254f67b598c9837bb4718cc4e",
+          "written": "036465bcbfd648bc07ab18de2346aa1915e07e7254f67b598c9837bb4718cc4e"
+        },
+        "references/gatling-import/injection.md": {
+          "source": "8504c8df5f16807225efd58cc364fd32230a53776b543eb85859c20af36f9b8b",
+          "written": "8504c8df5f16807225efd58cc364fd32230a53776b543eb85859c20af36f9b8b"
+        },
+        "references/gatling-import/mapping.md": {
+          "source": "cf8db5e4e1aadb23699667b2059b14b3f3100e35ec9b648a3407b048ea34b365",
+          "written": "cf8db5e4e1aadb23699667b2059b14b3f3100e35ec9b648a3407b048ea34b365"
+        },
+        "references/gatling-import/unsupported.md": {
+          "source": "d45d48d27c16b378c91ba0d020169a0d4502c8c2c25e55597925e2a143094104",
+          "written": "d45d48d27c16b378c91ba0d020169a0d4502c8c2c25e55597925e2a143094104"
+        },
+        "references/jmeter-import/README.md": {
+          "source": "7990ff904b234e40078d9ed29609f29b3c7df7340b77ef10618fd2fbc3aed3fd",
+          "written": "7990ff904b234e40078d9ed29609f29b3c7df7340b77ef10618fd2fbc3aed3fd"
+        },
+        "references/jmeter-import/import-report.md": {
+          "source": "76e83f73c932003294cdc7832c4c63071a0dde487a687cfbe9d4e68b6b9366a5",
+          "written": "76e83f73c932003294cdc7832c4c63071a0dde487a687cfbe9d4e68b6b9366a5"
+        },
+        "references/jmeter-import/mapping-table.md": {
+          "source": "f4dd409b97354fe68b870f6daf234b4e1d678d2c6d6fb074bd2aa75c8c6551d3",
+          "written": "f4dd409b97354fe68b870f6daf234b4e1d678d2c6d6fb074bd2aa75c8c6551d3"
+        },
+        "references/jmeter-import/postman-perf-capabilities.md": {
+          "source": "9791ef71c13bc3c55c60c3965f16743409ba1547a4dad1630c5b523c49b57c46",
+          "written": "9791ef71c13bc3c55c60c3965f16743409ba1547a4dad1630c5b523c49b57c46"
+        },
+        "references/jmeter-import/script-translation.md": {
+          "source": "0d3e4a91aabb136808c01d94fe8919d28286a3683d4a0b16ec5f2e1c413c81fc",
+          "written": "0d3e4a91aabb136808c01d94fe8919d28286a3683d4a0b16ec5f2e1c413c81fc"
+        }
+      }
+    },
+    "postman-mcp-server": {
+      "files": {
+        "SKILL.md": {
+          "source": "238d517f8a0dd3a9acb51ad01fb214058391f948320fdb842e1ca3eafada1268",
+          "written": "238d517f8a0dd3a9acb51ad01fb214058391f948320fdb842e1ca3eafada1268"
+        },
+        "references/docs.md": {
+          "source": "2cc306e7de00fa9bec323059b8909132b3006e50ff1d6aad041e492abf86309b",
+          "written": "2cc306e7de00fa9bec323059b8909132b3006e50ff1d6aad041e492abf86309b"
+        },
+        "references/learn.md": {
+          "source": "8c9ba33a56a35dbd11e44c762d476686017b6f666ae721bbc95a869cde1bae58",
+          "written": "8c9ba33a56a35dbd11e44c762d476686017b6f666ae721bbc95a869cde1bae58"
+        },
+        "references/mcp-limitations.md": {
+          "source": "953620dd3367af85616d3b4daa46dbfaec27cfec360e58268d1af0617ab3212a",
+          "written": "953620dd3367af85616d3b4daa46dbfaec27cfec360e58268d1af0617ab3212a"
+        },
+        "references/mock.md": {
+          "source": "68a3da1536218debc58d0efee1d0c675bf08d4fe26ed3ff39adb5cd44a00893a",
+          "written": "68a3da1536218debc58d0efee1d0c675bf08d4fe26ed3ff39adb5cd44a00893a"
+        },
+        "references/search.md": {
+          "source": "7e090b75ec025daa9110bbddd3243b19049c3da16d930397d422d88c87355c02",
+          "written": "7e090b75ec025daa9110bbddd3243b19049c3da16d930397d422d88c87355c02"
+        },
+        "references/security.md": {
+          "source": "4686052ba4902e80d7bc8d7aae2ad7bc132a3076e7f22b1f2f6d1f1ce99e2a4a",
+          "written": "4686052ba4902e80d7bc8d7aae2ad7bc132a3076e7f22b1f2f6d1f1ce99e2a4a"
+        },
+        "references/setup.md": {
+          "source": "8bda834d23ab125c3c556086972300d58b10f20c877a08e7b8236668f7bd6bf3",
+          "written": "8bda834d23ab125c3c556086972300d58b10f20c877a08e7b8236668f7bd6bf3"
+        },
+        "references/sync.md": {
+          "source": "427ffa5b02a888185e38c75efeece5e85c4418e2ebbfe45dfe937d3ee1ebd21e",
+          "written": "427ffa5b02a888185e38c75efeece5e85c4418e2ebbfe45dfe937d3ee1ebd21e"
+        },
+        "references/test.md": {
+          "source": "b8a0996727d8990a95dd767d88c984fbd6cc1c63b9cc7ad6029a6f4d1d102d02",
+          "written": "b8a0996727d8990a95dd767d88c984fbd6cc1c63b9cc7ad6029a6f4d1d102d02"
+        }
+      }
+    },
+    "variables": {
+      "files": {
+        "SKILL.md": {
+          "source": "9294ef74ac2bd7d8933b784d4919d203ce4fda05dc33ee1f455774c888e28dcc",
+          "written": "9294ef74ac2bd7d8933b784d4919d203ce4fda05dc33ee1f455774c888e28dcc"
+        }
+      }
+    },
+    "webhook-testing": {
+      "files": {
+        "SKILL.md": {
+          "source": "fab800cc329c8e590aaee83cdd76f4bfadd495489dfb0ca0bc31f808e9a0bd24",
+          "written": "fab800cc329c8e590aaee83cdd76f4bfadd495489dfb0ca0bc31f808e9a0bd24"
+        },
+        "reference/forwarding.md": {
+          "source": "ab14ce650ea96b6ad2d41dcb82629048054db0a86ba599db124804adca0d1f14",
+          "written": "ab14ce650ea96b6ad2d41dcb82629048054db0a86ba599db124804adca0d1f14"
+        },
+        "reference/outbound_webhooks.md": {
+          "source": "3eaaf849da1ee7a38de09c2dc6303fef5c044f6ec6e0a6ffe6e9dedf3d99e4a3",
+          "written": "3eaaf849da1ee7a38de09c2dc6303fef5c044f6ec6e0a6ffe6e9dedf3d99e4a3"
+        },
+        "reference/webhook_scripts.md": {
+          "source": "afc392d3e0573ef9f9b3061fe12b777eee2b8b93be7d660f4657ed251fc057b2",
+          "written": "afc392d3e0573ef9f9b3061fe12b777eee2b8b93be7d660f4657ed251fc057b2"
+        }
+      }
+    },
+    "workspaces": {
+      "files": {
+        "SKILL.md": {
+          "source": "9f9c500e1123cae35e9f6baa3d8cf74af700a23232ddaa4f7a1e49ba873d97cf",
+          "written": "9f9c500e1123cae35e9f6baa3d8cf74af700a23232ddaa4f7a1e49ba873d97cf"
+        }
+      }
+    }
+  }
+}

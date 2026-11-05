@@ -7,6 +7,9 @@ import {
   FormatPerOptions
 } from '../models/barcode.models';
 import { EncoderAdapter } from './encoder-adapter.service';
+import { createToolLogger } from '@acklet/shared';
+
+const log = createToolLogger('BarcodeRender');
 
 export interface IRenderService {
   render(
@@ -43,6 +46,7 @@ export class RenderService implements IRenderService {
     design: BarcodeDesignOptions,
     options: FormatPerOptions = {}
   ): Promise<BarcodeRenderResult> {
+    log.info(`Rendering barcode format='${item.id}', payload='${cleanValue.slice(0, 30)}${cleanValue.length > 30 ? '...' : ''}'`);
     const rawSvg = await this.encoder.encodeToSvg({
       item,
       value: cleanValue,
@@ -51,6 +55,7 @@ export class RenderService implements IRenderService {
     });
 
     if (!rawSvg || !rawSvg.trim() || !rawSvg.includes('<svg')) {
+      log.error(`Empty SVG output generated for ${item.id}`);
       throw new Error(`Empty SVG output generated for ${item.id}`);
     }
 
@@ -73,6 +78,8 @@ export class RenderService implements IRenderService {
         parsedHeight = parseFloat(heightMatch[1]) || 120;
       }
     }
+
+    log.debug(`Barcode rendered successfully: ${item.id} -> ${parsedWidth}x${parsedHeight}px`);
 
     // Accessible title and desc for screen readers and WCAG 2.2 AA compliance
     const sanitizedTitle = this.escapeHtml(displayValue || cleanValue);

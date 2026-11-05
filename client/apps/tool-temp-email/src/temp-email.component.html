@@ -1,0 +1,126 @@
+<!-- apps/tool-temp-email/src/temp-email.component.html -->
+<div class="temp-email-root" role="main">
+
+  <!-- Toast Notification -->
+  @if (emailService.successToast(); as toast) {
+    <div class="temp-email-toast animate-slide-down" role="status" aria-live="polite">
+      <ts-icon name="check" [size]="16" class="toast-check-icon" />
+      <span>{{ toast }}</span>
+    </div>
+  }
+
+  <!-- Error Alert Banner -->
+  @if (emailService.error(); as err) {
+    <div class="temp-email-error-banner animate-fade-in" role="alert">
+      <ts-icon name="alert-circle" [size]="18" class="error-alert-icon" />
+      <span class="error-text">{{ err }}</span>
+      <button type="button" class="error-dismiss-btn" (click)="emailService.error.set(null)" aria-label="Dismiss error">
+        <ts-icon name="x" [size]="14" />
+      </button>
+    </div>
+  }
+
+  <!-- Centered Single Container (Generous Whitespace on Wide Displays) -->
+  <div class="temp-email-centered-shell">
+
+    <!-- Top Address Hero Bar -->
+    <app-address-bar
+      [activeAccount]="emailService.activeAccount()"
+      [inboxes]="emailService.inboxes()"
+      [countdown]="emailService.secondsUntilRefresh()"
+      [isGenerating]="emailService.isGeneratingAccount()"
+      [isRefreshing]="emailService.isRefreshing()"
+      [timeUntilExpiry]="emailService.timeUntilExpiry()"
+      [isExpired]="emailService.isExpired()"
+      [soundEnabled]="emailService.soundEnabled()"
+      [browserAlertsEnabled]="emailService.browserAlertsEnabled()"
+      (refresh)="emailService.refreshInbox(true)"
+      (generateNew)="emailService.generateRandomAccount()"
+      (openCustomModal)="showCustomModal.set(true)"
+      (openQrModal)="showQrModal.set(true)"
+      (deleteInbox)="emailService.deleteActiveAccount()"
+      (deleteSpecificInbox)="emailService.deleteAccountById($event)"
+      (switchInbox)="emailService.switchAccount($event)"
+      (extendExpiry)="emailService.extendActiveAccount()"
+      (toggleSound)="emailService.toggleSound()"
+      (toggleAlerts)="emailService.toggleBrowserAlerts()"
+      (openWipeModal)="showWipeModal.set(true)"
+    />
+
+    <!-- Single Centered Workspace Card: List-then-Preview Pattern -->
+    <div class="temp-email-workspace-card">
+
+      <!-- Inbox List (Visible when no message selected; DOM maintained for scroll preservation) -->
+      <div 
+        class="workspace-panel list-panel"
+        [class.is-hidden]="!!emailService.selectedMessage()"
+      >
+        <app-inbox-list
+          [messages]="emailService.filteredMessages()"
+          [selectedId]="emailService.selectedMessage()?.id || null"
+          [isLoading]="emailService.isLoading() && emailService.messages().length === 0"
+          [totalCount]="emailService.messages().length"
+          [allCount]="emailService.allCount()"
+          [unreadCount]="emailService.unreadCount()"
+          [otpCount]="emailService.otpCount()"
+          [linkCount]="emailService.linkCount()"
+          [attachmentCount]="emailService.attachmentCount()"
+          [providerStatus]="emailService.providerStatus()"
+          [searchQuery]="emailService.searchQuery()"
+          [activeFilter]="emailService.activeFilter()"
+          [refreshInterval]="emailService.autoRefreshInterval()"
+          (selectMessage)="onSelectMessage($event)"
+          (deleteMessage)="onDeleteMessage($event)"
+          (searchChange)="emailService.setSearch($event)"
+          (filterChange)="emailService.setFilter($event)"
+          (intervalChange)="emailService.setRefreshInterval($event)"
+        />
+      </div>
+
+      <!-- Email Viewer (Visible when message selected; occupies exact same area replacing the list) -->
+      @if (emailService.selectedMessage()) {
+        <div class="workspace-panel viewer-panel animate-fade-in">
+          <app-email-viewer
+            [message]="emailService.selectedMessage()"
+            [scanResults]="emailService.selectedMessageScan()"
+            (deleteMessage)="onDeleteMessage($event)"
+            (backToList)="onBackToList()"
+          />
+        </div>
+      }
+
+    </div>
+
+  </div>
+
+  <!-- Overlays / Modals -->
+  @if (showCustomModal()) {
+    <app-custom-address-modal
+      [domains]="emailService.domains()"
+      (close)="showCustomModal.set(false)"
+    />
+  }
+
+  @if (showQrModal() && emailService.activeAccount()) {
+    <app-qr-modal
+      [address]="emailService.activeAccount()!.address"
+      (close)="showQrModal.set(false)"
+    />
+  }
+
+  @if (emailService.activeLinkPreview(); as previewData) {
+    <app-link-preview-modal
+      [data]="previewData"
+      (close)="emailService.closeLinkPreview()"
+    />
+  }
+
+  @if (showWipeModal()) {
+    <app-wipe-data-modal
+      (confirm)="onConfirmWipe()"
+      (close)="showWipeModal.set(false)"
+    />
+  }
+
+</div>
+

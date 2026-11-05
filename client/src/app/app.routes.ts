@@ -75,6 +75,20 @@ export const routes: Routes = [
   },
   { path: 'tools/data-lens', redirectTo: 'tools/datalens', pathMatch: 'full' },
   { path: 'tools/app/datalens', redirectTo: 'tools/datalens', pathMatch: 'full' },
+  {
+    path: 'temp-email',
+    loadComponent: () => import('../../apps/tool-temp-email/src/app/app.component').then(m => m.AppComponent),
+    title: 'Temporary Email Generator & Inbox — Acklet'
+  },
+  { path: 'temp-mail', redirectTo: 'temp-email', pathMatch: 'full' },
+  { path: 'mail', redirectTo: 'temp-email', pathMatch: 'full' },
+  {
+    path: 'tools/temp-email',
+    loadComponent: () => import('../../apps/tool-temp-email/src/app/app.component').then(m => m.AppComponent),
+    title: 'Temporary Email Generator & Inbox — Acklet'
+  },
+  { path: 'tools/temp-mail', redirectTo: 'tools/temp-email', pathMatch: 'full' },
+  { path: 'tools/mail', redirectTo: 'tools/temp-email', pathMatch: 'full' },
 
   // --- Public Pages under main header/navbar layout ---
   {

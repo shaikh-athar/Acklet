@@ -19,6 +19,8 @@ public class ShortRedirectController {
     public ResponseEntity<?> resolve(
             @PathVariable String code,
             HttpServletRequest request) {
+        log.info("[ShortRedirectController] GET /s/{} - incoming short link request from ip={}, userAgent='{}'",
+                code, request.getRemoteAddr(), request.getHeader("User-Agent"));
         return redirectService.resolveAndRedirect(code, request);
     }
 
@@ -28,6 +30,8 @@ public class ShortRedirectController {
             @RequestParam("password") String password,
             HttpServletRequest request,
             HttpServletResponse response) {
+        log.info("[ShortRedirectController] POST /s/{}/unlock - password unlock attempt from ip={}",
+                code, request.getRemoteAddr());
         return redirectService.handleUnlockPost(code, password, request, response);
     }
 }

@@ -1,6 +1,9 @@
 // apps/tool-barcode-generator/src/services/barcode-export.service.ts
 import { Injectable } from '@angular/core';
+import { createToolLogger } from '@acklet/shared';
 import { BarcodeDesignOptions, BarcodeFormat } from '../models/barcode.models';
+
+const log = createToolLogger('BarcodeExport');
 
 @Injectable({
   providedIn: 'root'
@@ -23,9 +26,11 @@ export class BarcodeExportService {
    * Downloads the barcode as an SVG vector file.
    */
   downloadSvg(svgContent: string, name: string, format: BarcodeFormat): void {
+    const filename = this.getFilename(name, format, 'svg');
+    log.info(`Downloading barcode as SVG: ${filename}`);
     const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    this.triggerDownload(url, this.getFilename(name, format, 'svg'));
+    this.triggerDownload(url, filename);
   }
 
   /**
@@ -37,9 +42,11 @@ export class BarcodeExportService {
     format: BarcodeFormat,
     design: BarcodeDesignOptions
   ): Promise<void> {
+    const filename = this.getFilename(name, format, 'png');
+    log.info(`Downloading barcode as PNG: ${filename}`);
     const blob = await this.renderSvgToPngBlob(svgContent, design);
     const url = URL.createObjectURL(blob);
-    this.triggerDownload(url, this.getFilename(name, format, 'png'));
+    this.triggerDownload(url, filename);
   }
 
   /**
@@ -49,6 +56,7 @@ export class BarcodeExportService {
     svgContent: string,
     design: BarcodeDesignOptions
   ): Promise<boolean> {
+    log.info('Copying rendered barcode PNG image to clipboard...');
     if (typeof navigator === 'undefined' || !navigator.clipboard || !navigator.clipboard.write) {
       throw new Error('Clipboard image copy is not supported in this browser.');
     }

@@ -387,6 +387,54 @@
           "defaultConfiguration": "production"
         }
       }
+    },
+    "tool-temp-email": {
+      "projectType": "application",
+      "schematics": {},
+      "root": "apps/tool-temp-email",
+      "sourceRoot": "apps/tool-temp-email/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "apps/tool-temp-email/src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
+            ],
+            "styles": [
+              "apps/tool-temp-email/src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "qrcode",
+              "lottie-web",
+              "dijkstrajs"
+            ]
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "1.5MB",
+                  "maximumError": "2.5MB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        }
+      }
     }
   }
 }

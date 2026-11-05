@@ -811,7 +811,8 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
     ::ng-deep .ts-tool-card-surface.full-bleed > *,
     ::ng-deep .ts-tool-card-surface.full-bleed app-json-lens,
     ::ng-deep .ts-tool-card-surface.full-bleed app-clipboard-tool,
-    ::ng-deep .ts-tool-card-surface.full-bleed app-barcode-generator {
+    ::ng-deep .ts-tool-card-surface.full-bleed app-barcode-generator,
+    ::ng-deep .ts-tool-card-surface.full-bleed app-temp-email-tool {
       width: 100% !important;
       height: 100% !important;
       min-height: 0 !important;

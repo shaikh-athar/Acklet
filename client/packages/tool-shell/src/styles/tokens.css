@@ -694,6 +694,62 @@ html[data-theme="light"],
   --tool-brand-accent: var(--accent);
 }
 
+/* Violet Palette (Temporary Email & Security):
+   light: accent #7C3AED, ink #FFFFFF, strong #6D28D9
+   dark:  accent #8B5CF6, ink #FFFFFF, strong #A78BFA
+*/
+[data-accent="violet"],
+.ts-root[data-accent="violet"],
+[data-theme="dark"][data-accent="violet"],
+.ts-root[data-theme="dark"][data-accent="violet"],
+[data-theme="dark"] [data-accent="violet"],
+.ts-root[data-theme="dark"] [data-accent="violet"] {
+  --page-bg: #100C1A;
+  --ts-page-bg: #100C1A;
+  --accent: #8B5CF6;
+  --accent-ink: #FFFFFF;
+  --accent-strong: #A78BFA;
+  --accent-soft: rgba(139, 92, 246, 0.12);
+  --accent-border: rgba(139, 92, 246, 0.25);
+  --accent-glow: rgba(139, 92, 246, 0.20);
+  --accent-2-glow: rgba(139, 92, 246, 0.20);
+  --accent-2-glow-dark: rgba(139, 92, 246, 0.12);
+  --border-accent: #8B5CF6;
+  --tool-accent: #8B5CF6;
+  --tool-accent-soft: rgba(139, 92, 246, 0.12);
+  --tool-accent-border: rgba(139, 92, 246, 0.25);
+  --tool-accent-glow: rgba(139, 92, 246, 0.20);
+  --on-accent: var(--accent-ink);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--accent-ink);
+  --tool-brand-accent: var(--accent);
+}
+
+[data-theme="light"][data-accent="violet"],
+.ts-root[data-theme="light"][data-accent="violet"],
+[data-theme="light"] [data-accent="violet"],
+.ts-root[data-theme="light"] [data-accent="violet"] {
+  --page-bg: #FAF5FF;
+  --ts-page-bg: #FAF5FF;
+  --accent: #7C3AED;
+  --accent-ink: #FFFFFF;
+  --accent-strong: #6D28D9;
+  --accent-soft: rgba(124, 58, 237, 0.08);
+  --accent-border: rgba(124, 58, 237, 0.20);
+  --accent-glow: rgba(124, 58, 237, 0.15);
+  --accent-2-glow: rgba(124, 58, 237, 0.15);
+  --accent-2-glow-dark: rgba(124, 58, 237, 0.08);
+  --border-accent: #7C3AED;
+  --tool-accent: #7C3AED;
+  --tool-accent-soft: rgba(124, 58, 237, 0.08);
+  --tool-accent-border: rgba(124, 58, 237, 0.20);
+  --tool-accent-glow: rgba(124, 58, 237, 0.15);
+  --on-accent: var(--accent-ink);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--accent-ink);
+  --tool-brand-accent: var(--accent);
+}
+
 /* ══════════════════════════════════════════════════════════════════
    FOUR SURFACE VARIANTS: "clear" (default) | "frost" | "tinted" | "solid"
    Controlled via [data-surface="..."] attribute on shell root.

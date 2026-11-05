@@ -4,4 +4,5 @@ export * from './accent-presets';
 export * from './manifests/clipboard.manifest';
 export * from './manifests/qr.manifest';
 export * from './manifests/datalens.manifest';
+export * from './manifests/temp-email.manifest';
 export * from './tools.manifest';

@@ -6,8 +6,10 @@ import { ShortenerSecurityService } from './shortener-security.service';
 import { ShortenerStorageService, ShortLinkRecord, LinkStatus, computeLinkStatus } from './shortener-storage.service';
 import { SHORTENER_MESSAGE_CATALOG, sanitizeErrorMessage } from './shortener-messages';
 import { environment } from '../environments/environment';
-import { getToolUrl } from '@acklet/shared';
+import { getToolUrl, createToolLogger } from '@acklet/shared';
 import { firstValueFrom } from 'rxjs';
+
+const log = createToolLogger('UrlShortener');
 
 export interface ShortenRequest {
   url: string;
@@ -125,6 +127,8 @@ export class ShortenerService {
       expiresAt: expiresAt || undefined
     };
 
+    log.info(`Creating short link: target='${urlValidation.cleanUrl}'${request.customAlias ? ` alias='${request.customAlias}'` : ''}`);
+
     try {
       const response: any = await firstValueFrom(
         this.http.post<any>(this.API_BASE, body, { headers })
@@ -136,20 +140,24 @@ export class ShortenerService {
           this.storage.setOwnerToken(data.ownerToken);
         }
         const record = this.mapResponseToRecord(data);
+        const shortUrl = data.shortUrl || this.buildShortUrl(data.code);
+        log.info(`Short link created successfully: code='${data.code}', shortUrl='${shortUrl}'`);
         return {
           success: true,
           code: data.code,
-          shortUrl: data.shortUrl || this.buildShortUrl(data.code),
+          shortUrl,
           previewUrl: data.previewUrl || this.buildPreviewUrl(data.code),
           record
         };
       }
 
+      log.warn('Short link creation returned non-success response:', response);
       return {
         success: false,
         error: sanitizeErrorMessage(response?.message, SHORTENER_MESSAGE_CATALOG.SERVER_ERROR)
       };
     } catch (err: any) {
+      log.error('Short link creation failed with error:', err);
       return {
         success: false,
         error: sanitizeErrorMessage(err, SHORTENER_MESSAGE_CATALOG.SERVER_ERROR)
@@ -436,6 +444,7 @@ export class ShortenerService {
    * Deletes a link on the backend.
    */
   async deleteLink(code: string): Promise<void> {
+    log.info(`Deleting short link: code='${code}'`);
     const ownerToken = this.storage.getOrCreateOwnerToken();
     const headers = new HttpHeaders({
       'X-Owner-Token': ownerToken
@@ -445,7 +454,9 @@ export class ShortenerService {
       await firstValueFrom(
         this.http.delete<any>(`${this.API_BASE}/${encodeURIComponent(code)}`, { headers })
       );
+      log.info(`Short link code='${code}' deleted successfully`);
     } catch (err: any) {
+      log.error(`Failed to delete short link code='${code}':`, err);
       throw new Error(sanitizeErrorMessage(err, SHORTENER_MESSAGE_CATALOG.SERVER_ERROR));
     }
   }
