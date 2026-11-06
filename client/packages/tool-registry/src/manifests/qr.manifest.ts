@@ -86,8 +86,8 @@ export const QR_MANIFEST: ToolRegistryItem = {
       answer: 'Yes! Generated QR codes are completely free and unencumbered for personal or commercial use.'
     }
   ],
-  related: ['clipboard', 'json-formatter', 'uuid-generator', 'base64-encoder'],
-  suggestedTools: ['clipboard', 'json-formatter', 'uuid-generator', 'base64-encoder'],
+  related: ['clipboard', 'json-formatter', 'image-converter', 'barcode'],
+  suggestedTools: ['clipboard', 'json-formatter', 'image-converter', 'barcode'],
   seo: {
     title: 'QR Code Generator — Free, Private & Instant | Acklet',
     description: 'Generate customizable QR codes for text, URLs, email, and phone numbers directly in your browser. 100% private with no tracking.',

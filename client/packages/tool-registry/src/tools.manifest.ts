@@ -5,13 +5,15 @@ import { QR_MANIFEST } from './manifests/qr.manifest';
 import { DATALENS_MANIFEST } from './manifests/datalens.manifest';
 import { BARCODE_MANIFEST } from './manifests/barcode.manifest';
 import { TEMP_EMAIL_MANIFEST } from './manifests/temp-email.manifest';
-import { AMBER_ACCENT, BLUE_ACCENT, ROSE_ACCENT, VIOLET_ACCENT, EMERALD_ACCENT } from './accent-presets';
+import { IMAGE_CONVERTER_MANIFEST, FILE_CONVERTER_MANIFEST } from './manifests/file-converter.manifest';
+import { AMBER_ACCENT, BLUE_ACCENT, ROSE_ACCENT, VIOLET_ACCENT, EMERALD_ACCENT, INDIGO_ACCENT } from './accent-presets';
 
 export { CLIPBOARD_MANIFEST } from './manifests/clipboard.manifest';
 export { QR_MANIFEST } from './manifests/qr.manifest';
 export { DATALENS_MANIFEST } from './manifests/datalens.manifest';
 export { BARCODE_MANIFEST } from './manifests/barcode.manifest';
 export { TEMP_EMAIL_MANIFEST } from './manifests/temp-email.manifest';
+export { IMAGE_CONVERTER_MANIFEST, FILE_CONVERTER_MANIFEST } from './manifests/file-converter.manifest';
 
 /**
  * Single Source of Truth for all tools in Acklet.
@@ -19,161 +21,17 @@ export { TEMP_EMAIL_MANIFEST } from './manifests/temp-email.manifest';
 export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
   'clipboard': CLIPBOARD_MANIFEST,
   'qr': QR_MANIFEST,
+  'qr-generator': QR_MANIFEST,
   'barcode': BARCODE_MANIFEST,
   'barcode-generator': BARCODE_MANIFEST,
   'datalens': DATALENS_MANIFEST,
   'json-formatter': DATALENS_MANIFEST,
   'temp-email': TEMP_EMAIL_MANIFEST,
   'temp-mail': TEMP_EMAIL_MANIFEST,
-  'jwt-inspector': {
-    id: 'jwt-inspector',
-    name: 'JWT Inspector',
-    slug: 'jwt-inspector',
-    category: 'Developer',
-    categorySlug: 'developer',
-    shortDescription: 'Decode, verify, and inspect JSON Web Tokens in real-time.',
-    about: 'Decode JWT tokens, inspect claims, and check expiration time without sending secrets to any server.',
-    description: 'JWT Inspector lets you inspect token headers, payloads, and signatures with client-side verification.',
-    icon: 'key-round',
-    version: '1.0.0',
-    status: 'live',
-    badge: 'updated',
-    featured: true,
-    order: 3,
-    subdomain: 'jwt',
-    executionMode: 'browser',
-    accentHue: 245,
-    features: ['Client-side decoding', 'Expiration warning', 'Header & payload breakdown'],
-    howTo: [
-      'Paste your encoded JSON Web Token.',
-      'Review decoded header and payload claims instantly.',
-      'Check expiration timestamp and signature validity.'
-    ],
-    faqs: [
-      {
-        id: 'jwt-security',
-        question: 'Is it safe to paste sensitive tokens?',
-        answer: 'Yes. Token decoding happens 100% on your device inside browser memory without network transmission.'
-      }
-    ],
-    related: ['clipboard', 'json-formatter', 'base64-encoder'],
-    seo: {
-      title: 'JWT Inspector & Token Decoder | Acklet',
-      description: 'Decode and inspect JSON Web Tokens safely in your browser.',
-      keywords: ['jwt decoder', 'jwt inspector', 'decode token']
-    }
-  },
-  'uuid-generator': {
-    id: 'uuid-generator',
-    name: 'UUID Generator',
-    slug: 'uuid-generator',
-    category: 'Utilities',
-    categorySlug: 'utilities',
-    shortDescription: 'Generate cryptographically secure UUID v4 and v7 identifiers in bulk.',
-    about: 'Generate cryptographically random UUIDs v4 and sortable UUIDs v7 instantly for databases and APIs.',
-    description: 'Bulk UUID generator with custom formatting options (uppercase, hyphens) and one-click copy.',
-    icon: 'fingerprint',
-    version: '1.0.0',
-    status: 'live',
-    order: 4,
-    subdomain: 'uuid',
-    executionMode: 'browser',
-    accentHue: 330,
-    features: ['UUID v4 & v7', 'Bulk generation', 'Cryptographically secure'],
-    howTo: [
-      'Choose UUID version and quantity.',
-      'Select formatting options.',
-      'Copy generated UUIDs to clipboard.'
-    ],
-    faqs: [
-      {
-        id: 'uuid-randomness',
-        question: 'Are the UUIDs cryptographically random?',
-        answer: 'Yes, generated using the native browser crypto.getRandomValues API.'
-      }
-    ],
-    related: ['clipboard', 'base64-encoder', 'json-formatter'],
-    seo: {
-      title: 'UUID Generator (v4 & v7) | Acklet',
-      description: 'Generate bulk UUID v4 and v7 identifiers instantly.',
-      keywords: ['uuid generator', 'guid generator', 'uuid v4', 'uuid v7']
-    }
-  },
-  'base64-encoder': {
-    id: 'base64-encoder',
-    name: 'Base64 Encoder / Decoder',
-    slug: 'base64-encoder',
-    category: 'Utilities',
-    categorySlug: 'utilities',
-    shortDescription: 'Convert text, strings, and files to and from Base64 encoding.',
-    about: 'Encode and decode Base64 strings, UTF-8 text, and binary files with URL-safe option.',
-    description: 'Fast, secure Base64 converter running locally in your browser with zero server roundtrips.',
-    icon: 'binary',
-    version: '1.0.0',
-    status: 'live',
-    order: 5,
-    subdomain: 'base64',
-    executionMode: 'browser',
-    accentHue: 215,
-    features: ['Standard & URL-safe', 'Instant conversion', 'Zero server uploads'],
-    howTo: [
-      'Enter text or upload a file.',
-      'Choose Encode or Decode.',
-      'Copy the output string.'
-    ],
-    faqs: [
-      {
-        id: 'b64-urlsafe',
-        question: 'Does this support URL-safe Base64?',
-        answer: 'Yes, both RFC standard (+/) and URL-safe (-_) variants are supported.'
-      }
-    ],
-    related: ['clipboard', 'jwt-inspector', 'json-formatter'],
-    seo: {
-      title: 'Base64 Encoder & Decoder | Acklet',
-      description: 'Encode and decode text and files in Base64 format.',
-      keywords: ['base64 encoder', 'base64 decoder', 'url safe base64']
-    }
-  },
-  'qr-generator': {
-    id: 'qr-generator',
-    name: 'QR Generator',
-    slug: 'qr-generator',
-    category: 'Links/Web',
-    categorySlug: 'links-web',
-    shortDescription: 'Create, customize, and download high-resolution QR codes instantly.',
-    about: 'QR Generator is a client-side studio for generating, customizing, and downloading QR codes with zero server tracking.',
-    description: 'Create custom QR codes for URLs, text, Wi-Fi credentials, and contacts with real-time error-correction controls and high-contrast color validation.',
-    icon: 'qr-code',
-    version: '1.0.0',
-    status: 'live',
-    order: 6,
-    subdomain: 'qr',
-    executionMode: 'browser',
-    layout: 'fullBleed',
-    accent: 'emerald',
-    accentHue: 160,
-    features: ['Client-side generation', 'High-resolution PNG download', 'Real-time contrast guard', 'Custom error correction'],
-    howTo: [
-      'Enter your URL or text payload.',
-      'Adjust styling and error correction.',
-      'Download your PNG QR code or copy it directly.'
-    ],
-    faqs: [
-      {
-        id: 'qr-privacy',
-        question: 'Are generated QR codes saved on a server?',
-        answer: 'No. All QR matrix computation runs entirely inside your browser memory.'
-      }
-    ],
-    related: ['urlshortener', 'clipboard', 'base64-encoder'],
-    suggestedTools: ['urlshortener', 'clipboard', 'base64-encoder'],
-    seo: {
-      title: 'QR Generator: Free & Private QR Code Creator | Acklet',
-      description: 'Generate high-resolution custom QR codes in your browser with zero tracking.',
-      keywords: ['qr code generator', 'free qr generator', 'custom qr']
-    }
-  },
+  'image-converter': IMAGE_CONVERTER_MANIFEST,
+  'file-converter': IMAGE_CONVERTER_MANIFEST,
+  'converter': IMAGE_CONVERTER_MANIFEST,
+  'img-converter': IMAGE_CONVERTER_MANIFEST,
   'urlshortener': {
     id: 'urlshortener',
     name: 'URL Shortener',
@@ -260,8 +118,8 @@ export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
         answer: 'Yes. Select Make QR on any shortened link to open it in QR Generator.'
       }
     ],
-    related: ['qr-generator', 'clipboard', 'base64-encoder', 'json-formatter'],
-    suggestedTools: ['qr-generator', 'clipboard', 'base64-encoder', 'json-formatter'],
+    related: ['qr-generator', 'clipboard', 'image-converter', 'json-formatter'],
+    suggestedTools: ['qr-generator', 'clipboard', 'image-converter', 'json-formatter'],
     seo: {
       title: 'URL Shortener | Acklet',
       description: 'Shorten links into compact URLs with custom aliases, expiration dates, and preview pages.',

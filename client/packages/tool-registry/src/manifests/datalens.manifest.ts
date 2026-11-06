@@ -82,7 +82,7 @@ export const DATALENS_MANIFEST: ToolRegistryItem = {
       answer: 'DataLens natively parses and converts between JSON, YAML, XML, CSV, TOML, and cURL commands.'
     }
   ],
-  related: ['clipboard', 'qr', 'jwt-inspector', 'base64-encoder'],
+  related: ['clipboard', 'qr', 'barcode', 'image-converter'],
   seo: {
     title: 'DataLens — Multi-Format JSON Formatter & Structured Data Workbench | Acklet',
     description: 'Format, validate, query, compare, and convert JSON, YAML, XML, CSV, TOML, and cURL payloads in your browser with zero latency.',

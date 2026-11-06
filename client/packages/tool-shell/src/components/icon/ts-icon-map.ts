@@ -273,6 +273,10 @@ export const LUCIDE_MOTION_MAP: Record<string, string> = {
   chain: 'motion-rotate-15',
   'temp-email': 'motion-scale-up',
   'temp-mail': 'motion-scale-up',
+  'image-converter': 'motion-scale-up',
+  'img-converter': 'motion-scale-up',
+  'file-converter': 'motion-rotate-15',
+  converter: 'motion-rotate-15',
   mail: 'motion-scale-up',
   inbox: 'motion-scale-up'
 };
@@ -781,6 +785,22 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   },
   inbox: {
     lucide: LucideInbox
+  },
+  'image-converter': {
+    lucide: LucideImages,
+    notes: 'Used in Image Converter tool identity'
+  },
+  'img-converter': {
+    lucide: LucideImages,
+    notes: 'Used in Image Converter tool identity'
+  },
+  'file-converter': {
+    lucide: LucideArrowLeftRight,
+    notes: 'Used in Universal File Converter tool identity'
+  },
+  converter: {
+    lucide: LucideArrowLeftRight,
+    notes: 'Used in Universal File Converter tool identity'
   },
   phone: {
     lucide: LucidePhone
