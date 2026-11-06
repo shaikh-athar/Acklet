@@ -61,8 +61,8 @@ export interface SectionNavLink {
         <!-- Current Tool Chip / Breadcrumb -->
         @if (tool(); as currentTool) {
           <div class="ts-breadcrumb-separator" aria-hidden="true">/</div>
-          <div class="ts-tool-chip" [attr.aria-label]="'Current tool: ' + currentTool.name">
-            <span class="ts-tool-chip-name">{{ currentTool.name }}</span>
+          <div class="ts-tool-chip" [attr.aria-label]="'Current tool: ' + (currentTool.breadcrumbLabel || currentTool.sidebarLabel || currentTool.name)">
+            <span class="ts-tool-chip-name">{{ currentTool.breadcrumbLabel || currentTool.sidebarLabel || currentTool.name }}</span>
           </div>
         }
       </div>

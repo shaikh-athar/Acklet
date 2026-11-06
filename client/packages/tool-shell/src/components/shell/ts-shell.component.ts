@@ -23,6 +23,7 @@ import { RevealDirective, TsRevealDirective } from '../../directives/reveal.dire
 import { PerfFlagsService } from '../../services/perf-flags.service';
 import { TsSettingsModalComponent } from '../settings/ts-settings-modal.component';
 import { DrawerGestureService } from '../../services/drawer-gesture.service';
+import { FileTransferService } from '../../services/file-transfer.service';
 
 @Component({
   selector: 'ts-shell, lib-tool-layout',
@@ -204,6 +205,46 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
 
       <!-- Global Shell Settings Modal -->
       <ts-settings-modal />
+
+      <!-- Full-Screen Global Drag-and-Drop Frosted Blur Overlay (ChatGPT-style) -->
+      @if (fileTransfer.isGlobalDragging()) {
+        <div
+          class="ts-global-drag-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Drop images and media to convert"
+          (click)="dismissGlobalDrag()"
+          (dragover)="onOverlayDragOver($event)"
+          (dragleave)="onOverlayDragLeave($event)"
+          (drop)="onOverlayDrop($event)"
+        >
+          <div class="ts-drag-minimal-content">
+            <!-- Centered Layered Media/Image Icon Stack -->
+            <div class="ts-drag-icon-stack">
+              <div class="ts-icon-card-backdrop" aria-hidden="true"></div>
+              <div class="ts-icon-card-main" aria-hidden="true">
+                <svg
+                  class="ts-media-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect width="18" height="18" x="3" y="3" rx="3" ry="3"/>
+                  <circle cx="9" cy="9" r="2"/>
+                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Clean Image & Media Typography -->
+            <h2 class="ts-drag-title">Add images & media</h2>
+            <p class="ts-drag-subtitle">Drop files here to convert instantly</p>
+          </div>
+        </div>
+      }
 
     </div>
   `,
@@ -997,6 +1038,135 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
         border: none;
       }
     }
+
+    /* ══ Global Full-Screen Drag-and-Drop Overlay (ChatGPT-style Frosted Blur) ══ */
+    .ts-global-drag-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      background: rgba(15, 16, 17, 0.75);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      cursor: pointer;
+      user-select: none;
+      animation: tsDragFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    :host-context([data-theme="light"]) .ts-global-drag-overlay,
+    .ts-root[data-theme="light"] .ts-global-drag-overlay {
+      background: rgba(255, 255, 255, 0.82);
+    }
+
+    .ts-drag-minimal-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      pointer-events: none;
+      max-width: 460px;
+      width: 100%;
+    }
+
+    /* Centered Layered Media/Image Icon Stack */
+    .ts-drag-icon-stack {
+      position: relative;
+      width: 76px;
+      height: 76px;
+      margin-bottom: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ts-icon-card-backdrop {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      border-radius: 18px;
+      background: var(--accent-soft, rgba(99, 102, 241, 0.28));
+      border: 1.5px solid var(--accent-border, rgba(99, 102, 241, 0.45));
+      transform: rotate(-12deg) translate(-4px, 2px);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    :host-context([data-theme="light"]) .ts-icon-card-backdrop,
+    .ts-root[data-theme="light"] .ts-icon-card-backdrop {
+      background: rgba(79, 70, 229, 0.18);
+      border-color: rgba(79, 70, 229, 0.35);
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.12);
+    }
+
+    .ts-icon-card-main {
+      position: relative;
+      width: 62px;
+      height: 62px;
+      border-radius: 18px;
+      background: var(--accent, #6366F1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFFFFF;
+      box-shadow: 0 10px 28px -2px rgba(99, 102, 241, 0.5), 0 3px 8px rgba(0, 0, 0, 0.25);
+      transform: rotate(4deg);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    :host-context([data-theme="light"]) .ts-icon-card-main,
+    .ts-root[data-theme="light"] .ts-icon-card-main {
+      background: #4F46E5;
+      box-shadow: 0 10px 28px -2px rgba(79, 70, 229, 0.4), 0 3px 8px rgba(15, 23, 42, 0.1);
+    }
+
+    .ts-media-icon {
+      width: 32px;
+      height: 32px;
+      stroke: #FFFFFF;
+      color: #FFFFFF;
+      display: block;
+    }
+
+    .ts-drag-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--ts-text, #F8FAFC);
+      margin: 0 0 8px;
+      letter-spacing: -0.025em;
+      line-height: 1.25;
+    }
+
+    :host-context([data-theme="light"]) .ts-drag-title,
+    .ts-root[data-theme="light"] .ts-drag-title {
+      color: #0F172A;
+    }
+
+    .ts-drag-subtitle {
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--ts-text-muted, #94A3B8);
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    :host-context([data-theme="light"]) .ts-drag-subtitle,
+    .ts-root[data-theme="light"] .ts-drag-subtitle {
+      color: #64748B;
+    }
+
+    @keyframes tsDragFadeIn {
+      from {
+        opacity: 0;
+        backdrop-filter: blur(4px);
+      }
+      to {
+        opacity: 1;
+        backdrop-filter: blur(24px);
+      }
+    }
   `]
 })
 export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -1030,6 +1200,106 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly isHotzoneHovered = signal<boolean>(false);
   private hotzoneIntentTimer: ReturnType<typeof setTimeout> | null = null;
   private peekGraceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  readonly fileTransfer = inject(FileTransferService);
+  private dragCounter = 0;
+
+  private hasFiles(e: DragEvent): boolean {
+    if (!e.dataTransfer?.types) return false;
+    return Array.from(e.dataTransfer.types).includes('Files');
+  }
+
+  dismissGlobalDrag(): void {
+    this.dragCounter = 0;
+    this.fileTransfer.isGlobalDragging.set(false);
+  }
+
+  onOverlayDragOver(e: DragEvent): void {
+    e.preventDefault();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }
+
+  onOverlayDragLeave(e: DragEvent): void {
+    e.preventDefault();
+  }
+
+  onOverlayDrop(e: DragEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    this.dragCounter = 0;
+    this.fileTransfer.isGlobalDragging.set(false);
+
+    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+      const files = e.dataTransfer.files;
+      this.fileTransfer.setPendingFiles(files);
+      const slug = this.tool()?.slug;
+      if (slug !== 'file-converter' && slug !== 'image-converter' && slug !== 'converter') {
+        window.location.href = '/tools/file-converter';
+      }
+    }
+  }
+
+  @HostListener('window:dragenter', ['$event'])
+  onWindowDragEnter(e: DragEvent): void {
+    if (this.hasFiles(e)) {
+      e.preventDefault();
+      this.dragCounter++;
+      this.fileTransfer.isGlobalDragging.set(true);
+    }
+  }
+
+  @HostListener('window:dragover', ['$event'])
+  onWindowDragOver(e: DragEvent): void {
+    if (this.hasFiles(e)) {
+      e.preventDefault();
+    }
+  }
+
+  @HostListener('window:dragleave', ['$event'])
+  onWindowDragLeave(e: DragEvent): void {
+    if (this.hasFiles(e)) {
+      e.preventDefault();
+      this.dragCounter = Math.max(0, this.dragCounter - 1);
+      if (
+        this.dragCounter === 0 ||
+        e.clientX <= 0 ||
+        e.clientY <= 0 ||
+        e.clientX >= window.innerWidth ||
+        e.clientY >= window.innerHeight
+      ) {
+        this.dragCounter = 0;
+        this.fileTransfer.isGlobalDragging.set(false);
+      }
+    }
+  }
+
+  @HostListener('window:dragend')
+  onWindowDragEnd(): void {
+    this.dragCounter = 0;
+    this.fileTransfer.isGlobalDragging.set(false);
+  }
+
+  @HostListener('window:drop', ['$event'])
+  onWindowDrop(e: DragEvent): void {
+    this.dragCounter = 0;
+    this.fileTransfer.isGlobalDragging.set(false);
+
+    if (this.hasFiles(e)) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+        const files = e.dataTransfer.files;
+        this.fileTransfer.setPendingFiles(files);
+        const slug = this.tool()?.slug;
+        if (slug !== 'file-converter' && slug !== 'image-converter' && slug !== 'converter') {
+          window.location.href = '/tools/file-converter';
+        }
+      }
+    }
+  }
 
   readonly showFirstHint = signal<boolean>(false);
   private hintDismissTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1111,6 +1381,7 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   onEscapeKey(): void {
+    this.dismissGlobalDrag();
     if (this.sidebarState.isPeek()) {
       this.clearPeekGraceTimer();
       this.sidebarState.peekClose();

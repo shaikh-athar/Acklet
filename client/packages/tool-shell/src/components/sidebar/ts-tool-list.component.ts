@@ -46,7 +46,7 @@ export const RECENT_KEY = 'acklet.tools.recent';
                     <ts-tool-tile [icon]="tool.icon" [name]="tool.name" [size]="20" [flat]="true" />
                   }
                   @if (!isRail()) {
-                    <span class="ts-tool-name">{{ tool.name }}</span>
+                    <span class="ts-tool-name">{{ tool.sidebarLabel || tool.name }}</span>
                     @if (tool.slug === currentSlug()) {
                       <span class="ts-active-dot" aria-hidden="true"></span>
                     }
@@ -95,7 +95,7 @@ export const RECENT_KEY = 'acklet.tools.recent';
                       (click)="onToolSelect()"
                     >
                       <ts-tool-tile [icon]="fav.icon" [name]="fav.name" [size]="20" [flat]="true" />
-                      <span class="ts-tool-name">{{ fav.name }}</span>
+                      <span class="ts-tool-name">{{ fav.sidebarLabel || fav.name }}</span>
                     </a>
                   </li>
                 }
@@ -142,7 +142,7 @@ export const RECENT_KEY = 'acklet.tools.recent';
                       (click)="onToolSelect()"
                     >
                       <ts-tool-tile [icon]="rec.icon" [name]="rec.name" [size]="20" [flat]="true" />
-                      <span class="ts-tool-name">{{ rec.name }}</span>
+                      <span class="ts-tool-name">{{ rec.sidebarLabel || rec.name }}</span>
                     </a>
                   </li>
                 }
@@ -232,7 +232,7 @@ export const RECENT_KEY = 'acklet.tools.recent';
                             } @else {
                               <ts-tool-tile [icon]="tool.icon" [name]="tool.name" [size]="20" [flat]="true" />
                             }
-                            <span class="ts-tool-name">{{ tool.name }}</span>
+                            <span class="ts-tool-name">{{ tool.sidebarLabel || tool.name }}</span>
                             @if (isToolActive(tool.slug)) {
                               <span class="ts-active-dot" aria-hidden="true"></span>
                             }

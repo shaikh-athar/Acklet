@@ -172,23 +172,21 @@ export class ConversionEngineService {
           continue;
         }
 
-        // Validate image category
-        const isImage = detected.category === 'image' || detected.category === 'graphics' || detected.category === 'modern-image';
-        if (!isImage) {
-          this.updateJob(jobId, {
-            detectedFormat: detected,
-            status: 'error',
-            errorMessage: `Unsupported file type (${detected.format.toUpperCase() || 'unknown'}). Please upload image files (PNG, JPG, WebP, AVIF, SVG, GIF, BMP).`
-          });
-          continue;
-        }
-
         const availableOutputs = this.adapterRegistry.getAvailableOutputs(detected.format);
         if (availableOutputs.length === 0) {
+          let msg = `No active converter available for ${detected.format.toUpperCase()} files in this browser.`;
+          if (detected.category === 'document' || ['epub', 'odt', 'docx', 'pdf'].includes(detected.format)) {
+            msg = `${detected.format.toUpperCase()} document conversion is planned for Phase 3. Currently, Images (PNG, JPG, WebP, AVIF, SVG, GIF, BMP), Subtitles (SRT, VTT), and Contacts (VCF, CSV) are active.`;
+          } else if (detected.category === 'audio' || ['m4a', 'wav', 'mp3', 'flac'].includes(detected.format)) {
+            msg = `${detected.format.toUpperCase()} audio conversion is planned for Phase 6. Currently, Images, Subtitles, and Contacts are active.`;
+          } else if (detected.category === 'video' || ['mov', 'mp4'].includes(detected.format)) {
+            msg = `${detected.format.toUpperCase()} video conversion is planned for Phase 7. Currently, Images, Subtitles, and Contacts are active.`;
+          }
+
           this.updateJob(jobId, {
             detectedFormat: detected,
             status: 'error',
-            errorMessage: `No active image converter available for ${detected.format.toUpperCase()} images in this browser.`
+            errorMessage: msg
           });
           continue;
         }

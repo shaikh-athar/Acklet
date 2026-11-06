@@ -17,10 +17,21 @@ import { FileConverterComponent } from '../file-converter.component';
   `
 })
 export class AppComponent {
-  readonly manifest: ToolRegistryItem = TOOL_REGISTRY['image-converter'];
+  readonly manifest: ToolRegistryItem = this.resolveManifest();
   readonly shellConfig: ToolShellConfig = {
     layout: 'fullBleed',
     showDescriptionCard: false
   };
+
+  private resolveManifest(): ToolRegistryItem {
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname.toLowerCase();
+      const path = window.location.pathname.toLowerCase();
+      if (host.includes('image-converter') || path.startsWith('/tools/image-converter') || path === '/image-converter') {
+        return TOOL_REGISTRY['image-converter'] || TOOL_REGISTRY['file-converter'];
+      }
+    }
+    return TOOL_REGISTRY['file-converter'];
+  }
 }
 

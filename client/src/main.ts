@@ -13,8 +13,9 @@ const isBarcodePath = pathname === '/barcode' || pathname === '/barcode-generato
 const isDataLensPath = pathname === '/datalens' || pathname === '/data-lens' || pathname === '/json-formatter';
 const isShortenerPath = pathname === '/urlshortener' || pathname === '/short';
 const isTempEmailPath = pathname === '/temp-email' || pathname === '/temp-mail' || pathname === '/mail' || pathname.startsWith('/tools/temp-email') || pathname.startsWith('/tools/temp-mail');
-const isImageConverterPath = pathname === '/image-converter' || pathname === '/img-converter' || pathname === '/file-converter' || pathname === '/converter' || pathname.startsWith('/tools/image-converter') || pathname.startsWith('/tools/img-converter') || pathname.startsWith('/tools/file-converter') || pathname.startsWith('/tools/converter');
-const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short', 'temp-email', 'temp-mail', 'tempmail', 'image-converter', 'img-converter', 'file-converter', 'converter'];
+const isFileConverterPath = pathname === '/file-converter' || pathname === '/converter' || pathname.startsWith('/tools/file-converter') || pathname.startsWith('/tools/converter') || pathname.startsWith('/convert');
+const isImageConverterPath = pathname === '/image-converter' || pathname === '/img-converter' || pathname.startsWith('/tools/image-converter') || pathname.startsWith('/tools/img-converter');
+const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short', 'temp-email', 'temp-mail', 'tempmail', 'file-converter', 'converter', 'image-converter', 'img-converter'];
 const toolSlug = extractToolSlugFromHostname(hostname) || (queryTool && validQueryTools.includes(queryTool) ? queryTool : null);
 
 if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools') {
@@ -95,8 +96,8 @@ if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools'
       });
     })
     .catch((err) => console.error('[Tool Temp Email Bootstrap Error]', err));
-} else if (toolSlug === 'image-converter' || toolSlug === 'img-converter' || toolSlug === 'file-converter' || toolSlug === 'converter' || isImageConverterPath) {
-  // Bootstrap Image Converter tool (apps/tool-file-converter)
+} else if (toolSlug === 'file-converter' || toolSlug === 'converter' || isFileConverterPath) {
+  // Bootstrap File Converter tool (apps/tool-file-converter)
   Promise.all([
     import('../apps/tool-file-converter/src/app/app.component'),
     import('@angular/common/http')
@@ -107,6 +108,18 @@ if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools'
       });
     })
     .catch((err) => console.error('[Tool File Converter Bootstrap Error]', err));
+} else if (toolSlug === 'image-converter' || toolSlug === 'img-converter' || isImageConverterPath) {
+  // Dedicated Image Converter route/host mapping
+  Promise.all([
+    import('../apps/tool-file-converter/src/app/app.component'),
+    import('@angular/common/http')
+  ])
+    .then(([{ AppComponent }, { provideHttpClient, withFetch }]) => {
+      return bootstrapApplication(AppComponent, {
+        providers: [provideHttpClient(withFetch())]
+      });
+    })
+    .catch((err) => console.error('[Tool Image Converter Bootstrap Error]', err));
 } else {
   // Bootstrap Acklet Portal (default)
   Promise.all([

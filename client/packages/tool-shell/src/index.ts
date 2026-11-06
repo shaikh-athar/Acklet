@@ -16,6 +16,7 @@ export * from './services/perf-flags.service';
 export * from './services/sidebar-state.service';
 export * from './services/tool-theme-provider.service';
 export * from './services/tool-settings.service';
+export * from './services/file-transfer.service';
 export * from './components/settings/ts-settings-modal.component';
 
 // Icons & Primitives

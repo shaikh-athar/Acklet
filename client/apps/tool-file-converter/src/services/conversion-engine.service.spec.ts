@@ -57,14 +57,38 @@ describe('ConversionEngineService', () => {
     expect(jobs[0].errorMessage).toContain('File exceeds 50 MB limit');
   });
 
-  it('should reject non-image files with an informative message', async () => {
+  it('should reject unsupported or planned files with an informative message', async () => {
     const textFile = new File(['plain text data'], 'notes.txt', { type: 'text/plain' });
     await service.addFiles([textFile]);
 
     const jobs = service.jobs();
     expect(jobs.length).toBe(1);
     expect(jobs[0].status).toBe('error');
-    expect(jobs[0].errorMessage).toContain('Please upload image files');
+    expect(jobs[0].errorMessage).toContain('document conversion is planned for Phase 3');
+  });
+
+  it('should accept and configure subtitle files (SRT -> VTT)', async () => {
+    const srtContent = '1\n00:00:01,000 --> 00:00:04,000\nHello World\n';
+    const srtFile = new File([srtContent], 'sub.srt', { type: 'text/plain' });
+    await service.addFiles([srtFile]);
+
+    const jobs = service.jobs();
+    expect(jobs.length).toBe(1);
+    expect(jobs[0].status).toBe('ready');
+    expect(jobs[0].detectedFormat.format).toBe('srt');
+    expect(jobs[0].targetFormat.format).toBe('vtt');
+  });
+
+  it('should accept and configure contact files (VCF -> CSV)', async () => {
+    const vcfContent = 'BEGIN:VCARD\nVERSION:3.0\nFN:John Doe\nEND:VCARD\n';
+    const vcfFile = new File([vcfContent], 'contacts.vcf', { type: 'text/vcard' });
+    await service.addFiles([vcfFile]);
+
+    const jobs = service.jobs();
+    expect(jobs.length).toBe(1);
+    expect(jobs[0].status).toBe('ready');
+    expect(jobs[0].detectedFormat.format).toBe('vcf');
+    expect(jobs[0].targetFormat.format).toBe('csv');
   });
 
   it('should update batch options for all ready jobs', async () => {

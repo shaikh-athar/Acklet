@@ -60,3 +60,30 @@
 - [../README.md](../README.md) — Tool Overview.
 - [../0-Requirements/requirements.md](../0-Requirements/requirements.md) — Requirements.
 - [../2-Implementation/service-design.md](../2-Implementation/service-design.md) — Service Design.
+
+
+## Upgrade: Universal File Converter Full Implementation & Platform Alignment
+- **Date**: 2026-11-06
+- **Status**: Completed
+- **Changes**:
+  1. Updated tool identity across application: Name (`Universal File Converter`), sidebar & breadcrumb label (`File Converter`), page heading (`Universal File Converter`), document title (`Universal File Converter | Acklet`).
+  2. Registered routes: `/tools/file-converter` and conversion-specific SEO routes `/convert/:pair` (e.g. `/convert/png-to-webp`, `/convert/srt-to-vtt`, `/convert/vcf-to-csv`, etc.) with preselection badges and contextual headings.
+  3. Built global drag-and-drop file transfer via `FileTransferService` in `@acklet/tool-shell`.
+  4. Implemented synchronized bidirectional quality controls (10%–100% range slider + presets `Balanced 85%`, `Best 95%`, `Smallest 65%`).
+  5. Implemented lossless format detection guard: disables lossy compression for PNG, SVG, SRT, VTT, VCF, and CSV, displaying a 100% data preservation indicator.
+  6. Verified with unit tests (40/40 passed) and Level A / Level B verification scripts.
+
+## Upgrade: Frosted Glass Drag Overlay Redesign & Drop Dismissal Fix
+- **Date**: 2026-11-06
+- **Status**: Completed
+- **Changes**:
+  1. **Redesigned Global Drag-and-Drop Overlay**: Implemented full-screen frosted blur backdrop (`backdrop-filter: blur(24px)`) inspired by ChatGPT/Linear references.
+  2. **Layered Media/Image Icon Stack**: Replaced old dashed modal and format tags with tilted card stack featuring accent-colored backdrop and front card with crisp white media/photo frame SVG icon.
+  3. **Typography**: Clean title `"Add images & media"` with subtitle `"Drop files here to convert instantly"`.
+  4. **Fixed Stuck Overlay Bug**:
+     - Fixed `DropzoneComponent.onDrop()` to reset `isGlobalDragging` and removed `e.stopPropagation()` so window drop handlers trigger reliably.
+     - Added `onOverlayDrop()` on the overlay container to capture drops directly anywhere on the screen.
+     - Added unconditional cleanup in `onWindowDrop()` and `onWindowDragEnd()`.
+     - Added viewport boundary check in `onWindowDragLeave()` to immediately reset dragging when mouse exits the browser window.
+     - Added Escape key dismiss listener and overlay click dismiss listener.
+  5. **Verification**: 40/40 Vitest unit tests passed, Level A and Level B verification passed, `tool-file-converter` production build completed successfully.

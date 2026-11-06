@@ -28,9 +28,9 @@ export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
   'json-formatter': DATALENS_MANIFEST,
   'temp-email': TEMP_EMAIL_MANIFEST,
   'temp-mail': TEMP_EMAIL_MANIFEST,
+  'file-converter': FILE_CONVERTER_MANIFEST,
+  'converter': FILE_CONVERTER_MANIFEST,
   'image-converter': IMAGE_CONVERTER_MANIFEST,
-  'file-converter': IMAGE_CONVERTER_MANIFEST,
-  'converter': IMAGE_CONVERTER_MANIFEST,
   'img-converter': IMAGE_CONVERTER_MANIFEST,
   'urlshortener': {
     id: 'urlshortener',
