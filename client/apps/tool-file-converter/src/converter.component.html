@@ -1,0 +1,207 @@
+<div class="converter-container">
+  <!-- Hidden native file input (explicit display:none guarantees zero visual leakage) -->
+  <input 
+    #fileInput 
+    type="file" 
+    style="display: none !important;"
+    class="hidden"
+    aria-hidden="true"
+    tabindex="-1"
+    (change)="onFileChange($event)"
+    accept=".docx,.doc,.xlsx,.xls,.pptx,.ppt,.odt,.ods,.odp,.rtf,.txt,.csv"
+  />
+
+  <!-- ── 1. FILE DROP ZONE (IDLE STATE) ──────────────────────────────── -->
+  @if (screenState() === 'IDLE') {
+    <div 
+      class="drop-zone" 
+      [class.drag-over]="isDragging()"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)"
+      (drop)="onDrop($event)"
+      (click)="triggerFileInput()"
+      role="button"
+      tabindex="0"
+      (keydown.enter)="triggerFileInput()"
+      (keydown.space)="triggerFileInput()"
+      aria-label="Upload document file for conversion"
+    >
+      <div class="drop-icon-wrapper">
+        <ts-icon name="upload-cloud" class="drop-icon" />
+      </div>
+
+      <div class="drop-content">
+        <h2 class="drop-title">Choose a document or drag it here</h2>
+        <p class="drop-subtitle">Word, Excel, PowerPoint, OpenDocument, Text, or CSV (up to 50 MB)</p>
+      </div>
+
+      <div class="format-chips">
+        <span class="chip">DOCX</span>
+        <span class="chip">XLSX</span>
+        <span class="chip">PPTX</span>
+        <span class="chip">ODT</span>
+        <span class="chip">RTF</span>
+        <span class="chip">TXT</span>
+        <span class="chip">CSV</span>
+      </div>
+
+      <button hlmBtn variant="secondary" size="sm" type="button" class="browse-btn">
+        Browse File
+      </button>
+    </div>
+  }
+
+  <!-- ── 2. OUTPUT FORMAT SELECTOR (CONFIGURING STATE) ──────────────── -->
+  @if (screenState() === 'CONFIGURING') {
+    <div class="card configuring-card">
+      <!-- File header badge -->
+      <div class="file-summary-header">
+        <div class="file-icon-badge">
+          <ts-icon name="file-text" />
+        </div>
+        <div class="file-meta">
+          <span class="file-name" [title]="selectedFile()?.name">{{ selectedFile()?.name }}</span>
+          <span class="file-size">{{ formattedSourceSize() }}</span>
+        </div>
+        <button hlmBtn variant="ghost" size="icon-sm" type="button" (click)="reset()" title="Remove file" aria-label="Remove file">
+          <ts-icon name="x" />
+        </button>
+      </div>
+
+      <!-- Format selector -->
+      <div class="selector-section">
+        <label class="section-label">Convert to</label>
+        <div class="format-options-grid">
+          @for (fmt of availableTargetFormats(); track fmt.ext) {
+            <button 
+              type="button" 
+              class="format-pill-btn" 
+              [class.is-selected]="selectedTargetFormat() === fmt.ext"
+              (click)="selectTarget(fmt.ext)"
+            >
+              <span class="format-ext">{{ fmt.label }}</span>
+              <span class="format-desc">{{ fmt.desc }}</span>
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="action-footer">
+        <button hlmBtn variant="secondary" size="default" type="button" (click)="reset()">
+          Cancel
+        </button>
+        <button hlmBtn size="default" type="button" class="btn-primary-action" (click)="startConversion()">
+          <span>Convert to {{ selectedTargetFormat().toUpperCase() }}</span>
+          <ts-icon name="arrow-right" />
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ── 3. PROGRESS STATE (CONVERTING STATE) ────────────────────────── -->
+  @if (screenState() === 'CONVERTING') {
+    <div class="card converting-card">
+      <div class="converting-header">
+        <div class="converting-spinner-badge">
+          <ts-icon name="refresh-cw" class="animate-spin" />
+        </div>
+        <div class="converting-text">
+          <h2 class="converting-title">{{ progressMessage() }}</h2>
+          <p class="converting-subtitle">Converting {{ selectedFile()?.name }} to {{ selectedTargetFormat().toUpperCase() }}</p>
+        </div>
+      </div>
+
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" [style.width.%]="conversionProgress()"></div>
+      </div>
+
+      <div class="progress-meta">
+        <span>Processing</span>
+        <span>{{ conversionProgress() }}%</span>
+      </div>
+    </div>
+  }
+
+  <!-- ── 4. DOWNLOAD RESULT (COMPLETED STATE) ────────────────────────── -->
+  @if (screenState() === 'COMPLETED') {
+    <div class="card completed-card">
+      <div class="completed-header">
+        <div class="success-badge">
+          <ts-icon name="check" />
+        </div>
+        <div class="completed-meta">
+          <h2 class="completed-title">Conversion Complete</h2>
+          <p class="completed-filename">{{ conversionResult()?.sanitizedFileName }}</p>
+        </div>
+      </div>
+
+      <div class="specs-grid">
+        <div class="spec-tile">
+          <span class="spec-label">Source</span>
+          <span class="spec-val uppercase">{{ conversionResult()?.sourceFormat }}</span>
+        </div>
+        <div class="spec-tile">
+          <span class="spec-label">Format</span>
+          <span class="spec-val uppercase font-bold text-accent">{{ conversionResult()?.targetFormat }}</span>
+        </div>
+        <div class="spec-tile">
+          <span class="spec-label">Size</span>
+          <span class="spec-val">{{ formattedConvertedSize() }}</span>
+        </div>
+        <div class="spec-tile">
+          <span class="spec-label">Duration</span>
+          <span class="spec-val">{{ conversionResult()?.durationMs }}ms</span>
+        </div>
+      </div>
+
+      <div class="action-footer">
+        <button hlmBtn variant="secondary" size="default" type="button" (click)="reset()">
+          Convert Another File
+        </button>
+        <button hlmBtn size="default" type="button" class="btn-primary-action" (click)="downloadConvertedFile()">
+          <ts-icon name="download" />
+          <span>Download {{ conversionResult()?.targetFormat?.toUpperCase() }}</span>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ── 5. ERROR STATE (NEGOTIABLE & RECOVERABLE UX) ────────────────── -->
+  @if (screenState() === 'ERROR') {
+    <div class="card error-card">
+      <div class="error-header">
+        <div class="error-badge">
+          <ts-icon name="circle-alert" />
+        </div>
+        <div class="error-meta">
+          <h2 class="error-title">Unable to Complete Conversion</h2>
+          <p class="error-message">{{ errorMessage() }}</p>
+        </div>
+      </div>
+
+      <div class="error-tips-box">
+        <div class="tips-heading">
+          <ts-icon name="info" [size]="14" />
+          <span>Troubleshooting Tips</span>
+        </div>
+        <ul class="tips-list">
+          <li>Ensure the document is not password-protected or encrypted.</li>
+          <li>Check that the document size is under 50 MB.</li>
+          <li>Verify that the document opens normally on your device without repair prompts.</li>
+        </ul>
+      </div>
+
+      <div class="action-footer">
+        <button hlmBtn variant="secondary" size="default" type="button" (click)="reset()">
+          <ts-icon name="file-text" />
+          <span>Choose Another File</span>
+        </button>
+        <button hlmBtn size="default" type="button" class="btn-primary-action" (click)="retryConversion()">
+          <ts-icon name="refresh-cw" />
+          <span>Try Again</span>
+        </button>
+      </div>
+    </div>
+  }
+</div>

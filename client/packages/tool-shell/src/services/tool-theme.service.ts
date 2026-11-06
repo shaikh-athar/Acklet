@@ -10,11 +10,13 @@ export class ToolThemeService {
   private readonly THEME_KEY = 'acklet_ts_theme';
   private readonly TRANSPARENCY_KEY = 'acklet_reduce_transparency';
   private readonly MOTION_KEY = 'acklet_reduce_motion';
+  private readonly POINTER_GLOW_KEY = 'acklet_pointer_glow';
 
   readonly currentTheme = signal<ThemeMode>('dark');
   readonly effectiveTheme = signal<'dark' | 'light'>('dark');
   readonly reduceTransparency = signal<boolean>(false);
   readonly reduceMotion = signal<boolean>(false);
+  readonly pointerGlowEnabled = signal<boolean>(true);
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -28,6 +30,9 @@ export class ToolThemeService {
       const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const savedMotion = localStorage.getItem(this.MOTION_KEY);
       this.reduceMotion.set(savedMotion !== null ? savedMotion === 'true' : prefersReducedMotion);
+
+      const savedPointerGlow = localStorage.getItem(this.POINTER_GLOW_KEY);
+      this.pointerGlowEnabled.set(savedPointerGlow !== null ? savedPointerGlow === 'true' : true);
 
       // Listen for system preference changes
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
@@ -68,6 +73,17 @@ export class ToolThemeService {
           document.documentElement.setAttribute('data-reduce-motion', 'true');
         } else {
           document.documentElement.removeAttribute('data-reduce-motion');
+        }
+      }
+    });
+
+    effect(() => {
+      const glowEnabled = this.pointerGlowEnabled();
+      if (typeof document !== 'undefined') {
+        if (!glowEnabled) {
+          document.documentElement.setAttribute('data-disable-pointer-glow', 'true');
+        } else {
+          document.documentElement.removeAttribute('data-disable-pointer-glow');
         }
       }
     });
@@ -112,6 +128,19 @@ export class ToolThemeService {
 
   toggleReduceMotion(): void {
     this.setReduceMotion(!this.reduceMotion());
+  }
+
+  setPointerGlowEnabled(val: boolean): void {
+    this.pointerGlowEnabled.set(val);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(this.POINTER_GLOW_KEY, String(val));
+      } catch (_) {}
+    }
+  }
+
+  togglePointerGlow(): void {
+    this.setPointerGlowEnabled(!this.pointerGlowEnabled());
   }
 
   private resolveEffectiveTheme(): void {

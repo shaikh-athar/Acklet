@@ -98,6 +98,48 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(com.code.acklet.converter.exception.UnsupportedFormatException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnsupportedFormat(com.code.acklet.converter.exception.UnsupportedFormatException ex) {
+        log.warn("Unsupported conversion format [traceId={}]: {}", getTraceId(), ex.getMessage());
+        return new ResponseEntity<>(ApiResponse.error(ex.getMessage(), getTraceId()), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(com.code.acklet.converter.exception.InvalidFileException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidFile(com.code.acklet.converter.exception.InvalidFileException ex) {
+        log.warn("Invalid file upload for conversion [traceId={}]: {}", getTraceId(), ex.getMessage());
+        return new ResponseEntity<>(ApiResponse.error(ex.getMessage(), getTraceId()), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(com.code.acklet.converter.exception.JobNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleJobNotFound(com.code.acklet.converter.exception.JobNotFoundException ex) {
+        log.warn("Conversion job not found [traceId={}]: {}", getTraceId(), ex.getMessage());
+        return new ResponseEntity<>(ApiResponse.error(ex.getMessage(), getTraceId()), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(com.code.acklet.converter.exception.EngineUnavailableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleEngineUnavailable(com.code.acklet.converter.exception.EngineUnavailableException ex) {
+        log.error("Conversion engine unavailable [traceId={}]: {}", getTraceId(), ex.getMessage());
+        return new ResponseEntity<>(ApiResponse.error("Document conversion engine is warming up or unavailable. Please try again shortly.", getTraceId()), HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    @ExceptionHandler(com.code.acklet.converter.exception.ConversionTimeoutException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConversionTimeout(com.code.acklet.converter.exception.ConversionTimeoutException ex) {
+        log.error("Conversion timed out [traceId={}]: {}", getTraceId(), ex.getMessage());
+        return new ResponseEntity<>(ApiResponse.error("Document conversion timed out. Please try converting a smaller document.", getTraceId()), HttpStatus.GATEWAY_TIMEOUT);
+    }
+
+    @ExceptionHandler(com.code.acklet.converter.exception.ConversionFailedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConversionFailed(com.code.acklet.converter.exception.ConversionFailedException ex) {
+        log.error("Conversion failed [traceId={}]: {}", getTraceId(), ex.getMessage());
+        return new ResponseEntity<>(ApiResponse.error("Document could not be converted. Please ensure it is not password-protected or corrupted.", getTraceId()), HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    @ExceptionHandler(com.code.acklet.converter.exception.ConversionException.class)
+    public ResponseEntity<ApiResponse<Void>> handleGenericConversion(com.code.acklet.converter.exception.ConversionException ex) {
+        log.error("Conversion exception [traceId={}]: {}", getTraceId(), ex.getMessage());
+        return new ResponseEntity<>(ApiResponse.error(ex.getMessage(), getTraceId()), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
     @ExceptionHandler({
             org.apache.catalina.connector.ClientAbortException.class,
             org.springframework.web.context.request.async.AsyncRequestNotUsableException.class

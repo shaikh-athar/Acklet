@@ -49,3 +49,15 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     operationsSorter: alpha
+
+app:
+  converter:
+    enabled: true
+    dev-fallback: true
+    max-file-size: 50MB
+    temp-dir: ""
+    timeout-seconds: 120
+    libreoffice-path: ""
+    async-threshold-bytes: 5242880 # 5MB
+    job-ttl-minutes: 60
+    cleanup-cron: "0 */15 * * * *"

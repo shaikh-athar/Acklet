@@ -18,7 +18,7 @@ export const IMAGE_CONVERTER_MANIFEST: ToolRegistryItem = {
   badge: 'new',
   featured: true,
   order: 6,
-  subdomain: 'converter',
+  subdomain: 'image-converter',
   layout: 'fullBleed',
   addedAt: '2026-11-06',
   updatedAt: '2026-11-06',

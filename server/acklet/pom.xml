@@ -25,6 +25,7 @@
 		<testcontainers.version>1.20.4</testcontainers.version>
 		<langchain4j.version>0.36.2</langchain4j.version>
 		<aws.sdk.version>2.25.35</aws.sdk.version>
+		<jodconverter.version>4.4.9</jodconverter.version>
 	</properties>
 
 	<dependencyManagement>
@@ -112,6 +113,13 @@
 			<artifactId>langchain4j-google-ai-gemini</artifactId>
 			<version>${langchain4j.version}</version>
 			<optional>true</optional>
+		</dependency>
+
+		<!-- JODConverter for Office documents to PDF and multi-format conversion -->
+		<dependency>
+			<groupId>org.jodconverter</groupId>
+			<artifactId>jodconverter-local</artifactId>
+			<version>${jodconverter.version}</version>
 		</dependency>
 
 		<!-- Database -->

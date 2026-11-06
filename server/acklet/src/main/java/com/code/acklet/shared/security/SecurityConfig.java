@@ -40,7 +40,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(requestHandler)
-                .ignoringRequestMatchers("/api/v1/auth/**", "/api/v1/github/webhooks", "/.well-known/**", "/api/v1/publish/**", "/api/v1/clipboard/**", "/api/v1/qr/**", "/api/v1/qr-links/**", "/q/**", "/qr", "/qr/**", "/s/**", "/api/v1/short-links/**", "/api/v1/temp-codes/**", "/v/**")
+                .ignoringRequestMatchers("/api/v1/auth/**", "/api/v1/github/webhooks", "/.well-known/**", "/api/v1/publish/**", "/api/v1/clipboard/**", "/api/v1/qr/**", "/api/v1/qr-links/**", "/q/**", "/qr", "/qr/**", "/s/**", "/api/v1/short-links/**", "/api/v1/temp-codes/**", "/v/**", "/api/v1/converter/**")
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
@@ -48,6 +48,8 @@ public class SecurityConfig {
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/.well-known/**").permitAll()
                 // Public auth endpoints
                 .requestMatchers("/api/v1/auth/**").permitAll()
+                // Public file converter endpoints
+                .requestMatchers("/api/v1/converter/**").permitAll()
                 // Public online clipboard endpoints (anonymous cross-device sharing)
                 .requestMatchers("/api/v1/clipboard/**").permitAll()
                 // Public dynamic QR short links & anonymous QR generation

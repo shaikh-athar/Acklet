@@ -119,14 +119,14 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
       will-change: transform;
       transition: opacity 300ms ease;
       background: radial-gradient(circle closest-side,
-        color-mix(in oklab, var(--ts-lift, var(--accent, #60A5FA)) 22%, transparent),
+        color-mix(in oklab, var(--ts-lift, var(--tool-accent, var(--accent, #3B82F6))) 22%, transparent),
         transparent 100%);
     }
 
     :host-context([data-theme="light"]) .ts-bg-spot-glow,
     [data-theme="light"] .ts-bg-spot-glow {
       background: radial-gradient(circle closest-side,
-        color-mix(in oklab, var(--ts-lift, var(--accent, #2563EB)) 40%, transparent),
+        color-mix(in oklab, var(--ts-lift, var(--tool-accent, var(--accent, #2563EB))) 35%, transparent),
         transparent 100%);
     }
 
@@ -142,8 +142,8 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
       will-change: transform;
       transition: opacity 300ms ease;
       background-image:
-        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #60A5FA)) 30%, transparent) 1px, transparent 1px),
-        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #60A5FA)) 30%, transparent) 1px, transparent 1px);
+        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--tool-accent, var(--accent, #3B82F6))) 30%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--tool-accent, var(--accent, #3B82F6))) 30%, transparent) 1px, transparent 1px);
       background-size: 32px 32px;
       -webkit-mask-image: radial-gradient(circle closest-side, #000, transparent 100%);
               mask-image: radial-gradient(circle closest-side, #000, transparent 100%);
@@ -152,8 +152,17 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
     :host-context([data-theme="light"]) .ts-bg-spot-grid,
     [data-theme="light"] .ts-bg-spot-grid {
       background-image:
-        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--accent, #1D4ED8)) 26%, transparent) 1px, transparent 1px),
-        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--accent, #1D4ED8)) 26%, transparent) 1px, transparent 1px);
+        linear-gradient(to right,  color-mix(in srgb, var(--accent-strong, var(--tool-accent, var(--accent, #2563EB))) 26%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--tool-accent, var(--accent, #2563EB))) 26%, transparent) 1px, transparent 1px);
+    }
+
+    /* ── Disable pointer glow effect toggle ───────────────────── */
+    :host-context([data-disable-pointer-glow="true"]) .ts-bg-spot-glow,
+    :host-context([data-disable-pointer-glow="true"]) .ts-bg-spot-grid,
+    [data-disable-pointer-glow="true"] .ts-bg-spot-glow,
+    [data-disable-pointer-glow="true"] .ts-bg-spot-grid {
+      display: none !important;
+      opacity: 0 !important;
     }
 
     /* ── Responsive: under 768px, 24px grid ──────────────────── */

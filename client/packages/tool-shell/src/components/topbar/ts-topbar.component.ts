@@ -20,7 +20,6 @@ import {
 import { CommonModule } from '@angular/common';
 import { ToolSidebarService } from '../../services/tool-sidebar.service';
 import { SidebarStateService } from '../../services/sidebar-state.service';
-import { ToolSettingsService } from '../../services/tool-settings.service';
 import { ToolThemeService } from '../../services/tool-theme.service';
 import { getToolsHubUrl, getPortalUrl } from '@acklet/shared';
 import { ToolRegistryItem } from '@acklet/tool-registry';
@@ -1227,7 +1226,6 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly sidebarService = inject(ToolSidebarService);
   readonly sidebarState = inject(SidebarStateService);
-  readonly settingsService = inject(ToolSettingsService);
   readonly themeService = inject(ToolThemeService, { optional: true });
   readonly portalUrl = getPortalUrl();
   readonly hubUrl = getToolsHubUrl();

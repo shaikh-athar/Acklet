@@ -1,0 +1,477 @@
+/* apps/tool-file-converter/src/converter.component.css */
+
+:host {
+  /* Tool Accent Color - Single source of truth (Royal Blue, distinct from Image Converter) */
+  --tool-accent: var(--accent, #3B82F6);
+  --tool-accent-hover: var(--accent-strong, #60A5FA);
+  --tool-accent-ink: var(--accent-ink, #FFFFFF);
+  --tool-accent-soft: var(--accent-soft, rgba(59, 130, 246, 0.12));
+  --tool-accent-border: var(--accent-border, rgba(59, 130, 246, 0.25));
+  --tool-accent-glow: var(--accent-glow, rgba(59, 130, 246, 0.20));
+
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  box-sizing: border-box;
+}
+
+:host-context([data-theme="light"]) {
+  --tool-accent: var(--accent, #2563EB);
+  --tool-accent-hover: var(--accent-strong, #1D4ED8);
+  --tool-accent-ink: var(--accent-ink, #FFFFFF);
+  --tool-accent-soft: var(--accent-soft, rgba(37, 99, 235, 0.08));
+  --tool-accent-border: var(--accent-border, rgba(37, 99, 235, 0.20));
+  --tool-accent-glow: var(--accent-glow, rgba(37, 99, 235, 0.15));
+}
+
+.converter-container {
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── 1. Drop Zone (Idle State) ────────────────────────────────────────── */
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 56px 24px;
+  background-color: var(--ts-surface-raised, #141416);
+  border: 2px dashed var(--border, rgba(255, 255, 255, 0.12));
+  border-radius: var(--ts-radius-card, 20px);
+  cursor: pointer;
+  outline: none;
+  transition: all var(--ts-dur-base, 220ms) var(--ts-ease);
+  position: relative;
+  overflow: hidden;
+}
+
+.drop-zone:hover,
+.drop-zone.drag-over {
+  border-color: var(--tool-accent);
+  background-color: var(--tool-accent-soft);
+  box-shadow: 0 0 24px var(--tool-accent-glow);
+}
+
+.drop-zone:focus-visible {
+  border-color: var(--tool-accent);
+  box-shadow: 0 0 0 3px var(--tool-accent-border);
+}
+
+.drop-icon-wrapper {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background-color: var(--tool-accent-soft);
+  border: 1px solid var(--tool-accent-border);
+  color: var(--tool-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin-bottom: 20px;
+  transition: transform var(--ts-dur-hover, 220ms) var(--ts-ease);
+}
+
+.drop-zone:hover .drop-icon-wrapper {
+  transform: translateY(-2px) scale(1.04);
+}
+
+.drop-content {
+  margin-bottom: 20px;
+}
+
+.drop-title {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 650;
+  color: var(--text, #FCFCFC);
+  letter-spacing: -0.01em;
+}
+
+.drop-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-2, #B3B3B8);
+  line-height: 1.5;
+}
+
+.format-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.chip {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--ts-surface-inset, rgba(255, 255, 255, 0.04));
+  color: var(--text-3, #8E8E93);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+
+.browse-btn {
+  pointer-events: none;
+}
+
+/* ── Generic Card Base ────────────────────────────────────────────────── */
+.card {
+  background-color: var(--ts-surface-raised, #141416);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border-radius: var(--ts-radius-card, 20px);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* ── 2. Configuring State ─────────────────────────────────────────────── */
+.file-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+}
+
+.file-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background-color: var(--tool-accent-soft);
+  border: 1px solid var(--tool-accent-border);
+  color: var(--tool-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.file-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+.file-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text, #FCFCFC);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-size {
+  font-size: 13px;
+  color: var(--text-2, #B3B3B8);
+}
+
+.selector-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3, #8E8E93);
+}
+
+.format-options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.format-pill-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background-color: var(--ts-surface-inset, #1A1B1E);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  cursor: pointer;
+  text-align: left;
+  outline: none;
+  transition: all var(--ts-dur-fast, 150ms) var(--ts-ease);
+}
+
+.format-pill-btn:hover {
+  border-color: var(--tool-accent-border);
+  background-color: var(--tool-accent-soft);
+}
+
+.format-pill-btn.is-selected {
+  border-color: var(--tool-accent);
+  background-color: var(--tool-accent-soft);
+  box-shadow: 0 0 0 1px var(--tool-accent);
+}
+
+.format-ext {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text, #FCFCFC);
+}
+
+.format-pill-btn.is-selected .format-ext {
+  color: var(--tool-accent);
+}
+
+.format-desc {
+  font-size: 11px;
+  color: var(--text-3, #8E8E93);
+  margin-top: 2px;
+}
+
+/* ── 3. Converting / Progress State ───────────────────────────────────── */
+.converting-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.converting-spinner-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background-color: var(--tool-accent-soft);
+  color: var(--tool-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.converting-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--text, #FCFCFC);
+}
+
+.converting-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: var(--text-2, #B3B3B8);
+}
+
+.progress-bar-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 9999px;
+  background-color: var(--ts-surface-inset, #1A1B1E);
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: var(--tool-accent);
+  border-radius: 9999px;
+  transition: width 300ms ease;
+}
+
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2, #B3B3B8);
+}
+
+/* ── 4. Completed State ───────────────────────────────────────────────── */
+.completed-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.success-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background-color: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10B981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.completed-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--text, #FCFCFC);
+}
+
+.completed-filename {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: var(--text-2, #B3B3B8);
+}
+
+.specs-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  background-color: var(--ts-surface-inset, #1A1B1E);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+}
+
+.spec-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.spec-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-3, #8E8E93);
+}
+
+.spec-val {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text, #FCFCFC);
+}
+
+.text-accent {
+  color: var(--tool-accent) !important;
+}
+
+/* ── 5. Error State ───────────────────────────────────────────────────── */
+.error-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.error-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background-color: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  color: #EF4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.error-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--text, #FCFCFC);
+}
+
+.error-message {
+  margin: 6px 0 0 0;
+  font-size: 14px;
+  color: var(--text-2, #B3B3B8);
+  line-height: 1.5;
+}
+
+.error-tips-box {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background-color: var(--ts-surface-inset, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+
+.tips-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text, #FCFCFC);
+  margin-bottom: 8px;
+}
+
+.tips-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--text-2, #A1A1AA);
+  line-height: 1.6;
+}
+
+.tips-list li {
+  margin-bottom: 4px;
+}
+.tips-list li:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Action Footers ───────────────────────────────────────────────────── */
+.action-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.btn-primary-action {
+  background-color: var(--tool-accent) !important;
+  color: var(--tool-accent-ink, #FFFFFF) !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  border: none !important;
+  transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease);
+}
+
+.btn-primary-action:hover {
+  background-color: var(--tool-accent-hover) !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .specs-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .action-footer {
+    flex-direction: column-reverse;
+    width: 100%;
+  }
+
+  .action-footer button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+

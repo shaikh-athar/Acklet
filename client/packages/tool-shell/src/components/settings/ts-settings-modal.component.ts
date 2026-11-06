@@ -114,6 +114,25 @@ import { TsIconComponent } from '../icon/ts-icon.component';
                   <span class="ts-toggle-thumb"></span>
                 </button>
               </div>
+
+              <!-- Pointer Gradient Glow -->
+              <div class="ts-settings-row">
+                <div class="ts-row-info">
+                  <span class="ts-row-title">Cursor Gradient Glow</span>
+                  <span class="ts-row-desc">Dynamic ambient pointer gradient glow and background light</span>
+                </div>
+                <button
+                  type="button"
+                  class="ts-toggle-switch"
+                  [class.is-checked]="themeService.pointerGlowEnabled()"
+                  (click)="themeService.togglePointerGlow()"
+                  role="switch"
+                  [attr.aria-checked]="themeService.pointerGlowEnabled()"
+                  aria-label="Toggle cursor gradient glow effect"
+                >
+                  <span class="ts-toggle-thumb"></span>
+                </button>
+              </div>
             </div>
 
             <!-- Sidebar Navigation Behavior -->

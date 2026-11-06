@@ -9,6 +9,7 @@ import {
   PLATFORM_ID
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { ToolThemeService } from '../services/tool-theme.service';
 
 /**
  * TsPointerGlowDirective
@@ -33,6 +34,7 @@ export class TsPointerGlowDirective implements OnInit, OnDestroy {
   private readonly el = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly zone = inject(NgZone);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly themeService = inject(ToolThemeService, { optional: true });
 
   private spotGlow: HTMLElement | null = null;
   private spotGrid: HTMLElement | null = null;
@@ -90,6 +92,11 @@ export class TsPointerGlowDirective implements OnInit, OnDestroy {
   }
 
   private onPointerMove(e: PointerEvent): void {
+    if (this.themeService && !this.themeService.pointerGlowEnabled()) {
+      this.fadeOut();
+      return;
+    }
+
     this.targetX = e.clientX;
     this.targetY = e.clientY;
 

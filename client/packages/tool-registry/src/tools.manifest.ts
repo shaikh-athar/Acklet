@@ -6,6 +6,7 @@ import { DATALENS_MANIFEST } from './manifests/datalens.manifest';
 import { BARCODE_MANIFEST } from './manifests/barcode.manifest';
 import { TEMP_EMAIL_MANIFEST } from './manifests/temp-email.manifest';
 import { IMAGE_CONVERTER_MANIFEST, FILE_CONVERTER_MANIFEST } from './manifests/file-converter.manifest';
+import { CONVERTER_MANIFEST } from './manifests/converter.manifest';
 import { AMBER_ACCENT, BLUE_ACCENT, ROSE_ACCENT, VIOLET_ACCENT, EMERALD_ACCENT, INDIGO_ACCENT } from './accent-presets';
 
 export { CLIPBOARD_MANIFEST } from './manifests/clipboard.manifest';
@@ -14,11 +15,16 @@ export { DATALENS_MANIFEST } from './manifests/datalens.manifest';
 export { BARCODE_MANIFEST } from './manifests/barcode.manifest';
 export { TEMP_EMAIL_MANIFEST } from './manifests/temp-email.manifest';
 export { IMAGE_CONVERTER_MANIFEST, FILE_CONVERTER_MANIFEST } from './manifests/file-converter.manifest';
+export { CONVERTER_MANIFEST } from './manifests/converter.manifest';
 
 /**
  * Single Source of Truth for all tools in Acklet.
  */
 export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
+  'file-converter': CONVERTER_MANIFEST,
+  'converter': CONVERTER_MANIFEST,
+  'image-converter': IMAGE_CONVERTER_MANIFEST,
+  'img-converter': IMAGE_CONVERTER_MANIFEST,
   'clipboard': CLIPBOARD_MANIFEST,
   'qr': QR_MANIFEST,
   'qr-generator': QR_MANIFEST,
@@ -28,10 +34,6 @@ export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
   'json-formatter': DATALENS_MANIFEST,
   'temp-email': TEMP_EMAIL_MANIFEST,
   'temp-mail': TEMP_EMAIL_MANIFEST,
-  'image-converter': IMAGE_CONVERTER_MANIFEST,
-  'file-converter': IMAGE_CONVERTER_MANIFEST,
-  'converter': IMAGE_CONVERTER_MANIFEST,
-  'img-converter': IMAGE_CONVERTER_MANIFEST,
   'urlshortener': {
     id: 'urlshortener',
     name: 'URL Shortener',

@@ -85,6 +85,16 @@ The Acklet platform is divided into two functional domains: **Platform Ecosystem
 - **Automated Lifecycle & Purge Engine:** Scheduled two-phase cleanup workers automatically purging expired files and abandoned multi-part upload chunks.
 - **Device Pairing:** QR-code pairing, 6-digit pin verification, and active collaborator management.
 
+#### File Converter — Multi-Format Document Conversion Engine
+*Location:* `client/apps/tool-file-converter/` & `server/acklet/src/main/java/com/code/acklet/converter/` | *Docs:* [`docs/file-converter.md`](docs/file-converter.md)
+
+- **Multi-Format Processing:** Word documents (`.docx`, `.doc`), spreadsheets (`.xlsx`, `.xls`, `.csv`), presentations (`.pptx`, `.ppt`), and OpenDocument files (`.odt`, `.ods`, `.odp`) to PDF and interoperable office formats.
+- **LibreOffice Headless Core:** High-fidelity conversion via JODConverter library (`org.jodconverter:jodconverter-local`) orchestrating local LibreOffice process pools.
+- **Clean Interface Abstraction:** Conversion engine hidden behind `ConverterService` interface with asynchronous queueing for large payloads.
+- **Enterprise Job & Storage Management:** Auto-purging scheduled temporary directory cleanup with configurable TTL and traversal-safe filename sanitization.
+- **Canonical Acklet UI:** Spartan UI Helm primitives, single-variable `--tool-accent` CSS theming, and high-contrast WCAG AA dual-theme compatibility.
+- **Attribution & Licenses:** Full notices preserved in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) naming JODConverter (Apache 2.0) and LibreOffice (MPL 2.0).
+
 ---
 
 ## Product Architecture
