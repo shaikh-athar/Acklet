@@ -13,6 +13,7 @@ Welcome to the **Acklet Tools Documentation Hub**. This directory documents the 
 | **Barcode Generator** | [Barcode-Generator/](Barcode-Generator/README.md) | In-Browser Vector Barcode Studio | Code 128, EAN, UPC, ISBN, ITF, Codabar, SVG, PNG, PDF | **Production Ready (Phase 1)** |
 | **URL Shortener** | [URL-Shortener/](URL-Shortener/README.md) | Privacy-First Fast URL Shortener & Link Studio | Base62 URLs, Custom Slugs, TTL, QR Handoff | **Production Ready** |
 | **Temporary Email** | [Temp-Email/](Temp-Email/README.md) | Disposable Email Generator & Real-Time Inbox | Mail.tm API, Smart OTP Extractor, Verification Links | **Production Ready** |
+| **Image Converter** | [File-Converter/](File-Converter/README.md) | In-Browser Batch Image Studio | PNG, JPG, WebP, AVIF, SVG, GIF, BMP, ZIP | **Production Ready** |
 | **DataLens** | [data-lens/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/data-lens/README.md) | Structured Data Workbench & Inspector | JSON, YAML, XML, CSV, TOML, cURL | **Production Ready** |
 | **AirVault** | [airvault/](file:///Users/ayaz/Acklet/docs/Acklet%20Vault/Acklet/Tools/airvault/README.md) | Cross-Device Clipboard & Sync Platform | Text, Code, URLs, Images, Files, E2EE | **Production Ready** |
 

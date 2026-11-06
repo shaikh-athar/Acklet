@@ -100,8 +100,8 @@ export const CLIPBOARD_MANIFEST: ToolRegistryItem = {
       answer: 'Online Clipboard runs directly in any modern web browser across macOS, Windows, Linux, iOS, and Android without needing any app installation.'
     }
   ],
-  related: ['json-formatter', 'jwt-inspector', 'uuid-generator', 'base64-encoder'],
-  suggestedTools: ['json-formatter', 'jwt-inspector', 'uuid-generator', 'base64-encoder'],
+  related: ['json-formatter', 'image-converter', 'qr', 'temp-email'],
+  suggestedTools: ['json-formatter', 'image-converter', 'qr', 'temp-email'],
   seo: {
     title: 'Online Clipboard: Share Text, Images and Files Between Devices | Acklet',
     description: 'Copy text, links, images and files on one device and paste them on another with a simple 5-digit code. Free, no signup, up to 200 MB per file.',

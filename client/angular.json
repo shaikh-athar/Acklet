@@ -450,6 +450,53 @@
           "defaultConfiguration": "production"
         }
       }
+    },
+    "tool-file-converter": {
+      "projectType": "application",
+      "schematics": {},
+      "root": "apps/tool-file-converter",
+      "sourceRoot": "apps/tool-file-converter/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "apps/tool-file-converter/src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
+            ],
+            "styles": [
+              "apps/tool-file-converter/src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "jszip",
+              "lottie-web"
+            ]
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "1.5MB",
+                  "maximumError": "2.5MB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        }
+      }
     }
   }
 }

@@ -1,0 +1,304 @@
+<div class="converter-page-wrapper">
+  
+  <!-- Notification Banner (Batch Limit / File Size Warnings) -->
+  @if (engine.batchNotification(); as note) {
+    <div class="batch-alert-banner" role="alert">
+      <ts-icon name="alert-circle" [size]="16" class="alert-icon" />
+      <span class="alert-text">{{ note }}</span>
+      <button type="button" class="alert-dismiss-btn" (click)="engine.batchNotification.set(null)" aria-label="Dismiss message">
+        <ts-icon name="x" [size]="14" />
+      </button>
+    </div>
+  }
+
+  <!-- STATE 1: EMPTY HERO (iLovePDF Style) -->
+  @if (!engine.hasJobs()) {
+    <div class="empty-state-shell animate-fade-in">
+      <section class="dropzone-section" aria-label="Image upload section">
+        <app-dropzone (filesDropped)="onFilesDropped($event)" />
+      </section>
+
+      <!-- Highlights Row -->
+      <section class="minimal-highlights-grid" aria-label="Tool value highlights">
+        <div class="highlight-tile">
+          <div class="highlight-icon-wrapper">
+            <ts-icon name="zap" [size]="20" />
+          </div>
+          <div>
+            <h4 class="highlight-title">Instant In-Browser Speed</h4>
+            <p class="highlight-desc">Processes multi-image batches locally via Canvas API. No waiting in queue, zero latency.</p>
+          </div>
+        </div>
+
+        <div class="highlight-tile">
+          <div class="highlight-icon-wrapper">
+            <ts-icon name="shield-check" [size]="20" />
+          </div>
+          <div>
+            <h4 class="highlight-title">100% Private & Client-Side</h4>
+            <p class="highlight-desc">Your photos never touch an external server or cloud. Data stays safely in your browser.</p>
+          </div>
+        </div>
+
+        <div class="highlight-tile">
+          <div class="highlight-icon-wrapper">
+            <ts-icon name="download" [size]="20" />
+          </div>
+          <div>
+            <h4 class="highlight-title">Batch 50 Images + ZIP</h4>
+            <p class="highlight-desc">Convert up to 50 images in one batch (up to 50 MB each) and download them individually or bundled.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  }
+
+  <!-- STATE 2: STUDIO WORKSPACE (iLoveIMG Style) -->
+  @if (engine.hasJobs()) {
+    <div class="workspace-layout animate-fade-slide-up">
+
+      <!-- LEFT COLUMN: Main Gallery Stage -->
+      <main class="workspace-stage" aria-label="Image gallery and queue">
+        <!-- Stage Header Bar -->
+        <div class="stage-header-bar">
+          <div class="stage-title-group">
+            <h2 class="stage-title">Images to Convert</h2>
+            <span class="stage-count-badge font-mono">{{ engine.jobs().length }} / {{ maxFiles }}</span>
+          </div>
+
+          <div class="stage-actions-group">
+            <button
+              type="button"
+              class="add-more-header-btn"
+              (click)="openFilePicker()"
+              [disabled]="engine.isConvertingAny() || engine.jobs().length >= maxFiles"
+              title="Add more images to this batch"
+            >
+              <ts-icon name="plus" [size]="15" />
+              <span>Add Images</span>
+            </button>
+
+            <button
+              type="button"
+              class="clear-all-header-btn"
+              (click)="engine.clearAll()"
+              [disabled]="engine.isConvertingAny()"
+              title="Remove all images"
+            >
+              <ts-icon name="trash-2" [size]="14" />
+              <span>Clear</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Celebration Banner (Shown when all jobs have finished) -->
+        @if (engine.completedCount() > 0 && engine.readyJobsCount() === 0 && !engine.isConvertingAny()) {
+          <div class="celebration-strip animate-celebration">
+            <div class="celebration-strip-left">
+              <span class="celebration-icon-box">
+                <ts-icon name="sparkles" [size]="18" />
+              </span>
+              <div>
+                <strong class="celebration-bold">All {{ engine.completedCount() }} images converted successfully!</strong>
+                @if (engine.totalSavingsBytes() > 0) {
+                  <span class="celebration-savings font-mono">
+                    Saved {{ formatBytes(engine.totalSavingsBytes()) }} ({{ engine.totalSavingsPercent() }}% smaller)
+                  </span>
+                }
+              </div>
+            </div>
+            @if (engine.completedCount() > 1) {
+              <button type="button" class="celebration-zip-btn" (click)="engine.downloadAllAsZip()">
+                <ts-icon name="download" [size]="14" />
+                <span>Download All (ZIP)</span>
+              </button>
+            }
+          </div>
+        }
+
+        <!-- Gallery Grid of Image Cards -->
+        <div class="image-gallery-grid" role="list">
+          @for (job of engine.jobs(); track job.id) {
+            <app-conversion-item
+              [job]="job"
+              (convert)="onConvertJob($event)"
+              (cancel)="onCancelJob($event)"
+              (remove)="onRemoveJob($event)"
+              (download)="onDownloadJob($event)"
+              (formatChanged)="onFormatChanged($event)"
+              (previewRequested)="onPreviewRequested($event)"
+            />
+          }
+
+          <!-- Add More Card in Grid -->
+          @if (engine.jobs().length < maxFiles && !engine.isConvertingAny()) {
+            <button
+              type="button"
+              class="add-tile-card"
+              (click)="openFilePicker()"
+              title="Add more images"
+            >
+              <div class="add-circle-icon">
+                <ts-icon name="plus" [size]="24" />
+              </div>
+              <span class="add-tile-text">Add More</span>
+              <span class="add-tile-sub">Up to {{ maxFiles }} total</span>
+            </button>
+          }
+        </div>
+      </main>
+
+      <!-- RIGHT COLUMN: Conversion Options Sidebar -->
+      <aside class="workspace-sidebar" aria-label="Conversion options">
+        <div class="sidebar-inner-card">
+          <div class="sidebar-header">
+            <h3 class="sidebar-title">Image Conversion</h3>
+            <p class="sidebar-subtitle">Configure target format, quality, and sizing</p>
+          </div>
+
+          <!-- Section 1: Output Format Selection (iLoveIMG cards) -->
+          <div class="sidebar-section">
+            <label class="sidebar-section-label">Convert All To</label>
+            <div class="format-cards-stack" role="radiogroup" aria-label="Target format">
+              @for (opt of targetFormatOptions; track opt.format) {
+                <button
+                  type="button"
+                  class="format-choice-card"
+                  [class.is-selected]="engine.batchTargetFormat() === opt.format"
+                  (click)="onBatchTargetChange(opt.format)"
+                  [attr.aria-checked]="engine.batchTargetFormat() === opt.format"
+                  role="radio"
+                >
+                  <div class="format-card-left">
+                    <div class="format-card-title-row">
+                      <span class="format-card-title">CONVERT TO {{ opt.format | uppercase }}</span>
+                      @if (opt.format === 'webp') {
+                        <span class="badge-recommended">Best</span>
+                      }
+                    </div>
+                    <span class="format-card-desc">{{ opt.description }}</span>
+                  </div>
+                  <div class="format-card-indicator">
+                    @if (engine.batchTargetFormat() === opt.format) {
+                      <div class="selected-check-circle">
+                        <ts-icon name="check" [size]="13" />
+                      </div>
+                    } @else {
+                      <div class="unselected-radio-circle"></div>
+                    }
+                  </div>
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Section 2: Quality Preset -->
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <label class="sidebar-section-label">Quality Level</label>
+              <span class="selected-quality-badge font-mono">{{ getQualityLabel(engine.batchQuality()) }}</span>
+            </div>
+            <div class="quality-segmented-control" role="radiogroup" aria-label="Quality preset">
+              @for (q of qualityOptions; track q.value) {
+                <button
+                  type="button"
+                  class="quality-seg-btn"
+                  [class.is-active]="engine.batchQuality() === q.value"
+                  (click)="onBatchQualityChange(q.value)"
+                  [attr.aria-checked]="engine.batchQuality() === q.value"
+                  role="radio"
+                  [title]="q.label + ' (' + q.badge + ')'"
+                >
+                  <span class="seg-label">{{ q.label }}</span>
+                  <span class="seg-badge font-mono">{{ q.badge }}</span>
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Section 3: Resize (Optional) -->
+          <div class="sidebar-section">
+            <label class="sidebar-section-label" for="resizeSelect">Resize Dimension (Optional)</label>
+            <div class="select-wrapper">
+              <select
+                id="resizeSelect"
+                class="resize-native-select font-mono"
+                [ngModel]="engine.batchMaxWidth() ?? ''"
+                (ngModelChange)="onBatchResizeChange($event ? +$event : undefined)"
+              >
+                <option value="">Original (No resize)</option>
+                <option value="1920">1920px (Full HD)</option>
+                <option value="1280">1280px (HD 720p)</option>
+                <option value="800">800px (Web Optimized)</option>
+              </select>
+              <ts-icon name="chevron-down" [size]="15" class="select-arrow-icon" />
+            </div>
+          </div>
+
+          <!-- Sticky Action Bottom in Sidebar -->
+          <div class="sidebar-action-footer">
+            @if (engine.readyJobsCount() > 0) {
+              <button
+                type="button"
+                class="sidebar-primary-cta"
+                (click)="engine.convertAll()"
+                [disabled]="engine.isConvertingAny()"
+              >
+                <span>Convert {{ engine.readyJobsCount() }} {{ engine.readyJobsCount() === 1 ? 'Image' : 'Images' }}</span>
+                <ts-icon name="arrow-right" [size]="18" />
+              </button>
+            } @else if (engine.isConvertingAny()) {
+              <button type="button" class="sidebar-primary-cta is-converting" disabled>
+                <span class="spinner-circle-sm"></span>
+                <span>Converting ({{ engine.convertingCount() }}/{{ engine.jobs().length }})...</span>
+              </button>
+            } @else if (engine.completedCount() > 0) {
+              @if (engine.completedCount() > 1) {
+                <button
+                  type="button"
+                  class="sidebar-primary-cta is-download"
+                  (click)="engine.downloadAllAsZip()"
+                >
+                  <ts-icon name="download" [size]="18" />
+                  <span>Download All (ZIP)</span>
+                </button>
+              }
+              <button
+                type="button"
+                class="sidebar-secondary-btn"
+                (click)="engine.clearAll(); openFilePicker()"
+              >
+                <ts-icon name="refresh-cw" [size]="14" />
+                <span>Convert More Images</span>
+              </button>
+            }
+          </div>
+
+        </div>
+      </aside>
+
+    </div>
+  }
+
+  <!-- Hidden workspace file input for adding files in workspace mode -->
+  <input
+    #workspaceFileInput
+    type="file"
+    multiple
+    accept="image/*,.png,.jpg,.jpeg,.webp,.avif,.svg,.gif,.bmp,.ico"
+    class="hidden-workspace-input"
+    (change)="onWorkspaceFileChange($event)"
+    aria-hidden="true"
+    tabindex="-1"
+  />
+
+</div>
+
+<!-- Preview Modal Dialog -->
+@if (previewModalJob(); as previewJob) {
+  <app-preview-modal
+    [job]="previewJob"
+    (close)="closePreviewModal()"
+    (download)="onDownloadJob($event)"
+  />
+}

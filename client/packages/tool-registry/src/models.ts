@@ -63,6 +63,7 @@ export interface ToolRegistryItem {
   highlights?: ToolHighlight[];
   related?: string[]; // slug references
   requires?: Array<'clipboard' | 'camera' | 'microphone' | 'notifications' | 'backend'>;
+  requiresBackend?: boolean;
   tabs?: ToolManifestTab[];
   about?: string;
   features?: string[];

@@ -22,6 +22,27 @@ export const BLUE_ACCENT: ToolAccentConfig = {
   }
 };
 
+export const INDIGO_ACCENT: ToolAccentConfig = {
+  name: 'indigo',
+  hue: 242,
+  dark: {
+    base: '#6366F1',
+    ink: '#FFFFFF',
+    strong: '#818CF8',
+    soft: 'rgba(99, 102, 241, 0.14)',
+    border: 'rgba(99, 102, 241, 0.28)',
+    glow: 'rgba(99, 102, 241, 0.22)'
+  },
+  light: {
+    base: '#4F46E5',
+    ink: '#FFFFFF',
+    strong: '#4338CA',
+    soft: 'rgba(79, 70, 229, 0.08)',
+    border: 'rgba(79, 70, 229, 0.22)',
+    glow: 'rgba(79, 70, 229, 0.16)'
+  }
+};
+
 export const TEAL_ACCENT: ToolAccentConfig = {
   name: 'teal',
   hue: 195,
@@ -152,6 +173,7 @@ export const DEFAULT_TOOL_ACCENT = BLUE_ACCENT;
 
 const ACCENT_MAP: Record<string, ToolAccentConfig> = {
   blue: BLUE_ACCENT,
+  indigo: INDIGO_ACCENT,
   teal: TEAL_ACCENT,
   emerald: EMERALD_ACCENT,
   green: EMERALD_ACCENT,
