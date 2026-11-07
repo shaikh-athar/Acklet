@@ -538,7 +538,7 @@ export interface DiffPaneDisplayLine {
               >
                 <div class="diff-pane-header">
                   <div class="header-left">
-                    <app-icon name="file-code-2" class="icon-xs text-emerald-400"></app-icon>
+                    <app-icon name="file-code-2" class="icon-xs text-[var(--tool-accent,var(--accent,#2563EB))]"></app-icon>
                     <span>Modified (Right)</span>
                     <span class="line-count-badge">{{ rightPaneLines().length }} lines</span>
                     @if (rightDetectedFormatLabel()) {

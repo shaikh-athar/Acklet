@@ -751,6 +751,19 @@ Highest-value next improvement.
 
 ---
 
+# 22. Tool Background Gradients & Settings Rules
+
+* **Layout-Driven Background Pools**:
+  * Centered tools (centered/standard/compact layouts like URL Shortener, File Converter, Image Converter, Barcode Generator) automatically use centered gradients: `Ambient Orb`, `Top Wash`, or `Dual Spotlight`.
+  * Wide / screen-covering workbench tools (full-bleed/wide layouts like DataLens, Online Clipboard, Temp Email, QR Generator) automatically use wide ambient gradients: `Soft Mesh` or `Diagonal Stream`.
+  * Pseudo-random deterministic distribution based on tool slug ensures varied, aesthetically balanced lighting without manual configuration.
+* **Settings Modal Boundary**:
+  * Never expose background gradient selection in the user Settings panel. Background gradients are system-managed per tool layout.
+  * The Settings panel strictly focuses on Interface Theme (Light/Dark/System) and Accessibility & Display (Transparency/Motion toggles).
+  * The platform uses a single unified Acklet Blue accent across all tools; multiple accent selection is not exposed in Settings.
+
+---
+
 # Golden Rule
 
 Do not make Acklet unique through decoration.

@@ -1,4 +1,4 @@
-import { Component, input, output, signal, computed, inject, HostListener, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, viewChild, isDevMode, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, signal, computed, effect, inject, HostListener, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, viewChild, isDevMode, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolRegistryItem, getAllTools } from '@acklet/tool-registry';
 import { ToolShellConfig, ToolTab } from '../../models/tool-shell.models';
@@ -51,9 +51,10 @@ import { FileTransferService } from '../../services/file-transfer.service';
       [class.is-full-bleed]="isFullBleed()"
       [attr.data-tool]="tool()?.slug || 'default'"
       [attr.data-theme]="themeService.effectiveTheme()"
-      [attr.data-accent]="tool()?.accent || 'neutral'"
+      [attr.data-accent]="themeService.currentAccent()"
+      [attr.data-background]="themeService.currentBackground()"
       [attr.data-surface]="effectiveSurface()"
-      [style]="computedThemeStyles()"
+      [attr.style]="computedThemeStyleString()"
     >
       
       <!-- Skip to main content accessibility link -->
@@ -206,42 +207,31 @@ import { FileTransferService } from '../../services/file-transfer.service';
       <!-- Global Shell Settings Modal -->
       <ts-settings-modal />
 
-      <!-- Full-Screen Global Drag-and-Drop Frosted Blur Overlay (ChatGPT-style) -->
-      @if (fileTransfer.isGlobalDragging()) {
-        <div
-          class="ts-global-drag-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Drop images and media to convert"
-          (click)="dismissGlobalDrag()"
-          (dragover)="onOverlayDragOver($event)"
-          (dragleave)="onOverlayDragLeave($event)"
-          (drop)="onOverlayDrop($event)"
+      <!-- Universal Full-Screen Drag-and-Drop Overlay (ChatGPT exact match) -->
+      @if (isUniversalDragActive()) {
+        <div 
+          class="ts-universal-drag-overlay"
+          (dragover)="onDragOverUniversal($event)"
+          (dragleave)="onDragLeaveUniversal($event)"
+          (drop)="onDropUniversal($event)"
+          role="region"
+          aria-label="Drop files"
         >
-          <div class="ts-drag-minimal-content">
-            <!-- Centered Layered Media/Image Icon Stack -->
-            <div class="ts-drag-icon-stack">
-              <div class="ts-icon-card-backdrop" aria-hidden="true"></div>
-              <div class="ts-icon-card-main" aria-hidden="true">
-                <svg
-                  class="ts-media-icon"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <rect width="18" height="18" x="3" y="3" rx="3" ry="3"/>
-                  <circle cx="9" cy="9" r="2"/>
-                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-                </svg>
+          <div class="ts-drag-blur-backdrop" aria-hidden="true"></div>
+          <div class="ts-drag-content-container">
+            <div class="chatgpt-icon-stack" aria-hidden="true">
+              <div class="stack-card card-left">
+                <ts-icon name="code" [size]="22" />
+              </div>
+              <div class="stack-card card-right">
+                <ts-icon name="file-text" [size]="22" />
+              </div>
+              <div class="stack-card card-center">
+                <ts-icon name="image" [size]="26" />
               </div>
             </div>
-
-            <!-- Clean Image & Media Typography -->
-            <h2 class="ts-drag-title">Add images & media</h2>
-            <p class="ts-drag-subtitle">Drop files here to convert instantly</p>
+            <h2 class="ts-drag-title">Add anything</h2>
+            <p class="ts-drag-subtitle">{{ universalDragSubtitle() }}</p>
           </div>
         </div>
       }
@@ -440,8 +430,8 @@ import { FileTransferService } from '../../services/file-transfer.service';
       left: 0;
       top: 0;
       bottom: 0;
-      width: 14px;
-      z-index: 65;
+      width: 24px;
+      z-index: 9999 !important;
       pointer-events: auto;
       cursor: e-resize;
       display: flex;
@@ -1039,132 +1029,163 @@ import { FileTransferService } from '../../services/file-transfer.service';
       }
     }
 
-    /* ══ Global Full-Screen Drag-and-Drop Overlay (ChatGPT-style Frosted Blur) ══ */
-    .ts-global-drag-overlay {
+    /* ═══════════════════════════════════════════════════════════ */
+    /* UNIVERSAL FULL-SCREEN DRAG OVERLAY (ChatGPT Reference)     */
+    /* Covers entire tab screen including navbar, sidebar, content*/
+    /* ═══════════════════════════════════════════════════════════ */
+    .ts-universal-drag-overlay {
       position: fixed;
-      inset: 0;
-      z-index: 99999;
-      background: rgba(15, 16, 17, 0.75);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      cursor: pointer;
-      user-select: none;
-      animation: tsDragFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    :host-context([data-theme="light"]) .ts-global-drag-overlay,
-    .ts-root[data-theme="light"] .ts-global-drag-overlay {
-      background: rgba(255, 255, 255, 0.82);
-    }
-
-    .ts-drag-minimal-content {
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 999999;
       display: flex;
       flex-direction: column;
       align-items: center;
-      text-align: center;
-      pointer-events: none;
-      max-width: 460px;
-      width: 100%;
-    }
-
-    /* Centered Layered Media/Image Icon Stack */
-    .ts-drag-icon-stack {
-      position: relative;
-      width: 76px;
-      height: 76px;
-      margin-bottom: 22px;
-      display: flex;
-      align-items: center;
       justify-content: center;
-    }
-
-    .ts-icon-card-backdrop {
-      position: absolute;
-      width: 60px;
-      height: 60px;
-      border-radius: 18px;
-      background: var(--accent-soft, rgba(99, 102, 241, 0.28));
-      border: 1.5px solid var(--accent-border, rgba(99, 102, 241, 0.45));
-      transform: rotate(-12deg) translate(-4px, 2px);
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    :host-context([data-theme="light"]) .ts-icon-card-backdrop,
-    .ts-root[data-theme="light"] .ts-icon-card-backdrop {
-      background: rgba(79, 70, 229, 0.18);
-      border-color: rgba(79, 70, 229, 0.35);
-      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.12);
-    }
-
-    .ts-icon-card-main {
-      position: relative;
-      width: 62px;
-      height: 62px;
-      border-radius: 18px;
-      background: var(--accent, #6366F1);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #FFFFFF;
-      box-shadow: 0 10px 28px -2px rgba(99, 102, 241, 0.5), 0 3px 8px rgba(0, 0, 0, 0.25);
-      transform: rotate(4deg);
-      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    :host-context([data-theme="light"]) .ts-icon-card-main,
-    .ts-root[data-theme="light"] .ts-icon-card-main {
-      background: #4F46E5;
-      box-shadow: 0 10px 28px -2px rgba(79, 70, 229, 0.4), 0 3px 8px rgba(15, 23, 42, 0.1);
-    }
-
-    .ts-media-icon {
-      width: 32px;
-      height: 32px;
-      stroke: #FFFFFF;
-      color: #FFFFFF;
-      display: block;
-    }
-
-    .ts-drag-title {
-      font-size: 26px;
-      font-weight: 700;
-      color: var(--ts-text, #F8FAFC);
-      margin: 0 0 8px;
-      letter-spacing: -0.025em;
-      line-height: 1.25;
-    }
-
-    :host-context([data-theme="light"]) .ts-drag-title,
-    .ts-root[data-theme="light"] .ts-drag-title {
-      color: #0F172A;
-    }
-
-    .ts-drag-subtitle {
-      font-size: 15px;
-      font-weight: 400;
-      color: var(--ts-text-muted, #94A3B8);
-      margin: 0;
-      line-height: 1.4;
-    }
-
-    :host-context([data-theme="light"]) .ts-drag-subtitle,
-    .ts-root[data-theme="light"] .ts-drag-subtitle {
-      color: #64748B;
+      user-select: none;
+      pointer-events: auto;
+      animation: tsDragFadeIn 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
     @keyframes tsDragFadeIn {
       from {
         opacity: 0;
-        backdrop-filter: blur(4px);
+        transform: scale(0.99);
       }
       to {
         opacity: 1;
-        backdrop-filter: blur(24px);
+        transform: scale(1);
+      }
+    }
+
+    .ts-drag-blur-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      pointer-events: none;
+    }
+
+    :host-context([data-theme="dark"]) .ts-drag-blur-backdrop,
+    .ts-root[data-theme="dark"] .ts-drag-blur-backdrop {
+      background: rgba(15, 17, 23, 0.68);
+    }
+
+    .ts-drag-content-container {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      pointer-events: none;
+      transform: translateZ(0);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .chatgpt-icon-stack {
+      position: relative;
+      width: 140px;
+      height: 90px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 22px;
+      animation: stackFloat 2.6s ease-in-out infinite alternate;
+    }
+
+    @keyframes stackFloat {
+      0% {
+        transform: translateY(0);
+      }
+      100% {
+        transform: translateY(-6px);
+      }
+    }
+
+    .stack-card {
+      position: absolute;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFFFFF;
+      user-select: none;
+      transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .card-left {
+      width: 52px;
+      height: 52px;
+      background: #7C3AED;
+      transform: translate(-42px, -16px) rotate(-16deg);
+      z-index: 1;
+      box-shadow: 0 10px 24px -2px rgba(124, 58, 237, 0.45);
+    }
+
+    .card-right {
+      width: 52px;
+      height: 52px;
+      background: #3B82F6;
+      transform: translate(42px, -16px) rotate(16deg);
+      z-index: 1;
+      box-shadow: 0 10px 24px -2px rgba(59, 130, 246, 0.45);
+    }
+
+    .card-center {
+      width: 60px;
+      height: 60px;
+      border-radius: 18px;
+      background: var(--tool-accent, var(--accent, #1D4ED8));
+      transform: translate(0px, 14px) rotate(-2deg);
+      z-index: 2;
+      box-shadow: 0 14px 30px -3px color-mix(in srgb, var(--tool-accent, var(--accent, #1D4ED8)) 60%, transparent),
+                  0 4px 12px rgba(0, 0, 0, 0.18);
+      border: 1.5px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .ts-drag-title {
+      margin: 0;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      color: #0F172A;
+      line-height: 1.2;
+    }
+
+    :host-context([data-theme="dark"]) .ts-drag-title,
+    .ts-root[data-theme="dark"] .ts-drag-title {
+      color: #F8FAFC;
+    }
+
+    .ts-drag-subtitle {
+      margin: 8px 0 0 0;
+      font-size: 15px;
+      font-weight: 450;
+      color: #475569;
+      letter-spacing: -0.01em;
+      max-width: 460px;
+      line-height: 1.4;
+    }
+
+    :host-context([data-theme="dark"]) .ts-drag-subtitle,
+    .ts-root[data-theme="dark"] .ts-drag-subtitle {
+      color: #94A3B8;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ts-universal-drag-overlay,
+      .chatgpt-icon-stack,
+      .stack-card {
+        animation: none !important;
+        transition: none !important;
       }
     }
   `]
@@ -1175,6 +1196,7 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly surface = input<'clear' | 'frost' | 'tinted' | 'solid'>('clear');
   readonly activeTab = input<string | undefined>(undefined);
   readonly tabChange = output<string>();
+  readonly filesDropped = output<File[]>();
 
   readonly mainCard = viewChild<ElementRef<HTMLElement>>('mainCard');
   readonly scrollContainer = viewChild<ElementRef<HTMLElement>>('scrollContainer');
@@ -1194,7 +1216,11 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   private scrollListener: (() => void) | null = null;
 
   readonly computedThemeStyles = computed(() => {
-    return this.themeProvider.resolveThemeTokens(this.tool(), this.themeService.effectiveTheme());
+    return this.themeProvider.resolveThemeTokens(this.tool(), this.themeService.effectiveTheme(), this.themeService.currentAccent());
+  });
+
+  readonly computedThemeStyleString = computed(() => {
+    return this.themeProvider.toStyleString(this.computedThemeStyles());
   });
 
   readonly isHotzoneHovered = signal<boolean>(false);
@@ -1202,103 +1228,164 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   private peekGraceTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly fileTransfer = inject(FileTransferService);
-  private dragCounter = 0;
 
-  private hasFiles(e: DragEvent): boolean {
-    if (!e.dataTransfer?.types) return false;
-    return Array.from(e.dataTransfer.types).includes('Files');
-  }
+  readonly isUniversalDragActive = signal<boolean>(false);
+  private universalDragCounter = 0;
 
-  dismissGlobalDrag(): void {
-    this.dragCounter = 0;
-    this.fileTransfer.isGlobalDragging.set(false);
-  }
-
-  onOverlayDragOver(e: DragEvent): void {
-    e.preventDefault();
-    if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = 'copy';
-    }
-  }
-
-  onOverlayDragLeave(e: DragEvent): void {
-    e.preventDefault();
-  }
-
-  onOverlayDrop(e: DragEvent): void {
-    e.preventDefault();
-    e.stopPropagation();
-    this.dragCounter = 0;
-    this.fileTransfer.isGlobalDragging.set(false);
-
-    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-      const files = e.dataTransfer.files;
-      this.fileTransfer.setPendingFiles(files);
-      const slug = this.tool()?.slug;
-      if (slug !== 'file-converter' && slug !== 'image-converter' && slug !== 'converter') {
-        window.location.href = '/tools/file-converter';
+  readonly universalDragSubtitle = computed(() => {
+    const name = this.tool()?.name;
+    if (name) {
+      if (name.toLowerCase().includes('clipboard')) {
+        return 'Drop any file here to add it to the clipboard';
       }
+      return `Drop any file here to add it to ${name}`;
     }
+    return 'Drop files, folders or text to get started.';
+  });
+
+  private hasFilesBeingDragged(event: DragEvent): boolean {
+    const types = event.dataTransfer?.types;
+    if (!types) return false;
+    return Array.from(types).includes('Files');
   }
 
   @HostListener('window:dragenter', ['$event'])
-  onWindowDragEnter(e: DragEvent): void {
-    if (this.hasFiles(e)) {
-      e.preventDefault();
-      this.dragCounter++;
+  onWindowDragEnter(event: DragEvent): void {
+    if (this.hasFilesBeingDragged(event)) {
+      event.preventDefault();
+      this.universalDragCounter++;
+      this.isUniversalDragActive.set(true);
       this.fileTransfer.isGlobalDragging.set(true);
     }
   }
 
   @HostListener('window:dragover', ['$event'])
-  onWindowDragOver(e: DragEvent): void {
-    if (this.hasFiles(e)) {
-      e.preventDefault();
+  onWindowDragOver(event: DragEvent): void {
+    if (this.hasFilesBeingDragged(event)) {
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'copy';
+      }
+      if (!this.isUniversalDragActive()) {
+        this.isUniversalDragActive.set(true);
+        this.fileTransfer.isGlobalDragging.set(true);
+      }
     }
   }
 
   @HostListener('window:dragleave', ['$event'])
-  onWindowDragLeave(e: DragEvent): void {
-    if (this.hasFiles(e)) {
-      e.preventDefault();
-      this.dragCounter = Math.max(0, this.dragCounter - 1);
-      if (
-        this.dragCounter === 0 ||
-        e.clientX <= 0 ||
-        e.clientY <= 0 ||
-        e.clientX >= window.innerWidth ||
-        e.clientY >= window.innerHeight
-      ) {
-        this.dragCounter = 0;
-        this.fileTransfer.isGlobalDragging.set(false);
+  onWindowDragLeave(event: DragEvent): void {
+    if (this.hasFilesBeingDragged(event)) {
+      event.preventDefault();
+      this.universalDragCounter = Math.max(0, this.universalDragCounter - 1);
+      if (this.universalDragCounter === 0) {
+        this.isUniversalDragActive.set(false);
+        this.fileTransfer.clearDragging();
       }
     }
   }
 
   @HostListener('window:dragend')
-  onWindowDragEnd(): void {
-    this.dragCounter = 0;
-    this.fileTransfer.isGlobalDragging.set(false);
+  @HostListener('window:blur')
+  @HostListener('window:keydown.escape')
+  onWindowDragCancel(): void {
+    this.universalDragCounter = 0;
+    this.isUniversalDragActive.set(false);
+    this.fileTransfer.clearDragging();
   }
 
-  @HostListener('window:drop', ['$event'])
-  onWindowDrop(e: DragEvent): void {
-    this.dragCounter = 0;
-    this.fileTransfer.isGlobalDragging.set(false);
+  onDragOverUniversal(event: DragEvent): void {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
+  }
 
-    if (this.hasFiles(e)) {
-      e.preventDefault();
-      e.stopPropagation();
+  onDragLeaveUniversal(event: DragEvent): void {
+    event.preventDefault();
+    const related = event.relatedTarget as Node | null;
+    const currentTarget = event.currentTarget as HTMLElement | null;
+    if (!related || (currentTarget && !currentTarget.contains(related))) {
+      this.universalDragCounter = 0;
+      this.isUniversalDragActive.set(false);
+      this.fileTransfer.clearDragging();
+    }
+  }
 
-      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-        const files = e.dataTransfer.files;
-        this.fileTransfer.setPendingFiles(files);
-        const slug = this.tool()?.slug;
-        if (slug !== 'file-converter' && slug !== 'image-converter' && slug !== 'converter') {
-          window.location.href = '/tools/file-converter';
+  async onDropUniversal(event: DragEvent): Promise<void> {
+    event.preventDefault();
+    this.universalDragCounter = 0;
+    this.isUniversalDragActive.set(false);
+    this.fileTransfer.clearDragging();
+
+    const dt = event.dataTransfer;
+    if (!dt) return;
+
+    const files = await this.extractFilesFromDataTransfer(dt);
+    if (files.length > 0) {
+      this.onFilesDropped(files);
+    }
+  }
+
+  private async extractFilesFromDataTransfer(dt: DataTransfer): Promise<File[]> {
+    const files: File[] = [];
+    if (dt.items && dt.items.length > 0) {
+      const entries: any[] = [];
+      for (let i = 0; i < dt.items.length; i++) {
+        const item = dt.items[i];
+        if (item.kind === 'file') {
+          const entry = (item as any).webkitGetAsEntry ? (item as any).webkitGetAsEntry() : null;
+          if (entry) {
+            entries.push(entry);
+          } else {
+            const file = item.getAsFile();
+            if (file) files.push(file);
+          }
         }
       }
+
+      if (entries.length > 0) {
+        for (const entry of entries) {
+          await this.traverseEntry(entry, files);
+        }
+        return files;
+      }
     }
+
+    if (files.length === 0 && dt.files && dt.files.length > 0) {
+      files.push(...Array.from(dt.files));
+    }
+    return files;
+  }
+
+  private async traverseEntry(entry: any, outFiles: File[]): Promise<void> {
+    if (entry.isFile) {
+      return new Promise<void>((resolve) => {
+        entry.file((f: File) => {
+          outFiles.push(f);
+          resolve();
+        }, () => resolve());
+      });
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      const readEntries = (): Promise<any[]> => {
+        return new Promise((resolve) => {
+          reader.readEntries((results: any[]) => resolve(results || []), () => resolve([]));
+        });
+      };
+      let batch = await readEntries();
+      while (batch.length > 0) {
+        for (const child of batch) {
+          await this.traverseEntry(child, outFiles);
+        }
+        batch = await readEntries();
+      }
+    }
+  }
+
+  onFilesDropped(files: File[]): void {
+    this.filesDropped.emit(files);
+    this.fileTransfer.setPendingFiles(files);
   }
 
   readonly showFirstHint = signal<boolean>(false);
@@ -1330,7 +1417,7 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.hotzoneIntentTimer = setTimeout(() => {
       this.sidebarState.peekOpen();
-    }, 100);
+    }, 50);
   }
 
   onHotzoneLeave(): void {
@@ -1381,7 +1468,6 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   onEscapeKey(): void {
-    this.dismissGlobalDrag();
     if (this.sidebarState.isPeek()) {
       this.clearPeekGraceTimer();
       this.sidebarState.peekClose();
@@ -1474,7 +1560,27 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.devSurfaceOverride() ?? this.surface() ?? 'clear';
   });
 
+  constructor() {
+    effect(() => {
+      const currentTool = this.tool();
+      if (currentTool) {
+        this.themeService.initForTool(
+          currentTool.slug || currentTool.id,
+          this.config()?.layout || currentTool.layout
+        );
+      }
+    });
+  }
+
   ngOnInit(): void {
+    const currentTool = this.tool();
+    if (currentTool) {
+      this.themeService.initForTool(
+        currentTool.slug || currentTool.id,
+        this.config()?.layout || currentTool.layout
+      );
+    }
+
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('panel') === 'about') {

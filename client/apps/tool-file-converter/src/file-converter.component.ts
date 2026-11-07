@@ -2,9 +2,8 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, HostListener, ViewChild, ElementRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
+import { TsIconComponent, FileTransferService, EmptyDropStateComponent, DropHighlightComponent } from '@acklet/tool-shell';
 import { ConversionEngineService, MAX_FILES_PER_BATCH } from './services/conversion-engine.service';
-import { DropzoneComponent } from './components/dropzone/dropzone.component';
 import { ConversionItemComponent } from './components/conversion-item/conversion-item.component';
 import { PreviewModalComponent } from './components/preview-modal/preview-modal.component';
 import { ConversionJob, FormatDescriptor } from './models/converter.models';
@@ -32,9 +31,10 @@ interface ResizeOption {
     CommonModule,
     FormsModule,
     TsIconComponent,
-    DropzoneComponent,
     ConversionItemComponent,
-    PreviewModalComponent
+    PreviewModalComponent,
+    EmptyDropStateComponent,
+    DropHighlightComponent
   ],
   templateUrl: './file-converter.component.html',
   styleUrls: ['./file-converter.component.css'],
@@ -48,7 +48,6 @@ export class FileConverterComponent implements OnInit {
   readonly previewModalJob = signal<ConversionJob | null>(null);
   readonly conversionPair = signal<ConversionPair | null>(null);
 
-  @ViewChild(DropzoneComponent) private dropzoneComponent?: DropzoneComponent;
   @ViewChild('workspaceFileInput') private workspaceFileInput?: ElementRef<HTMLInputElement>;
 
   readonly qualityOptions: QualityOption[] = [
@@ -247,7 +246,16 @@ export class FileConverterComponent implements OnInit {
     if (this.workspaceFileInput?.nativeElement) {
       this.workspaceFileInput.nativeElement.click();
     } else {
-      this.dropzoneComponent?.openPicker();
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.multiple = true;
+      input.accept = this.acceptTypes();
+      input.onchange = () => {
+        if (input.files && input.files.length > 0) {
+          this.onFilesDropped(Array.from(input.files));
+        }
+      };
+      input.click();
     }
   }
 

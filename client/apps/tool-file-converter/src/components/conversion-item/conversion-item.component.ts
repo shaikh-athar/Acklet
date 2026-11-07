@@ -156,14 +156,14 @@ import { ConversionJob, FormatDescriptor } from '../../models/converter.models';
     }
 
     .studio-image-card:hover {
-      border-color: var(--accent, #6366F1);
+      border-color: var(--accent, #3B82F6);
       transform: translateY(-2px);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
     }
 
     :host-context([data-theme="light"]) .studio-image-card:hover,
     [data-theme="light"] .studio-image-card:hover {
-      border-color: #4F46E5;
+      border-color: #2563EB;
       box-shadow: 0 8px 24px rgba(79, 70, 229, 0.1);
     }
 
@@ -292,7 +292,7 @@ import { ConversionJob, FormatDescriptor } from '../../models/converter.models';
     .converting-pct {
       font-size: 15px;
       font-weight: 700;
-      color: var(--accent, #818CF8);
+      color: var(--accent, #60A5FA);
     }
 
     .converting-stage {
@@ -464,26 +464,26 @@ import { ConversionJob, FormatDescriptor } from '../../models/converter.models';
     }
 
     .card-download-btn {
-      background: var(--accent, #6366F1);
-      border: 1px solid var(--accent, #6366F1);
+      background: var(--accent, #3B82F6);
+      border: 1px solid var(--accent, #3B82F6);
       color: #FFFFFF;
     }
 
     :host-context([data-theme="light"]) .card-download-btn,
     [data-theme="light"] .card-download-btn {
-      background: #4F46E5;
-      border-color: #4F46E5;
+      background: #2563EB;
+      border-color: #2563EB;
       color: #FFFFFF;
     }
 
     .card-download-btn:hover {
-      background: #4F46E5;
+      background: #2563EB;
       transform: translateY(-1px);
     }
 
     :host-context([data-theme="light"]) .card-download-btn:hover,
     [data-theme="light"] .card-download-btn:hover {
-      background: #4338CA;
+      background: #1D4ED8;
     }
 
     /* Error Box */

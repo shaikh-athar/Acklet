@@ -180,9 +180,9 @@ import { TempEmailService } from '../../services/temp-email.service';
       width: 36px;
       height: 36px;
       border-radius: 10px;
-      background: var(--accent-soft, rgba(139, 92, 246, 0.15));
-      border: 1px solid var(--accent-border, rgba(139, 92, 246, 0.3));
-      color: var(--accent, #8B5CF6);
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 15%, transparent));
+      border: 1px solid var(--accent-border, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 30%, transparent));
+      color: var(--accent, #3B82F6);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -190,9 +190,9 @@ import { TempEmailService } from '../../services/temp-email.service';
 
     :host-context([data-theme="light"]) .modal-icon-badge,
     [data-theme="light"] .modal-icon-badge {
-      background: rgba(124, 58, 237, 0.1);
-      border-color: rgba(124, 58, 237, 0.3);
-      color: #7C3AED;
+      background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 10%, transparent);
+      border-color: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 30%, transparent);
+      color: #2563EB;
     }
 
     .modal-title {
@@ -295,14 +295,14 @@ import { TempEmailService } from '../../services/temp-email.service';
     }
 
     .custom-username-field:focus {
-      border-color: var(--accent, #8B5CF6);
-      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+      border-color: var(--accent, #3B82F6);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 20%, transparent);
     }
 
     :host-context([data-theme="light"]) .custom-username-field:focus,
     [data-theme="light"] .custom-username-field:focus {
-      border-color: #7C3AED;
-      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+      border-color: #2563EB;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 15%, transparent);
     }
 
     .custom-username-field.has-error {
@@ -349,8 +349,8 @@ import { TempEmailService } from '../../services/temp-email.service';
     .preview-box {
       padding: 10px 14px;
       border-radius: 10px;
-      background: var(--accent-soft, rgba(139, 92, 246, 0.08));
-      border: 1px solid var(--accent-border, rgba(139, 92, 246, 0.2));
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 8%, transparent));
+      border: 1px solid var(--accent-border, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 20%, transparent));
       display: flex;
       align-items: center;
       gap: 8px;
@@ -359,8 +359,8 @@ import { TempEmailService } from '../../services/temp-email.service';
 
     :host-context([data-theme="light"]) .preview-box,
     [data-theme="light"] .preview-box {
-      background: rgba(124, 58, 237, 0.06);
-      border-color: rgba(124, 58, 237, 0.25);
+      background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 6%, transparent);
+      border-color: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 25%, transparent);
     }
 
     .preview-box.is-taken {
@@ -385,14 +385,14 @@ import { TempEmailService } from '../../services/temp-email.service';
     }
 
     .preview-address {
-      color: var(--accent-strong, #A78BFA);
+      color: var(--accent-strong, #60A5FA);
       font-weight: 600;
       word-break: break-all;
     }
 
     :host-context([data-theme="light"]) .preview-address,
     [data-theme="light"] .preview-address {
-      color: #6D28D9;
+      color: #1D4ED8;
       font-weight: 700;
     }
 
@@ -467,9 +467,9 @@ import { TempEmailService } from '../../services/temp-email.service';
       gap: 5px;
       padding: 4px 10px;
       border-radius: 8px;
-      border: 1px solid var(--accent-border, rgba(139, 92, 246, 0.45));
-      background: var(--accent-soft, rgba(139, 92, 246, 0.16)) !important;
-      color: var(--accent-strong, #DDD6FE) !important;
+      border: 1px solid var(--accent-border, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 45%, transparent));
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 16%, transparent)) !important;
+      color: var(--accent-strong, #BFDBFE) !important;
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
@@ -478,15 +478,15 @@ import { TempEmailService } from '../../services/temp-email.service';
     }
 
     .suggestion-pill-btn:hover {
-      background: var(--accent, #8B5CF6) !important;
+      background: var(--accent, #3B82F6) !important;
       color: #FFFFFF !important;
-      border-color: #A78BFA !important;
+      border-color: #60A5FA !important;
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4) !important;
+      box-shadow: 0 4px 12px color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 40%, transparent) !important;
     }
 
     .suggestion-pill-btn .sug-icon {
-      color: var(--accent-strong, #C4B5FD);
+      color: var(--accent-strong, #93C5FD);
       transition: color 0.15s ease;
     }
 
@@ -497,22 +497,22 @@ import { TempEmailService } from '../../services/temp-email.service';
     :host-context([data-theme="light"]) .suggestion-pill-btn,
     [data-theme="light"] .suggestion-pill-btn {
       background: #FFFFFF !important;
-      border: 1.5px solid #7C3AED !important;
-      color: #6D28D9 !important;
-      box-shadow: 0 1px 3px rgba(124, 58, 237, 0.12) !important;
+      border: 1.5px solid #2563EB !important;
+      color: #1D4ED8 !important;
+      box-shadow: 0 1px 3px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 12%, transparent) !important;
     }
 
     :host-context([data-theme="light"]) .suggestion-pill-btn .sug-icon,
     [data-theme="light"] .suggestion-pill-btn .sug-icon {
-      color: #7C3AED;
+      color: #2563EB;
     }
 
     :host-context([data-theme="light"]) .suggestion-pill-btn:hover,
     [data-theme="light"] .suggestion-pill-btn:hover {
-      background: #7C3AED !important;
-      border-color: #6D28D9 !important;
+      background: #2563EB !important;
+      border-color: #1D4ED8 !important;
       color: #FFFFFF !important;
-      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35) !important;
+      box-shadow: 0 4px 12px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 35%, transparent) !important;
       transform: translateY(-1px);
     }
 
@@ -583,39 +583,39 @@ import { TempEmailService } from '../../services/temp-email.service';
       height: 38px;
       padding: 0 18px;
       border-radius: 10px;
-      background: var(--accent, #8B5CF6) !important;
+      background: var(--accent, #3B82F6) !important;
       color: #FFFFFF !important;
-      border: 1px solid var(--accent, #8B5CF6) !important;
+      border: 1px solid var(--accent, #3B82F6) !important;
       font-size: 13px;
       font-weight: 700;
       display: inline-flex;
       align-items: center;
       gap: 8px;
       cursor: pointer;
-      box-shadow: 0 2px 10px rgba(139, 92, 246, 0.3);
+      box-shadow: 0 2px 10px color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 30%, transparent);
       transition: all 0.15s ease;
     }
 
     .submit-btn:hover:not(:disabled) {
-      background: #7C3AED !important;
-      border-color: #6D28D9 !important;
+      background: #2563EB !important;
+      border-color: #1D4ED8 !important;
       color: #FFFFFF !important;
       transform: translateY(-1px);
     }
 
     :host-context([data-theme="light"]) .submit-btn,
     [data-theme="light"] .submit-btn {
-      background: #7C3AED !important;
-      border-color: #6D28D9 !important;
+      background: #2563EB !important;
+      border-color: #1D4ED8 !important;
       color: #FFFFFF !important;
     }
 
     :host-context([data-theme="light"]) .submit-btn:hover:not(:disabled),
     [data-theme="light"] .submit-btn:hover:not(:disabled) {
-      background: #5B21B6 !important;
-      border-color: #4C1D95 !important;
+      background: #1E40AF !important;
+      border-color: #1E3A8A !important;
       color: #FFFFFF !important;
-      box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+      box-shadow: 0 4px 14px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 35%, transparent);
     }
 
     .submit-btn:disabled {

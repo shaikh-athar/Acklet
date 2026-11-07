@@ -55,8 +55,8 @@ export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
     layout: 'fullBleed',
     addedAt: '2026-10-28',
     updatedAt: '2026-10-28',
-    accent: 'amber',
-    accentHue: 38,
+    accent: 'blue',
+    accentHue: 221,
     supports: ['shield-check', 'zap', 'lock'],
     facts: [
       { label: 'Storage', value: 'Per-browser' },

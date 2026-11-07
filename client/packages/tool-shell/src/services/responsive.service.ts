@@ -28,11 +28,11 @@ export class ResponsiveService implements OnDestroy {
   readonly isMd = computed(() => this.breakpoint() === 'md');
   readonly isLg = computed(() => this.breakpoint() === 'lg');
   readonly isXl = computed(() => this.breakpoint() === 'xl');
-  readonly isPhone = computed(() => this.breakpoint() === 'sm');
-  readonly isTablet = computed(() => this.breakpoint() === 'md');
+  readonly isPhone = computed(() => this.deviceClass() === 'phone');
+  readonly isTablet = computed(() => this.deviceClass() === 'tablet-portrait' || this.deviceClass() === 'tablet-landscape');
   readonly isTabletPortrait = computed(() => this.deviceClass() === 'tablet-portrait');
   readonly isTabletLandscape = computed(() => this.deviceClass() === 'tablet-landscape');
-  readonly isDesktop = computed(() => this.breakpoint() === 'lg' || this.breakpoint() === 'xl');
+  readonly isDesktop = computed(() => this.deviceClass() === 'desktop');
   readonly isTouch = computed(() => this.inputMode() === 'touch' || this.inputMode() === 'hybrid');
   readonly isMouse = computed(() => this.inputMode() === 'mouse' || this.inputMode() === 'hybrid');
   readonly isHybrid = computed(() => this.inputMode() === 'hybrid');

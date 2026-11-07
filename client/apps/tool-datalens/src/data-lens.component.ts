@@ -13,9 +13,7 @@ import { JsonLensInspectorComponent } from './components/data-lens-inspector.com
 import { JsonLensPrivacyModalComponent } from './components/data-lens-privacy-modal.component';
 import { JsonLensHistoryDrawerComponent } from './components/data-lens-history-drawer.component';
 import { JsonLensCommandPaletteComponent } from './components/data-lens-command-palette.component';
-import { JsonLensDragOverlayComponent } from './components/data-lens-drag-overlay.component';
 import { JsonLensToastContainerComponent } from './components/data-lens-toast-container.component';
-import { JsonLensShareModalComponent } from './components/data-lens-share-modal.component';
 import { JsonLensSettingsDrawerComponent, JsonLensSettings } from './components/data-lens-settings-drawer.component';
 import { JsonLensSeoFooterComponent } from './components/data-lens-seo-footer.component';
 import { JsonLensDiffComponent } from './components/data-lens-diff.component';
@@ -35,9 +33,7 @@ import { DataLensFeedbackModalComponent as FeedbackModalComponent } from './comp
     JsonLensPrivacyModalComponent,
     JsonLensHistoryDrawerComponent,
     JsonLensCommandPaletteComponent,
-    JsonLensDragOverlayComponent,
     JsonLensToastContainerComponent,
-    JsonLensShareModalComponent,
     JsonLensSettingsDrawerComponent,
     JsonLensSeoFooterComponent,
     FeedbackModalComponent
@@ -663,6 +659,7 @@ export class JsonLensComponent implements OnInit {
 
   @HostListener('window:dragend')
   @HostListener('window:mouseleave')
+  @HostListener('window:blur')
   onWindowDragEnd() {
     this.isWorkspaceDragging.set(false);
   }

@@ -244,6 +244,7 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
 
     :host(.is-peek) {
       pointer-events: auto;
+      z-index: 950 !important;
     }
 
     :host(.is-mobile-open) {
@@ -363,11 +364,14 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
 
     @media (hover: hover) {
       .ts-action-row:hover {
-        background: var(--ts-row-hover, rgba(15, 23, 42, 0.05));
-        color: var(--text, #09090B);
+        background: var(--tool-accent-soft, rgba(37, 99, 235, 0.08));
+        color: var(--tool-accent, #2563EB) !important;
+        text-decoration: none !important;
       }
-      .ts-action-row:hover .ts-action-row-icon {
-        color: var(--accent-strong, #111111);
+      .ts-action-row:hover .ts-action-row-icon,
+      .ts-action-row:hover .ts-action-row-label {
+        color: var(--tool-accent, #2563EB) !important;
+        text-decoration: none !important;
       }
     }
 
@@ -376,12 +380,22 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
     }
 
     .ts-action-row:focus-visible {
-      outline: 2px solid var(--accent-strong) !important;
+      outline: 2px solid var(--tool-accent, var(--accent-strong)) !important;
       outline-offset: 1px;
     }
 
     :host-context([data-theme="dark"]) .ts-action-row {
       color: var(--text-2, #B3B3B8);
+    }
+
+    :host-context([data-theme="dark"]) .ts-action-row:hover {
+      background: var(--tool-accent-soft, rgba(59, 130, 246, 0.14));
+      color: var(--tool-accent, #60A5FA) !important;
+    }
+
+    :host-context([data-theme="dark"]) .ts-action-row:hover .ts-action-row-icon,
+    :host-context([data-theme="dark"]) .ts-action-row:hover .ts-action-row-label {
+      color: var(--tool-accent, #60A5FA) !important;
     }
 
     .ts-action-row-icon {
@@ -466,8 +480,9 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
 
     @media (hover: hover) {
       .ts-rail-action-btn:hover {
-        background: var(--ts-row-hover, rgba(15, 23, 42, 0.05));
-        color: var(--accent-strong, #111111);
+        background: var(--tool-accent-soft, rgba(37, 99, 235, 0.08));
+        color: var(--tool-accent, #2563EB) !important;
+        text-decoration: none !important;
       }
     }
 
@@ -476,12 +491,17 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
     }
 
     .ts-rail-action-btn:focus-visible {
-      outline: 2px solid var(--accent-strong) !important;
+      outline: 2px solid var(--tool-accent, var(--accent-strong)) !important;
       outline-offset: 1px;
     }
 
     :host-context([data-theme="dark"]) .ts-rail-action-btn {
       color: var(--text-2, #B3B3B8);
+    }
+
+    :host-context([data-theme="dark"]) .ts-rail-action-btn:hover {
+      background: var(--tool-accent-soft, rgba(59, 130, 246, 0.14));
+      color: var(--tool-accent, #60A5FA) !important;
     }
 
     .ts-sidebar-search-row {
@@ -496,10 +516,14 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
       overflow-y: auto;
       padding: 0;
       background: transparent;
-      scrollbar-width: thin;
-      scrollbar-color: var(--ts-scrollbar-thumb, #E4E4E7) transparent;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
       display: flex;
       flex-direction: column;
+    }
+
+    .ts-sidebar-scroll-body::-webkit-scrollbar {
+      display: none;
     }
 
     .ts-sidebar-details-container {
@@ -557,8 +581,9 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
 
     @media (hover: hover) {
       .ts-footer-btn:hover {
-        background: var(--ts-row-hover, rgba(15, 23, 42, 0.05));
-        color: var(--accent-strong, #111111);
+        background: var(--tool-accent-soft, rgba(37, 99, 235, 0.08));
+        color: var(--tool-accent, #2563EB) !important;
+        text-decoration: none !important;
       }
     }
 
@@ -567,12 +592,17 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
     }
 
     .ts-footer-btn:focus-visible {
-      outline: 2px solid var(--accent-strong) !important;
+      outline: 2px solid var(--tool-accent, var(--accent-strong)) !important;
       outline-offset: 1px;
     }
 
     :host-context([data-theme="dark"]) .ts-footer-btn {
       color: var(--text-2, #B3B3B8);
+    }
+
+    :host-context([data-theme="dark"]) .ts-footer-btn:hover {
+      background: var(--tool-accent-soft, rgba(59, 130, 246, 0.14));
+      color: var(--tool-accent, #60A5FA) !important;
     }
 
     .ts-hover-toggle-btn.is-hover-disabled {

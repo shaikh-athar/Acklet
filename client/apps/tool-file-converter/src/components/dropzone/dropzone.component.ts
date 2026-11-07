@@ -64,19 +64,6 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
           <span class="formats-text">Images (PNG, JPG, WebP, AVIF, SVG) · Subtitles (SRT, VTT) · Contacts (VCF, CSV)</span>
         </div>
       </div>
-
-      <!-- Full-Screen Drop Overlay (Visible ONLY during active dragging) -->
-      @if (isDragOver()) {
-        <div class="drag-active-overlay animate-fade-in" aria-live="polite">
-          <div class="drag-card">
-            <div class="drag-icon-box">
-              <ts-icon name="download" [size]="32" />
-            </div>
-            <h3 class="drag-title">Drop your files here</h3>
-            <p class="drag-subtitle">Release to begin conversion</p>
-          </div>
-        </div>
-      }
     </div>
   `,
   styles: [`
@@ -120,7 +107,7 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
       border-radius: 9999px;
       background: var(--accent-soft, rgba(99, 102, 241, 0.12));
       border: 1px solid var(--accent-border, rgba(99, 102, 241, 0.25));
-      color: var(--accent, #818CF8);
+      color: var(--accent, #60A5FA);
       font-size: 12px;
       font-weight: 600;
       margin-bottom: 20px;
@@ -130,7 +117,7 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
     [data-theme="light"] .pair-pill {
       background: rgba(79, 70, 229, 0.08);
       border-color: rgba(79, 70, 229, 0.2);
-      color: #4338CA;
+      color: #1D4ED8;
     }
 
     .pair-dot {
@@ -187,8 +174,8 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
       height: 54px;
       padding: 0 42px;
       border-radius: 12px;
-      background: var(--accent, #6366F1) !important;
-      border: 1px solid var(--accent, #6366F1) !important;
+      background: var(--accent, #3B82F6) !important;
+      border: 1px solid var(--accent, #3B82F6) !important;
       color: #FFFFFF !important;
       font-size: 16.5px;
       font-weight: 700;
@@ -213,8 +200,8 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
 
     /* Dark Mode Hover / Active / Focus */
     .primary-select-btn:hover {
-      background: #4F46E5 !important;
-      border-color: #4338CA !important;
+      background: #2563EB !important;
+      border-color: #1D4ED8 !important;
       color: #FFFFFF !important;
       transform: translateY(-1px);
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
@@ -226,14 +213,14 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
     }
 
     .primary-select-btn:active {
-      background: #4338CA !important;
+      background: #1D4ED8 !important;
       border-color: #3730A3 !important;
       color: #FFFFFF !important;
       transform: translateY(0);
     }
 
     .primary-select-btn:focus-visible {
-      outline: 2px solid var(--accent, #6366F1);
+      outline: 2px solid var(--accent, #3B82F6);
       outline-offset: 3px;
       color: #FFFFFF !important;
     }
@@ -247,8 +234,8 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
     /* Light Mode Overrides */
     :host-context([data-theme="light"]) .primary-select-btn,
     [data-theme="light"] .primary-select-btn {
-      background: #4F46E5 !important;
-      border-color: #4F46E5 !important;
+      background: #2563EB !important;
+      border-color: #2563EB !important;
       color: #FFFFFF !important;
       box-shadow: 0 4px 14px rgba(79, 70, 229, 0.25);
     }
@@ -356,7 +343,7 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
       height: 56px;
       border-radius: 16px;
       background: var(--accent-soft, rgba(99, 102, 241, 0.15));
-      color: var(--accent, #818CF8);
+      color: var(--accent, #60A5FA);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -365,7 +352,7 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
     :host-context([data-theme="light"]) .drag-icon-box,
     [data-theme="light"] .drag-icon-box {
       background: rgba(79, 70, 229, 0.1);
-      color: #4F46E5;
+      color: #2563EB;
     }
 
     .drag-title {

@@ -1,6 +1,6 @@
 // packages/tool-registry/src/manifests/file-converter.manifest.ts
 import type { ToolRegistryItem } from '../models';
-import { INDIGO_ACCENT } from '../accent-presets';
+import { BLUE_ACCENT } from '../accent-presets';
 
 export const FILE_CONVERTER_MANIFEST: ToolRegistryItem = {
   id: 'file-converter',
@@ -24,11 +24,11 @@ export const FILE_CONVERTER_MANIFEST: ToolRegistryItem = {
   layout: 'fullBleed',
   addedAt: '2026-11-06',
   updatedAt: '2026-11-06',
-  accent: 'indigo',
-  accentHue: 242,
+  accent: 'blue',
+  accentHue: 221,
   supports: ['shield-check', 'zap', 'lock'],
   theme: {
-    accent: INDIGO_ACCENT,
+    accent: BLUE_ACCENT,
     font: {
       family: 'Scoutie Sans',
       fontFamily: "'Scoutie Sans', sans-serif",
@@ -147,8 +147,8 @@ export const IMAGE_CONVERTER_MANIFEST: ToolRegistryItem = {
   layout: 'fullBleed',
   addedAt: '2026-11-06',
   updatedAt: '2026-11-06',
-  accent: 'indigo',
-  accentHue: 242,
+  accent: 'blue',
+  accentHue: 221,
   supports: ['shield-check', 'zap', 'lock'],
   features: [
     'Convert between JPG, PNG, WebP, AVIF, and SVG',

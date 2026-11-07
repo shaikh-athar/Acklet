@@ -15,7 +15,7 @@ import {
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HlmButtonImports, HlmInputImports, HlmTooltipImports, TsIconComponent } from '@acklet/tool-shell';
+import { HlmButtonImports, HlmInputImports, HlmTooltipImports, TsIconComponent, EmptyDropStateComponent } from '@acklet/tool-shell';
 import { ActionDropdownComponent, ActionMenuItem } from './action-dropdown/action-dropdown.component';
 import { getToolsHubUrl } from '@acklet/shared';
 import { ShortenerService, ShortenResult, ResolutionStatus } from '../services/shortener.service';
@@ -51,6 +51,7 @@ export type FilterStatus = 'ALL' | LinkStatus;
     HlmInputImports,
     HlmTooltipImports,
     TsIconComponent,
+    EmptyDropStateComponent,
     ActionDropdownComponent
   ],
   templateUrl: './url-shortener.component.html',

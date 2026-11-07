@@ -1,6 +1,6 @@
 // packages/tool-registry/src/manifests/clipboard.manifest.ts
 import type { ToolRegistryItem } from '../models';
-import { TEAL_ACCENT } from '../accent-presets';
+import { BLUE_ACCENT } from '../accent-presets';
 
 export const CLIPBOARD_MANIFEST: ToolRegistryItem = {
   id: 'clipboard',
@@ -22,11 +22,11 @@ export const CLIPBOARD_MANIFEST: ToolRegistryItem = {
   layout: 'fullBleed',
   addedAt: '2026-01-15',
   updatedAt: '2026-10-07',
-  accent: 'teal',
-  accentHue: 195,
+  accent: 'blue',
+  accentHue: 221,
   supports: ['shield-check', 'zap', 'lock'],
   theme: {
-    accent: TEAL_ACCENT,
+    accent: BLUE_ACCENT,
     font: {
       family: 'Scoutie Sans',
       fontFamily: "'Scoutie Sans', sans-serif",

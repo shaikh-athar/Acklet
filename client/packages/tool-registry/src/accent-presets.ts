@@ -45,22 +45,22 @@ export const INDIGO_ACCENT: ToolAccentConfig = {
 
 export const TEAL_ACCENT: ToolAccentConfig = {
   name: 'teal',
-  hue: 195,
+  hue: 175,
   dark: {
     base: '#2DD4BF',
-    ink: '#042F2B',
+    ink: '#042F2E',
     strong: '#5EEAD4',
-    soft: '#10302D',
-    border: '#1F4A45',
+    soft: 'rgba(45, 212, 191, 0.14)',
+    border: 'rgba(45, 212, 191, 0.28)',
     glow: 'rgba(45, 212, 191, 0.20)'
   },
   light: {
-    base: '#0F766E',
+    base: '#0D9488',
     ink: '#FFFFFF',
-    strong: '#115E59',
-    soft: 'rgba(15, 118, 110, 0.10)',
-    border: 'rgba(15, 118, 110, 0.25)',
-    glow: 'rgba(15, 118, 110, 0.15)'
+    strong: '#0F766E',
+    soft: 'rgba(13, 148, 136, 0.08)',
+    border: 'rgba(13, 148, 136, 0.22)',
+    glow: 'rgba(13, 148, 136, 0.15)'
   }
 };
 
@@ -148,6 +148,27 @@ export const ROSE_ACCENT: ToolAccentConfig = {
   }
 };
 
+export const SLATE_ACCENT: ToolAccentConfig = {
+  name: 'slate',
+  hue: 215,
+  dark: {
+    base: '#94A3B8',
+    ink: '#0F172A',
+    strong: '#CBD5E1',
+    soft: '#1E293B',
+    border: 'rgba(148, 163, 184, 0.25)',
+    glow: 'rgba(148, 163, 184, 0.20)'
+  },
+  light: {
+    base: '#475569',
+    ink: '#FFFFFF',
+    strong: '#334155',
+    soft: '#F1F5F9',
+    border: 'rgba(71, 85, 105, 0.20)',
+    glow: 'rgba(71, 85, 105, 0.15)'
+  }
+};
+
 export const BARCODE_ROSE_ACCENT: ToolAccentConfig = {
   name: 'calm-rose',
   hue: 348,
@@ -173,6 +194,7 @@ export const DEFAULT_TOOL_ACCENT = BLUE_ACCENT;
 
 const ACCENT_MAP: Record<string, ToolAccentConfig> = {
   blue: BLUE_ACCENT,
+  slate: SLATE_ACCENT,
   indigo: INDIGO_ACCENT,
   teal: TEAL_ACCENT,
   emerald: EMERALD_ACCENT,
@@ -186,21 +208,27 @@ const ACCENT_MAP: Record<string, ToolAccentConfig> = {
   'calm-rose': BARCODE_ROSE_ACCENT
 };
 
+export function getAccentPreset(name: string): ToolAccentConfig {
+  const key = name?.toLowerCase();
+  return ACCENT_MAP[key] || DEFAULT_TOOL_ACCENT;
+}
+
 /**
  * Resolves the color variants for a tool based on its manifest and theme mode.
  * Falls back safely to known palettes, hue-based values, or DEFAULT_TOOL_ACCENT.
  */
 export function resolveToolAccent(
   tool: ToolRegistryItem | null | undefined,
-  mode: 'dark' | 'light' = 'dark'
+  mode: 'dark' | 'light' = 'dark',
+  overrideAccent?: string
 ): ToolThemeColorVariants {
-  if (tool?.theme?.accent) {
-    return mode === 'light' ? tool.theme.accent.light : tool.theme.accent.dark;
+  const accentKey = overrideAccent?.toLowerCase() || tool?.accent?.toLowerCase();
+  if (accentKey && ACCENT_MAP[accentKey]) {
+    return mode === 'light' ? ACCENT_MAP[accentKey].light : ACCENT_MAP[accentKey].dark;
   }
 
-  const namedAccent = tool?.accent?.toLowerCase();
-  if (namedAccent && ACCENT_MAP[namedAccent]) {
-    return mode === 'light' ? ACCENT_MAP[namedAccent].light : ACCENT_MAP[namedAccent].dark;
+  if (tool?.theme?.accent) {
+    return mode === 'light' ? tool.theme.accent.light : tool.theme.accent.dark;
   }
 
   // Check hue-based matching if available

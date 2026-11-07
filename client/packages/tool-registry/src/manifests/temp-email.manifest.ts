@@ -1,6 +1,6 @@
 // packages/tool-registry/src/manifests/temp-email.manifest.ts
 import type { ToolRegistryItem } from '../models';
-import { VIOLET_ACCENT } from '../accent-presets';
+import { BLUE_ACCENT } from '../accent-presets';
 
 export const TEMP_EMAIL_MANIFEST: ToolRegistryItem = {
   id: 'temp-email',
@@ -21,11 +21,11 @@ export const TEMP_EMAIL_MANIFEST: ToolRegistryItem = {
   layout: 'fullBleed',
   addedAt: '2026-11-04',
   updatedAt: '2026-11-04',
-  accent: 'violet',
-  accentHue: 260,
+  accent: 'blue',
+  accentHue: 221,
   supports: ['shield-check', 'zap', 'lock'],
   theme: {
-    accent: VIOLET_ACCENT,
+    accent: BLUE_ACCENT,
     font: {
       family: 'Scoutie Sans',
       fontFamily: "'Scoutie Sans', sans-serif",

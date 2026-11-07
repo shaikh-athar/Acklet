@@ -1,5 +1,5 @@
 // apps/tool-file-converter/src/app/app.component.ts
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolLayoutComponent, ToolShellConfig } from '@acklet/tool-shell';
 import { TOOL_REGISTRY, ToolRegistryItem } from '@acklet/tool-registry';
@@ -11,8 +11,12 @@ import { FileConverterComponent } from '../file-converter.component';
   imports: [CommonModule, ToolLayoutComponent, FileConverterComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ts-shell [tool]="manifest" [config]="shellConfig">
-      <app-file-converter-tool />
+    <ts-shell 
+      [tool]="manifest" 
+      [config]="shellConfig"
+      (filesDropped)="onFilesDropped($event)"
+    >
+      <app-file-converter-tool #converterComp />
     </ts-shell>
   `
 })
@@ -22,6 +26,14 @@ export class AppComponent {
     layout: 'fullBleed',
     showDescriptionCard: false
   };
+
+  readonly converterComp = viewChild<FileConverterComponent>('converterComp');
+
+  onFilesDropped(files: File[]): void {
+    if (files.length > 0 && this.converterComp()) {
+      this.converterComp()!.onFilesDropped(files);
+    }
+  }
 
   private resolveManifest(): ToolRegistryItem {
     if (typeof window !== 'undefined') {

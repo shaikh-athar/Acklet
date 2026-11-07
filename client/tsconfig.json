@@ -18,6 +18,7 @@
       "@acklet/tool-shell": ["packages/tool-shell/src/index.ts"],
       "@acklet/tool-shell/helm/*": ["packages/tool-shell/src/helm/*"],
       "@acklet/shared": ["packages/shared/src/index.ts"],
+      "shared/ui/*": ["packages/shared/src/ui/*"],
       "@spartan-ng/helm/*": ["src/app/shared/helm/*"]
     }
   },

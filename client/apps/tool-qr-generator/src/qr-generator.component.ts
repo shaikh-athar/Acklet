@@ -1539,15 +1539,15 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
       transition: all 150ms ease;
     }
 
-    .workspace-mode-btn:hover {
-      color: var(--text, #ffffff);
-      background: var(--surface-3, rgba(255, 255, 255, 0.08));
+    .workspace-mode-btn:hover:not(.active) {
+      color: var(--tool-accent, var(--accent)) !important;
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
     }
 
-    :host-context([data-theme="light"]) .workspace-mode-btn:hover,
-    [data-theme="light"] .workspace-mode-btn:hover {
-      color: #0F172A;
-      background: #E2E8F0;
+    :host-context([data-theme="light"]) .workspace-mode-btn:hover:not(.active),
+    [data-theme="light"] .workspace-mode-btn:hover:not(.active) {
+      color: var(--tool-accent, var(--accent)) !important;
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
     }
 
     .workspace-mode-btn.active {
@@ -2533,9 +2533,9 @@ const ALL_CONTENT_TYPES: Array<{ type: ContentType; label: string; icon: string;
       white-space: nowrap;
     }
 
-    .studio-tab-btn:hover {
-      color: var(--text, #fcfcfc);
-      background: rgba(255, 255, 255, 0.04);
+    .studio-tab-btn:hover:not(.active) {
+      color: var(--tool-accent, var(--accent)) !important;
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
     }
 
     .studio-tab-btn.active {

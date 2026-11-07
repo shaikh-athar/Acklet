@@ -20,6 +20,8 @@ export * from './services/file-transfer.service';
 export * from './components/settings/ts-settings-modal.component';
 
 // Icons & Primitives
+export * from './components/ui/empty-drop-state/empty-drop-state.component';
+export * from './components/ui/drop-highlight/drop-highlight.component';
 export * from './components/icon/tool-icon.component';
 export * from './components/icon/ts-icon.component';
 export * from './components/theme/ts-theme-toggle.component';

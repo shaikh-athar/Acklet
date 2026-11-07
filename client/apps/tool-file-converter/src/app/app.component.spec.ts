@@ -13,7 +13,7 @@ describe('File Converter Tool Shell & Manifest Integrity', () => {
     expect(manifest.sidebarLabel).toBe('File Converter');
     expect(manifest.breadcrumbLabel).toBe('File Converter');
     expect(manifest.subdomain).toBe('file-converter');
-    expect(manifest.accent).toBe('indigo');
+    expect(manifest.accent).toBe('blue');
   });
 
   it('should register file-converter and image-converter as independent manifests', () => {

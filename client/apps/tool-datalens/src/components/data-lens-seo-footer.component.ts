@@ -44,7 +44,7 @@ import { IconComponent } from './icon.component';
         <!-- Right: Feedback Option -->
         <div class="seo-footer-right">
           <button class="footer-feedback-btn" (click)="feedbackClick.emit()" data-tooltip="Send Feedback or Feature Request">
-            <app-icon name="message-square" class="icon-xs text-emerald-400"></app-icon>
+            <app-icon name="message-square" class="icon-xs text-[var(--tool-accent,var(--accent,#2563EB))]"></app-icon>
             <span>Feedback</span>
           </button>
         </div>

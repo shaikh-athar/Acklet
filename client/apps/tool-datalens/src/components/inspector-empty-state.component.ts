@@ -57,36 +57,36 @@ export class InspectorEmptyStateComponent {
   readonly tabConfigs: Record<string, TabEmptyConfig> = {
     tree: {
       icon: 'folder-tree',
-      title: 'Add JSON on the left to start inspecting',
-      subtitle: 'Paste or import a JSON payload in the Input editor to explore node structure',
+      title: 'Add data on the left to start inspecting',
+      subtitle: 'Paste or import data in the editor to explore structure',
       quote: '',
-      accentColor: 'rgba(47, 160, 132, 0.4)'
+      accentColor: 'var(--tool-accent, rgba(37, 99, 235, 0.4))'
     },
     table: {
       icon: 'table-2',
-      title: 'Add JSON array on the left to inspect table',
-      subtitle: 'Paste or import a JSON array of objects in the Input editor to view tabular data',
+      title: 'Add table array on the left',
+      subtitle: 'Paste or import an array of records to view rows',
       quote: '',
       accentColor: 'rgba(59, 130, 246, 0.4)'
     },
     stats: {
       icon: 'bar-chart-2',
-      title: 'Add JSON on the left to view metrics',
-      subtitle: 'Paste or import a JSON payload in the Input editor to calculate metrics & schema stats',
+      title: 'Add data on the left to view metrics',
+      subtitle: 'Paste or import data to calculate schema statistics',
       quote: '',
       accentColor: 'rgba(139, 92, 246, 0.4)'
     },
     graph: {
       icon: 'network',
-      title: 'Add JSON on the left to render graph',
-      subtitle: 'Paste or import a JSON payload in the Input editor to view interactive node graph canvas',
+      title: 'Add data on the left to render graph',
+      subtitle: 'Paste or import data to explore node relations',
       quote: '',
       accentColor: 'rgba(16, 185, 129, 0.4)'
     },
     jsonpath: {
       icon: 'search-code',
-      title: 'Add JSON on the left to query paths',
-      subtitle: 'Paste or import a JSON payload in the Input editor to query deep JSONPath expressions',
+      title: 'Add data on the left to query paths',
+      subtitle: 'Paste or import data to query JSONPath expressions',
       quote: '',
       accentColor: 'rgba(245, 158, 11, 0.4)'
     },

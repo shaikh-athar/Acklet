@@ -20,7 +20,6 @@ import { TsIconComponent } from '../components/icon/ts-icon.component';
 import { TsPillTabsComponent, PillTabItem } from '../components/primitive/ts-pill-tabs.component';
 import { TsEmptyStateComponent } from '../components/primitive/ts-empty-state.component';
 import { TsToolTileComponent } from '../components/primitive/ts-tool-tile.component';
-import { TsSpotlightDirective } from '../components/primitive/ts-spotlight.directive';
 import { TsThemeToggleComponent } from '../components/theme/ts-theme-toggle.component';
 import { ToolCapsuleService } from '../services/tool-capsule.service';
 import { ToolThemeService } from '../services/tool-theme.service';
@@ -43,7 +42,6 @@ const RECENT_KEY = 'acklet.tools.recent';
     TsPillTabsComponent,
     TsEmptyStateComponent,
     TsToolTileComponent,
-    TsSpotlightDirective,
     TsThemeToggleComponent,
     HlmItemImports,
     HlmBadgeImports,
@@ -187,7 +185,6 @@ const RECENT_KEY = 'acklet.tools.recent';
               <a
                 hlm-item
                 variant="outline"
-                tsSpotlight
                 [href]="getToolHref(tool.slug)"
                 class="hub-tool-row-link group"
                 role="listitem"
@@ -210,9 +207,6 @@ const RECENT_KEY = 'acklet.tools.recent';
                 (click)="onToolClick($event, tool)"
                 (keydown)="onRowKeyDown($event, idx)"
               >
-                <!-- Cursor Spotlight Surface (Pointer devices only) -->
-                <div class="hub-spotlight-layer" aria-hidden="true"></div>
-
                 <!-- Icon Tile (turns solid black on hover with white icon) -->
                 <hlm-item-media>
                   <ts-tool-tile
@@ -630,17 +624,15 @@ const RECENT_KEY = 'acklet.tools.recent';
       user-select: none;
       outline: none;
       overflow: hidden;
-      transition: background-color 220ms ease-out,
-                  transform 150ms ease-out,
-                  box-shadow 220ms ease-out;
+      transition: border-color 150ms ease;
       will-change: transform, opacity;
     }
 
     :host-context([data-theme="dark"]) .hub-tool-row-link {
       background: var(--surface, #141414);
-      border-color: var(--border, rgba(255, 255, 255, 0.06));
+      border-color: var(--border, rgba(255, 255, 255, 0.08));
       color: var(--text, #FCFCFC);
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      box-shadow: none;
     }
 
     /* FLIP Entering & Leaving states */
@@ -654,50 +646,14 @@ const RECENT_KEY = 'acklet.tools.recent';
       pointer-events: none;
     }
 
-    /* Spotlight layer following cursor inside row */
-    /* Spotlight layer following cursor inside row */
-    .hub-spotlight-layer {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      opacity: 0;
-      background: radial-gradient(
-        260px circle at var(--mx, -999px) var(--my, -999px),
-        var(--row-accent-soft, rgba(0, 0, 0, 0.04)),
-        transparent 70%
-      );
-      transition: opacity 180ms ease;
-      z-index: 1;
-    }
-
-    :host-context([data-theme="dark"]) .hub-spotlight-layer {
-      background: radial-gradient(
-        260px circle at var(--mx, -999px) var(--my, -999px),
-        var(--row-accent-soft, rgba(255, 255, 255, 0.06)),
-        transparent 70%
-      );
-    }
-
-    /* Hover state with Tool Accent preservation: Pointer devices only */
+    /* Hover state: 1px outline using --border-strong (no background change beyond surface, no shadow) */
     @media (hover: hover) {
       .hub-tool-row-link:hover {
-        background: var(--surface-hover, #F8F9FA);
-        background: color-mix(in srgb, var(--row-accent, #71717A) 3.5%, var(--surface, #FFFFFF));
-        border-color: var(--row-accent-border, var(--border, rgba(0, 0, 0, 0.09)));
-        box-shadow: 0 4px 14px var(--row-accent-glow, rgba(0, 0, 0, 0.04));
-        transform: translateY(-1px);
+        border-color: var(--border-strong, rgba(0, 0, 0, 0.22));
       }
 
       :host-context([data-theme="dark"]) .hub-tool-row-link:hover {
-        background: var(--surface-hover, #18191B);
-        background: color-mix(in srgb, var(--row-accent, #FFFFFF) 5%, var(--surface, #141414));
-        border-color: var(--row-accent-border, rgba(255, 255, 255, 0.12));
-        box-shadow: 0 4px 14px var(--row-accent-glow, rgba(0, 0, 0, 0.3));
-        transform: translateY(-1px);
-      }
-
-      .hub-tool-row-link:hover .hub-spotlight-layer {
-        opacity: 0.55;
+        border-color: var(--border-strong, rgba(255, 255, 255, 0.24));
       }
 
       /* Keep the accent color of that tool on hover */
@@ -728,19 +684,21 @@ const RECENT_KEY = 'acklet.tools.recent';
       transition: transform 150ms ease-out;
     }
 
-    /* Keyboard focus-visible ring only (No outline on mouse click) */
+    /* Keyboard focus-visible ring: 2px outline using tool's own accent with 2px offset */
     .hub-tool-row-link:focus:not(:focus-visible) {
       outline: none;
     }
 
     .hub-tool-row-link:focus-visible {
-      outline: 2px solid var(--ts-focus-ring, #18181B) !important;
+      outline: 2px solid var(--row-accent, var(--accent, #2563EB)) !important;
       outline-offset: 2px;
       z-index: 2;
     }
 
-    :host-context([data-theme="dark"]) .hub-tool-row-link:focus-visible {
-      outline-color: var(--ts-focus-ring, #E4E4E7) !important;
+    @media (prefers-reduced-motion: reduce) {
+      .hub-tool-row-link {
+        transition: none !important;
+      }
     }
 
     /* Spartan hlm-item slot layout rules */

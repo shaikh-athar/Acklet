@@ -11,20 +11,26 @@
     </div>
   }
 
-  <!-- STATE 1: EMPTY HERO (Clean, Minimal, iLoveIMG/iLovePDF Inspiration) -->
+  <!-- STATE 1: EMPTY HERO (Shared Empty Drop State) -->
   @if (!engine.hasJobs()) {
     <div class="empty-state-shell animate-fade-in">
-      <app-dropzone
-        [conversionPair]="conversionPair()"
-        [acceptTypes]="acceptTypes()"
+      <shared-empty-drop-state
+        icon="upload-cloud"
+        heading="Add anything"
+        subtext="Drop files, folders or text to get started."
+        actionLabel="Select Files"
+        (action)="openFilePicker()"
         (filesDropped)="onFilesDropped($event)"
       />
     </div>
   }
 
-  <!-- STATE 2: STUDIO WORKSPACE (iLoveIMG Style Studio) -->
+  <!-- STATE 2: STUDIO WORKSPACE (Drag Highlighted) -->
   @if (engine.hasJobs()) {
-    <div class="workspace-layout animate-fade-slide-up">
+    <shared-drop-highlight
+      (filesDropped)="onFilesDropped($event)"
+      class="workspace-layout animate-fade-slide-up"
+    >
 
       <!-- LEFT COLUMN: Main Gallery Stage -->
       <main class="workspace-stage" aria-label="File gallery and queue">
@@ -285,7 +291,7 @@
         </div>
       </aside>
 
-    </div>
+    </shared-drop-highlight>
   }
 
   <!-- Hidden workspace file input for adding files in workspace mode -->
