@@ -53,17 +53,17 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
       /* Dark mode: Top-left subtle ambient glow, gentle tints on all other corners */
       background:
         radial-gradient(ellipse 52% 46% at 0% 0%,
-          color-mix(in oklab, var(--accent, #3B82F6) 16%, transparent) 0%,
-          color-mix(in oklab, var(--accent, #3B82F6)  8%, transparent) 40%,
+          color-mix(in oklab, var(--tool-accent, var(--accent, #3B82F6)) 16%, transparent) 0%,
+          color-mix(in oklab, var(--tool-accent, var(--accent, #3B82F6))  8%, transparent) 40%,
           transparent 70%),
         radial-gradient(ellipse 46% 40% at 100% 0%,
-          color-mix(in oklab, var(--accent, #3B82F6) 10%, transparent) 0%,
+          color-mix(in oklab, var(--tool-accent, var(--accent, #3B82F6)) 10%, transparent) 0%,
           transparent 70%),
         radial-gradient(ellipse 48% 42% at 0% 100%,
-          color-mix(in oklab, var(--accent, #3B82F6)  9%, transparent) 0%,
+          color-mix(in oklab, var(--tool-accent, var(--accent, #3B82F6))  9%, transparent) 0%,
           transparent 70%),
         radial-gradient(ellipse 46% 40% at 100% 100%,
-          color-mix(in oklab, var(--accent, #3B82F6)  8%, transparent) 0%,
+          color-mix(in oklab, var(--tool-accent, var(--accent, #3B82F6))  8%, transparent) 0%,
           transparent 70%);
     }
 
@@ -72,17 +72,17 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
     [data-theme="light"] .ts-bg {
       background:
         radial-gradient(ellipse 52% 46% at 0% 0%,
-          color-mix(in oklab, var(--accent, #2563EB) 20%, transparent) 0%,
-          color-mix(in oklab, var(--accent, #2563EB) 10%, transparent) 40%,
+          color-mix(in oklab, var(--tool-accent, var(--accent, #2563EB)) 20%, transparent) 0%,
+          color-mix(in oklab, var(--tool-accent, var(--accent, #2563EB)) 10%, transparent) 40%,
           transparent 70%),
         radial-gradient(ellipse 46% 40% at 100% 0%,
-          color-mix(in oklab, var(--accent, #2563EB) 14%, transparent) 0%,
+          color-mix(in oklab, var(--tool-accent, var(--accent, #2563EB)) 14%, transparent) 0%,
           transparent 70%),
         radial-gradient(ellipse 48% 42% at 0% 100%,
-          color-mix(in oklab, var(--accent, #2563EB) 12%, transparent) 0%,
+          color-mix(in oklab, var(--tool-accent, var(--accent, #2563EB)) 12%, transparent) 0%,
           transparent 70%),
         radial-gradient(ellipse 46% 40% at 100% 100%,
-          color-mix(in oklab, var(--accent, #2563EB) 10%, transparent) 0%,
+          color-mix(in oklab, var(--tool-accent, var(--accent, #2563EB)) 10%, transparent) 0%,
           transparent 70%);
     }
 
@@ -119,14 +119,14 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
       will-change: transform;
       transition: opacity 300ms ease;
       background: radial-gradient(circle closest-side,
-        color-mix(in oklab, var(--ts-lift, var(--tool-accent, var(--accent, #3B82F6))) 22%, transparent),
+        color-mix(in oklab, var(--tool-accent, var(--accent, #3B82F6)) 28%, transparent),
         transparent 100%);
     }
 
     :host-context([data-theme="light"]) .ts-bg-spot-glow,
     [data-theme="light"] .ts-bg-spot-glow {
       background: radial-gradient(circle closest-side,
-        color-mix(in oklab, var(--ts-lift, var(--tool-accent, var(--accent, #2563EB))) 35%, transparent),
+        color-mix(in oklab, var(--tool-accent, var(--accent, #2563EB)) 38%, transparent),
         transparent 100%);
     }
 
@@ -156,13 +156,18 @@ import { TsPointerGlowDirective } from '../../directives/ts-pointer-glow.directi
         linear-gradient(to bottom, color-mix(in srgb, var(--accent-strong, var(--tool-accent, var(--accent, #2563EB))) 26%, transparent) 1px, transparent 1px);
     }
 
-    /* ── Disable pointer glow effect toggle ───────────────────── */
+    /* ── Disable pointer glow & ambient gradient toggle ──────── */
     :host-context([data-disable-pointer-glow="true"]) .ts-bg-spot-glow,
     :host-context([data-disable-pointer-glow="true"]) .ts-bg-spot-grid,
     [data-disable-pointer-glow="true"] .ts-bg-spot-glow,
     [data-disable-pointer-glow="true"] .ts-bg-spot-grid {
       display: none !important;
       opacity: 0 !important;
+    }
+
+    :host-context([data-disable-pointer-glow="true"]) .ts-bg,
+    [data-disable-pointer-glow="true"] .ts-bg {
+      background: none !important;
     }
 
     /* ── Responsive: under 768px, 24px grid ──────────────────── */

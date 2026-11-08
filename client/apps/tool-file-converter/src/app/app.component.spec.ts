@@ -1,9 +1,10 @@
 // apps/tool-file-converter/src/app/app.component.spec.ts
 import { describe, it, expect } from 'vitest';
-import { TOOL_REGISTRY, ToolRegistryItem } from '@acklet/tool-registry';
+import { TOOL_REGISTRY, ToolRegistryItem } from '../../../../packages/tool-registry/src';
 
-describe('Image Converter Tool Shell & Manifest Integrity', () => {
+describe('Image Converter & File Converter Tool Shell & Manifest Integrity', () => {
   const manifest: ToolRegistryItem = TOOL_REGISTRY['image-converter'];
+  const fileManifest: ToolRegistryItem = TOOL_REGISTRY['file-converter'];
 
   it('should have a registered image-converter tool manifest in TOOL_REGISTRY', () => {
     expect(manifest).toBeDefined();
@@ -14,11 +15,12 @@ describe('Image Converter Tool Shell & Manifest Integrity', () => {
     expect(manifest.icon).toBe('images');
   });
 
-  it('should be registered under image-converter, converter, file-converter, and img-converter aliases', () => {
+  it('should register image-converter and file-converter distinctly in TOOL_REGISTRY', () => {
     expect(TOOL_REGISTRY['image-converter']).toBe(manifest);
-    expect(TOOL_REGISTRY['converter']).toBe(manifest);
-    expect(TOOL_REGISTRY['file-converter']).toBe(manifest);
     expect(TOOL_REGISTRY['img-converter']).toBe(manifest);
+    expect(TOOL_REGISTRY['file-converter']).toBe(fileManifest);
+    expect(TOOL_REGISTRY['converter']).toBe(fileManifest);
+    expect(fileManifest.id).toBe('file-converter');
   });
 
   it('should have required metadata, descriptions, highlights, and FAQs defined', () => {

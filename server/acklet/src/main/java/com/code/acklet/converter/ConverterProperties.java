@@ -27,6 +27,11 @@ public class ConverterProperties {
     private long maxFileSizeBytes = 52_428_800L;
 
     /**
+     * Maximum number of files in a single batch conversion job (default: 20).
+     */
+    private int maxFileCount = 20;
+
+    /**
      * Working directory for temporary upload and converted files.
      */
     private String tempDir = "";
@@ -66,7 +71,17 @@ public class ConverterProperties {
     /**
      * Port numbers for the local office manager process pool.
      */
-    private int[] portNumbers = new int[]{2002};
+    private int[] portNumbers = new int[]{2002, 2003, 2004, 2005};
+
+    /**
+     * Process pool size for conversion instances.
+     */
+    private int poolSize = 4;
+
+    /**
+     * Minimum text/structural similarity threshold for Beta pairs (default: 0.85).
+     */
+    private double betaSimilarityThreshold = 0.85;
 
     /**
      * Resolves the effective working directory path.

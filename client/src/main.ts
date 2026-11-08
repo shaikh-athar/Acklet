@@ -102,8 +102,8 @@ if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools'
     import('../apps/tool-file-converter/src/app/app.component'),
     import('@angular/common/http')
   ])
-    .then(([{ ImageConverterAppComponent }, { provideHttpClient, withFetch }]) => {
-      return bootstrapApplication(ImageConverterAppComponent, {
+    .then(([{ AppComponent }, { provideHttpClient, withFetch }]) => {
+      return bootstrapApplication(AppComponent, {
         providers: [provideHttpClient(withFetch())]
       });
     })
@@ -114,8 +114,8 @@ if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools'
     import('../apps/tool-file-converter/src/app/app.component'),
     import('@angular/common/http')
   ])
-    .then(([{ FileConverterAppComponent }, { provideHttpClient, withFetch }]) => {
-      return bootstrapApplication(FileConverterAppComponent, {
+    .then(([{ AppComponent }, { provideHttpClient, withFetch }]) => {
+      return bootstrapApplication(AppComponent, {
         providers: [provideHttpClient(withFetch())]
       });
     })

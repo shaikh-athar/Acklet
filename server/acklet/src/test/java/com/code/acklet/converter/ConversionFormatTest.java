@@ -56,7 +56,10 @@ class ConversionFormatTest {
             "XLSX, ODS, true",
             "PPTX, PDF, true",
             "ODT, PDF, true",
-            "RTF, PDF, true"
+            "RTF, PDF, true",
+            "PDF, DOCX, true",
+            "PDF, TXT, true",
+            "PDF, PDF, false"
     })
     @DisplayName("Format routing matrix should validate supported input/output pairs")
     void testFormatRoutingSupport(ConversionFormat source, ConversionFormat target, boolean expected) {

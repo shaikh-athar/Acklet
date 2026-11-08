@@ -1,366 +1,513 @@
 // apps/tool-file-converter/src/converter.component.ts
-import { Component, ChangeDetectionStrategy, signal, computed, inject, ElementRef, viewChild, OnDestroy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
-import { ConverterApiService } from './converter.service';
-import { ConversionResult, ConverterScreenState } from './converter.models';
-import { HlmButton } from '@acklet/tool-shell/helm/button';
 import { TsIconComponent } from '@acklet/tool-shell';
-
-interface TargetFormatOption {
-  ext: string;
-  label: string;
-  desc: string;
-}
-
-const FORMAT_COMPATIBILITY_MAP: Record<string, TargetFormatOption[]> = {
-  docx: [
-    { ext: 'pdf', label: 'PDF', desc: 'Portable Document' },
-    { ext: 'doc', label: 'DOC', desc: 'Word 97-2004' },
-    { ext: 'odt', label: 'ODT', desc: 'OpenDocument' },
-    { ext: 'rtf', label: 'RTF', desc: 'Rich Text' },
-    { ext: 'txt', label: 'TXT', desc: 'Plain Text' },
-    { ext: 'html', label: 'HTML', desc: 'Web Page' }
-  ],
-  doc: [
-    { ext: 'pdf', label: 'PDF', desc: 'Portable Document' },
-    { ext: 'docx', label: 'DOCX', desc: 'Word Document' },
-    { ext: 'odt', label: 'ODT', desc: 'OpenDocument' },
-    { ext: 'rtf', label: 'RTF', desc: 'Rich Text' },
-    { ext: 'txt', label: 'TXT', desc: 'Plain Text' }
-  ],
-  xlsx: [
-    { ext: 'pdf', label: 'PDF', desc: 'Portable Document' },
-    { ext: 'csv', label: 'CSV', desc: 'Comma-Separated' },
-    { ext: 'ods', label: 'ODS', desc: 'OpenDocument Sheet' },
-    { ext: 'xls', label: 'XLS', desc: 'Excel 97-2004' },
-    { ext: 'html', label: 'HTML', desc: 'Web Table' }
-  ],
-  xls: [
-    { ext: 'pdf', label: 'PDF', desc: 'Portable Document' },
-    { ext: 'xlsx', label: 'XLSX', desc: 'Modern Excel' },
-    { ext: 'csv', label: 'CSV', desc: 'Comma-Separated' },
-    { ext: 'ods', label: 'ODS', desc: 'OpenDocument Sheet' }
-  ],
-  pptx: [
-    { ext: 'pdf', label: 'PDF', desc: 'Portable Document' },
-    { ext: 'ppt', label: 'PPT', desc: 'PowerPoint 97-2004' },
-    { ext: 'odp', label: 'ODP', desc: 'OpenDocument Presentation' }
-  ],
-  ppt: [
-    { ext: 'pdf', label: 'PDF', desc: 'Portable Document' },
-    { ext: 'pptx', label: 'PPTX', desc: 'Modern PowerPoint' },
-    { ext: 'odp', label: 'ODP', desc: 'OpenDocument Presentation' }
-  ],
-  odt: [
-    { ext: 'pdf', label: 'PDF', desc: 'Portable Document' },
-    { ext: 'docx', label: 'DOCX', desc: 'Word Document' },
-    { ext: 'rtf', label: 'RTF', desc: 'Rich Text' },
-    { ext: 'txt', label: 'TXT', desc: 'Plain Text' }
-  ],
-  ods: [
-    { ext: 'pdf', label: 'PDF', desc: 'Portable Document' },
-    { ext: 'xlsx', label: 'XLSX', desc: 'Modern Excel' },
-    { ext: 'csv', label: 'CSV', desc: 'Comma-Separated' }
-  ],
-  odp: [
-    { ext: 'pdf', label: 'PDF', desc: 'Portable Document' },
-    { ext: 'pptx', label: 'PPTX', desc: 'Modern PowerPoint' }
-  ],
-  rtf: [
-    { ext: 'pdf', label: 'PDF', desc: 'Portable Document' },
-    { ext: 'docx', label: 'DOCX', desc: 'Word Document' },
-    { ext: 'txt', label: 'TXT', desc: 'Plain Text' }
-  ],
-  txt: [
-    { ext: 'pdf', label: 'PDF', desc: 'Portable Document' },
-    { ext: 'docx', label: 'DOCX', desc: 'Word Document' },
-    { ext: 'odt', label: 'ODT', desc: 'OpenDocument' }
-  ],
-  csv: [
-    { ext: 'pdf', label: 'PDF', desc: 'Portable Document' },
-    { ext: 'xlsx', label: 'XLSX', desc: 'Modern Excel' },
-    { ext: 'ods', label: 'ODS', desc: 'OpenDocument Sheet' }
-  ]
-};
+import { FileJobItem, FileItemStatus, ConversionOptions, BatchJob, ConversionCapability } from './converter.models';
+import { ConverterApiService } from './converter.service';
+import { BrowserConverterService } from './services/browser-converter.service';
+import { DOCUMENT_CONVERTER_CONFIG, computeCommonTestedTargets } from './converter.config';
+import { FileDropZoneComponent } from './components/document-converter/file-drop-zone.component';
+import { FileListComponent } from './components/document-converter/file-list.component';
+import { ConversionSettingsComponent } from './components/document-converter/conversion-settings.component';
 
 @Component({
   selector: 'app-file-converter',
   standalone: true,
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
-    HlmButton,
-    TsIconComponent
+    TsIconComponent,
+    FileDropZoneComponent,
+    FileListComponent,
+    ConversionSettingsComponent
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './converter.component.html',
   styleUrls: ['./converter.component.css']
 })
-export class FileConverterComponent implements OnDestroy {
+export class FileConverterComponent implements OnInit, OnDestroy {
   readonly api = inject(ConverterApiService);
+  readonly browserConverter = inject(BrowserConverterService);
+  readonly config = DOCUMENT_CONVERTER_CONFIG;
 
-  readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
+  readonly files = signal<FileJobItem[]>([]);
+  readonly capabilities = signal<ConversionCapability[]>([]);
+  readonly options = signal<ConversionOptions>({
+    targetFormat: this.config.defaultTargetFormat,
+    fidelity: this.config.defaultFidelity,
+    ocr: false,
+    keepImages: true,
+    pageRange: '',
+    deliveryMode: 'individual'
+  });
 
-  // State signals
-  readonly screenState = signal<ConverterScreenState>('IDLE');
-  readonly selectedFile = signal<File | null>(null);
-  readonly selectedTargetFormat = signal<string>('pdf');
-  readonly isDragging = signal<boolean>(false);
-  readonly conversionProgress = signal<number>(0);
-  readonly progressMessage = signal<string>('Uploading and preparing file...');
-  readonly conversionResult = signal<ConversionResult | null>(null);
-  readonly errorMessage = signal<string>('');
+  readonly isConverting = signal<boolean>(false);
+  readonly notification = signal<string | null>(null);
+  readonly currentBatchJobId = signal<string | null>(null);
+  readonly zipDownloadUrl = signal<string | null>(null);
+  readonly screenReaderStatus = signal<string>('');
+  readonly isPageDragOver = signal<boolean>(false);
 
   private pollSub?: Subscription;
-  private progressInterval?: number;
 
-  readonly inputExtension = computed(() => {
-    const file = this.selectedFile();
-    if (!file) return '';
-    const parts = file.name.split('.');
-    return parts.length > 1 ? parts.pop()!.toLowerCase() : '';
-  });
-
-  readonly availableTargetFormats = computed<TargetFormatOption[]>(() => {
-    const ext = this.inputExtension();
-    if (!ext) return [];
-    return FORMAT_COMPATIBILITY_MAP[ext] || [
-      { ext: 'pdf', label: 'PDF', desc: 'Portable Document' }
-    ];
-  });
-
-  readonly formattedSourceSize = computed(() => {
-    const file = this.selectedFile();
-    return file ? this.api.formatBytes(file.size) : '';
-  });
-
-  readonly formattedConvertedSize = computed(() => {
-    const res = this.conversionResult();
-    return res?.convertedSizeBytes ? this.api.formatBytes(res.convertedSizeBytes) : '';
-  });
-
-  onDragOver(event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isDragging.set(true);
-  }
-
-  onDragLeave(event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isDragging.set(false);
-  }
-
-  onDrop(event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isDragging.set(false);
-
-    const files = event.dataTransfer?.files;
-    if (files && files.length > 0) {
-      this.handleFileSelection(files[0]);
+  constructor() {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('demo') === 'beta') {
+        this.files.set([
+          {
+            fileId: 'f1',
+            originalFileName: 'Quarterly_Financial_Report_2026.docx',
+            sanitizedFileName: 'Quarterly_Financial_Report_2026',
+            sourceFormat: 'docx',
+            targetFormat: 'md',
+            sizeBytes: 2450000,
+            status: 'ready',
+            progress: 100,
+            runtime: 'browser',
+            tier: 'beta',
+            downloadUrl: '/api/file-converter/jobs/demo/files/f1',
+            structureReport: {
+              headingsCount: 14,
+              tablesCount: 6,
+              columnsCount: 2,
+              imagesCount: 8,
+              hasLowConfidence: false,
+              chips: [
+                { type: 'headings', label: '14 Headings', count: 14, lowConfidence: false, confidenceLabel: 'Verified' },
+                { type: 'tables', label: '6 Tables', count: 6, lowConfidence: false, confidenceLabel: 'Verified' },
+                { type: 'columns', label: '2 Columns', count: 2, lowConfidence: false, confidenceLabel: 'Verified' },
+                { type: 'images', label: '8 Images', count: 8, lowConfidence: false, confidenceLabel: 'Verified' }
+              ],
+              summary: 'Structure analyzed.'
+            }
+          }
+        ]);
+        this.options.update(o => ({ ...o, targetFormat: 'md' }));
+      } else if (params.get('demo') === '1' || params.get('demo') === 'status') {
+        this.files.set([
+          {
+            fileId: 'f1',
+            originalFileName: 'Quarterly_Financial_Report_2026.docx',
+            sanitizedFileName: 'Quarterly_Financial_Report_2026',
+            sourceFormat: 'docx',
+            targetFormat: 'md',
+            sizeBytes: 2450000,
+            status: 'ready',
+            progress: 100,
+            runtime: 'browser',
+            tier: 'beta',
+            downloadUrl: '/api/file-converter/jobs/demo/files/f1',
+            structureReport: {
+              headingsCount: 14,
+              tablesCount: 6,
+              columnsCount: 2,
+              imagesCount: 8,
+              hasLowConfidence: false,
+              chips: [
+                { type: 'headings', label: '14 Headings', count: 14, lowConfidence: false, confidenceLabel: 'Verified' },
+                { type: 'tables', label: '6 Tables', count: 6, lowConfidence: false, confidenceLabel: 'Verified' },
+                { type: 'columns', label: '2 Columns', count: 2, lowConfidence: false, confidenceLabel: 'Verified' },
+                { type: 'images', label: '8 Images', count: 8, lowConfidence: false, confidenceLabel: 'Verified' }
+              ],
+              summary: 'Structure analyzed.'
+            }
+          },
+          {
+            fileId: 'f2',
+            originalFileName: 'Global_Supply_Chain_Matrix.xlsx',
+            sanitizedFileName: 'Global_Supply_Chain_Matrix',
+            sourceFormat: 'xlsx',
+            targetFormat: 'pdf',
+            sizeBytes: 5120000,
+            status: 'queued',
+            progress: 0,
+            runtime: 'server',
+            queue: 'fc.convert.office',
+            queueMessage: 'Waiting for a free converter.'
+          },
+          {
+            fileId: 'f3',
+            originalFileName: 'Corrupted_Archive_Scan.pdf',
+            sanitizedFileName: 'Corrupted_Archive_Scan',
+            sourceFormat: 'pdf',
+            targetFormat: 'docx',
+            sizeBytes: 1240000,
+            status: 'failed',
+            progress: 0,
+            errorCode: 'UNSUPPORTED_PAIR',
+            errorMessage: 'Conversion from this format to the chosen target is not supported.'
+          },
+          {
+            fileId: 'f4',
+            originalFileName: 'Enterprise_Architecture_Overview.pptx',
+            sanitizedFileName: 'Enterprise_Architecture_Overview',
+            sourceFormat: 'pptx',
+            targetFormat: 'txt',
+            sizeBytes: 3820000,
+            status: 'failed',
+            progress: 0,
+            errorCode: 'TIMEOUT',
+            errorMessage: 'Conversion took longer than the time limit. Retrying...'
+          }
+        ]);
+        if (params.get('demo') === 'beta') {
+          this.options.update(o => ({ ...o, targetFormat: 'md' }));
+        }
+      }
     }
   }
 
-  onFileChange(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      this.handleFileSelection(input.files[0]);
+  ngOnInit(): void {
+    this.api.getCapabilities().subscribe({
+      next: caps => {
+        if (caps && caps.length > 0) {
+          this.capabilities.set(caps);
+          this.ensureValidTargetFormat();
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  readonly pageRangeError = computed<string | null>(() => {
+    const range = this.options().pageRange;
+    if (!range || !range.trim()) return null;
+    const res = this.api.validatePageRange(range);
+    return res.valid ? null : (res.error ?? 'Invalid page range');
+  });
+
+  ngOnDestroy(): void {
+    this.pollSub?.unsubscribe();
+  }
+
+  onPageDragOver(e: DragEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer?.types.includes('Files')) {
+      if (!this.isPageDragOver()) {
+        this.isPageDragOver.set(true);
+      }
     }
   }
 
-  triggerFileInput(): void {
-    this.fileInput()?.nativeElement.click();
+  onPageDragLeave(e: DragEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget === e.target || (e.clientX <= 0 || e.clientY <= 0)) {
+      this.isPageDragOver.set(false);
+    }
   }
 
-  handleFileSelection(file: File): void {
-    this.selectedFile.set(file);
-    const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    const targets = FORMAT_COMPATIBILITY_MAP[ext];
+  onPageDrop(e: DragEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    this.isPageDragOver.set(false);
 
-    if (!targets || targets.length === 0) {
-      this.errorMessage.set(`The format ".${ext}" is not currently supported for conversion.`);
-      this.screenState.set('ERROR');
+    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+      const droppedFiles = Array.from(e.dataTransfer.files);
+      this.onFilesDropped(droppedFiles);
+    }
+  }
+
+  onFilesDropped(incomingFiles: File[]): void {
+    this.notification.set(null);
+    const current = this.files();
+    const remainingSlots = this.config.maxBatchFiles - current.length;
+
+    if (remainingSlots <= 0) {
+      this.notification.set(`Batch limit reached. Up to ${this.config.maxBatchFiles} documents permitted per batch.`);
       return;
     }
 
-    // Default target format to 'pdf' if supported, otherwise first available
-    const hasPdf = targets.some(t => t.ext === 'pdf');
-    this.selectedTargetFormat.set(hasPdf ? 'pdf' : targets[0].ext);
-    this.screenState.set('CONFIGURING');
-  }
+    const accepted: FileJobItem[] = [];
+    const rejectedErrors: string[] = [];
 
-  selectTarget(ext: string): void {
-    this.selectedTargetFormat.set(ext);
-  }
-
-  startConversion(): void {
-    const file = this.selectedFile();
-    const target = this.selectedTargetFormat();
-    if (!file || !target) return;
-
-    this.screenState.set('CONVERTING');
-    this.conversionProgress.set(15);
-    this.progressMessage.set('Converting document...');
-
-    this.startProgressSimulation();
-
-    this.api.convert(file, target).subscribe({
-      next: (result) => {
-        if (result.status === 'COMPLETED') {
-          this.finishProgress(result);
-        } else if (result.status === 'PROCESSING' || result.status === 'PENDING') {
-          this.progressMessage.set('Processing in queue...');
-          this.pollJob(result.jobId);
-        } else if (result.status === 'FAILED' || result.status === 'TIMED_OUT') {
-          this.handleFailure(result.errorMessage || 'Conversion failed. Please try again.');
-        }
-      },
-      error: (err) => {
-        const friendlyMessage = this.getNegotiableErrorMessage(err);
-        this.handleFailure(friendlyMessage);
+    for (const file of incomingFiles) {
+      if (accepted.length >= remainingSlots) {
+        rejectedErrors.push(`Limit of ${this.config.maxBatchFiles} files reached.`);
+        break;
       }
-    });
-  }
 
-  retryConversion(): void {
-    if (this.selectedFile()) {
-      this.startConversion();
-    } else {
-      this.reset();
-    }
-  }
-
-  private pollJob(jobId: string): void {
-    this.pollSub?.unsubscribe();
-    this.pollSub = this.api.pollJob(jobId).subscribe({
-      next: (result) => {
-        if (result.status === 'COMPLETED') {
-          this.finishProgress(result);
-        } else if (result.status === 'FAILED' || result.status === 'TIMED_OUT') {
-          this.handleFailure(result.errorMessage || 'Conversion failed during processing.');
-        }
-      },
-      error: (err) => {
-        const friendly = this.getNegotiableErrorMessage(err);
-        this.handleFailure(friendly);
+      if (file.size > this.config.maxFileSizeBytes) {
+        rejectedErrors.push(`"${file.name}" exceeds the 50 MB limit (${this.api.formatBytes(file.size)}).`);
+        continue;
       }
-    });
-  }
 
-  private startProgressSimulation(): void {
-    this.clearIntervals();
-    this.progressInterval = window.setInterval(() => {
-      this.conversionProgress.update(current => {
-        if (current < 85) {
-          return current + Math.floor(Math.random() * 8) + 2;
+      const ext = file.name.includes('.') ? file.name.substring(file.name.lastIndexOf('.') + 1).toLowerCase() : '';
+      if (!this.config.supportedInputExtensions.includes(ext)) {
+        rejectedErrors.push(`"${file.name}" is not a supported document format.`);
+        continue;
+      }
+
+      const fileId = Math.random().toString(36).substring(2, 10);
+      const item: FileJobItem = {
+        fileId,
+        originalFileName: file.name,
+        sanitizedFileName: file.name,
+        sourceFormat: ext,
+        targetFormat: this.options().targetFormat,
+        sizeBytes: file.size,
+        status: 'queued',
+        progress: 0,
+        nativeFile: file,
+        isExpanded: true
+      };
+
+      accepted.push(item);
+
+      // Perform background structure analysis
+      this.api.analyzeDocument(file).subscribe({
+        next: report => {
+          this.files.update(list => list.map(f => f.fileId === fileId ? { ...f, structureReport: report } : f));
+          if (report?.recommendedTarget) {
+            this.options.update(o => ({
+              ...o,
+              targetFormat: report.recommendedTarget!.toLowerCase()
+            }));
+          }
         }
-        return current;
       });
-    }, 400);
-  }
-
-  private finishProgress(result: ConversionResult): void {
-    this.clearIntervals();
-    this.conversionProgress.set(100);
-    this.conversionResult.set(result);
-    setTimeout(() => {
-      this.screenState.set('COMPLETED');
-    }, 350);
-  }
-
-  private handleFailure(message: string): void {
-    this.clearIntervals();
-    this.errorMessage.set(message);
-    this.screenState.set('ERROR');
-  }
-
-  /**
-   * Transforms technical error responses into friendly, negotiable user-facing explanations.
-   */
-  private getNegotiableErrorMessage(err: any): string {
-    if (!err) {
-      return 'The document could not be converted. Please ensure the file is not password-protected and try again.';
     }
 
-    const status = err.status ?? err.error?.status;
-    const serverMessage = err.error?.message;
-
-    // Use clean server messages if they are not raw stack traces or internal errors
-    if (typeof serverMessage === 'string' && serverMessage.length > 0 &&
-        !serverMessage.includes('Http failure') &&
-        !serverMessage.includes('Exception') &&
-        !serverMessage.includes('403') &&
-        !serverMessage.includes('500') &&
-        !serverMessage.includes('daemon was not started')) {
-      return serverMessage;
+    if (rejectedErrors.length > 0) {
+      this.notification.set(rejectedErrors[0]);
     }
 
-    if (status === 403 || status === 401) {
-      return 'The conversion session could not be verified. Please refresh the page or try uploading your document again.';
-    }
-    if (status === 400) {
-      return 'The uploaded document structure or extension is not supported. Please check the document format and try again.';
-    }
-    if (status === 404) {
-      return 'The conversion session or job has expired. Please select your document and try again.';
-    }
-    if (status === 413) {
-      return 'This file exceeds the 50 MB online limit. Please choose a smaller document and try again.';
-    }
-    if (status === 422) {
-      return 'The document formatting could not be processed. Please verify that the file is not corrupted or password-protected.';
-    }
-    if (status === 503) {
-      return 'The document conversion engine is temporarily warming up. Please try again in a few moments.';
-    }
-    if (status === 504) {
-      return 'Conversion took longer than expected. Please try converting a smaller document or saving with fewer embedded images.';
-    }
-    if (status === 0 || err.name === 'TimeoutError') {
-      return 'Unable to reach the conversion server. Please check your network connection and try again.';
-    }
-
-    return 'The file could not be converted. Please verify the document is not password-protected and try again.';
-  }
-
-  downloadConvertedFile(): void {
-    const res = this.conversionResult();
-    if (!res || !res.jobId) return;
-
-    const downloadUrl = this.api.getDownloadUrl(res.jobId);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.setAttribute('download', res.sanitizedFileName || 'converted-document');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-
-  reset(): void {
-    this.clearIntervals();
-    this.screenState.set('IDLE');
-    this.selectedFile.set(null);
-    this.conversionResult.set(null);
-    this.errorMessage.set('');
-    this.conversionProgress.set(0);
-    if (this.fileInput()?.nativeElement) {
-      this.fileInput()!.nativeElement.value = '';
+    if (accepted.length > 0) {
+      this.files.update(list => [...list, ...accepted]);
+      this.screenReaderStatus.set(`${accepted.length} files added. Total: ${this.files().length} files.`);
+      this.ensureValidTargetFormat();
     }
   }
 
-  private clearIntervals(): void {
-    if (this.progressInterval) {
-      clearInterval(this.progressInterval);
-      this.progressInterval = undefined;
-    }
-    if (this.pollSub) {
-      this.pollSub.unsubscribe();
-      this.pollSub = undefined;
+  removeFile(fileId: string): void {
+    this.files.update(list => list.filter(f => f.fileId !== fileId));
+    this.screenReaderStatus.set('File removed.');
+    this.ensureValidTargetFormat();
+  }
+
+  clearAll(): void {
+    this.pollSub?.unsubscribe();
+    this.files.set([]);
+    this.notification.set(null);
+    this.isConverting.set(false);
+    this.currentBatchJobId.set(null);
+    this.zipDownloadUrl.set(null);
+    this.screenReaderStatus.set('All files cleared.');
+  }
+
+  retryFile(fileId: string): void {
+    this.files.update(list => list.map(f => f.fileId === fileId ? { ...f, status: 'queued', progress: 0, errorCode: undefined, errorMessage: undefined } : f));
+    this.startBatchConversion();
+  }
+
+  onChangeFormat(fileId?: string): void {
+    if (typeof document !== 'undefined') {
+      const fieldset = document.getElementById('setting-group-target-format');
+      if (fieldset) {
+        fieldset.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const firstRadio = fieldset.querySelector('input[type="radio"]') as HTMLElement | null;
+        firstRadio?.focus();
+      }
     }
   }
 
-  ngOnDestroy(): void {
-    this.clearIntervals();
+  private ensureValidTargetFormat(): void {
+    const list = this.files();
+    if (list.length === 0) return;
+    const exts = list.map(f => f.sourceFormat.toLowerCase());
+    const commonTargets = computeCommonTestedTargets(exts, this.capabilities());
+    if (commonTargets.length === 0) return;
+
+    const currentTarget = this.options().targetFormat?.toLowerCase();
+    if (!commonTargets.includes(currentTarget)) {
+      // Pick first valid target, preferring 'txt' if available for documents, or first common target
+      const nextTarget = commonTargets.includes('txt') ? 'txt' : commonTargets[0];
+      this.options.update(opt => ({ ...opt, targetFormat: nextTarget }));
+    }
+  }
+
+  onOptionsChange(newOptions: ConversionOptions): void {
+    const oldTarget = this.options().targetFormat;
+    this.options.set(newOptions);
+    if (newOptions.targetFormat !== oldTarget) {
+      // Clear failure state for files that previously failed due to unsupported pair
+      this.files.update(list => list.map(f => {
+        if (f.status === 'failed' && f.errorCode === 'UNSUPPORTED_PAIR') {
+          return {
+            ...f,
+            status: 'queued',
+            progress: 0,
+            errorCode: undefined,
+            errorMessage: undefined
+          };
+        }
+        return f;
+      }));
+    }
+  }
+
+  startBatchConversion(): void {
+    if (this.isConverting()) return;
+    if (this.files().length === 0) return;
+
+    this.pollSub?.unsubscribe();
+    this.notification.set(null);
+    this.isConverting.set(true);
+
+    const targetFormat = this.options().targetFormat.toLowerCase();
+    const pending = this.files().filter(f => f.status === 'queued' || f.status === 'failed');
+
+    const browserItems: FileJobItem[] = [];
+    const serverItems: FileJobItem[] = [];
+
+    for (const item of pending) {
+      if (item.nativeFile && this.browserConverter.isBrowserPair(item.sourceFormat, targetFormat)) {
+        browserItems.push(item);
+      } else {
+        serverItems.push(item);
+      }
+    }
+
+    if (browserItems.length === 0 && serverItems.length === 0) {
+      this.files.update(list => list.map(f => ({ ...f, status: 'ready', progress: 100 })));
+      this.isConverting.set(false);
+      return;
+    }
+
+    this.screenReaderStatus.set('Conversion started.');
+
+    // 1. Process browser-runtime items
+    for (const bItem of browserItems) {
+      if (!bItem.nativeFile) continue;
+      this.files.update(list => list.map(f => f.fileId === bItem.fileId ? { ...f, status: 'converting', progress: 15 } : f));
+      this.browserConverter.convertInBrowser(bItem.nativeFile, targetFormat, this.options()).subscribe({
+        next: prog => {
+          this.files.update(list => list.map(f => {
+            if (f.fileId === bItem.fileId) {
+              if (prog.status === 'ready' && prog.result) {
+                return {
+                  ...f,
+                  status: 'ready',
+                  progress: 100,
+                  downloadUrl: prog.result.downloadUrl,
+                  convertedSizeBytes: prog.result.sizeBytes,
+                  runtime: 'browser',
+                  tier: prog.result.tier
+                };
+              }
+              if (prog.status === 'failed') {
+                return {
+                  ...f,
+                  status: 'failed',
+                  progress: 0,
+                  errorCode: prog.errorCode,
+                  errorMessage: prog.errorMessage
+                };
+              }
+              return {
+                ...f,
+                status: prog.status,
+                progress: prog.progress
+              };
+            }
+            return f;
+          }));
+
+          if (serverItems.length === 0 && this.files().every(f => f.status === 'ready' || f.status === 'failed')) {
+            this.isConverting.set(false);
+            this.screenReaderStatus.set('Conversion completed.');
+          }
+        }
+      });
+    }
+
+    // 2. Process server-runtime items
+    if (serverItems.length > 0) {
+      const uploadFiles = serverItems.map(f => f.nativeFile).filter((f): f is File => Boolean(f));
+      if (uploadFiles.length === 0) {
+        if (browserItems.length === 0) {
+          this.isConverting.set(false);
+        }
+        return;
+      }
+
+      this.files.update(list => list.map(f => serverItems.some(s => s.fileId === f.fileId) ? { ...f, status: 'converting', progress: 15 } : f));
+
+      this.api.createBatchJob(uploadFiles, this.options()).subscribe({
+        next: (job: BatchJob) => {
+          this.currentBatchJobId.set(job.jobId);
+          this.subscribeBatchProgress(job.jobId);
+        },
+        error: err => {
+          this.isConverting.set(false);
+          const errCode = err?.error?.code || (err?.status === 422 ? 'UNSUPPORTED_PAIR' : 'CONVERSION_ERROR');
+          const errMsg = err?.error?.message || err?.message || 'Failed to start conversion. Please try again.';
+          this.notification.set(errMsg);
+          this.files.update(list => list.map(f => {
+            if (serverItems.some(s => s.fileId === f.fileId) && f.status === 'converting') {
+              return {
+                ...f,
+                status: 'failed',
+                errorCode: errCode,
+                errorMessage: errMsg
+              };
+            }
+            return f;
+          }));
+          this.screenReaderStatus.set(`Conversion failed: ${errMsg}`);
+        }
+      });
+    }
+  }
+
+  private subscribeBatchProgress(jobId: string): void {
+    this.pollSub = this.api.subscribeJobProgress(jobId).subscribe({
+      next: (job: BatchJob) => {
+        this.files.update(localList => {
+          return localList.map(local => {
+            const remote = job.files.find(rf => rf.originalFileName === local.originalFileName);
+            if (remote) {
+              const fileStatus: FileItemStatus =
+                remote.status === 'COMPLETED' ? 'ready'
+                : remote.status === 'FAILED' ? 'failed'
+                : remote.status === 'PROCESSING' ? 'converting' : 'queued';
+
+              return {
+                ...local,
+                fileId: remote.fileId,
+                status: fileStatus,
+                progress: remote.progress,
+                convertedSizeBytes: remote.convertedSizeBytes,
+                downloadUrl: remote.downloadUrl ? `/api/file-converter/jobs/${jobId}/files/${remote.fileId}` : undefined,
+                errorMessage: remote.errorMessage,
+                structureReport: remote.structureReport ?? local.structureReport,
+                runtime: 'server',
+                tier: remote.tier,
+                queue: remote.queue,
+                queueMessage: remote.queueMessage
+              };
+            }
+            return local;
+          });
+        });
+
+        if (job.status === 'COMPLETED' || job.status === 'FAILED') {
+          this.isConverting.set(false);
+          if (this.options().deliveryMode === 'zip' || job.zipDownloadUrl) {
+            this.zipDownloadUrl.set(`/api/file-converter/jobs/${jobId}/zip`);
+          }
+          this.screenReaderStatus.set('Conversion completed.');
+        }
+      },
+      error: () => {
+        this.isConverting.set(false);
+        this.files.update(list => list.map(f => f.status === 'converting' ? { ...f, status: 'failed', errorMessage: 'Conversion error' } : f));
+        this.screenReaderStatus.set('Conversion stopped due to an error.');
+      }
+    });
   }
 }
+
+export const FileConverterPageComponent = FileConverterComponent;

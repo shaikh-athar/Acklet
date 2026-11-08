@@ -14,7 +14,9 @@ import java.util.Map;
 @AllArgsConstructor
 public class ApiResponse<T> {
     private boolean success;
+    private String code;
     private String message;
+    private String fileId;
     private T data;
     private Map<String, Object> meta;
     private Instant timestamp;
@@ -42,7 +44,19 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> error(String message, String traceId) {
         return ApiResponse.<T>builder()
                 .success(false)
+                .code("ERROR")
                 .message(message)
+                .traceId(traceId)
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    public static <T> ApiResponse<T> error(String code, String message, String fileId, String traceId) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .code(code)
+                .message(message)
+                .fileId(fileId)
                 .traceId(traceId)
                 .timestamp(Instant.now())
                 .build();

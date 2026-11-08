@@ -25,6 +25,21 @@ spring:
     out-of-order: true
     ignore-migration-patterns: "*:ignored"
 
+  # RabbitMQ Message Broker Configuration
+  rabbitmq:
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 1
+
   # Multipart upload limits
   servlet:
     multipart:
@@ -55,9 +70,12 @@ app:
     enabled: true
     dev-fallback: true
     max-file-size: 50MB
+    max-file-count: 20
     temp-dir: ""
     timeout-seconds: 120
+    pool-size: 4
     libreoffice-path: ""
     async-threshold-bytes: 5242880 # 5MB
     job-ttl-minutes: 60
     cleanup-cron: "0 */15 * * * *"
+    beta-similarity-threshold: 0.85

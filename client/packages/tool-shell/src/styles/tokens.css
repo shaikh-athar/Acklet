@@ -750,6 +750,62 @@ html[data-theme="light"],
   --tool-brand-accent: var(--accent);
 }
 
+/* Olive Palette (File Converter):
+   light: accent #5B7A1E, ink #FFFFFF, strong #4A6418
+   dark:  accent #A3C75A, ink #0F1608, strong #BBE070
+*/
+[data-accent="olive"],
+.ts-root[data-accent="olive"],
+[data-theme="dark"][data-accent="olive"],
+.ts-root[data-theme="dark"][data-accent="olive"],
+[data-theme="dark"] [data-accent="olive"],
+.ts-root[data-theme="dark"] [data-accent="olive"] {
+  --page-bg: #0F1011;
+  --ts-page-bg: #0F1011;
+  --accent: #A3C75A;
+  --accent-ink: #0F1608;
+  --accent-strong: #BBE070;
+  --accent-soft: #1F2A10;
+  --accent-border: rgba(163, 199, 90, 0.28);
+  --accent-glow: rgba(163, 199, 90, 0.20);
+  --accent-2-glow: rgba(163, 199, 90, 0.20);
+  --accent-2-glow-dark: rgba(163, 199, 90, 0.12);
+  --border-accent: #A3C75A;
+  --tool-accent: #A3C75A;
+  --tool-accent-soft: #1F2A10;
+  --tool-accent-border: rgba(163, 199, 90, 0.28);
+  --tool-accent-glow: rgba(163, 199, 90, 0.20);
+  --on-accent: var(--accent-ink);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--accent-ink);
+  --tool-brand-accent: var(--accent);
+}
+
+[data-theme="light"][data-accent="olive"],
+.ts-root[data-theme="light"][data-accent="olive"],
+[data-theme="light"] [data-accent="olive"],
+.ts-root[data-theme="light"] [data-accent="olive"] {
+  --page-bg: #F7F8F8;
+  --ts-page-bg: #F7F8F8;
+  --accent: #5B7A1E;
+  --accent-ink: #FFFFFF;
+  --accent-strong: #4A6418;
+  --accent-soft: #F3F7E8;
+  --accent-border: rgba(91, 122, 30, 0.22);
+  --accent-glow: rgba(91, 122, 30, 0.15);
+  --accent-2-glow: rgba(91, 122, 30, 0.15);
+  --accent-2-glow-dark: rgba(91, 122, 30, 0.08);
+  --border-accent: #5B7A1E;
+  --tool-accent: #5B7A1E;
+  --tool-accent-soft: #F3F7E8;
+  --tool-accent-border: rgba(91, 122, 30, 0.22);
+  --tool-accent-glow: rgba(91, 122, 30, 0.15);
+  --on-accent: var(--accent-ink);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--accent-ink);
+  --tool-brand-accent: var(--accent);
+}
+
 /* ══════════════════════════════════════════════════════════════════
    FOUR SURFACE VARIANTS: "clear" (default) | "frost" | "tinted" | "solid"
    Controlled via [data-surface="..."] attribute on shell root.

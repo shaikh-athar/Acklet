@@ -7,7 +7,7 @@ import { BARCODE_MANIFEST } from './manifests/barcode.manifest';
 import { TEMP_EMAIL_MANIFEST } from './manifests/temp-email.manifest';
 import { IMAGE_CONVERTER_MANIFEST, FILE_CONVERTER_MANIFEST } from './manifests/file-converter.manifest';
 import { CONVERTER_MANIFEST } from './manifests/converter.manifest';
-import { AMBER_ACCENT, BLUE_ACCENT, ROSE_ACCENT, VIOLET_ACCENT, EMERALD_ACCENT, INDIGO_ACCENT } from './accent-presets';
+import { AMBER_ACCENT, BLUE_ACCENT, ROSE_ACCENT, VIOLET_ACCENT, EMERALD_ACCENT, INDIGO_ACCENT, ORANGE_ACCENT, STEEL_BLUE_ACCENT, OLIVE_ACCENT } from './accent-presets';
 
 export { CLIPBOARD_MANIFEST } from './manifests/clipboard.manifest';
 export { QR_MANIFEST } from './manifests/qr.manifest';
@@ -16,6 +16,7 @@ export { BARCODE_MANIFEST } from './manifests/barcode.manifest';
 export { TEMP_EMAIL_MANIFEST } from './manifests/temp-email.manifest';
 export { IMAGE_CONVERTER_MANIFEST, FILE_CONVERTER_MANIFEST } from './manifests/file-converter.manifest';
 export { CONVERTER_MANIFEST } from './manifests/converter.manifest';
+export { ORANGE_ACCENT, STEEL_BLUE_ACCENT, OLIVE_ACCENT } from './accent-presets';
 
 /**
  * Single Source of Truth for all tools in Acklet.

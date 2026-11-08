@@ -5,9 +5,10 @@ package com.code.acklet.converter;
  */
 public enum ConversionStatus {
     PENDING,
+    QUEUED,
     PROCESSING,
     COMPLETED,
+    DONE,
     FAILED,
     TIMED_OUT
 }
-

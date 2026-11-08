@@ -1,6 +1,6 @@
 // packages/tool-registry/src/manifests/converter.manifest.ts
 import type { ToolRegistryItem } from '../models';
-import { BLUE_ACCENT } from '../accent-presets';
+import { OLIVE_ACCENT } from '../accent-presets';
 
 export const CONVERTER_MANIFEST: ToolRegistryItem = {
   id: 'file-converter',
@@ -8,10 +8,10 @@ export const CONVERTER_MANIFEST: ToolRegistryItem = {
   slug: 'file-converter',
   category: 'Converters',
   categorySlug: 'converters',
-  shortDescription: 'Convert documents, spreadsheets, presentations, and images across formats with fidelity and speed.',
-  about: 'File Converter provides multi-format document conversion powered by headless document processing.\n\nConvert Word documents to PDF, spreadsheets to CSV, presentations to slides, and graphics with high formatting fidelity and privacy.',
-  description: 'Upload your documents, choose an output format, and download your converted files instantly with support for batch and asynchronous processing.',
-  icon: 'refresh-cw',
+  shortDescription: 'Convert documents, spreadsheets, presentations, and files with fidelity, structure checks, and privacy.',
+  about: 'File Converter provides batch multi-format document transformation across DOCX, XLSX, PDF, and popular formats.\n\nFeatures deep structure inspection, layout fidelity presets, optical character recognition support, and scheduled automatic cleanup.',
+  description: 'Upload up to 20 documents, inspect structural elements, configure layout fidelity and page ranges, and download individual files or a unified ZIP archive with zero watermarks.',
+  icon: 'file-text',
   version: '1.0.0',
   status: 'live',
   badge: 'new',
@@ -22,11 +22,11 @@ export const CONVERTER_MANIFEST: ToolRegistryItem = {
   layout: 'fullBleed',
   addedAt: '2026-11-06',
   updatedAt: '2026-11-06',
-  accent: 'blue',
-  accentHue: 217,
+  accent: 'olive',
+  accentHue: 80,
   supports: ['shield-check', 'zap', 'download'],
   theme: {
-    accent: BLUE_ACCENT,
+    accent: OLIVE_ACCENT,
     font: {
       family: 'Scoutie Sans',
       fontFamily: "'Scoutie Sans', system-ui, -apple-system, sans-serif",
@@ -38,27 +38,28 @@ export const CONVERTER_MANIFEST: ToolRegistryItem = {
     surfaceStyle: 'solid'
   },
   facts: [
-    { label: 'Fidelity', value: 'Lossless Layout' },
-    { label: 'Privacy', value: 'Auto-Purge' },
-    { label: 'Speed', value: 'Async Queue' }
+    { label: 'Batch Limit', value: '20 Documents' },
+    { label: 'Max File Size', value: '50 MB / File' },
+    { label: 'Auto-Purge', value: '1 Hour TTL' },
+    { label: 'Output', value: 'No Watermark' }
   ],
   highlights: [
-    { label: 'Multi-Format', value: '18+ Formats', tooltip: 'DOCX, XLSX, PPTX, PDF, ODT, ODS, ODP, HTML, CSV, and images.' },
-    { label: 'Privacy First', value: 'Auto-Purged', tooltip: 'Uploaded and converted files are automatically purged on a scheduled TTL.' },
-    { label: 'High Fidelity', value: 'Vector-Accurate', tooltip: 'Maintains font metrics, layouts, tables, formulas, and slide formatting.' }
+    { label: 'Structure Check', value: 'Live Analysis', tooltip: 'Detects headings, tables, columns, and graphics with confidence scoring.' },
+    { label: 'Layout Fidelity', value: '3 Modes', tooltip: 'Choose between Editable Text, Balanced flow, or Exact Layout preservation.' },
+    { label: 'Auto-Purge Privacy', value: '1 Hour', tooltip: 'All uploaded and converted files are automatically destroyed after 1 hour.' }
   ],
   features: [
-    'Office documents to PDF conversion with typography fidelity',
-    'Spreadsheets to PDF, CSV, and ODS formats',
-    'Presentations to PDF and slide decks',
-    'Real-time conversion progress indicator with background job polling',
-    'Automatic scheduled cleanup of temporary files',
-    'Clean dual-theme UI with high contrast in light and dark modes'
+    'Convert up to 20 documents simultaneously with batch queuing',
+    'Structure check detects headings, tables, columns, and embedded graphics',
+    'Layout fidelity presets: Editable Text, Balanced flow, and Exact Layout',
+    'Selective page range conversion (e.g., 1-3, 5)',
+    'Single ZIP archive generation or individual document downloads',
+    'Deleted automatically after 1 hour with zero tracking or watermarks'
   ],
   howTo: [
-    'Drop your document into the conversion upload zone.',
-    'Select your desired output format from the dynamically filtered options.',
-    'Click Convert to transform the document and download the converted file immediately.'
+    'Choose or drop up to 20 documents into the upload zone.',
+    'Select target format, layout fidelity, and optional page ranges.',
+    'Click Convert to process your files asynchronously and download when ready.'
   ],
   faqs: [
     {
@@ -67,9 +68,14 @@ export const CONVERTER_MANIFEST: ToolRegistryItem = {
       answer: 'Microsoft Word (.docx, .doc), Excel (.xlsx, .xls, .csv), PowerPoint (.pptx, .ppt), OpenDocument (.odt, .ods, .odp), Plain Text (.txt), and PDF output.'
     },
     {
+      id: 'structure-check',
+      question: 'What is the Structure Check feature?',
+      answer: 'Structure Check automatically inspects your document to detect headings, tables, columns, and graphics, displaying them as informative visual chips before conversion.'
+    },
+    {
       id: 'retention',
       question: 'How long are uploaded files kept?',
-      answer: 'Temporary files and converted outputs are automatically deleted from server memory after 60 minutes.'
+      answer: 'All uploaded files and converted outputs are automatically deleted from server storage after 1 hour.'
     }
   ],
   related: ['clipboard', 'datalens', 'qr'],

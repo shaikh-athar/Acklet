@@ -20,7 +20,8 @@ export class ToolThemeService {
 
   constructor() {
     if (typeof window !== 'undefined') {
-      const saved = (localStorage.getItem(this.THEME_KEY) as ThemeMode) || 'dark';
+      const urlTheme = new URLSearchParams(window.location.search).get('theme') as ThemeMode | null;
+      const saved = (urlTheme === 'light' || urlTheme === 'dark' || urlTheme === 'system') ? urlTheme : ((localStorage.getItem(this.THEME_KEY) as ThemeMode) || 'dark');
       this.currentTheme.set(saved);
       this.resolveEffectiveTheme();
 

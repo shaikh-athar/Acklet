@@ -90,27 +90,26 @@ export const routes: Routes = [
   { path: 'tools/temp-mail', redirectTo: 'tools/temp-email', pathMatch: 'full' },
   { path: 'tools/mail', redirectTo: 'tools/temp-email', pathMatch: 'full' },
   {
-  {
     path: 'image-converter',
-    loadComponent: () => import('../../apps/tool-file-converter/src/app/app.component').then(m => m.ImageConverterAppComponent),
+    loadComponent: () => import('../../apps/tool-file-converter/src/app/app.component').then(m => m.AppComponent),
     title: 'Image Converter — Acklet'
   },
   { path: 'img-converter', redirectTo: 'image-converter', pathMatch: 'full' },
   {
     path: 'tools/image-converter',
-    loadComponent: () => import('../../apps/tool-file-converter/src/app/app.component').then(m => m.ImageConverterAppComponent),
+    loadComponent: () => import('../../apps/tool-file-converter/src/app/app.component').then(m => m.AppComponent),
     title: 'Image Converter — Acklet'
   },
   { path: 'tools/img-converter', redirectTo: 'tools/image-converter', pathMatch: 'full' },
   {
     path: 'converter',
-    loadComponent: () => import('../../apps/tool-file-converter/src/app/app.component').then(m => m.FileConverterAppComponent),
+    loadComponent: () => import('../../apps/tool-file-converter/src/app/app.component').then(m => m.AppComponent),
     title: 'File Converter — Multi-Format Document Converter | Acklet'
   },
   { path: 'file-converter', redirectTo: 'converter', pathMatch: 'full' },
   {
     path: 'tools/converter',
-    loadComponent: () => import('../../apps/tool-file-converter/src/app/app.component').then(m => m.FileConverterAppComponent),
+    loadComponent: () => import('../../apps/tool-file-converter/src/app/app.component').then(m => m.AppComponent),
     title: 'File Converter — Multi-Format Document Converter | Acklet'
   },
   { path: 'tools/file-converter', redirectTo: 'tools/converter', pathMatch: 'full' },

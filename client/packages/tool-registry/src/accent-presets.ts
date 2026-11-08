@@ -22,24 +22,66 @@ export const BLUE_ACCENT: ToolAccentConfig = {
   }
 };
 
-export const INDIGO_ACCENT: ToolAccentConfig = {
-  name: 'indigo',
-  hue: 242,
+export const OLIVE_ACCENT: ToolAccentConfig = {
+  name: 'olive',
+  hue: 80,
   dark: {
-    base: '#6366F1',
-    ink: '#FFFFFF',
-    strong: '#818CF8',
-    soft: 'rgba(99, 102, 241, 0.14)',
-    border: 'rgba(99, 102, 241, 0.28)',
-    glow: 'rgba(99, 102, 241, 0.22)'
+    base: '#A3C75A',
+    ink: '#0F1608',
+    strong: '#BBE070',
+    soft: '#1F2A10',
+    border: 'rgba(163, 199, 90, 0.28)',
+    glow: 'rgba(163, 199, 90, 0.20)'
   },
   light: {
-    base: '#4F46E5',
+    base: '#5B7A1E',
     ink: '#FFFFFF',
-    strong: '#4338CA',
-    soft: 'rgba(79, 70, 229, 0.08)',
-    border: 'rgba(79, 70, 229, 0.22)',
-    glow: 'rgba(79, 70, 229, 0.16)'
+    strong: '#4A6418',
+    soft: '#F3F7E8',
+    border: 'rgba(91, 122, 30, 0.22)',
+    glow: 'rgba(91, 122, 30, 0.15)'
+  }
+};
+
+export const STEEL_BLUE_ACCENT: ToolAccentConfig = {
+  name: 'steel-blue',
+  hue: 196,
+  dark: {
+    base: '#5BA8C4',
+    ink: '#0B1117',
+    strong: '#7EC2DB',
+    soft: '#14262E',
+    border: 'rgba(91, 168, 196, 0.28)',
+    glow: 'rgba(91, 168, 196, 0.20)'
+  },
+  light: {
+    base: '#1F6F8B',
+    ink: '#FFFFFF',
+    strong: '#18566C',
+    soft: '#E8F2F6',
+    border: 'rgba(31, 111, 139, 0.22)',
+    glow: 'rgba(31, 111, 139, 0.15)'
+  }
+};
+
+export const ORANGE_ACCENT: ToolAccentConfig = {
+  name: 'orange',
+  hue: 24,
+  dark: {
+    base: '#EA580C',
+    ink: '#FFFFFF',
+    strong: '#FB923C',
+    soft: '#2A1A10',
+    border: 'rgba(234, 88, 12, 0.35)',
+    glow: 'rgba(234, 88, 12, 0.25)'
+  },
+  light: {
+    base: '#EA580C',
+    ink: '#FFFFFF',
+    strong: '#C2410C',
+    soft: '#FFF1E8',
+    border: 'rgba(234, 88, 12, 0.25)',
+    glow: 'rgba(234, 88, 12, 0.18)'
   }
 };
 
@@ -204,7 +246,9 @@ const ACCENT_MAP: Record<string, ToolAccentConfig> = {
   purple: VIOLET_ACCENT,
   rose: ROSE_ACCENT,
   pink: ROSE_ACCENT,
-  'calm-rose': BARCODE_ROSE_ACCENT
+  'calm-rose': BARCODE_ROSE_ACCENT,
+  'steel-blue': STEEL_BLUE_ACCENT,
+  olive: OLIVE_ACCENT
 };
 
 /**

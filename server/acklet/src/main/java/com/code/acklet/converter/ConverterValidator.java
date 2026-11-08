@@ -71,10 +71,12 @@ public class ConverterValidator {
                         String.format("Unsupported target format: '%s'.", targetFormat)));
 
         if (!ConversionFormat.isConversionSupported(sourceFormat, resolvedTarget)) {
-            throw new UnsupportedFormatException(String.format(
-                    "Conversion from '%s' to '%s' is not supported. Supported targets: %s",
-                    sourceFormat.getExtension(), resolvedTarget.getExtension(),
-                    sourceFormat.getTargetExtensions()));
+            throw new UnsupportedFormatException(
+                    sourceFormat.getExtension(),
+                    resolvedTarget.getExtension(),
+                    null,
+                    new java.util.ArrayList<>(sourceFormat.getTargetExtensions())
+            );
         }
 
         return sourceFormat;
@@ -146,6 +148,47 @@ public class ConverterValidator {
             return filename.substring(lastDot + 1).toLowerCase(Locale.ROOT);
         }
         return "";
+    }
+
+    /**
+     * Validates file signature (magic bytes) against declared extension and rejects encrypted payloads.
+     */
+    public void validateSignatureAndEncryption(byte[] bytes, String extension) {
+        if (bytes == null || bytes.length == 0 || extension == null) {
+            return;
+        }
+        String ext = extension.toLowerCase(Locale.ROOT);
+
+        if (bytes.length >= 4) {
+            boolean isPdfSig = (bytes[0] == 0x25 && bytes[1] == 0x50 && bytes[2] == 0x44 && bytes[3] == 0x46);
+            if (isPdfSig && !"pdf".equals(ext)) {
+                throw new InvalidFileException("SIGNATURE_MISMATCH: File signature indicates PDF, but extension is '." + ext + "'.");
+            }
+            if ("pdf".equals(ext) && bytes.length >= 8 && !isPdfSig) {
+                throw new InvalidFileException("SIGNATURE_MISMATCH: Invalid file signature for PDF document.");
+            }
+
+            boolean isPngSig = (bytes[0] == (byte) 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47);
+            if (isPngSig && !"png".equals(ext)) {
+                throw new InvalidFileException("SIGNATURE_MISMATCH: File signature indicates PNG, but extension is '." + ext + "'.");
+            }
+
+            boolean isJpgSig = (bytes[0] == (byte) 0xFF && bytes[1] == (byte) 0xD8 && bytes[2] == (byte) 0xFF);
+            if (isJpgSig && !("jpg".equals(ext) || "jpeg".equals(ext))) {
+                throw new InvalidFileException("SIGNATURE_MISMATCH: File signature indicates JPEG, but extension is '." + ext + "'.");
+            }
+        }
+
+        if ("pdf".equals(ext)) {
+            try (org.apache.pdfbox.pdmodel.PDDocument doc = org.apache.pdfbox.Loader.loadPDF(bytes)) {
+                if (doc.isEncrypted()) {
+                    throw new InvalidFileException("ENCRYPTED_PDF: Password-protected or encrypted PDF documents are not supported.");
+                }
+            } catch (InvalidFileException e) {
+                throw e;
+            } catch (Exception ignored) {
+            }
+        }
     }
 }
 

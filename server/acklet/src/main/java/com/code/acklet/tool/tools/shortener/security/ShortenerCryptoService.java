@@ -167,8 +167,8 @@ public class ShortenerCryptoService {
             byte[] plainTextBytes = cipher.doFinal(cipherTextBytes);
             return new String(plainTextBytes, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            log.warn("[ShortenerCrypto] Decryption attempt failed for version {}: {}. Returning original value as fallback.", version, e.getMessage());
-            return storedValue;
+            log.error("[ShortenerCrypto] Decryption attempt failed for version {}: {}", version, e.getMessage());
+            throw new RuntimeException("Decryption failed: corrupted or tampered ciphertext", e);
         }
     }
 }

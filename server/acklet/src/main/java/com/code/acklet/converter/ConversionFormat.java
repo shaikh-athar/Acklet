@@ -50,7 +50,7 @@ public enum ConversionFormat {
 
     // ── Output Targets ────────────────────────────────────────
     PDF("pdf", "application/pdf", "Portable Document Format (.pdf)", FormatFamily.DOCUMENT,
-            Set.of("txt")),
+            Set.of("docx", "doc", "md", "html", "xlsx", "csv", "pptx", "txt", "png", "jpg")),
     PNG("png", "image/png", "PNG Image (.png)", FormatFamily.IMAGE,
             Collections.emptySet()),
     JPEG("jpeg", "image/jpeg", "JPEG Image (.jpg/.jpeg)", FormatFamily.IMAGE,

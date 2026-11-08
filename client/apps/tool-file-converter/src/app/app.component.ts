@@ -54,40 +54,5 @@ export class AppComponent {
   };
 }
 
-@Component({
-  selector: 'app-image-converter-root',
-  standalone: true,
-  imports: [CommonModule, ToolLayoutComponent, ImageConverterToolComponent],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <ts-shell [tool]="manifest" [config]="shellConfig">
-      <app-file-converter-tool />
-    </ts-shell>
-  `
-})
-export class ImageConverterAppComponent {
-  readonly manifest: ToolRegistryItem = TOOL_REGISTRY['image-converter'];
-  readonly shellConfig: ToolShellConfig = {
-    layout: 'fullBleed',
-    showDescriptionCard: false
-  };
-}
-
-@Component({
-  selector: 'app-file-converter-root',
-  standalone: true,
-  imports: [CommonModule, ToolLayoutComponent, DocumentConverterToolComponent],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <ts-shell [tool]="manifest" [config]="shellConfig">
-      <app-file-converter />
-    </ts-shell>
-  `
-})
-export class FileConverterAppComponent {
-  readonly manifest: ToolRegistryItem = TOOL_REGISTRY['file-converter'] || TOOL_REGISTRY['converter'];
-  readonly shellConfig: ToolShellConfig = {
-    layout: 'fullBleed',
-    showDescriptionCard: false
-  };
-}
+export const ImageConverterAppComponent = AppComponent;
+export const FileConverterAppComponent = AppComponent;

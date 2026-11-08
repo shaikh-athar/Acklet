@@ -99,45 +99,74 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(com.code.acklet.converter.exception.UnsupportedFormatException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUnsupportedFormat(com.code.acklet.converter.exception.UnsupportedFormatException ex) {
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> handleUnsupportedFormat(com.code.acklet.converter.exception.UnsupportedFormatException ex) {
         log.warn("Unsupported conversion format [traceId={}]: {}", getTraceId(), ex.getMessage());
-        return new ResponseEntity<>(ApiResponse.error(ex.getMessage(), getTraceId()), HttpStatus.BAD_REQUEST);
+        java.util.Map<String, Object> data = (ex.getSupportedTargets() != null && !ex.getSupportedTargets().isEmpty())
+                ? java.util.Map.of("supportedTargets", ex.getSupportedTargets())
+                : null;
+        ApiResponse<java.util.Map<String, Object>> body = ApiResponse.<java.util.Map<String, Object>>builder()
+                .success(false)
+                .code("UNSUPPORTED_PAIR")
+                .message(ex.getUserMessage())
+                .fileId(ex.getFileId())
+                .data(data)
+                .traceId(getTraceId())
+                .timestamp(java.time.Instant.now())
+                .build();
+        return new ResponseEntity<>(body, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
     @ExceptionHandler(com.code.acklet.converter.exception.InvalidFileException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidFile(com.code.acklet.converter.exception.InvalidFileException ex) {
         log.warn("Invalid file upload for conversion [traceId={}]: {}", getTraceId(), ex.getMessage());
-        return new ResponseEntity<>(ApiResponse.error(ex.getMessage(), getTraceId()), HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(ApiResponse.error("INVALID_FILE", ex.getMessage(), null, getTraceId()), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(com.code.acklet.converter.exception.JobNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleJobNotFound(com.code.acklet.converter.exception.JobNotFoundException ex) {
         log.warn("Conversion job not found [traceId={}]: {}", getTraceId(), ex.getMessage());
-        return new ResponseEntity<>(ApiResponse.error(ex.getMessage(), getTraceId()), HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>(ApiResponse.error("JOB_NOT_FOUND", ex.getMessage(), null, getTraceId()), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(com.code.acklet.converter.exception.QueueUnavailableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleQueueUnavailable(com.code.acklet.converter.exception.QueueUnavailableException ex) {
+        log.warn("Conversion queue unavailable [traceId={}]: {}", getTraceId(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .header("Retry-After", "30")
+                .body(ApiResponse.error("QUEUE_UNAVAILABLE", ex.getMessage(), null, getTraceId()));
     }
 
     @ExceptionHandler(com.code.acklet.converter.exception.EngineUnavailableException.class)
     public ResponseEntity<ApiResponse<Void>> handleEngineUnavailable(com.code.acklet.converter.exception.EngineUnavailableException ex) {
         log.error("Conversion engine unavailable [traceId={}]: {}", getTraceId(), ex.getMessage());
-        return new ResponseEntity<>(ApiResponse.error("Document conversion engine is warming up or unavailable. Please try again shortly.", getTraceId()), HttpStatus.SERVICE_UNAVAILABLE);
+        return new ResponseEntity<>(ApiResponse.error("ENGINE_UNAVAILABLE", "Document conversion engine is warming up or unavailable. Please try again shortly.", null, getTraceId()), HttpStatus.SERVICE_UNAVAILABLE);
     }
 
     @ExceptionHandler(com.code.acklet.converter.exception.ConversionTimeoutException.class)
     public ResponseEntity<ApiResponse<Void>> handleConversionTimeout(com.code.acklet.converter.exception.ConversionTimeoutException ex) {
         log.error("Conversion timed out [traceId={}]: {}", getTraceId(), ex.getMessage());
-        return new ResponseEntity<>(ApiResponse.error("Document conversion timed out. Please try converting a smaller document.", getTraceId()), HttpStatus.GATEWAY_TIMEOUT);
+        return new ResponseEntity<>(ApiResponse.error("TIMEOUT", "Document conversion timed out. Please try converting a smaller document.", null, getTraceId()), HttpStatus.GATEWAY_TIMEOUT);
     }
 
     @ExceptionHandler(com.code.acklet.converter.exception.ConversionFailedException.class)
     public ResponseEntity<ApiResponse<Void>> handleConversionFailed(com.code.acklet.converter.exception.ConversionFailedException ex) {
         log.error("Conversion failed [traceId={}]: {}", getTraceId(), ex.getMessage());
-        return new ResponseEntity<>(ApiResponse.error("Document could not be converted. Please ensure it is not password-protected or corrupted.", getTraceId()), HttpStatus.UNPROCESSABLE_ENTITY);
+        return new ResponseEntity<>(ApiResponse.error("CONVERSION_FAILED", "Document could not be converted. Please ensure it is not password-protected or corrupted.", null, getTraceId()), HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
     @ExceptionHandler(com.code.acklet.converter.exception.ConversionException.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericConversion(com.code.acklet.converter.exception.ConversionException ex) {
         log.error("Conversion exception [traceId={}]: {}", getTraceId(), ex.getMessage());
-        return new ResponseEntity<>(ApiResponse.error(ex.getMessage(), getTraceId()), HttpStatus.INTERNAL_SERVER_ERROR);
+        String code = "CONVERSION_ERROR";
+        String msg = ex.getMessage();
+        if (msg != null && msg.contains(": ")) {
+            String prefix = msg.substring(0, msg.indexOf(": ")).trim();
+            if (prefix.matches("^[A-Z_]+$")) {
+                code = prefix;
+                msg = msg.substring(msg.indexOf(": ") + 2).trim();
+            }
+        }
+        return new ResponseEntity<>(ApiResponse.error(code, msg, null, getTraceId()), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler({

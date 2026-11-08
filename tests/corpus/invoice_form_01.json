@@ -1,0 +1,16 @@
+{
+  "category": "invoice",
+  "pageCount": 1,
+  "headings": 2,
+  "tables": 1,
+  "tableRows": 8,
+  "tableCols": 5,
+  "images": 0,
+  "sampleWords": [
+    "invoice",
+    "billed",
+    "subtotal",
+    "total",
+    "remit"
+  ]
+}
