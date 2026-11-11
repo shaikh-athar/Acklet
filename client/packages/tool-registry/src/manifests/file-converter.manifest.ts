@@ -106,7 +106,7 @@ export const FILE_CONVERTER_MANIFEST: ToolRegistryItem = {
   ],
   related: ['clipboard', 'datalens', 'barcode', 'qr', 'temp-email', 'urlshortener'],
   seo: {
-    title: 'File Converter | Acklet',
+    title: 'Converter | Acklet',
     description: 'File Converter — Free, private file conversion in your browser. Convert images, subtitles, and contacts with zero server uploads and high fidelity.',
     keywords: [
       'file converter',

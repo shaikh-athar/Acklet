@@ -93,6 +93,28 @@ export class FileSignatureService {
       bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47 &&
       bytes[4] === 0x0D && bytes[5] === 0x0A && bytes[6] === 0x1A && bytes[7] === 0x0A
     ) {
+      // Check for APNG Animation Control chunk ('acTL')
+      let isApng = false;
+      for (let i = 8; i <= Math.min(bytes.length - 4, 2048); i++) {
+        if (bytes[i] === 0x61 && bytes[i + 1] === 0x63 && bytes[i + 2] === 0x54 && bytes[i + 3] === 0x4C) {
+          isApng = true;
+          break;
+        }
+      }
+
+      if (isApng || (fileExt || '').toLowerCase() === 'apng') {
+        return {
+          format: 'apng',
+          mimeType: 'image/apng',
+          extension: 'apng',
+          label: 'Animated PNG (APNG)',
+          category: 'image',
+          signatureVerified: true,
+          signatureName: 'Animated PNG (acTL Chunk)',
+          confidence: 1.0
+        };
+      }
+
       return {
         format: 'png',
         mimeType: 'image/png',
@@ -105,16 +127,19 @@ export class FileSignatureService {
       };
     }
 
-    // JPEG / JPG: FF D8 FF
+    // JPEG / JPG / JFIF: FF D8 FF
     if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
+      const isJfif = bytes.length >= 10 && bytes[6] === 0x4A && bytes[7] === 0x46 && bytes[8] === 0x49 && bytes[9] === 0x46;
+      const lowerExt = (fileExt || '').toLowerCase();
+      const format = lowerExt === 'jfif' ? 'jfif' : (lowerExt === 'jpeg' ? 'jpeg' : 'jpg');
       return {
-        format: 'jpg',
+        format,
         mimeType: 'image/jpeg',
-        extension: 'jpg',
-        label: 'JPEG',
+        extension: format,
+        label: isJfif ? 'JPEG File Interchange Format (JFIF)' : 'JPEG',
         category: 'image',
         signatureVerified: true,
-        signatureName: 'JPEG SOI Marker (FF D8 FF)',
+        signatureName: isJfif ? 'JPEG SOI (JFIF APP0 Marker)' : 'JPEG SOI Marker (FF D8 FF)',
         confidence: 1.0
       };
     }
@@ -151,9 +176,533 @@ export class FileSignatureService {
       };
     }
 
+    // BMP: 'BM' (42 4D)
+    if (bytes[0] === 0x42 && bytes[1] === 0x4D) {
+      return {
+        format: 'bmp',
+        mimeType: 'image/bmp',
+        extension: 'bmp',
+        label: 'BMP Image',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: 'Bitmap Magic Bytes ("BM")',
+        confidence: 1.0
+      };
+    }
+
+    // Photoshop PSD / PSB: '8BPS' (38 42 50 53)
+    if (bytes[0] === 0x38 && bytes[1] === 0x42 && bytes[2] === 0x50 && bytes[3] === 0x53) {
+      const isPsb = bytes.length >= 6 && bytes[4] === 0x00 && bytes[5] === 0x02;
+      const fmt = isPsb ? 'psb' : 'psd';
+      return {
+        format: fmt,
+        mimeType: 'image/vnd.adobe.photoshop',
+        extension: fmt,
+        label: isPsb ? 'Photoshop PSB' : 'Photoshop PSD',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: isPsb ? 'Adobe Photoshop Large Document (PSB)' : 'Adobe Photoshop (PSD)',
+        confidence: 1.0
+      };
+    }
+
+    // Windows ICO / CUR
+    if (bytes[0] === 0x00 && bytes[1] === 0x00 && (bytes[2] === 0x01 || bytes[2] === 0x02) && bytes[3] === 0x00) {
+      const isCur = bytes[2] === 0x02 || (fileExt || '').toLowerCase() === 'cur';
+      return {
+        format: isCur ? 'cur' : 'ico',
+        mimeType: isCur ? 'image/x-win-bitmap' : 'image/x-icon',
+        extension: isCur ? 'cur' : 'ico',
+        label: isCur ? 'Windows Cursor (CUR)' : 'Windows Icon (ICO)',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: isCur ? 'Windows Cursor Header' : 'Windows Icon Header',
+        confidence: 1.0
+      };
+    }
+
+    // Apple ICNS
+    if (bytes[0] === 0x69 && bytes[1] === 0x63 && bytes[2] === 0x6E && bytes[3] === 0x73) {
+      return {
+        format: 'icns',
+        mimeType: 'image/x-icns',
+        extension: 'icns',
+        label: 'Apple Icon (ICNS)',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: 'Apple ICNS Header',
+        confidence: 1.0
+      };
+    }
+
+    // ZSoft PCX
+    if (bytes[0] === 0x0A && bytes[2] === 1 && (bytes[3] === 1 || bytes[3] === 8)) {
+      return {
+        format: 'pcx',
+        mimeType: 'image/x-pcx',
+        extension: 'pcx',
+        label: 'PCX Image',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: 'ZSoft PCX Header',
+        confidence: 0.95
+      };
+    }
+
+    // Netpbm (PPM, PGM, PBM, PNM): P1 through P6
+    if (
+      bytes[0] === 0x50 &&
+      bytes[1] >= 0x31 && bytes[1] <= 0x36 &&
+      (bytes[2] === 0x20 || bytes[2] === 0x0A || bytes[2] === 0x0D || bytes[2] === 0x09)
+    ) {
+      const typeNum = bytes[1] - 0x30;
+      const fmt = (typeNum === 1 || typeNum === 4) ? 'pbm' : (typeNum === 2 || typeNum === 5) ? 'pgm' : 'ppm';
+      return {
+        format: fmt,
+        mimeType: fmt === 'ppm' ? 'image/x-portable-pixmap' : fmt === 'pgm' ? 'image/x-portable-graymap' : 'image/x-portable-bitmap',
+        extension: fmt,
+        label: `Netpbm (P${typeNum} ${fmt.toUpperCase()})`,
+        category: 'image',
+        signatureVerified: true,
+        signatureName: `Netpbm Magic Number (P${typeNum})`,
+        confidence: 1.0
+      };
+    }
+
+    // Radiance HDR: '#?' (23 3F)
+    if (bytes[0] === 0x23 && bytes[1] === 0x3F) {
+      return {
+        format: 'hdr',
+        mimeType: 'image/vnd.radiance',
+        extension: 'hdr',
+        label: 'Radiance HDR',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: 'Radiance RGBE Signature ("#?")',
+        confidence: 1.0
+      };
+    }
+
+    // FITS: 'SIMPLE  =' (53 49 4D 50 4C 45 20 20 3D)
+    if (
+      bytes[0] === 0x53 && bytes[1] === 0x49 && bytes[2] === 0x4D && bytes[3] === 0x50 &&
+      bytes[4] === 0x4C && bytes[5] === 0x45 && bytes[6] === 0x20 && bytes[7] === 0x20 && bytes[8] === 0x3D
+    ) {
+      return {
+        format: 'fits',
+        mimeType: 'image/fits',
+        extension: 'fits',
+        label: 'FITS Astronomical Image',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: 'FITS Standard Header ("SIMPLE  =")',
+        confidence: 1.0
+      };
+    }
+
+    // DirectDraw Surface (DDS): 'DDS ' (44 44 53 20)
+    if (bytes[0] === 0x44 && bytes[1] === 0x44 && bytes[2] === 0x53 && bytes[3] === 0x20) {
+      return {
+        format: 'dds',
+        mimeType: 'image/vnd.ms-dds',
+        extension: 'dds',
+        label: 'DirectDraw Surface (DDS)',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: 'DirectDraw Surface Marker',
+        confidence: 1.0
+      };
+    }
+
+    // Fujifilm RAW (RAF): 'FUJIFILMCCD-RAW '
+    if (
+      bytes[0] === 0x46 && bytes[1] === 0x55 && bytes[2] === 0x4A && bytes[3] === 0x49 &&
+      bytes[4] === 0x46 && bytes[5] === 0x49 && bytes[6] === 0x4C && bytes[7] === 0x4D
+    ) {
+      return {
+        format: 'raf',
+        mimeType: 'image/x-fuji-raf',
+        extension: 'raf',
+        label: 'Fujifilm RAW (RAF)',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: 'Fujifilm RAF Header',
+        confidence: 1.0
+      };
+    }
+
+    // Canon CR2: 'II' + 42 + 'CR' at offset 8-9
+    if (
+      bytes[0] === 0x49 && bytes[1] === 0x49 && bytes[2] === 0x2A && bytes[3] === 0x00 &&
+      bytes.length >= 10 && bytes[8] === 0x43 && bytes[9] === 0x52
+    ) {
+      return {
+        format: 'cr2',
+        mimeType: 'image/x-canon-cr2',
+        extension: 'cr2',
+        label: 'Canon RAW (CR2)',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: 'Canon CR2 Header',
+        confidence: 1.0
+      };
+    }
+
+    // Olympus ORF: 'IIRO' (49 49 52 4F) or 'MMOR' (4D 4D 4F 52)
+    if (
+      (bytes[0] === 0x49 && bytes[1] === 0x49 && bytes[2] === 0x52 && bytes[3] === 0x4F) ||
+      (bytes[0] === 0x4D && bytes[1] === 0x4D && bytes[2] === 0x4F && bytes[3] === 0x52)
+    ) {
+      return {
+        format: 'orf',
+        mimeType: 'image/x-olympus-orf',
+        extension: 'orf',
+        label: 'Olympus RAW (ORF)',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: 'Olympus ORF Header',
+        confidence: 1.0
+      };
+    }
+
+    // Panasonic RAW: 'II' + 0x55
+    if (bytes[0] === 0x49 && bytes[1] === 0x49 && bytes[2] === 0x55 && bytes[3] === 0x00) {
+      return {
+        format: 'rw2',
+        mimeType: 'image/x-panasonic-rw2',
+        extension: 'rw2',
+        label: 'Panasonic RAW (RW2)',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: 'Panasonic RW2 Header',
+        confidence: 1.0
+      };
+    }
+
+    // Baseline TIFF & TIFF-based Camera RAW (DNG, NEF, ARW, PEF)
+    const isTiffLe = bytes[0] === 0x49 && bytes[1] === 0x49 && bytes[2] === 0x2A && bytes[3] === 0x00;
+    const isTiffBe = bytes[0] === 0x4D && bytes[1] === 0x4D && bytes[2] === 0x00 && bytes[3] === 0x2A;
+
+    if (isTiffLe || isTiffBe) {
+      const lowerExt = (fileExt || '').toLowerCase();
+      const rawMap: Record<string, { format: string; label: string; mime: string }> = {
+        dng: { format: 'dng', label: 'Adobe Digital Negative (DNG)', mime: 'image/x-adobe-dng' },
+        nef: { format: 'nef', label: 'Nikon RAW (NEF)', mime: 'image/x-nikon-nef' },
+        arw: { format: 'arw', label: 'Sony RAW (ARW)', mime: 'image/x-sony-arw' },
+        pef: { format: 'pef', label: 'Pentax RAW (PEF)', mime: 'image/x-pentax-pef' },
+        raw: { format: 'raw', label: 'Camera RAW', mime: 'image/x-raw' }
+      };
+
+      if (rawMap[lowerExt]) {
+        const item = rawMap[lowerExt];
+        return {
+          format: item.format,
+          mimeType: item.mime,
+          extension: item.format,
+          label: item.label,
+          category: 'image',
+          signatureVerified: true,
+          signatureName: `TIFF-based ${item.label}`,
+          confidence: 1.0
+        };
+      }
+
+      return {
+        format: 'tiff',
+        mimeType: 'image/tiff',
+        extension: 'tiff',
+        label: 'TIFF Image',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: isTiffLe ? 'TIFF Little-Endian (II*)' : 'TIFF Big-Endian (MM*)',
+        confidence: 1.0
+      };
+    }
+
+    // JPEG 2000: JP2 container (00 00 00 0C 6A 50 20 20) or J2K codestream (FF 4F FF 51)
+    if (
+      (bytes[0] === 0x00 && bytes[1] === 0x00 && bytes[2] === 0x00 && bytes[3] === 0x0C &&
+       bytes[4] === 0x6A && bytes[5] === 0x50 && bytes[6] === 0x20 && bytes[7] === 0x20) ||
+      (bytes[0] === 0xFF && bytes[1] === 0x4F && bytes[2] === 0xFF && bytes[3] === 0x51)
+    ) {
+      const isCodestream = bytes[0] === 0xFF;
+      return {
+        format: isCodestream ? 'j2k' : 'jp2',
+        mimeType: isCodestream ? 'image/j2k' : 'image/jp2',
+        extension: isCodestream ? 'j2k' : 'jp2',
+        label: isCodestream ? 'JPEG 2000 Codestream' : 'JPEG 2000 (JP2)',
+        category: 'modern-image',
+        signatureVerified: true,
+        signatureName: 'JPEG 2000 Header',
+        confidence: 1.0
+      };
+    }
+
+    // JPEG XL: JXL codestream (FF 0A) or container
+    if (
+      (bytes[0] === 0xFF && bytes[1] === 0x0A) ||
+      (bytes[0] === 0x00 && bytes[1] === 0x00 && bytes[2] === 0x00 && bytes[3] === 0x0C &&
+       bytes[4] === 0x4A && bytes[5] === 0x58 && bytes[6] === 0x4C && bytes[7] === 0x20)
+    ) {
+      return {
+        format: 'jxl',
+        mimeType: 'image/jxl',
+        extension: 'jxl',
+        label: 'JPEG XL',
+        category: 'modern-image',
+        signatureVerified: true,
+        signatureName: 'JPEG XL Marker',
+        confidence: 1.0
+      };
+    }
+
+    // PostScript EPS / Adobe Illustrator (AI): binary EPS header (C5 D0 D3 C6) or PostScript ASCII (%!PS)
+    if (
+      (bytes[0] === 0xC5 && bytes[1] === 0xD0 && bytes[2] === 0xD3 && bytes[3] === 0xC6) ||
+      (bytes[0] === 0x25 && bytes[1] === 0x21 && bytes[2] === 0x50 && bytes[3] === 0x53)
+    ) {
+      const isAi = (fileExt || '').toLowerCase() === 'ai';
+      return {
+        format: isAi ? 'ai' : 'eps',
+        mimeType: isAi ? 'application/illustrator' : 'application/postscript',
+        extension: isAi ? 'ai' : 'eps',
+        label: isAi ? 'Adobe Illustrator (AI)' : 'Encapsulated PostScript (EPS)',
+        category: 'graphics',
+        signatureVerified: true,
+        signatureName: isAi ? 'Illustrator PostScript Stream' : 'EPS PostScript Header',
+        confidence: 0.95
+      };
+    }
+
+    // TGA: header inspection
+    if (bytes.length >= 18 && (fileExt === 'tga' || bytes[1] <= 1 && (bytes[2] === 2 || bytes[2] === 3 || bytes[2] === 10 || bytes[2] === 11))) {
+      const pixelDepth = bytes[16];
+      if (pixelDepth === 8 || pixelDepth === 15 || pixelDepth === 16 || pixelDepth === 24 || pixelDepth === 32) {
+        return {
+          format: 'tga',
+          mimeType: 'image/x-tga',
+          extension: 'tga',
+          label: 'Truevision TGA',
+          category: 'image',
+          signatureVerified: true,
+          signatureName: 'Truevision Targa Header',
+          confidence: 0.95
+        };
+      }
+    }
+
+    // Quite OK Image (QOI): 'qoif' (71 6F 69 66)
+    if (bytes.length >= 4 && bytes[0] === 0x71 && bytes[1] === 0x6F && bytes[2] === 0x69 && bytes[3] === 0x66) {
+      return {
+        format: 'qoi',
+        mimeType: 'image/x-qoi',
+        extension: 'qoi',
+        label: 'Quite OK Image (QOI)',
+        category: 'modern-image',
+        signatureVerified: true,
+        signatureName: 'QOI Format Marker ("qoif")',
+        confidence: 1.0
+      };
+    }
+
+    // Khronos Texture (KTX 1.0 & KTX 2.0)
+    if (
+      bytes.length >= 12 &&
+      bytes[0] === 0xAB && bytes[1] === 0x4B && bytes[2] === 0x54 && bytes[3] === 0x58 &&
+      bytes[4] === 0x20 && (bytes[5] === 0x31 || bytes[5] === 0x32) && (bytes[6] === 0x31 || bytes[6] === 0x30) &&
+      bytes[7] === 0xBB && bytes[8] === 0x0D && bytes[9] === 0x0A && bytes[10] === 0x1A && bytes[11] === 0x0A
+    ) {
+      const isKtx2 = bytes[5] === 0x32;
+      return {
+        format: isKtx2 ? 'ktx2' : 'ktx',
+        mimeType: isKtx2 ? 'image/ktx2' : 'image/ktx',
+        extension: isKtx2 ? 'ktx2' : 'ktx',
+        label: isKtx2 ? 'Khronos Texture 2.0 (KTX2)' : 'Khronos Texture (KTX)',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: isKtx2 ? 'KTX 2.0 Identifier' : 'KTX 1.1 Identifier',
+        confidence: 1.0
+      };
+    }
+
+    // PowerVR Texture (PVR)
+    if (
+      (bytes.length >= 52 && (
+        (bytes[0] === 0x03 && bytes[1] === 0x50 && bytes[2] === 0x56 && bytes[3] === 0x52) ||
+        (bytes[0] === 0x50 && bytes[1] === 0x56 && bytes[2] === 0x52 && bytes[3] === 0x03) ||
+        (bytes[44] === 0x21 && bytes[45] === 0x52 && bytes[46] === 0x56 && bytes[47] === 0x50) ||
+        (bytes[44] === 0x50 && bytes[45] === 0x56 && bytes[46] === 0x52 && bytes[47] === 0x21)
+      )) || (fileExt || '').toLowerCase() === 'pvr'
+    ) {
+      return {
+        format: 'pvr',
+        mimeType: 'image/x-pvr',
+        extension: 'pvr',
+        label: 'PowerVR Texture (PVR)',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: 'PowerVR Texture Header',
+        confidence: 1.0
+      };
+    }
+
+    // GIMP XCF: 'gimp xcf'
+    if (
+      bytes.length >= 14 &&
+      bytes[0] === 0x67 && bytes[1] === 0x69 && bytes[2] === 0x6D && bytes[3] === 0x70 &&
+      bytes[4] === 0x20 && bytes[5] === 0x78 && bytes[6] === 0x63 && bytes[7] === 0x66
+    ) {
+      return {
+        format: 'xcf',
+        mimeType: 'image/x-xcf',
+        extension: 'xcf',
+        label: 'GIMP Image Document (XCF)',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: 'GIMP XCF Header',
+        confidence: 1.0
+      };
+    }
+
+    // Windows Metafile (WMF) & Enhanced Metafile (EMF)
+    if (
+      (bytes.length >= 18 && (
+        (bytes[0] === 0xD7 && bytes[1] === 0xCD && bytes[2] === 0xC6 && bytes[3] === 0x9A) ||
+        (bytes[0] === 0x01 && bytes[1] === 0x00 && bytes[2] === 0x09 && bytes[3] === 0x00)
+      )) || (fileExt || '').toLowerCase() === 'wmf'
+    ) {
+      return {
+        format: 'wmf',
+        mimeType: 'image/x-wmf',
+        extension: 'wmf',
+        label: 'Windows Metafile (WMF)',
+        category: 'graphics',
+        signatureVerified: true,
+        signatureName: 'Windows Metafile (WMF) Header',
+        confidence: 0.95
+      };
+    }
+
+    if (
+      (bytes.length >= 44 && bytes[0] === 0x01 && bytes[1] === 0x00 && bytes[2] === 0x00 && bytes[3] === 0x00 &&
+       bytes[40] === 0x20 && bytes[41] === 0x45 && bytes[42] === 0x4D && bytes[43] === 0x46) ||
+      (fileExt || '').toLowerCase() === 'emf'
+    ) {
+      return {
+        format: 'emf',
+        mimeType: 'image/x-emf',
+        extension: 'emf',
+        label: 'Enhanced Metafile (EMF)',
+        category: 'graphics',
+        signatureVerified: true,
+        signatureName: 'Enhanced Metafile (EMF) Header',
+        confidence: 0.95
+      };
+    }
+
+    // CorelDRAW RIFF & Corel Exchange (CMX)
+    if (
+      bytes.length >= 12 &&
+      bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+      bytes[8] === 0x43
+    ) {
+      const typeStr = String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]);
+      const isCmx = typeStr.startsWith('CMX');
+      const isCdr = typeStr.startsWith('CDR');
+      if (isCmx || isCdr || (fileExt || '').toLowerCase() === 'cdr' || (fileExt || '').toLowerCase() === 'cmx') {
+        const fmt = isCmx ? 'cmx' : 'cdr';
+        return {
+          format: fmt,
+          mimeType: isCmx ? 'image/x-cmx' : 'application/vnd.corel-draw',
+          extension: fmt,
+          label: isCmx ? 'Corel Presentation Exchange (CMX)' : 'CorelDRAW Vector Document (CDR)',
+          category: 'graphics',
+          signatureVerified: true,
+          signatureName: `Corel RIFF Container (${typeStr})`,
+          confidence: 1.0
+        };
+      }
+    }
+
+    // Corel Photo-Paint (CPT)
+    if (
+      (bytes.length >= 7 && bytes[0] === 0x43 && bytes[1] === 0x50 && bytes[2] === 0x54) ||
+      (fileExt || '').toLowerCase() === 'cpt'
+    ) {
+      return {
+        format: 'cpt',
+        mimeType: 'image/x-corelphotopaint',
+        extension: 'cpt',
+        label: 'Corel Photo-Paint (CPT)',
+        category: 'image',
+        signatureVerified: true,
+        signatureName: 'Corel Photo-Paint Header',
+        confidence: 0.95
+      };
+    }
+
+    // WordPerfect Graphics (WPG)
+    if (
+      (bytes.length >= 4 && bytes[0] === 0xFF && bytes[1] === 0x57 && bytes[2] === 0x50 && bytes[3] === 0x43) ||
+      (fileExt || '').toLowerCase() === 'wpg'
+    ) {
+      return {
+        format: 'wpg',
+        mimeType: 'image/x-wpg',
+        extension: 'wpg',
+        label: 'WordPerfect Graphics (WPG)',
+        category: 'graphics',
+        signatureVerified: true,
+        signatureName: 'WordPerfect Graphics Marker',
+        confidence: 0.95
+      };
+    }
+
+    // Compressed SVG (SVGZ): 1F 8B 08
+    if (bytes[0] === 0x1F && bytes[1] === 0x8B && bytes[2] === 0x08 && (fileExt || '').toLowerCase() === 'svgz') {
+      return {
+        format: 'svgz',
+        mimeType: 'image/svg+xml-compressed',
+        extension: 'svgz',
+        label: 'Compressed SVG (SVGZ)',
+        category: 'graphics',
+        signatureVerified: true,
+        signatureName: 'Gzip-Compressed SVG Stream',
+        confidence: 1.0
+      };
+    }
+
+    // JPEG XL Container Box: 00 00 00 0C 4A 58 4C 20 0D 0A 87 0A
+    if (bytes.length >= 12 && bytes[4] === 0x4A && bytes[5] === 0x58 && bytes[6] === 0x4C && bytes[7] === 0x20) {
+      return {
+        format: 'jxl',
+        mimeType: 'image/jxl',
+        extension: 'jxl',
+        label: 'JPEG XL',
+        category: 'modern-image',
+        signatureVerified: true,
+        signatureName: 'ISO BMFF Box (JPEG XL)',
+        confidence: 1.0
+      };
+    }
+
     // ISO Base Media File Format: check ftyp box at offset 4
     if (bytes.length >= 12 && bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70) {
       const brand = String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]).toLowerCase();
+
+      // Canon CR3 RAW: ftypcrx
+      if (brand.startsWith('crx') || brand.includes('crx')) {
+        return {
+          format: 'cr3',
+          mimeType: 'image/x-canon-cr3',
+          extension: 'cr3',
+          label: 'Canon RAW (CR3)',
+          category: 'image',
+          signatureVerified: true,
+          signatureName: 'Canon CR3 Container',
+          confidence: 1.0
+        };
+      }
       
       // AVIF: brand starts with avif or avis
       if (brand.startsWith('avif') || brand.startsWith('avis')) {
@@ -179,6 +728,20 @@ export class FileSignatureService {
           category: 'modern-image',
           signatureVerified: true,
           signatureName: 'ISO BMFF ftyp (HEIC/HEIF)',
+          confidence: 1.0
+        };
+      }
+
+      // JPEG XL ISOBMFF container
+      if (brand.includes('jxl')) {
+        return {
+          format: 'jxl',
+          mimeType: 'image/jxl',
+          extension: 'jxl',
+          label: 'JPEG XL',
+          category: 'modern-image',
+          signatureVerified: true,
+          signatureName: 'ISO BMFF Box (JPEG XL)',
           confidence: 1.0
         };
       }
@@ -319,6 +882,58 @@ export class FileSignatureService {
         };
       }
 
+      if (sliceString.includes('openraster') || sliceString.includes('mergedimage.png') || fileExt === 'ora') {
+        return {
+          format: 'ora',
+          mimeType: 'image/openraster',
+          extension: 'ora',
+          label: 'OpenRaster Document (ORA)',
+          category: 'image',
+          signatureVerified: true,
+          signatureName: 'OpenRaster Container (mergedimage.png)',
+          confidence: 1.0
+        };
+      }
+
+      if (sliceString.includes('application/x-krita') || (sliceString.includes('maindoc.xml') && sliceString.includes('mergedimage.png')) || fileExt === 'kra') {
+        return {
+          format: 'kra',
+          mimeType: 'application/x-krita',
+          extension: 'kra',
+          label: 'Krita Image Document (KRA)',
+          category: 'image',
+          signatureVerified: true,
+          signatureName: 'Krita Package Container',
+          confidence: 1.0
+        };
+      }
+
+      if (sliceString.includes('application/vnd.adobe.indesign-idml-package') || sliceString.includes('designmap.xml') || fileExt === 'idml') {
+        return {
+          format: 'idml',
+          mimeType: 'application/vnd.adobe.indesign-idml-package',
+          extension: 'idml',
+          label: 'Adobe InDesign IDML Package',
+          category: 'document',
+          signatureVerified: true,
+          signatureName: 'InDesign IDML Package Container',
+          confidence: 1.0
+        };
+      }
+
+      if (sliceString.includes('content/root.dat') || sliceString.includes('previews/thumbnail.png') || fileExt === 'cdr') {
+        return {
+          format: 'cdr',
+          mimeType: 'application/vnd.corel-draw',
+          extension: 'cdr',
+          label: 'CorelDRAW Vector Document (CDR)',
+          category: 'graphics',
+          signatureVerified: true,
+          signatureName: 'CorelDRAW Package Container',
+          confidence: 1.0
+        };
+      }
+
       if (sliceString.includes('word/document.xml') || fileExt === 'docx') {
         return {
           format: 'docx',
@@ -341,6 +956,54 @@ export class FileSignatureService {
         signatureVerified: true,
         signatureName: 'PKZip Header',
         confidence: 1.0
+      };
+    }
+
+    // AutoCAD DWG: AC10xx
+    if (
+      bytes.length >= 6 &&
+      bytes[0] === 0x41 && bytes[1] === 0x43 && bytes[2] === 0x31 && bytes[3] === 0x30
+    ) {
+      return {
+        format: 'dwg',
+        mimeType: 'image/vnd.dwg',
+        extension: 'dwg',
+        label: 'AutoCAD DWG Drawing',
+        category: 'graphics',
+        signatureVerified: true,
+        signatureName: 'AutoCAD DWG Binary Header (AC10xx)',
+        confidence: 1.0
+      };
+    }
+
+    // JPEG XL Naked Codestream: FF 0A
+    if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0x0A) {
+      return {
+        format: 'jxl',
+        mimeType: 'image/jxl',
+        extension: 'jxl',
+        label: 'JPEG XL',
+        category: 'modern-image',
+        signatureVerified: true,
+        signatureName: 'JPEG XL Codestream Marker (FF 0A)',
+        confidence: 1.0
+      };
+    }
+
+    // Computer Graphics Metafile (CGM) Binary: 00 20 or fileExt === 'cgm'
+    if (
+      bytes.length >= 4 &&
+      ((bytes[0] === 0x00 && (bytes[1] & 0xFE) === 0x20) || fileExt === 'cgm')
+    ) {
+      return {
+        format: 'cgm',
+        mimeType: 'image/cgm',
+        extension: 'cgm',
+        label: 'Computer Graphics Metafile (CGM)',
+        category: 'graphics',
+        signatureVerified: true,
+        signatureName: 'CGM Metafile Header',
+        confidence: 0.95
       };
     }
 
@@ -403,7 +1066,33 @@ export class FileSignatureService {
       };
     }
 
-    // 5. CSV: Tabular comma/semicolon separated lines
+    // 5. DXF CAD Drawing: SECTION HEADER
+    if (/^\s*0\s*[\r\n]+\s*SECTION\s*[\r\n]+\s*2\s*[\r\n]+\s*HEADER/i.test(text) || fileExt === 'dxf') {
+      return {
+        format: 'dxf',
+        mimeType: 'application/dxf',
+        extension: 'dxf',
+        category: 'graphics',
+        signatureVerified: true,
+        signatureName: 'AutoCAD DXF Header Record',
+        confidence: 0.95
+      };
+    }
+
+    // 6. CGM Clear Text: BEGMF
+    if (/BEGMF\b/i.test(text) || /BEGPIC\b/i.test(text) || fileExt === 'cgm') {
+      return {
+        format: 'cgm',
+        mimeType: 'image/cgm',
+        extension: 'cgm',
+        category: 'graphics',
+        signatureVerified: true,
+        signatureName: 'CGM Clear Text Header (BEGMF)',
+        confidence: 0.95
+      };
+    }
+
+    // 7. CSV: Tabular comma/semicolon separated lines
     if (fileExt === 'csv' || (this.isLikelyCsv(text) && fileExt !== 'txt')) {
       return {
         format: 'csv',
@@ -442,9 +1131,51 @@ export class FileSignatureService {
       jpeg: 'image',
       webp: 'image',
       gif: 'image',
+      bmp: 'image',
       svg: 'graphics',
       avif: 'modern-image',
       heic: 'modern-image',
+      heif: 'modern-image',
+      jxl: 'modern-image',
+      tiff: 'image',
+      tif: 'image',
+      psd: 'image',
+      psb: 'image',
+      tga: 'image',
+      ico: 'image',
+      icns: 'image',
+      pcx: 'image',
+      ppm: 'image',
+      pgm: 'image',
+      pbm: 'image',
+      pnm: 'image',
+      hdr: 'image',
+      exr: 'image',
+      fits: 'image',
+      fit: 'image',
+      raw: 'image',
+      dng: 'image',
+      cr2: 'image',
+      cr3: 'image',
+      nef: 'image',
+      arw: 'image',
+      raf: 'image',
+      orf: 'image',
+      rw2: 'image',
+      pef: 'image',
+      dds: 'image',
+      jp2: 'modern-image',
+      j2k: 'modern-image',
+      eps: 'graphics',
+      ai: 'graphics',
+      cdr: 'graphics',
+      kra: 'image',
+      idml: 'document',
+      dxf: 'graphics',
+      dwg: 'graphics',
+      cgm: 'graphics',
+      wmf: 'graphics',
+      emf: 'graphics',
       srt: 'subtitle',
       vtt: 'subtitle',
       vcf: 'contact',
@@ -462,7 +1193,10 @@ export class FileSignatureService {
     };
 
     const category: FileCategory = categoryMap[ext] || 'document';
-    const normalizedFormat = ext === 'jpeg' ? 'jpg' : ext;
+    let normalizedFormat = ext;
+    if (ext === 'jpeg') normalizedFormat = 'jpg';
+    if (ext === 'tif') normalizedFormat = 'tiff';
+    if (ext === 'fit') normalizedFormat = 'fits';
 
     return {
       format: normalizedFormat,
@@ -483,7 +1217,12 @@ export class FileSignatureService {
   private isAcceptableExtensionAlias(primaryExt: string, actualExt: string): boolean {
     if (primaryExt === actualExt) return true;
     if ((primaryExt === 'jpg' && actualExt === 'jpeg') || (primaryExt === 'jpeg' && actualExt === 'jpg')) return true;
+    if ((primaryExt === 'tiff' && actualExt === 'tif') || (primaryExt === 'tif' && actualExt === 'tiff')) return true;
+    if ((primaryExt === 'fits' && actualExt === 'fit') || (primaryExt === 'fit' && actualExt === 'fits')) return true;
+    if ((primaryExt === 'psd' && actualExt === 'psb') || (primaryExt === 'psb' && actualExt === 'psd')) return true;
     if ((primaryExt === 'vcf' && actualExt === 'vcard') || (primaryExt === 'vcard' && actualExt === 'vcf')) return true;
+    const rawExts = ['raw', 'dng', 'cr2', 'cr3', 'nef', 'arw', 'raf', 'orf', 'rw2', 'pef'];
+    if (rawExts.includes(primaryExt) && rawExts.includes(actualExt)) return true;
     return false;
   }
 }

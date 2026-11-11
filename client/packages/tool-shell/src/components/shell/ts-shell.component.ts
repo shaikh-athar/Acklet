@@ -230,7 +230,7 @@ import { FileTransferService } from '../../services/file-transfer.service';
                 <ts-icon name="image" [size]="26" />
               </div>
             </div>
-            <h2 class="ts-drag-title">Add anything</h2>
+            <h2 class="ts-drag-title">Land here...</h2>
             <p class="ts-drag-subtitle">{{ universalDragSubtitle() }}</p>
           </div>
         </div>
@@ -824,6 +824,12 @@ import { FileTransferService } from '../../services/file-transfer.service';
       }
     }
 
+    @media (max-width: 1023px) {
+      .ts-goto-tool-btn {
+        display: none !important;
+      }
+    }
+
     .ts-tool-card-surface.full-bleed {
       height: 100%;
       max-height: 100%;
@@ -966,6 +972,7 @@ import { FileTransferService } from '../../services/file-transfer.service';
 
     @media (max-width: 767px) {
       .ts-root {
+        --header-height: 56px;
         padding: max(8px, env(safe-area-inset-top, 0px))
                  max(8px, env(safe-area-inset-right, 0px))
                  max(8px, env(safe-area-inset-bottom, 0px))
@@ -986,6 +993,9 @@ import { FileTransferService } from '../../services/file-transfer.service';
       }
       .ts-main-content-card {
         border-radius: 16px;
+        transform: none !important;
+        contain: none !important;
+        container-type: normal !important;
       }
       .ts-main-scroll-container:not(.full-bleed) {
         padding: 16px;
@@ -999,6 +1009,7 @@ import { FileTransferService } from '../../services/file-transfer.service';
 
     @media (max-width: 399px) {
       .ts-root {
+        --header-height: 52px;
         padding: max(4px, env(safe-area-inset-top, 0px))
                  max(4px, env(safe-area-inset-right, 0px))
                  max(4px, env(safe-area-inset-bottom, 0px))
@@ -1016,6 +1027,9 @@ import { FileTransferService } from '../../services/file-transfer.service';
         background: transparent;
         border: none;
         box-shadow: none;
+        transform: none !important;
+        contain: none !important;
+        container-type: normal !important;
       }
       .ts-main-scroll-container:not(.full-bleed) {
         padding: 0;

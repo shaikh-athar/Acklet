@@ -2154,7 +2154,7 @@ html[data-theme="dark"] .join-open-btn:active:not(:disabled),
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   padding: 16px 10px 12px 10px;
-  border-radius: 10px;
+  border-radius: 40px;
   display: flex;
   flex-direction: column;
   gap: 12px;

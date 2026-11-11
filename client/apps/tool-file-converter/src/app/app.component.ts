@@ -14,7 +14,6 @@ import { FileConverterComponent } from '../file-converter.component';
     <ts-shell 
       [tool]="manifest" 
       [config]="shellConfig"
-      (filesDropped)="onFilesDropped($event)"
     >
       <app-file-converter-tool #converterComp />
     </ts-shell>
@@ -28,12 +27,6 @@ export class AppComponent {
   };
 
   readonly converterComp = viewChild<FileConverterComponent>('converterComp');
-
-  onFilesDropped(files: File[]): void {
-    if (files.length > 0 && this.converterComp()) {
-      this.converterComp()!.onFilesDropped(files);
-    }
-  }
 
   private resolveManifest(): ToolRegistryItem {
     if (typeof window !== 'undefined') {

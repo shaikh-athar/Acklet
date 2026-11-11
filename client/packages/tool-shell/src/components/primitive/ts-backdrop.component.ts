@@ -178,27 +178,27 @@ import { ToolThemeService } from '../../services/tool-theme.service';
         linear-gradient(180deg, color-mix(in srgb, var(--tool-accent, var(--accent, #60A5FA)) 7%, transparent) 0%, transparent 40%);
     }
 
-    /* ── Grid overlay: hidden by default, shown on hover only ─── */
+    /* ── Pointer-based Grid overlay: reveals around cursor on hover (no glowing blob) ─── */
     .ts-bg-grid {
       position: absolute;
       inset: 0;
       pointer-events: none;
       opacity: 0;
-      transition: opacity 200ms ease;
+      transition: opacity 250ms ease;
       background-size: 24px 24px;
       background-position: 0 0;
-      -webkit-mask-image: radial-gradient(ellipse 120% 100% at 50% 0%, #000 0%, rgba(0,0,0,0.5) 60%, transparent 100%);
-              mask-image: radial-gradient(ellipse 120% 100% at 50% 0%, #000 0%, rgba(0,0,0,0.5) 60%, transparent 100%);
+      -webkit-mask-image: radial-gradient(circle 380px at var(--mouse-x, -1000px) var(--mouse-y, -1000px), #000 0%, rgba(0, 0, 0, 0.45) 55%, transparent 100%);
+              mask-image: radial-gradient(circle 380px at var(--mouse-x, -1000px) var(--mouse-y, -1000px), #000 0%, rgba(0, 0, 0, 0.45) 55%, transparent 100%);
       background-image:
-        linear-gradient(to right,  rgba(15, 23, 42, 0.05) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+        linear-gradient(to right,  rgba(6, 7, 10, 0.13) 1.3px, transparent 1px),
+        linear-gradient(to bottom, rgba(9, 10, 12, 0.13) 1.3px, transparent 1px);
     }
 
     :host-context([data-theme="dark"]) .ts-bg-grid,
     [data-theme="dark"] .ts-bg-grid {
       background-image:
-        linear-gradient(to right,  rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        linear-gradient(to right,  rgba(255, 255, 255, 0.13) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.13) 1px, transparent 1px);
     }
 
     .ts-bg-grid.is-active {
@@ -257,37 +257,41 @@ export class TsBackdropComponent implements OnInit, OnDestroy {
     // Only enable grid-hover on pointer/hover capable devices
     if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
 
+    // Respect reduced motion preference
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
     this.zone.runOutsideAngular(() => {
+      const gridEl = this.bgGridRef()?.nativeElement;
+      if (!gridEl) return;
+
+      let rafId: number | null = null;
+      let lastX = -1000;
+      let lastY = -1000;
+
+      const updatePosition = (): void => {
+        gridEl.style.setProperty('--mouse-x', `${lastX}px`);
+        gridEl.style.setProperty('--mouse-y', `${lastY}px`);
+        rafId = null;
+      };
+
       const onPointerMove = (e: PointerEvent): void => {
-        const gridEl = this.bgGridRef()?.nativeElement;
-        if (!gridEl) return;
-
-        const target = e.target as HTMLElement | null;
-        if (!target) {
-          gridEl.classList.remove('is-active');
-          return;
-        }
-
-        // Check if pointer is over interactive elements, cards, inputs, buttons, dialogs, etc.
-        const isInteractiveOrCard = !!target.closest(
-          'button, a, input, textarea, select, [role], [tabindex], label, ' +
-          '.ts-topbar-card, .ts-sidebar-card, .ts-main-content-card, [class*="card"], ' +
-          '[class*="modal"], [class*="panel"], [class*="dialog"], [class*="dropdown"], ' +
-          '[class*="popover"], [class*="menu"], .hub-tool-row-link, .ts-tool-tile, ' +
-          '.ts-sidebar-hotzone, pre, code'
-        );
-
-        if (!isInteractiveOrCard) {
+        lastX = e.clientX;
+        lastY = e.clientY;
+        if (!gridEl.classList.contains('is-active')) {
           gridEl.classList.add('is-active');
-        } else {
-          gridEl.classList.remove('is-active');
+        }
+        if (rafId === null) {
+          rafId = requestAnimationFrame(updatePosition);
         }
       };
 
       const onLeave = (): void => {
-        const gridEl = this.bgGridRef()?.nativeElement;
-        if (gridEl) {
+        if (gridEl.classList.contains('is-active')) {
           gridEl.classList.remove('is-active');
+        }
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
         }
       };
 
@@ -298,7 +302,13 @@ export class TsBackdropComponent implements OnInit, OnDestroy {
       this.cleanupFns.push(
         () => document.removeEventListener('pointermove', onPointerMove),
         () => document.removeEventListener('mouseleave', onLeave),
-        () => window.removeEventListener('blur', onLeave)
+        () => window.removeEventListener('blur', onLeave),
+        () => {
+          if (rafId !== null) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+          }
+        }
       );
     });
   }

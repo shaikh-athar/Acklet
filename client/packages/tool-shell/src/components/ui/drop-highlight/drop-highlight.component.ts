@@ -13,17 +13,17 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EmptyDropStateComponent } from '../empty-drop-state/empty-drop-state.component';
-import { TsIconComponent } from '../../icon/ts-icon.component';
 
 @Component({
   selector: 'shared-drop-highlight',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, EmptyDropStateComponent, TsIconComponent],
+  imports: [CommonModule, EmptyDropStateComponent],
   template: `
     @if (hasNoItems()) {
       <!-- Empty Drop State (Rule 4: Items count is 0) -->
       <shared-empty-drop-state
+        [icon]="emptyIcon()"
         [leftIcon]="emptyLeftIcon()"
         [centerIcon]="emptyCenterIcon()"
         [rightIcon]="emptyRightIcon()"
@@ -77,11 +77,11 @@ export class DropHighlightComponent {
   private readonly hostEl = inject(ElementRef<HTMLElement>);
 
   // Item Count Signal / Input: centralizes Rule 4 state check (supports number, array, null, undefined)
-  readonly itemCount = input<number | any[] | null | undefined>(0);
+  readonly itemCount = input<number | any[] | null | undefined>(undefined);
   readonly disabled = input<boolean>(false);
 
   // Empty drop state inputs (delegated when itemCount === 0)
-  readonly emptyIcon = input<string>('image');
+  readonly emptyIcon = input<string>('upload-cloud');
   readonly emptyLeftIcon = input<string>('code');
   readonly emptyCenterIcon = input<string>('image');
   readonly emptyRightIcon = input<string>('file-text');
@@ -103,7 +103,8 @@ export class DropHighlightComponent {
 
   readonly hasNoItems = computed<boolean>(() => {
     const val = this.itemCount();
-    if (val === null || val === undefined) return true;
+    if (val === undefined) return false;
+    if (val === null) return true;
     if (Array.isArray(val)) return val.length === 0;
     if (typeof val === 'number') return val <= 0;
     return false;

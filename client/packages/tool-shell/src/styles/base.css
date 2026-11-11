@@ -696,20 +696,28 @@ html[data-theme="light"] body:has(.ts-root),
   border-color: var(--tool-accent-border, var(--accent-border)) !important;
 }
 
-/* Universal inputs on hover & focus */
-.ts-root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):hover:not(:focus):not(:disabled),
-.ts-root textarea:hover:not(:focus):not(:disabled),
-.ts-root select:hover:not(:focus):not(:disabled) {
-  border-color: var(--tool-accent-border, var(--accent-border)) !important;
-}
 
-.ts-root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
-.ts-root textarea:focus,
-.ts-root select:focus,
-.ts-root .spartan-input:focus {
+
+.ts-root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.dropdown-search-input):not(.borderless-input):not(.no-focus-ring):focus,
+.ts-root textarea:not(.no-focus-ring):focus,
+.ts-root select:not(.no-focus-ring):focus,
+.ts-root .spartan-input:not(.no-focus-ring):focus {
   border-color: var(--tool-accent, var(--accent)) !important;
   box-shadow: 0 0 0 3px var(--tool-accent-soft, var(--accent-soft)) !important;
   outline: none !important;
+}
+
+.ts-root input.dropdown-search-input,
+.ts-root input.dropdown-search-input:focus,
+.ts-root input.dropdown-search-input:focus-visible,
+.ts-root .dropdown-search-box input,
+.ts-root .dropdown-search-box input:focus,
+.ts-root .dropdown-search-box input:focus-visible {
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background: transparent !important;
 }
 
 .ts-root input[type="checkbox"]:checked,

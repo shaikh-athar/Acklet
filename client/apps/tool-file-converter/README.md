@@ -14,7 +14,7 @@ File Converter enables users to convert, compress, and reformat files directly i
 - **Dedicated Route**: `/tools/file-converter`
 - **SEO Conversion Routes**: `/convert/:pair` (e.g., `/convert/png-to-webp`, `/convert/srt-to-vtt`, `/convert/vcf-to-csv`)
 - **Category**: Converters
-- **Accent**: `indigo` (`#6366F1` dark / `#4F46E5` light, hue: 242)
+- **Accent**: `blue` (`#3B82F6` dark / `#2563EB` light, hue: 221)
 - **Execution Mode**: 100% Client-Side (`browser`)
 
 ## Minimal Landing Page (iLoveIMG / iLovePDF Reference)

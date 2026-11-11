@@ -37,8 +37,8 @@ describe('FileConverterComponent Unit Tests', () => {
   it('should create the component with initial defaults', () => {
     const component = createComponent();
     expect(component).toBeTruthy();
-    expect(component.qualityPercent()).toBe(88);
-    expect(component.isPresetActive(0.85)).toBe(false);
+    expect(component.qualityPercent()).toBe(85);
+    expect(component.isPresetActive(0.85)).toBe(true);
   });
 
   it('should detect lossless output formats accurately', () => {
@@ -90,6 +90,30 @@ describe('FileConverterComponent Unit Tests', () => {
     expect(component.isPresetActive(0.65)).toBe(true);
   });
 
+  it('should initialize minimal hero headline rotating words and popular groups', () => {
+    const component = createComponent();
+    expect(component.rotatingWords).toEqual(['JPG', 'WEBP', 'PNG', 'AVIF', 'HEIC']);
+    expect(component.popularGroups.length).toBe(3);
+    expect(component.popularGroups[0]).toEqual([
+      { source: 'png', target: 'jpg' },
+      { source: 'jpg', target: 'webp' },
+      { source: 'png', target: 'webp' },
+      { source: 'heic', target: 'jpg' },
+      { source: 'avif', target: 'png' },
+      { source: 'webp', target: 'png' }
+    ]);
+  });
+
+  it('should set format and open picker when clicking a popular conversion pair', () => {
+    const component = createComponent();
+    const openPickerSpy = vi.spyOn(component, 'openFilePicker').mockImplementation(() => {});
+
+    component.onSelectPopularPair({ source: 'heic', target: 'jpg' });
+    expect(engine.batchTargetFormat()).toBe('jpg');
+    expect(component.conversionPair()).toEqual({ source: 'heic', target: 'jpg' });
+    expect(openPickerSpy).toHaveBeenCalled();
+  });
+
   it('should consume files transferred globally via FileTransferService', () => {
     const component = createComponent();
     const addFilesSpy = vi.spyOn(engine, 'addFiles');
@@ -99,5 +123,13 @@ describe('FileConverterComponent Unit Tests', () => {
     component.consumePendingFiles();
     expect(addFilesSpy).toHaveBeenCalledWith([dummyFile]);
     expect(fileTransfer.pendingFiles().length).toBe(0);
+  });
+
+  it('should delegate rename to engine via onRenameJob', () => {
+    const component = createComponent();
+    const renameSpy = vi.spyOn(engine, 'renameJob');
+
+    component.onRenameJob('job-123', 'banner-final');
+    expect(renameSpy).toHaveBeenCalledWith('job-123', 'banner-final');
   });
 });

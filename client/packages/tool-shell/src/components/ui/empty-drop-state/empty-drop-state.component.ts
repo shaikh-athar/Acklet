@@ -24,9 +24,13 @@ import { TsIconComponent } from '../../icon/ts-icon.component';
       [class.is-drag-over]="isDragOver()"
       role="region"
       aria-label="Drop zone"
+      tabindex="0"
       (dragover)="onDragOver($event)"
       (dragleave)="onDragLeave($event)"
       (drop)="onDrop($event)"
+      (click)="onContainerClick($event)"
+      (keydown.enter)="onContainerClick($event)"
+      (keydown.space)="onContainerClick($event); $event.preventDefault()"
     >
       <!-- Single line icon in soft accent tile (Image 1 reference - clean empty state) -->
       <div class="empty-icon-tile" aria-hidden="true">
@@ -40,9 +44,9 @@ import { TsIconComponent } from '../../icon/ts-icon.component';
         <button 
           type="button" 
           class="empty-drop-action-btn"
-          (click)="onActionClick()"
-          (keydown.enter)="onActionClick()"
-          (keydown.space)="onActionClick()"
+          (click)="onActionClick($event)"
+          (keydown.enter)="onActionClick($event)"
+          (keydown.space)="onActionClick($event)"
           [attr.aria-label]="actionLabel()"
         >
           <ts-icon name="plus" [size]="15" />
@@ -69,24 +73,41 @@ import { TsIconComponent } from '../../icon/ts-icon.component';
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 32px 20px;
-      max-width: 440px;
+      padding: 38px 28px;
+      max-width: 460px;
+      width: 100%;
       margin: 0 auto;
       border-radius: var(--ts-radius-card, 16px);
-      border: 1px solid transparent;
+      border: 1.5px dotted var(--border, rgba(0, 0, 0, 0.18));
+      background-color: transparent;
+      cursor: pointer;
+      outline: none;
       transition: border-color var(--ts-dur-fast, 150ms) var(--ts-ease),
-                  background-color var(--ts-dur-fast, 150ms) var(--ts-ease);
+                  background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
+                  transform var(--ts-dur-press, 150ms) var(--ts-ease);
       box-sizing: border-box;
     }
 
-    .empty-drop-state-container.is-drag-over {
-      border-color: var(--tool-accent, var(--accent, #2563EB)) !important;
-      background-color: var(--tool-accent-soft, var(--accent-soft, rgba(37, 99, 235, 0.08))) !important;
+    :host-context([data-theme="dark"]) .empty-drop-state-container {
+      border-color: rgba(255, 255, 255, 0.20);
     }
 
+    .empty-drop-state-container:focus-visible {
+      border-color: var(--tool-accent, var(--accent, #2563EB)) !important;
+      outline: 2px solid var(--tool-accent, var(--accent, #2563EB));
+      outline-offset: 2px;
+    }
+
+    .empty-drop-state-container:hover,
+    .empty-drop-state-container.is-drag-over {
+      border-color: var(--tool-accent, var(--accent, #2563EB)) !important;
+      background-color: var(--tool-accent-soft, var(--accent-soft, rgba(37, 99, 235, 0.05))) !important;
+    }
+
+    :host-context([data-theme="dark"]) .empty-drop-state-container:hover,
     :host-context([data-theme="dark"]) .empty-drop-state-container.is-drag-over {
       border-color: var(--tool-accent, var(--accent, #60A5FA)) !important;
-      background-color: var(--tool-accent-soft, var(--accent-soft, rgba(59, 130, 246, 0.14))) !important;
+      background-color: var(--tool-accent-soft, var(--accent-soft, rgba(59, 130, 246, 0.10))) !important;
     }
 
     .empty-icon-tile {
@@ -204,7 +225,7 @@ export class EmptyDropStateComponent {
   readonly centerIcon = input<string>('image');
   readonly rightIcon = input<string>('file-text');
 
-  readonly heading = input<string>('Add anything');
+  readonly heading = input<string>('Drop anything');
   readonly subtext = input<string>('Drop files, folders or text to get started.');
   readonly actionLabel = input<string | null | undefined>(null);
 
@@ -213,7 +234,14 @@ export class EmptyDropStateComponent {
 
   readonly isDragOver = signal<boolean>(false);
 
-  onActionClick(): void {
+  onActionClick(event?: Event): void {
+    event?.stopPropagation();
+    this.action.emit();
+  }
+
+  onContainerClick(event: Event): void {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('button, a, input, select')) return;
     this.action.emit();
   }
 

@@ -1185,6 +1185,9 @@ export interface SectionNavLink {
 
     /* Small screens (Mobile <768px): Hide center navigation tabs, display brand + tool name and menu button */
     @media (max-width: 767px) {
+      .hide-xs {
+        display: none !important;
+      }
       .ts-tools-grid-btn {
         display: inline-flex !important;
       }

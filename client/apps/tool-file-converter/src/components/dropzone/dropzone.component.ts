@@ -105,8 +105,8 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
       gap: 7px;
       padding: 4px 14px;
       border-radius: 9999px;
-      background: var(--accent-soft, rgba(99, 102, 241, 0.12));
-      border: 1px solid var(--accent-border, rgba(99, 102, 241, 0.25));
+      background: var(--accent-soft, rgba(59, 130, 246, 0.14));
+      border: 1px solid var(--accent-border, rgba(59, 130, 246, 0.28));
       color: var(--accent, #60A5FA);
       font-size: 12px;
       font-weight: 600;
@@ -115,8 +115,8 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
 
     :host-context([data-theme="light"]) .pair-pill,
     [data-theme="light"] .pair-pill {
-      background: rgba(79, 70, 229, 0.08);
-      border-color: rgba(79, 70, 229, 0.2);
+      background: rgba(37, 99, 235, 0.08);
+      border-color: rgba(37, 99, 235, 0.20);
       color: #1D4ED8;
     }
 
@@ -237,21 +237,21 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
       background: #2563EB !important;
       border-color: #2563EB !important;
       color: #FFFFFF !important;
-      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.25);
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
     }
 
     :host-context([data-theme="light"]) .primary-select-btn:hover,
     [data-theme="light"] .primary-select-btn:hover {
-      background: #3730A3 !important;
-      border-color: #312E81 !important;
+      background: #1D4ED8 !important;
+      border-color: #1D4ED8 !important;
       color: #FFFFFF !important;
-      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.35);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
     }
 
     :host-context([data-theme="light"]) .primary-select-btn:active,
     [data-theme="light"] .primary-select-btn:active {
-      background: #312E81 !important;
-      border-color: #1E1B4B !important;
+      background: #1E40AF !important;
+      border-color: #1E3A8A !important;
       color: #FFFFFF !important;
     }
 
@@ -315,7 +315,7 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
       inset: -12px;
       border-radius: 24px;
       background: rgba(15, 23, 42, 0.82);
-      border: 1px solid var(--accent-border, rgba(99, 102, 241, 0.35));
+      border: 1px solid var(--accent-border, rgba(59, 130, 246, 0.35));
       display: flex;
       align-items: center;
       justify-content: center;
@@ -327,7 +327,7 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
     :host-context([data-theme="light"]) .drag-active-overlay,
     [data-theme="light"] .drag-active-overlay {
       background: rgba(248, 250, 252, 0.88);
-      border-color: rgba(79, 70, 229, 0.25);
+      border-color: rgba(37, 99, 235, 0.25);
     }
 
     .drag-card {
@@ -342,7 +342,7 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
       width: 56px;
       height: 56px;
       border-radius: 16px;
-      background: var(--accent-soft, rgba(99, 102, 241, 0.15));
+      background: var(--accent-soft, rgba(59, 130, 246, 0.16));
       color: var(--accent, #60A5FA);
       display: flex;
       align-items: center;
@@ -351,7 +351,7 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
 
     :host-context([data-theme="light"]) .drag-icon-box,
     [data-theme="light"] .drag-icon-box {
-      background: rgba(79, 70, 229, 0.1);
+      background: rgba(37, 99, 235, 0.1);
       color: #2563EB;
     }
 

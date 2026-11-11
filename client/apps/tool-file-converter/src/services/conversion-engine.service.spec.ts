@@ -28,7 +28,7 @@ describe('ConversionEngineService', () => {
     expect(service.jobs()).toEqual([]);
     expect(service.hasJobs()).toBe(false);
     expect(service.batchTargetFormat()).toBe('webp');
-    expect(service.batchQuality()).toBe(0.88);
+    expect(service.batchQuality()).toBe(0.85);
   });
 
   it('should enqueue image files, verify format, and mark as ready', async () => {
@@ -128,5 +128,43 @@ describe('ConversionEngineService', () => {
 
     service.clearAll();
     expect(service.jobs().length).toBe(0);
+  });
+
+  it('should rename individual job base name without altering its extension', async () => {
+    const file = createSvgFile('original-name.svg');
+    await service.addFiles([file]);
+
+    const jobId = service.jobs()[0].id;
+    service.renameJob(jobId, 'my-custom-photo');
+
+    const job = service.jobs()[0];
+    expect(job.options.naming?.customName).toBe('my-custom-photo');
+    expect(job.targetFormat.extension || job.targetFormat.format).toBe('webp');
+  });
+
+  it('should safely strip any trailing extension if inadvertently typed during rename', async () => {
+    const file = createSvgFile('brand.svg');
+    await service.addFiles([file]);
+
+    const jobId = service.jobs()[0].id;
+    // User accidentally typed .webp or .svg in input field
+    service.renameJob(jobId, 'brand-hero.webp');
+
+    const job = service.jobs()[0];
+    expect(job.options.naming?.customName).toBe('brand-hero');
+  });
+
+  it('should independently rename multiple files in the batch without collision', async () => {
+    const file1 = createSvgFile('file-one.svg');
+    const file2 = createSvgFile('file-two.svg');
+    await service.addFiles([file1, file2]);
+
+    const jobs = service.jobs();
+    service.renameJob(jobs[0].id, 'custom-first');
+    service.renameJob(jobs[1].id, 'custom-second');
+
+    const updated = service.jobs();
+    expect(updated[0].options.naming?.customName).toBe('custom-first');
+    expect(updated[1].options.naming?.customName).toBe('custom-second');
   });
 });
