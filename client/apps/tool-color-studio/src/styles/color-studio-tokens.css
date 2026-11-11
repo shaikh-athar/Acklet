@@ -1,0 +1,58 @@
+/* apps/tool-color-studio/src/styles/color-studio-tokens.css */
+/* Acklet Color Studio — Professional Blue Design Tokens & Spacing System */
+
+:root,
+:host,
+.color-studio-root {
+  /* ══ Accent System: Professional Blue (Dark Theme Default) ═════════ */
+  --tool-accent: #3B82F6;
+  --tool-accent-hover: #60A5FA;
+  --tool-accent-active: #2563EB;
+  --tool-accent-ink: #FFFFFF;
+  --tool-accent-soft: rgba(59, 130, 246, 0.12);
+  --tool-accent-border: rgba(59, 130, 246, 0.25);
+  --tool-accent-glow: rgba(59, 130, 246, 0.20);
+  --tool-accent-light: rgba(59, 130, 246, 0.18);
+  --tool-accent-bg: rgba(59, 130, 246, 0.08);
+
+  /* Canonical Brand Blue Tokens */
+  --tool-primary: #2563EB;
+  --tool-primary-hover: #1D4ED8;
+  --tool-secondary-blue: #3B82F6;
+  --tool-light-blue: rgba(59, 130, 246, 0.22);
+  --tool-soft-bg: rgba(37, 99, 235, 0.06);
+
+  /* ══ Spacious Layout & Metric Tokens ═════════════════════════════════ */
+  --cs-outer-padding: 24px;
+  --cs-sidebar-width: 260px;
+  --cs-workspace-gap: 24px;
+  --cs-card-padding: 24px;
+  --cs-section-gap: 28px;
+  --cs-component-gap: 16px;
+  --cs-card-radius: 16px;
+  --cs-control-radius: 10px;
+  --cs-max-width: 1400px;
+}
+
+/* ══ Light Theme Overrides ═════════════════════════════════════════════ */
+:host-context([data-theme="light"]),
+[data-theme="light"] :host,
+[data-theme="light"] .color-studio-root,
+body[data-theme="light"] .color-studio-root {
+  --tool-accent: #2563EB;
+  --tool-accent-hover: #1D4ED8;
+  --tool-accent-active: #1E40AF;
+  --tool-accent-ink: #FFFFFF;
+  --tool-accent-soft: rgba(37, 99, 235, 0.08);
+  --tool-accent-border: rgba(37, 99, 235, 0.22);
+  --tool-accent-glow: rgba(37, 99, 235, 0.15);
+  --tool-accent-light: #DBEAFE;
+  --tool-accent-bg: #EFF6FF;
+
+  --tool-primary: #2563EB;
+  --tool-primary-hover: #1D4ED8;
+  --tool-secondary-blue: #3B82F6;
+  --tool-light-blue: #DBEAFE;
+  --tool-soft-bg: #EFF6FF;
+}
+

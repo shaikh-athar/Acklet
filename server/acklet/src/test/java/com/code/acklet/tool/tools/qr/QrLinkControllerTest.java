@@ -36,8 +36,11 @@ class QrLinkControllerTest {
 
     @BeforeEach
     void setUp() {
+        objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
         QrLinkController controller = new QrLinkController(qrLinkService);
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setMessageConverters(new org.springframework.http.converter.json.MappingJackson2HttpMessageConverter(objectMapper))
+                .build();
     }
 
     @Test

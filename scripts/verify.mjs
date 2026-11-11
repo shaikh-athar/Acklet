@@ -23,6 +23,14 @@ const repoRoot = path.resolve(__dirname, '..');
 const clientDir = path.join(repoRoot, 'client');
 const serverDir = path.join(repoRoot, 'server', 'acklet');
 
+// Ensure Java 21 compatibility if running on macOS
+if (process.platform === 'darwin' && (!process.env.JAVA_HOME || process.env.JAVA_HOME.includes('26.'))) {
+  try {
+    const java21 = execSync('/usr/libexec/java_home -v 21', { encoding: 'utf-8' }).trim();
+    if (java21) process.env.JAVA_HOME = java21;
+  } catch {}
+}
+
 // Parse CLI Arguments
 const args = process.argv.slice(2);
 let level = 'A';

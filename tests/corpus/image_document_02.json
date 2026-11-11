@@ -1,0 +1,15 @@
+{
+  "category": "image-document",
+  "pageCount": 1,
+  "headings": 3,
+  "tables": 0,
+  "images": 1,
+  "hasCaptions": true,
+  "sampleWords": [
+    "architecture",
+    "topology",
+    "boundaries",
+    "perimeter",
+    "guarantees"
+  ]
+}

@@ -1,0 +1,6 @@
+#!/bin/sh
+PRG="$0"
+DIR=$(cd "$(dirname "$PRG")" && pwd)
+REPO_ROOT=$(cd "$DIR/../.." && pwd)
+exec "$REPO_ROOT/server/acklet/mvnw" -f "$REPO_ROOT/server/acklet/pom.xml" "$@"
+

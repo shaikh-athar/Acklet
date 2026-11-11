@@ -67,3 +67,11 @@ tmp/
 .env.*
 !.env.example
 *.local
+
+# Python artifacts
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.dist-info/
+site-packages/

@@ -110,6 +110,32 @@ export const routes: Routes = [
   { path: 'image-converter', redirectTo: 'tools/image-converter', pathMatch: 'full' },
   { path: 'img-converter', redirectTo: 'tools/image-converter', pathMatch: 'full' },
   { path: 'tools/img-converter', redirectTo: 'tools/image-converter', pathMatch: 'full' },
+  {
+    path: 'colorstudio',
+    loadComponent: () => import('../../apps/tool-color-studio/src/app/app.component').then(m => m.AppComponent),
+    title: 'Color Studio — Professional Color Tools | Acklet',
+    children: [
+      { path: '', loadComponent: () => import('../../apps/tool-color-studio/src/components/landing/color-studio-landing.component').then(m => m.ColorStudioLandingComponent) },
+      { path: ':module', loadComponent: () => import('../../apps/tool-color-studio/src/app/app.component').then(m => m.AppComponent) }
+    ]
+  },
+  { path: 'color-studio', redirectTo: 'colorstudio', pathMatch: 'full' },
+  { path: 'color-picker', redirectTo: 'colorstudio/color-picker', pathMatch: 'full' },
+  { path: 'image-extractor', redirectTo: 'colorstudio/image-extractor', pathMatch: 'full' },
+  { path: 'gradient-generator', redirectTo: 'colorstudio/gradient-generator', pathMatch: 'full' },
+  { path: 'contrast-checker', redirectTo: 'colorstudio/contrast-checker', pathMatch: 'full' },
+  { path: 'palette-generator', redirectTo: 'colorstudio/palette-generator', pathMatch: 'full' },
+  { path: 'vision-simulator', redirectTo: 'colorstudio/vision-simulator', pathMatch: 'full' },
+  {
+    path: 'tools/colorstudio',
+    loadComponent: () => import('../../apps/tool-color-studio/src/app/app.component').then(m => m.AppComponent),
+    title: 'Color Studio — Professional Color Tools | Acklet',
+    children: [
+      { path: '', loadComponent: () => import('../../apps/tool-color-studio/src/components/landing/color-studio-landing.component').then(m => m.ColorStudioLandingComponent) },
+      { path: ':module', loadComponent: () => import('../../apps/tool-color-studio/src/app/app.component').then(m => m.AppComponent) }
+    ]
+  },
+  { path: 'tools/color-studio', redirectTo: 'tools/colorstudio', pathMatch: 'full' },
 
   // --- Public Pages under main header/navbar layout ---
   {

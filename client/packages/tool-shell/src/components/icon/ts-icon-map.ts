@@ -74,6 +74,7 @@ import {
   LucideDatabase,
   LucideBoxes,
   LucideSparkles,
+  LucideLoader,
   LucideHardDrive,
   LucideSliders,
   LucideCompass,
@@ -138,6 +139,7 @@ import {
   LucideFrame,
   LucideArrowLeftRight,
   LucideActivity,
+  LucideCrosshair,
   LucideAward,
   LucideBadge,
   LucideTarget,
@@ -161,6 +163,9 @@ import {
   LucideMinimize2,
   LucideNetwork,
   LucideRepeat,
+  LucidePipette,
+  LucideUnlock,
+  LucideSquare,
   LucideRotateCcw,
   LucideRotateCw,
   LucideRuler,
@@ -174,9 +179,7 @@ import {
   LucidePrinter,
   LucideFlipHorizontal,
   LucideFlipVertical,
-  LucideUnlock,
-  LucideCrop,
-  LucidePipette
+  LucideCrop
 } from '@lucide/angular';
 
 import {
@@ -282,6 +285,9 @@ export const LUCIDE_MOTION_MAP: Record<string, string> = {
   'img-converter': 'motion-scale-up',
   'file-converter': 'motion-rotate-15',
   converter: 'motion-rotate-15',
+  loader: 'motion-rotate-45',
+  crosshair: 'motion-scale-up',
+  select: 'motion-scale-up',
   mail: 'motion-scale-up',
   inbox: 'motion-scale-up'
 };
@@ -582,6 +588,12 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
     animated: SparklesIcon,
     lucide: LucideSparkles
   },
+  loader: {
+    lucide: LucideLoader
+  },
+  spinner: {
+    lucide: LucideLoader
+  },
   'hard-drive': {
     lucide: LucideHardDrive
   },
@@ -816,6 +828,26 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
     lucide: LucideArrowLeftRight,
     notes: 'Used in Universal File Converter tool identity'
   },
+  colorstudio: {
+    lucide: LucidePalette,
+    notes: 'Used in Color Studio tool identity'
+  },
+  'color-studio': {
+    lucide: LucidePalette,
+    notes: 'Used in Color Studio tool identity'
+  },
+  pipette: {
+    lucide: LucidePipette,
+    notes: 'Eyedropper / Color Picker'
+  },
+  unlock: {
+    lucide: LucideUnlock,
+    notes: 'Unlocked state'
+  },
+  square: {
+    lucide: LucideSquare,
+    notes: 'Background / Square'
+  },
   phone: {
     lucide: LucidePhone
   },
@@ -876,6 +908,12 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   target: {
     lucide: LucideTarget
   },
+  crosshair: {
+    lucide: LucideCrosshair
+  },
+  select: {
+    lucide: LucideCrosshair
+  },
   'graph-star': {
     lucide: LucideStar
   },
@@ -898,6 +936,12 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
     lucide: LucideArrowUpDown
   },
   'bar-chart-2': {
+    lucide: LucideBarChart2
+  },
+  'bar-chart': {
+    lucide: LucideBarChart2
+  },
+  'chart-bar': {
     lucide: LucideBarChart2
   },
   'chevrons-up-down': {
@@ -948,14 +992,8 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   'flip-vertical': {
     lucide: LucideFlipVertical
   },
-  unlock: {
-    lucide: LucideUnlock
-  },
   crop: {
     lucide: LucideCrop
-  },
-  pipette: {
-    lucide: LucidePipette
   },
   ruler: {
     lucide: LucideRuler

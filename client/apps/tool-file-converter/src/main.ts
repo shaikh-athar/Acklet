@@ -7,5 +7,4 @@ bootstrapApplication(AppComponent, {
   providers: [
     provideHttpClient(withFetch())
   ]
-}).catch(err => console.error(err));
-
+}).catch(err => console.error('[Converter Bootstrap Error]', err));

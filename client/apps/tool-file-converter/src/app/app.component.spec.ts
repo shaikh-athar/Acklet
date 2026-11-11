@@ -1,6 +1,6 @@
 // apps/tool-file-converter/src/app/app.component.spec.ts
 import { describe, it, expect } from 'vitest';
-import { TOOL_REGISTRY, ToolRegistryItem } from '@acklet/tool-registry';
+import { TOOL_REGISTRY, ToolRegistryItem } from '../../../../packages/tool-registry/src';
 
 describe('File Converter Tool Shell & Manifest Integrity', () => {
   const manifest: ToolRegistryItem = TOOL_REGISTRY['file-converter'];

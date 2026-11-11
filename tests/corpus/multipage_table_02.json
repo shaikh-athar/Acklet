@@ -1,0 +1,16 @@
+{
+  "category": "multipage-table",
+  "pageCount": 2,
+  "headings": 1,
+  "tables": 1,
+  "tableRows": 46,
+  "tableCols": 6,
+  "images": 0,
+  "sampleWords": [
+    "inventory",
+    "master",
+    "warehouse",
+    "reorder",
+    "cost"
+  ]
+}

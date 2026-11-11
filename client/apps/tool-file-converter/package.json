@@ -1,0 +1,9 @@
+{
+  "name": "tool-file-converter",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "cd \"$(git rev-parse --show-toplevel)/client\" && npx vitest run apps/tool-file-converter",
+    "build": "cd \"$(git rev-parse --show-toplevel)/client\" && npx ng build"
+  }
+}

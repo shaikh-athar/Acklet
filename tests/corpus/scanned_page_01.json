@@ -1,0 +1,16 @@
+{
+  "category": "scanned",
+  "pageCount": 1,
+  "headings": 0,
+  "tables": 0,
+  "images": 1,
+  "isScanned": true,
+  "quality": "clean",
+  "sampleWords": [
+    "official",
+    "archived",
+    "certificate",
+    "safety",
+    "inspection"
+  ]
+}
