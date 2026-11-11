@@ -49,6 +49,9 @@ export const CENTERED_TOOLS = new Set<string>([
   'fileconverter',
   'image-converter',
   'imageconverter',
+  'image-compressor',
+  'img-compressor',
+  'imagecompressor',
   'barcode',
   'barcode-generator'
 ]);
@@ -70,6 +73,9 @@ export const TOOL_EXPLICIT_BACKGROUND_MAP: Record<string, ToolBackgroundVariant>
   'shortener': 'ambient-orb',
   'image-converter': 'ambient-orb',
   'imageconverter': 'ambient-orb',
+  'image-compressor': 'dual-spotlight',
+  'img-compressor': 'dual-spotlight',
+  'imagecompressor': 'dual-spotlight',
   'file-converter': 'top-wash',
   'fileconverter': 'top-wash',
   'converter': 'top-wash',

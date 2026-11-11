@@ -1,0 +1,214 @@
+<div class="compressor-page-wrapper" [class.is-active-workspace]="state.hasImages()">
+
+  <!-- Toast Notification Pill -->
+  @if (state.toast(); as t) {
+    <div
+      class="acklet-toast"
+      [class.toast-success]="t.type === 'success'"
+      [class.toast-error]="t.type === 'error'"
+      [class.toast-warning]="t.type === 'warning'"
+      [class.toast-info]="t.type === 'info'"
+      [class.is-leaving]="t.isLeaving"
+      role="status"
+      aria-live="polite"
+    >
+      <ts-icon
+        [name]="t.type === 'success' ? 'check' : (t.type === 'error' ? 'alert-circle' : (t.type === 'warning' ? 'alert-triangle' : 'info'))"
+        [size]="15"
+        class="toast-icon"
+      />
+      <span class="toast-message">{{ t.message }}</span>
+    </div>
+  }
+
+  <!-- Global Drag-and-Drop Active Overlay -->
+  @if (isPageDragOver()) {
+    <div class="global-drag-overlay" aria-hidden="true">
+      <div class="drag-outline-box">
+        <ts-icon name="upload-cloud" [size]="48" class="drag-cloud-icon" />
+        <span class="drag-prompt-title">{{ state.hasImages() ? 'Drop to Add Images' : 'Drop Images to Compress' }}</span>
+        <span class="drag-prompt-sub">Up to 50 images • Max 50 MB each</span>
+      </div>
+    </div>
+  }
+
+  <!-- Hidden File Input for Workspace Adding -->
+  <input
+    #workspaceFileInput
+    type="file"
+    multiple
+    accept="image/*,.jpg,.jpeg,.png,.webp,.gif,.bmp,.avif,.svg,.heic,.heif"
+    class="hidden-file-input"
+    (change)="onFilesSelected($event.target ? ($any($event.target).files || []) : [])"
+    aria-hidden="true"
+    tabindex="-1"
+  />
+
+  <!-- STATE 1: UPLOAD LANDING PAGE (When no images uploaded) -->
+  @if (!state.hasImages()) {
+    <div class="landing-stage animate-fade-in">
+      <app-upload-landing (filesSelected)="onFilesSelected($event)" />
+    </div>
+  }
+
+  <!-- STATE 2: UPLOADED IMAGE WORKSPACE (When images exist) -->
+  @if (state.hasImages()) {
+    <div class="workspace-layout animate-fade-slide-up">
+
+      <!-- LEFT COLUMN: Image Gallery & Processing Summary Stage -->
+      <main class="workspace-stage" aria-label="Uploaded images list">
+
+        <!-- Top Header Bar -->
+        <div class="stage-header-bar">
+          <div class="stage-title-group">
+            <h2 class="stage-heading">Image Compressor</h2>
+            <div class="stage-stats-pill font-mono">
+              <span class="stats-count">{{ state.totalCount() }} {{ state.totalCount() === 1 ? 'image' : 'images' }}</span>
+              <span class="stats-dot">•</span>
+              <span class="stats-size">{{ formatBytes(state.totalOriginalSize()) }}</span>
+            </div>
+          </div>
+
+          <div class="stage-actions-group">
+            <button
+              type="button"
+              class="header-action-btn primary-add-btn"
+              (click)="openWorkspaceFilePicker()"
+              [disabled]="state.totalCount() >= 50"
+              title="Add more images to this session"
+              aria-label="Add Images"
+            >
+              <ts-icon name="plus" [size]="14" />
+              <span>Add Images</span>
+            </button>
+
+            <button
+              type="button"
+              class="header-action-btn remove-all-btn"
+              (click)="state.removeAll()"
+              title="Remove all uploaded images"
+              aria-label="Remove All Images"
+            >
+              <ts-icon name="trash-2" [size]="14" />
+              <span>Remove All</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Bulk Action Controls Bar -->
+        <div class="bulk-toolbar">
+          <div class="bulk-select-wrap">
+            <label class="bulk-checkbox-label">
+              <input
+                type="checkbox"
+                [checked]="state.allSelected()"
+                (change)="state.allSelected() ? state.deselectAll() : state.selectAll()"
+                class="bulk-native-checkbox"
+                aria-label="Select all images"
+              />
+              <span class="bulk-custom-checkbox">
+                @if (state.allSelected()) {
+                  <ts-icon name="check" [size]="12" />
+                }
+              </span>
+              <span class="bulk-label-text">
+                {{ state.allSelected() ? 'Deselect All' : 'Select All' }}
+              </span>
+            </label>
+
+            @if (state.selectedCount() > 0) {
+              <span class="selected-counter-badge font-mono">
+                {{ state.selectedCount() }} of {{ state.totalCount() }} selected
+              </span>
+            }
+          </div>
+
+          @if (state.selectedCount() > 0) {
+            <div class="bulk-actions-group">
+              <button
+                type="button"
+                class="bulk-btn apply-global-btn"
+                (click)="state.applyGlobalSettingsToSelected()"
+                title="Reset overrides on selected images to match global settings"
+              >
+                <ts-icon name="rotate-ccw" [size]="13" />
+                <span>Apply Global Settings</span>
+              </button>
+
+              <button
+                type="button"
+                class="bulk-btn delete-selected-btn"
+                (click)="state.removeSelected()"
+                title="Remove selected images from batch"
+              >
+                <ts-icon name="trash-2" [size]="13" />
+                <span>Remove Selected ({{ state.selectedCount() }})</span>
+              </button>
+            </div>
+          }
+        </div>
+
+        <!-- Uploaded Images List -->
+        <div class="images-list-container">
+          @for (img of state.images(); track img.id) {
+            <app-image-card
+              [item]="img"
+              (selectToggled)="state.toggleSelect($event)"
+              (previewRequested)="state.openPreview($event)"
+              (settingsRequested)="state.openItemSettings($event)"
+              (removeRequested)="state.removeImage($event)"
+            />
+          }
+
+          <!-- Add More Card at end of list -->
+          @if (state.totalCount() < 50) {
+            <button
+              type="button"
+              class="add-more-row-card"
+              (click)="openWorkspaceFilePicker()"
+              title="Add more images"
+            >
+              <div class="add-icon-circle">
+                <ts-icon name="plus" [size]="18" />
+              </div>
+              <span class="add-more-text">Add More Images ({{ 50 - state.totalCount() }} slots available)</span>
+            </button>
+          }
+        </div>
+
+        <!-- Processing Summary Placeholder at bottom of stage -->
+        <div class="summary-wrapper">
+          <app-processing-summary [totalOriginalSize]="state.totalOriginalSize()" />
+        </div>
+
+      </main>
+
+      <!-- RIGHT COLUMN: Global & Individual Compression Settings Sidebar -->
+      <div class="workspace-sidebar" aria-label="Compression settings">
+        <app-settings-panel
+          [globalSettings]="state.globalSettings()"
+          [editingItem]="state.activeSettingsItem()"
+          (globalSettingsChanged)="onGlobalSettingsChanged($event)"
+          (individualSettingsChanged)="onIndividualSettingsChanged($event)"
+          (resetIndividualSettings)="onResetIndividualSettings($event)"
+          (closeIndividualSettings)="onCloseIndividualSettings()"
+        />
+      </div>
+
+    </div>
+  }
+
+  <!-- Image Preview Modal -->
+  @if (state.previewModalIndex() !== null) {
+    <app-preview-modal
+      [item]="state.previewImage()"
+      [currentIndex]="state.previewModalIndex() || 0"
+      [totalImages]="state.totalCount()"
+      (close)="state.closePreview()"
+      (next)="state.nextPreview()"
+      (prev)="state.prevPreview()"
+    />
+  }
+
+</div>
+

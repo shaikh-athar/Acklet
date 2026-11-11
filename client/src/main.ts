@@ -15,7 +15,8 @@ const isShortenerPath = pathname === '/urlshortener' || pathname === '/short';
 const isTempEmailPath = pathname === '/temp-email' || pathname === '/temp-mail' || pathname === '/mail' || pathname.startsWith('/tools/temp-email') || pathname.startsWith('/tools/temp-mail');
 const isFileConverterPath = pathname === '/file-converter' || pathname === '/converter' || pathname.startsWith('/tools/file-converter') || pathname.startsWith('/tools/converter') || pathname.startsWith('/convert');
 const isImageConverterPath = pathname === '/image-converter' || pathname === '/img-converter' || pathname.startsWith('/tools/image-converter') || pathname.startsWith('/tools/img-converter');
-const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short', 'temp-email', 'temp-mail', 'tempmail', 'file-converter', 'converter', 'image-converter', 'img-converter'];
+const isImageCompressorPath = pathname === '/image-compressor' || pathname === '/img-compressor' || pathname === '/imagecompressor' || pathname.startsWith('/tools/image-compressor') || pathname.startsWith('/tools/img-compressor') || pathname.startsWith('/tools/imagecompressor');
+const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short', 'temp-email', 'temp-mail', 'tempmail', 'file-converter', 'converter', 'image-converter', 'img-converter', 'image-compressor', 'img-compressor', 'imagecompressor'];
 const toolSlug = extractToolSlugFromHostname(hostname) || (queryTool && validQueryTools.includes(queryTool) ? queryTool : null);
 
 if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools') {
@@ -120,6 +121,18 @@ if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools'
       });
     })
     .catch((err) => console.error('[Tool Image Converter Bootstrap Error]', err));
+} else if (toolSlug === 'image-compressor' || toolSlug === 'img-compressor' || toolSlug === 'imagecompressor' || isImageCompressorPath) {
+  // Dedicated Image Compressor route/host mapping
+  Promise.all([
+    import('../apps/tool-image-compressor/src/app/app.component'),
+    import('@angular/common/http')
+  ])
+    .then(([{ AppComponent }, { provideHttpClient, withFetch }]) => {
+      return bootstrapApplication(AppComponent, {
+        providers: [provideHttpClient(withFetch())]
+      });
+    })
+    .catch((err) => console.error('[Tool Image Compressor Bootstrap Error]', err));
 } else {
   // Bootstrap Acklet Portal (default)
   Promise.all([

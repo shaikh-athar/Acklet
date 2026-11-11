@@ -6,6 +6,7 @@ import { DATALENS_MANIFEST } from './manifests/datalens.manifest';
 import { BARCODE_MANIFEST } from './manifests/barcode.manifest';
 import { TEMP_EMAIL_MANIFEST } from './manifests/temp-email.manifest';
 import { IMAGE_CONVERTER_MANIFEST, FILE_CONVERTER_MANIFEST } from './manifests/file-converter.manifest';
+import { IMAGE_COMPRESSOR_MANIFEST } from './manifests/image-compressor.manifest';
 import { AMBER_ACCENT, BLUE_ACCENT, ROSE_ACCENT, VIOLET_ACCENT, EMERALD_ACCENT, INDIGO_ACCENT } from './accent-presets';
 
 export { CLIPBOARD_MANIFEST } from './manifests/clipboard.manifest';
@@ -14,6 +15,7 @@ export { DATALENS_MANIFEST } from './manifests/datalens.manifest';
 export { BARCODE_MANIFEST } from './manifests/barcode.manifest';
 export { TEMP_EMAIL_MANIFEST } from './manifests/temp-email.manifest';
 export { IMAGE_CONVERTER_MANIFEST, FILE_CONVERTER_MANIFEST } from './manifests/file-converter.manifest';
+export { IMAGE_COMPRESSOR_MANIFEST } from './manifests/image-compressor.manifest';
 
 /**
  * Single Source of Truth for all tools in Acklet.
@@ -32,6 +34,9 @@ export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
   'converter': FILE_CONVERTER_MANIFEST,
   'image-converter': IMAGE_CONVERTER_MANIFEST,
   'img-converter': IMAGE_CONVERTER_MANIFEST,
+  'image-compressor': IMAGE_COMPRESSOR_MANIFEST,
+  'imagecompressor': IMAGE_COMPRESSOR_MANIFEST,
+  'img-compressor': IMAGE_COMPRESSOR_MANIFEST,
   'urlshortener': {
     id: 'urlshortener',
     name: 'URL Shortener',
