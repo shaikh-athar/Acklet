@@ -176,7 +176,10 @@ import {
   LucideZoomOut,
   LucideBarcode,
   LucideScanBarcode,
-  LucidePrinter
+  LucidePrinter,
+  LucideFlipHorizontal,
+  LucideFlipVertical,
+  LucideCrop
 } from '@lucide/angular';
 
 import {
@@ -678,6 +681,9 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   video: {
     lucide: LucideVideo
   },
+  film: {
+    lucide: LucideVideo
+  },
   music: {
     lucide: LucideMusic
   },
@@ -716,6 +722,12 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   },
   palette: {
     lucide: LucidePalette
+  },
+  swatch: {
+    lucide: LucidePalette
+  },
+  checkerboard: {
+    lucide: LucideLayoutGrid
   },
   'more-horizontal': {
     lucide: LucideEllipsis
@@ -973,6 +985,15 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   },
   'rotate-cw': {
     lucide: LucideRotateCw
+  },
+  'flip-horizontal': {
+    lucide: LucideFlipHorizontal
+  },
+  'flip-vertical': {
+    lucide: LucideFlipVertical
+  },
+  crop: {
+    lucide: LucideCrop
   },
   ruler: {
     lucide: LucideRuler

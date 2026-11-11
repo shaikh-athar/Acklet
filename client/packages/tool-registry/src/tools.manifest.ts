@@ -26,8 +26,9 @@ export { ORANGE_ACCENT, STEEL_BLUE_ACCENT, OLIVE_ACCENT } from './accent-presets
 export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
   'colorstudio': COLOR_STUDIO_MANIFEST,
   'color-studio': COLOR_STUDIO_MANIFEST,
-  'file-converter': CONVERTER_MANIFEST,
-  'converter': CONVERTER_MANIFEST,
+  'file-converter': FILE_CONVERTER_MANIFEST,
+  'converter': FILE_CONVERTER_MANIFEST,
+  'document-converter': CONVERTER_MANIFEST,
   'image-converter': IMAGE_CONVERTER_MANIFEST,
   'img-converter': IMAGE_CONVERTER_MANIFEST,
   'clipboard': CLIPBOARD_MANIFEST,
@@ -62,8 +63,8 @@ export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
     layout: 'fullBleed',
     addedAt: '2026-10-28',
     updatedAt: '2026-10-28',
-    accent: 'amber',
-    accentHue: 38,
+    accent: 'blue',
+    accentHue: 221,
     supports: ['shield-check', 'zap', 'lock'],
     facts: [
       { label: 'Storage', value: 'Per-browser' },

@@ -560,11 +560,11 @@ import { InspectorEmptyStateComponent } from './inspector-empty-state.component'
           <div class="graph-canvas-toolbar">
             <div class="graph-toolbar-left">
               <span class="graph-canvas-title">
-                <app-icon name="network" class="icon-xs text-emerald-400"></app-icon>
+                <app-icon name="network" class="icon-xs text-[var(--tool-accent,var(--accent,#2563EB))]"></app-icon>
                 JSON Node Graph
               </span>
               <span class="graph-breadcrumb-chip" data-tooltip="Active JSONPath Route">
-                <app-icon name="search-code" class="icon-xs text-emerald-400"></app-icon>
+                <app-icon name="search-code" class="icon-xs text-[var(--tool-accent,var(--accent,#2563EB))]"></app-icon>
                 <code>{{ activeGraphBreadcrumb() }}</code>
               </span>
             </div>

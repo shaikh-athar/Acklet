@@ -77,41 +77,7 @@ export type GeneratorTab = 'content' | 'customize' | 'bulk' | 'temporary' | 'pre
         (navigateToGenerator)="activeView.set('generator')"
       />
     } @else {
-      <div class="barcode-tool-workspace" [attr.data-view]="currentTab()">
-        <!-- ════════════════════════════════════════════════════════════ -->
-        <!-- DRAG AND DROP FILE GATHER SCREEN OVERLAY                     -->
-        <!-- ════════════════════════════════════════════════════════════ -->
-        @if (isDragOverScreen()) {
-          <div class="screen-file-gather-overlay" aria-modal="true" role="dialog" aria-label="Drop file to gather barcodes">
-            <div class="gather-drop-card animate-gather-pop">
-              <div class="gather-icon-wrapper">
-                <div class="gather-sonar-ring ring-1"></div>
-                <div class="gather-sonar-ring ring-2"></div>
-                <div class="gather-icon-circle">
-                  <ts-icon name="upload-cloud" [size]="44" class="gather-icon" />
-                </div>
-              </div>
-
-              <div class="gather-text-col">
-                <h2 class="gather-headline">Drop file to gather barcodes</h2>
-                <p class="gather-subline">
-                  Release your CSV, TSV, or text file anywhere to parse and generate barcodes in bulk
-                </p>
-              </div>
-
-              <div class="gather-specs-row">
-                <span class="gather-chip">.csv</span>
-                <span class="gather-chip">.tsv</span>
-                <span class="gather-chip">.txt</span>
-                <span class="gather-chip-sep">•</span>
-                <span class="gather-meta-text">Max 2 MB</span>
-                <span class="gather-chip-sep">•</span>
-                <span class="gather-meta-text">Up to 500 records</span>
-              </div>
-            </div>
-          </div>
-        }
-
+      <div class="barcode-tool-workspace" [attr.data-view]="currentTab()" [class.is-drag-active]="isDragOverScreen()">
         <!-- ════════════════════════════════════════════════════════════ -->
         <!-- Workspace Container (Two-column Desktop / Stacked Tablet & Phone) -->
         <!-- ════════════════════════════════════════════════════════════ -->
@@ -1067,13 +1033,13 @@ export type GeneratorTab = 'content' | 'customize' | 'bulk' | 'temporary' | 'pre
     }
 
     .tab-strip-btn:hover:not(.active) {
-      color: var(--text, #fcfcfc);
-      background: var(--bg-surface, rgba(255, 255, 255, 0.06));
+      color: var(--tool-accent, var(--accent)) !important;
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
     }
 
     :host-context([data-theme="light"]) .tab-strip-btn:hover:not(.active) {
-      color: #0F172A;
-      background: #F1F5F9;
+      color: var(--tool-accent, var(--accent)) !important;
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
     }
 
     .tab-strip-btn.active {
@@ -1169,194 +1135,14 @@ export type GeneratorTab = 'content' | 'customize' | 'bulk' | 'temporary' | 'pre
       }
     }
 
-    /* ═══════════════════════════════════════════════════════════════ */
-    /* Full-Screen Drag and Drop File Gather Screen Overlay            */
-    /* ═══════════════════════════════════════════════════════════════ */
-    .screen-file-gather-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      background: rgba(15, 23, 42, 0.8);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      pointer-events: none;
-      animation: gatherFadeIn 0.18s ease-out;
+    .barcode-tool-workspace.is-drag-active {
+      border: 1px solid var(--tool-accent, var(--accent, #2563EB)) !important;
+      background-color: var(--tool-accent-soft, var(--accent-soft, rgba(37, 99, 235, 0.08))) !important;
     }
 
-    :host-context([data-theme="light"]) .screen-file-gather-overlay {
-      background: rgba(241, 245, 249, 0.88);
-    }
-
-    .gather-drop-card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      gap: 18px;
-      padding: 44px 36px;
-      width: 100%;
-      max-width: 520px;
-      border-radius: 20px;
-      background: #1E293B;
-      border: 2.5px dashed var(--tool-accent, #3B82F6);
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55), 0 0 40px rgba(59, 130, 246, 0.3);
-      box-sizing: border-box;
-      pointer-events: none;
-    }
-
-    :host-context([data-theme="light"]) .gather-drop-card {
-      background: #FFFFFF;
-      border-color: #2563EB;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.12), 0 0 35px rgba(37, 99, 235, 0.22);
-    }
-
-    @keyframes gatherFadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    @keyframes gatherPop {
-      0% { transform: scale(0.94); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-
-    .animate-gather-pop {
-      animation: gatherPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    .gather-icon-wrapper {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 88px;
-      height: 88px;
-    }
-
-    .gather-sonar-ring {
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      border: 2px solid rgba(59, 130, 246, 0.45);
-      animation: sonarPulse 2s cubic-bezier(0.25, 1, 0.5, 1) infinite;
-    }
-
-    :host-context([data-theme="light"]) .gather-sonar-ring {
-      border-color: rgba(37, 99, 235, 0.4);
-    }
-
-    .ring-2 {
-      animation-delay: 0.7s;
-    }
-
-    @keyframes sonarPulse {
-      0% { transform: scale(0.85); opacity: 0.8; }
-      100% { transform: scale(1.4); opacity: 0; }
-    }
-
-    .gather-icon-circle {
-      position: relative;
-      z-index: 2;
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      background: rgba(59, 130, 246, 0.16);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      animation: gatherFloat 2.5s ease-in-out infinite;
-    }
-
-    :host-context([data-theme="light"]) .gather-icon-circle {
-      background: #EFF6FF;
-    }
-
-    @keyframes gatherFloat {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
-    }
-
-    .gather-icon {
-      color: var(--tool-accent, #3B82F6);
-    }
-
-    :host-context([data-theme="light"]) .gather-icon {
-      color: #2563EB;
-    }
-
-    .gather-text-col {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .gather-headline {
-      margin: 0;
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      color: #F8FAFC;
-    }
-
-    :host-context([data-theme="light"]) .gather-headline {
-      color: #0F172A;
-    }
-
-    .gather-subline {
-      margin: 0;
-      font-size: 13.5px;
-      line-height: 1.5;
-      color: #94A3B8;
-      max-width: 400px;
-    }
-
-    :host-context([data-theme="light"]) .gather-subline {
-      color: #475569;
-    }
-
-    .gather-specs-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-top: 4px;
-    }
-
-    .gather-chip {
-      padding: 3px 8px;
-      font-size: 11.5px;
-      font-family: monospace;
-      font-weight: 600;
-      border-radius: 6px;
-      background: rgba(59, 130, 246, 0.16);
-      color: #93C5FD;
-      border: 1px solid rgba(59, 130, 246, 0.3);
-    }
-
-    :host-context([data-theme="light"]) .gather-chip {
-      background: #EFF6FF;
-      color: #1D4ED8;
-      border-color: rgba(37, 99, 235, 0.25);
-    }
-
-    .gather-chip-sep {
-      color: #64748B;
-      font-size: 12px;
-    }
-
-    .gather-meta-text {
-      font-size: 12px;
-      color: #94A3B8;
-      font-weight: 500;
-    }
-
-    :host-context([data-theme="light"]) .gather-meta-text {
-      color: #64748B;
+    :host-context([data-theme="dark"]) .barcode-tool-workspace.is-drag-active {
+      border: 1px solid var(--tool-accent, var(--accent, #60A5FA)) !important;
+      background-color: var(--tool-accent-soft, var(--accent-soft, rgba(59, 130, 246, 0.14))) !important;
     }
 
     /* ═══════════════════════════════════════════════════════════════ */
@@ -1753,6 +1539,13 @@ export class BarcodeGeneratorComponent implements OnInit, OnDestroy {
         this.isDragOverScreen.set(false);
       }
     }
+  }
+
+  @HostListener('window:dragend')
+  @HostListener('window:blur')
+  onWindowDragEndOrBlur(): void {
+    this.dragCounter = 0;
+    this.isDragOverScreen.set(false);
   }
 
   @HostListener('window:drop', ['$event'])

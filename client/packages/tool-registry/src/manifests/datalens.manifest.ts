@@ -1,6 +1,6 @@
 // packages/tool-registry/src/manifests/datalens.manifest.ts
 import type { ToolRegistryItem } from '../models';
-import { EMERALD_ACCENT } from '../accent-presets';
+import { BLUE_ACCENT } from '../accent-presets';
 
 export const DATALENS_MANIFEST: ToolRegistryItem = {
   id: 'datalens',
@@ -22,11 +22,11 @@ export const DATALENS_MANIFEST: ToolRegistryItem = {
   layout: 'fullBleed',
   addedAt: '2026-02-01',
   updatedAt: '2026-10-28',
-  accent: 'emerald',
-  accentHue: 160,
+  accent: 'blue',
+  accentHue: 221,
   supports: ['shield-check', 'zap', 'download'],
   theme: {
-    accent: EMERALD_ACCENT,
+    accent: BLUE_ACCENT,
     font: {
       family: 'Nunito',
       fontFamily: "'Nunito', system-ui, -apple-system, sans-serif",

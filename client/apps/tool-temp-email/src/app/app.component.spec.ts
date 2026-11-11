@@ -10,7 +10,7 @@ describe('Temporary Email Tool Shell & Manifest Integrity', () => {
     expect(manifest.id).toBe('temp-email');
     expect(manifest.slug).toBe('temp-email');
     expect(manifest.name).toBe('Temporary Email');
-    expect(manifest.accent).toBe('violet');
+    expect(manifest.accent).toBe('blue');
     expect(manifest.icon).toBe('mail');
   });
 

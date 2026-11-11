@@ -1,68 +1,130 @@
-<div class="converter-page-wrapper">
+<div class="converter-page-wrapper" [class.is-active-workspace]="engine.hasJobs()">
   
-  <!-- Notification Banner (Batch Limit / File Size Warnings) -->
-  @if (engine.batchNotification(); as note) {
-    <div class="batch-alert-banner" role="alert">
-      <ts-icon name="alert-circle" [size]="16" class="alert-icon" />
-      <span class="alert-text">{{ note }}</span>
-      <button type="button" class="alert-dismiss-btn" (click)="engine.batchNotification.set(null)" aria-label="Dismiss message">
-        <ts-icon name="x" [size]="14" />
-      </button>
+  <!-- Lightweight Bottom-Center Toast Notification (Compact Pill Style) -->
+  @if (toast(); as t) {
+    <div
+      class="acklet-toast"
+      [class.toast-success]="t.type === 'success'"
+      [class.toast-error]="t.type === 'error'"
+      [class.toast-warning]="t.type === 'warning'"
+      [class.toast-info]="t.type === 'info'"
+      [class.is-leaving]="t.isLeaving"
+      role="status"
+      aria-live="polite"
+    >
+      <ts-icon
+        [name]="t.type === 'success' ? 'check-circle' : (t.type === 'error' ? 'alert-circle' : (t.type === 'warning' ? 'alert-triangle' : 'info'))"
+        [size]="15"
+        class="toast-icon"
+      />
+      <span class="toast-message">{{ t.message }}</span>
     </div>
   }
 
-  <!-- STATE 1: EMPTY HERO (iLovePDF Style) -->
+  <!-- Global Drag-and-Drop Active Overlay ("Drop to convert" / "Drop to add images") -->
+  @if (isPageDragOver()) {
+    <div class="global-drag-overlay" aria-hidden="true">
+      <div class="drag-outline-box">
+        <ts-icon name="upload-cloud" [size]="40" class="drag-cloud-icon" />
+        <span class="drag-prompt-text">{{ engine.hasJobs() ? 'Drop to add images' : 'Drop to convert' }}</span>
+      </div>
+    </div>
+  }
+
+  <!-- STATE 1: MINIMAL HERO DROPZONE (When idle / !engine.hasJobs()) -->
   @if (!engine.hasJobs()) {
-    <div class="empty-state-shell animate-fade-in">
-      <section class="dropzone-section" aria-label="Image upload section">
-        <app-dropzone (filesDropped)="onFilesDropped($event)" />
-      </section>
+    <div class="hero-dropzone-area">
+      <!-- 1. Hero Headline with Rotating Word -->
+      <h1
+        class="hero-headline"
+        (mouseenter)="isHeadlineHovered.set(true)"
+        (mouseleave)="isHeadlineHovered.set(false)"
+        (focusin)="isHeadlineHovered.set(true)"
+        (focusout)="isHeadlineHovered.set(false)"
+      >
+        <span class="headline-static">Convert your images to</span>
+        <app-rotating-word
+          [words]="rotatingWords"
+          [interval]="3000"
+          [paused]="isHeadlineHovered()"
+          class="headline-rotating"
+        ></app-rotating-word>
+      </h1>
 
-      <!-- Highlights Row -->
-      <section class="minimal-highlights-grid" aria-label="Tool value highlights">
-        <div class="highlight-tile">
-          <div class="highlight-icon-wrapper">
-            <ts-icon name="zap" [size]="20" />
-          </div>
-          <div>
-            <h4 class="highlight-title">Instant In-Browser Speed</h4>
-            <p class="highlight-desc">Processes multi-image batches locally via Canvas API. No waiting in queue, zero latency.</p>
+      <!-- 2. Primary Select Button & Tagline -->
+      <div class="hero-action-group">
+        <button
+          type="button"
+          class="hero-select-btn"
+          (click)="openFilePicker()"
+          aria-label="Select images to convert"
+        >
+          <ts-icon name="plus" [size]="16" class="btn-icon" />
+          <span>Select Images</span>
+        </button>
+        <p class="hero-subtitle">PNG, JPG, WebP, AVIF and other supported formats</p>
+      </div>
+
+      <!-- 3. Popular Conversions Crossfade Stage (Synchronized 3-Second Cycle) -->
+      <div
+        class="popular-conversions-wrapper"
+        (mouseenter)="onPopularMouseEnter()"
+        (mouseleave)="onPopularMouseLeave()"
+        (focusin)="onPopularFocusIn()"
+        (focusout)="onPopularFocusOut()"
+      >
+        <div class="popular-crossfade-stage" role="region" aria-label="Popular image conversions">
+          <!-- Previous Group (Fading & Drifting Out during transition) -->
+          @if (previousGroupIndex() !== null && !isReducedMotion()) {
+            <div class="popular-grid-group is-exiting" aria-hidden="true">
+              @for (pair of popularGroups[previousGroupIndex()!]; track pair.source + '-' + pair.target) {
+                <button
+                  type="button"
+                  tabindex="-1"
+                  class="popular-pair-pill"
+                >
+                  <span class="pair-source font-mono">{{ pair.source | uppercase }}</span>
+                  <span class="pair-arrow">&rarr;</span>
+                  <span class="pair-target font-mono">{{ pair.target | uppercase }}</span>
+                </button>
+              }
+            </div>
+          }
+
+          <!-- Current Active Group (Fading & Coming in) -->
+          <div
+            class="popular-grid-group"
+            [class.is-entering]="previousGroupIndex() !== null && !isReducedMotion()"
+          >
+            @for (pair of popularGroups[currentGroupIndex()]; track pair.source + '-' + pair.target) {
+              <button
+                type="button"
+                class="popular-pair-pill"
+                (click)="onSelectPopularPair(pair)"
+                [title]="'Convert ' + (pair.source | uppercase) + ' to ' + (pair.target | uppercase)"
+              >
+                <span class="pair-source font-mono">{{ pair.source | uppercase }}</span>
+                <span class="pair-arrow">&rarr;</span>
+                <span class="pair-target font-mono">{{ pair.target | uppercase }}</span>
+              </button>
+            }
           </div>
         </div>
 
-        <div class="highlight-tile">
-          <div class="highlight-icon-wrapper">
-            <ts-icon name="shield-check" [size]="20" />
-          </div>
-          <div>
-            <h4 class="highlight-title">100% Private & Client-Side</h4>
-            <p class="highlight-desc">Your photos never touch an external server or cloud. Data stays safely in your browser.</p>
-          </div>
-        </div>
-
-        <div class="highlight-tile">
-          <div class="highlight-icon-wrapper">
-            <ts-icon name="download" [size]="20" />
-          </div>
-          <div>
-            <h4 class="highlight-title">Batch 50 Images + ZIP</h4>
-            <p class="highlight-desc">Convert up to 50 images in one batch (up to 50 MB each) and download them individually or bundled.</p>
-          </div>
-        </div>
-      </section>
+        <!-- Only enable conversion pairs that are implemented and tested. -->
+      </div>
     </div>
   }
 
-  <!-- STATE 2: STUDIO WORKSPACE (iLoveIMG Style) -->
   @if (engine.hasJobs()) {
     <div class="workspace-layout animate-fade-slide-up">
 
       <!-- LEFT COLUMN: Main Gallery Stage -->
-      <main class="workspace-stage" aria-label="Image gallery and queue">
-        <!-- Stage Header Bar -->
-        <div class="stage-header-bar">
+      <main class="workspace-stage" aria-label="File gallery and queue">
+        <!-- Stage Header Bar: Transparent when idle, blur glass when scrolled -->
+        <div class="stage-header-bar" [class.is-scrolled]="isHeaderScrolled()">
           <div class="stage-title-group">
-            <h2 class="stage-title">Images to Convert</h2>
+            <h2 class="stage-title">{{ fileCategoryLabel() }} to Convert</h2>
             <span class="stage-count-badge font-mono">{{ engine.jobs().length }} / {{ maxFiles }}</span>
           </div>
 
@@ -72,10 +134,14 @@
               class="add-more-header-btn"
               (click)="openFilePicker()"
               [disabled]="engine.isConvertingAny() || engine.jobs().length >= maxFiles"
-              title="Add more images to this batch"
+              [title]="'Add more ' + fileCategoryLabel().toLowerCase() + ' to this batch'"
+              aria-label="Add Files"
             >
-              <ts-icon name="plus" [size]="15" />
-              <span>Add Images</span>
+              <ts-icon name="plus" [size]="14" />
+              <span class="btn-text">
+                <span class="text-desktop">Add {{ fileCategoryLabel() }}</span>
+                <span class="text-mobile">Add</span>
+              </span>
             </button>
 
             <button
@@ -83,40 +149,16 @@
               class="clear-all-header-btn"
               (click)="engine.clearAll()"
               [disabled]="engine.isConvertingAny()"
-              title="Remove all images"
+              title="Remove all files"
+              aria-label="Clear all files"
             >
-              <ts-icon name="trash-2" [size]="14" />
-              <span>Clear</span>
+              <ts-icon name="trash-2" [size]="13" />
+              <span class="btn-text">Clear</span>
             </button>
           </div>
         </div>
 
-        <!-- Celebration Banner (Shown when all jobs have finished) -->
-        @if (engine.completedCount() > 0 && engine.readyJobsCount() === 0 && !engine.isConvertingAny()) {
-          <div class="celebration-strip animate-celebration">
-            <div class="celebration-strip-left">
-              <span class="celebration-icon-box">
-                <ts-icon name="sparkles" [size]="18" />
-              </span>
-              <div>
-                <strong class="celebration-bold">All {{ engine.completedCount() }} images converted successfully!</strong>
-                @if (engine.totalSavingsBytes() > 0) {
-                  <span class="celebration-savings font-mono">
-                    Saved {{ formatBytes(engine.totalSavingsBytes()) }} ({{ engine.totalSavingsPercent() }}% smaller)
-                  </span>
-                }
-              </div>
-            </div>
-            @if (engine.completedCount() > 1) {
-              <button type="button" class="celebration-zip-btn" (click)="engine.downloadAllAsZip()">
-                <ts-icon name="download" [size]="14" />
-                <span>Download All (ZIP)</span>
-              </button>
-            }
-          </div>
-        }
-
-        <!-- Gallery Grid of Image Cards -->
+        <!-- Gallery Grid of File Cards -->
         <div class="image-gallery-grid" role="list">
           @for (job of engine.jobs(); track job.id) {
             <app-conversion-item
@@ -127,6 +169,8 @@
               (download)="onDownloadJob($event)"
               (formatChanged)="onFormatChanged($event)"
               (previewRequested)="onPreviewRequested($event)"
+              (rename)="onRenameJob($event.jobId, $event.newBaseName)"
+              (compareRequested)="openComparisonModal($event)"
             />
           }
 
@@ -136,13 +180,15 @@
               type="button"
               class="add-tile-card"
               (click)="openFilePicker()"
-              title="Add more images"
+              [title]="'Add more ' + fileCategoryLabel().toLowerCase()"
             >
               <div class="add-circle-icon">
                 <ts-icon name="plus" [size]="24" />
               </div>
-              <span class="add-tile-text">Add More</span>
-              <span class="add-tile-sub">Up to {{ maxFiles }} total</span>
+              <span class="add-tile-text">
+                <span class="add-text-full">Add More</span>
+                <span class="add-text-short">Add</span>
+              </span>
             </button>
           }
         </div>
@@ -152,99 +198,24 @@
       <aside class="workspace-sidebar" aria-label="Conversion options">
         <div class="sidebar-inner-card">
           <div class="sidebar-header">
-            <h3 class="sidebar-title">Image Conversion</h3>
-            <p class="sidebar-subtitle">Configure target format, quality, and sizing</p>
+            <h3 class="sidebar-title">File Conversion</h3>
           </div>
 
-          <!-- Section 1: Output Format Selection (iLoveIMG cards) -->
-          <div class="sidebar-section">
-            <label class="sidebar-section-label">Convert All To</label>
-            <div class="format-cards-stack" role="radiogroup" aria-label="Target format">
-              @for (opt of targetFormatOptions; track opt.format) {
-                <button
-                  type="button"
-                  class="format-choice-card"
-                  [class.is-selected]="engine.batchTargetFormat() === opt.format"
-                  (click)="onBatchTargetChange(opt.format)"
-                  [attr.aria-checked]="engine.batchTargetFormat() === opt.format"
-                  role="radio"
-                >
-                  <div class="format-card-left">
-                    <div class="format-card-title-row">
-                      <span class="format-card-title">CONVERT TO {{ opt.format | uppercase }}</span>
-                      @if (opt.format === 'webp') {
-                        <span class="badge-recommended">Best</span>
-                      }
-                    </div>
-                    <span class="format-card-desc">{{ opt.description }}</span>
-                  </div>
-                  <div class="format-card-indicator">
-                    @if (engine.batchTargetFormat() === opt.format) {
-                      <div class="selected-check-circle">
-                        <ts-icon name="check" [size]="13" />
-                      </div>
-                    } @else {
-                      <div class="unselected-radio-circle"></div>
-                    }
-                  </div>
-                </button>
-              }
-            </div>
+          <!-- Scrollable Middle Body (Scrolls only if content exceeds first-screen height) -->
+          <div class="sidebar-scrollable-body">
+            <ng-container *ngTemplateOutlet="conversionSettingsTemplate" />
           </div>
 
-          <!-- Section 2: Quality Preset -->
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <label class="sidebar-section-label">Quality Level</label>
-              <span class="selected-quality-badge font-mono">{{ getQualityLabel(engine.batchQuality()) }}</span>
-            </div>
-            <div class="quality-segmented-control" role="radiogroup" aria-label="Quality preset">
-              @for (q of qualityOptions; track q.value) {
-                <button
-                  type="button"
-                  class="quality-seg-btn"
-                  [class.is-active]="engine.batchQuality() === q.value"
-                  (click)="onBatchQualityChange(q.value)"
-                  [attr.aria-checked]="engine.batchQuality() === q.value"
-                  role="radio"
-                  [title]="q.label + ' (' + q.badge + ')'"
-                >
-                  <span class="seg-label">{{ q.label }}</span>
-                  <span class="seg-badge font-mono">{{ q.badge }}</span>
-                </button>
-              }
-            </div>
-          </div>
-
-          <!-- Section 3: Resize (Optional) -->
-          <div class="sidebar-section">
-            <label class="sidebar-section-label" for="resizeSelect">Resize Dimension (Optional)</label>
-            <div class="select-wrapper">
-              <select
-                id="resizeSelect"
-                class="resize-native-select font-mono"
-                [ngModel]="engine.batchMaxWidth() ?? ''"
-                (ngModelChange)="onBatchResizeChange($event ? +$event : undefined)"
-              >
-                <option value="">Original (No resize)</option>
-                <option value="1920">1920px (Full HD)</option>
-                <option value="1280">1280px (HD 720p)</option>
-                <option value="800">800px (Web Optimized)</option>
-              </select>
-              <ts-icon name="chevron-down" [size]="15" class="select-arrow-icon" />
-            </div>
-          </div>
-
-          <!-- Sticky Action Bottom in Sidebar -->
-          <div class="sidebar-action-footer">
+        <!-- Fixed Bottom Action Area (Always visible on first screen, never cut off) -->
+        <div class="sidebar-action-footer">
             @if (engine.readyJobsCount() > 0) {
               <button
                 type="button"
                 class="sidebar-primary-cta"
-                (click)="engine.convertAll()"
+                (click)="onConvertAll()"
                 [disabled]="engine.isConvertingAny()"
               >
-                <span>Convert {{ engine.readyJobsCount() }} {{ engine.readyJobsCount() === 1 ? 'Image' : 'Images' }}</span>
+                <span>Convert {{ engine.readyJobsCount() }} {{ engine.readyJobsCount() === 1 ? 'File' : 'Files' }}</span>
                 <ts-icon name="arrow-right" [size]="18" />
               </button>
             } @else if (engine.isConvertingAny()) {
@@ -269,7 +240,7 @@
                 (click)="engine.clearAll(); openFilePicker()"
               >
                 <ts-icon name="refresh-cw" [size]="14" />
-                <span>Convert More Images</span>
+                <span>Convert More Files</span>
               </button>
             }
           </div>
@@ -285,7 +256,7 @@
     #workspaceFileInput
     type="file"
     multiple
-    accept="image/*,.png,.jpg,.jpeg,.webp,.avif,.svg,.gif,.bmp,.ico"
+    [accept]="acceptTypes()"
     class="hidden-workspace-input"
     (change)="onWorkspaceFileChange($event)"
     aria-hidden="true"
@@ -294,11 +265,806 @@
 
 </div>
 
+<!-- MOBILE / TABLET FIXED BOTTOM ACTION BAR (Shown when engine.hasJobs() on screens < 1024px) -->
+@if (engine.hasJobs()) {
+  <div class="mobile-bottom-bar" role="toolbar" aria-label="Conversion actions">
+    <button
+      type="button"
+      class="mobile-settings-btn"
+      (click)="openMobileSettingsSheet()"
+      aria-label="Open conversion settings"
+      [attr.aria-expanded]="isMobileSettingsSheetOpen()"
+    >
+      <ts-icon name="sliders" [size]="16" />
+      <span class="mobile-settings-label">Settings</span>
+      <span class="mobile-format-pill font-mono">{{ getShortSelectedTargetLabel() }}</span>
+    </button>
+
+    <div class="mobile-primary-action-wrap">
+      @if (engine.readyJobsCount() > 0) {
+        <button
+          type="button"
+          class="mobile-primary-cta"
+          (click)="onConvertAll()"
+          [disabled]="engine.isConvertingAny()"
+        >
+          <span class="cta-label">Convert {{ engine.readyJobsCount() }} {{ engine.readyJobsCount() === 1 ? 'File' : 'Files' }}</span>
+          <ts-icon name="arrow-right" [size]="16" class="cta-arrow" />
+        </button>
+      } @else if (engine.isConvertingAny()) {
+        <button type="button" class="mobile-primary-cta is-converting" disabled>
+          <span class="spinner-circle-sm"></span>
+          <span class="cta-label">Converting ({{ engine.convertingCount() }}/{{ engine.jobs().length }})...</span>
+        </button>
+      } @else if (engine.completedCount() > 0) {
+        @if (engine.completedCount() > 1) {
+          <button
+            type="button"
+            class="mobile-primary-cta is-download"
+            (click)="engine.downloadAllAsZip()"
+          >
+            <ts-icon name="download" [size]="16" />
+            <span class="cta-label">Save All (ZIP)</span>
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="mobile-primary-cta"
+            (click)="engine.clearAll(); openFilePicker()"
+          >
+            <ts-icon name="refresh-cw" [size]="15" />
+            <span class="cta-label">Convert More</span>
+          </button>
+        }
+      }
+    </div>
+  </div>
+
+  <!-- MOBILE SETTINGS BOTTOM SHEET (<1024px) -->
+  @if (isMobileSettingsSheetOpen()) {
+    <div
+      class="mobile-sheet-backdrop animate-fade-in"
+      (click)="closeMobileSettingsSheet()"
+      aria-hidden="true"
+    ></div>
+    <div
+      class="mobile-settings-sheet animate-slide-up"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="mobileSettingsSheetTitle"
+      (keydown.escape)="closeMobileSettingsSheet()"
+      (touchstart)="onSheetTouchStart($event)"
+      (touchend)="onSheetTouchEnd($event)"
+    >
+      <!-- Drag Handle -->
+      <div class="mobile-sheet-handle-bar" (click)="closeMobileSettingsSheet()">
+        <div class="mobile-sheet-drag-handle"></div>
+      </div>
+
+      <!-- Sheet Header -->
+      <div class="mobile-sheet-header">
+        <div class="mobile-sheet-title-group">
+          <ts-icon name="sliders" [size]="18" class="mobile-sheet-title-icon" />
+          <h3 id="mobileSettingsSheetTitle" class="mobile-sheet-title">File conversion</h3>
+        </div>
+        <button
+          type="button"
+          class="mobile-sheet-close-btn"
+          (click)="closeMobileSettingsSheet()"
+          aria-label="Close settings"
+        >
+          <ts-icon name="x" [size]="18" />
+        </button>
+      </div>
+
+      <!-- Sheet Scrollable Content -->
+      <div class="mobile-sheet-body">
+        <ng-container *ngTemplateOutlet="conversionSettingsTemplate" />
+      </div>
+
+      <!-- Sheet Footer Actions -->
+      <div class="mobile-sheet-footer">
+        <button
+          type="button"
+          class="mobile-sheet-done-btn"
+          (click)="closeMobileSettingsSheet()"
+        >
+          Done
+        </button>
+        @if (engine.readyJobsCount() > 0) {
+          <button
+            type="button"
+            class="mobile-sheet-convert-btn"
+            (click)="onConvertAll(); closeMobileSettingsSheet()"
+            [disabled]="engine.isConvertingAny()"
+          >
+            <span>Convert {{ engine.readyJobsCount() }} {{ engine.readyJobsCount() === 1 ? 'File' : 'Files' }}</span>
+            <ts-icon name="arrow-right" [size]="16" />
+          </button>
+        }
+      </div>
+    </div>
+  }
+}
+
 <!-- Preview Modal Dialog -->
 @if (previewModalJob(); as previewJob) {
   <app-preview-modal
     [job]="previewJob"
     (close)="closePreviewModal()"
     (download)="onDownloadJob($event)"
+    (renameRequested)="onRenameJob($event.jobId, $event.newBaseName)"
   />
 }
+
+<!-- Reusable Conversion Settings Template (Shared between Desktop Sidebar and Mobile Bottom Sheet) -->
+<ng-template #conversionSettingsTemplate>
+  <!-- Section 1: Target Format Dropdown & Quick Selector (Compact, Space-Saving) -->
+  <div class="sidebar-section">
+    <div class="sidebar-section-header">
+      <label class="sidebar-section-label">TARGET FORMAT</label>
+      @if (currentSelectedTargetOption()?.format !== 'custom') {
+        <span class="badge-recommended font-mono">{{ (currentSelectedTargetOption()?.extensions || currentSelectedTargetOption()?.format || '') | uppercase }}</span>
+      }
+    </div>
+
+    <!-- Conversion Mode Segmented Toggle (GLOBAL vs CUSTOM) -->
+    <div class="conversion-mode-bar">
+      <div class="mode-segmented-control" role="radiogroup" aria-label="Conversion Mode">
+        <button
+          type="button"
+          class="mode-segment-btn"
+          [class.is-active]="engine.conversionMode() === 'GLOBAL'"
+          (click)="setConversionMode('GLOBAL')"
+          role="radio"
+          [attr.aria-checked]="engine.conversionMode() === 'GLOBAL'"
+          title="Apply one target format to all images"
+        >
+          <ts-icon name="layers" [size]="12" />
+          <span class="mode-label-full">All Same (Global)</span>
+          <span class="mode-label-short">Global</span>
+        </button>
+
+        <button
+          type="button"
+          class="mode-segment-btn"
+          [class.is-active]="engine.conversionMode() === 'CUSTOM'"
+          (click)="setConversionMode('CUSTOM')"
+          role="radio"
+          [attr.aria-checked]="engine.conversionMode() === 'CUSTOM'"
+          title="Allow an individual target format for each image"
+        >
+          <ts-icon name="sliders" [size]="12" />
+          <span class="mode-label-full">Per Image (Custom)</span>
+          <span class="mode-label-short">Per image</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Format Dropdown Card with Arrow -->
+    <div class="target-format-control-card">
+      <div class="format-flow-row">
+        <div class="format-flow-left">
+          <span class="flow-category-badge">{{ fileCategoryLabel() }}</span>
+          <ts-icon name="arrow-right" [size]="14" class="flow-arrow-icon" />
+        </div>
+
+        <!-- Custom Standard Acklet Dropdown (Two-Column Categorized Grid with Search) -->
+        <div class="custom-dropdown format-dropdown-wrapper">
+          <button
+            type="button"
+            class="dropdown-trigger-btn font-mono"
+            [class.is-open]="isFormatDropdownOpen()"
+            (click)="$event.stopPropagation(); toggleFormatDropdown()"
+            [attr.aria-expanded]="isFormatDropdownOpen()"
+            aria-haspopup="listbox"
+            aria-label="Select target format"
+          >
+            <span class="selected-format-name">
+              {{ getShortSelectedTargetLabel() }}
+            </span>
+            <ts-icon name="chevron-down" [size]="14" class="dropdown-chevron" [class.rotated]="isFormatDropdownOpen()" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Floating Popover Card (Two-Column Categorized Format Grid) -->
+      <div class="dropdown-popover-card" [class.is-open]="isFormatDropdownOpen()" role="listbox" (click)="$event.stopPropagation()">
+        <!-- Sticky Top: Search bar -->
+        <div class="dropdown-search-box">
+          <ts-icon name="search" [size]="14" class="search-icon" />
+          <input
+            type="text"
+            class="dropdown-search-input font-mono"
+            placeholder="Search Format"
+            [ngModel]="formatSearchQuery()"
+            (ngModelChange)="formatSearchQuery.set($event)"
+            (click)="$event.stopPropagation()"
+          />
+          @if (formatSearchQuery()) {
+            <button
+              type="button"
+              class="search-clear-btn"
+              (click)="formatSearchQuery.set(''); $event.stopPropagation()"
+              title="Clear search"
+            >
+              <ts-icon name="x" [size]="12" />
+            </button>
+          }
+        </div>
+
+        <!-- Two Columns Container (Category Nav Left, Formats List Right) -->
+        <div class="dropdown-columns-body">
+          <!-- Left Navigation Column: Purpose Categories in Exact Order -->
+          <div class="dropdown-nav-column" role="tablist" aria-label="Format categories">
+            @for (cat of dropdownCategories(); track cat.id) {
+              <button
+                type="button"
+                class="cat-nav-item"
+                [class.is-active]="selectedDropdownCategory() === cat.id && !formatSearchQuery()"
+                (click)="selectDropdownCategory(cat.id)"
+                (mouseenter)="selectDropdownCategory(cat.id)"
+                role="tab"
+                [attr.aria-selected]="selectedDropdownCategory() === cat.id && !formatSearchQuery()"
+                [title]="cat.description"
+              >
+                <span class="cat-nav-label">{{ cat.name }}</span>
+                @if (selectedDropdownCategory() === cat.id && !formatSearchQuery()) {
+                  <ts-icon name="chevron-right" [size]="11" class="cat-nav-arrow" />
+                }
+              </button>
+              <div class="cat-nav-divider"></div>
+            }
+          </div>
+
+          <!-- Right Formats Column: 3-Column Button Grid (Name Only, per Reference Design) -->
+          <div class="dropdown-grid-column" role="tabpanel">
+            <div class="format-buttons-grid font-mono" role="listbox">
+              @for (opt of displayedGridFormats(); track opt.format) {
+                <button
+                  type="button"
+                  class="grid-format-pill"
+                  [class.is-selected]="isFormatSelected(opt.format)"
+                  (click)="selectTargetFormat(opt.format)"
+                  role="option"
+                  [attr.aria-selected]="isFormatSelected(opt.format)"
+                  [title]="opt.label + ' (' + opt.extensions + ')'"
+                >
+                  {{ getFormatPillLabel(opt) }}
+                </button>
+              }
+
+              @if (displayedGridFormats().length === 0) {
+                <div class="grid-empty-state">
+                  <ts-icon name="info" [size]="15" class="empty-notice-icon" />
+                  <p class="empty-notice-title">
+                    {{ formatSearchQuery() ? 'No Matching Formats' : 'Input Only Category' }}
+                  </p>
+                  <p class="empty-notice-text">
+                    {{ formatSearchQuery()
+                      ? 'No target format matches "' + formatSearchQuery() + '".'
+                      : 'Formats in ' + getSelectedCategoryName() + ' can be converted from, but are not available as output export targets.'
+                    }}
+                  </p>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Popular Quick-Select Format Pills -->
+      <div class="format-chips-grid font-mono" role="radiogroup" aria-label="Quick format selection">
+        @for (pill of displayedQuickPills(); track pill.format) {
+          <button
+            type="button"
+            class="format-chip-btn"
+            [class.is-active]="engine.conversionMode() === 'GLOBAL' && isFormatSelected(pill.format)"
+            (click)="selectTargetFormat(pill.format)"
+            [attr.aria-checked]="engine.conversionMode() === 'GLOBAL' && isFormatSelected(pill.format)"
+            role="radio"
+            [title]="pill.label"
+          >
+            <span class="chip-label">{{ pill.label }}</span>
+          </button>
+        }
+      </div>
+
+      @if (engine.conversionMode() === 'CUSTOM') {
+        <div class="custom-mode-banner">
+          <ts-icon name="sliders" [size]="13" />
+          <span>Custom mode active: each image has its own format selector below.</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Section 2: Quality & Compression (Matches Reference Design) -->
+  @if (isLosslessTarget()) {
+    <div class="sidebar-section">
+      <div class="lossless-info-card" role="note">
+        <div class="lossless-badge-row">
+          <ts-icon name="shield-check" [size]="16" class="lossless-icon" />
+          <span class="lossless-title">Lossless Format (100% Quality)</span>
+        </div>
+        <p class="lossless-desc">
+          {{ engine.batchTargetFormat() | uppercase }} preserves complete data fidelity without lossy compression.
+        </p>
+      </div>
+    </div>
+  } @else {
+    <div class="sidebar-section">
+      <div class="sidebar-section-header">
+        <label class="sidebar-section-label" for="qualitySlider">QUALITY & COMPRESSION</label>
+        <div class="quality-badge-row">
+          @if (qualityPresetLabel()) {
+            <span class="quality-preset-inline font-mono">{{ qualityPresetLabel() }}</span>
+          }
+          <span class="selected-quality-badge font-mono">{{ qualityPercent() }}%</span>
+        </div>
+      </div>
+
+      <!-- Synchronized Range Slider -->
+      <div class="quality-slider-wrapper">
+        <input
+          id="qualitySlider"
+          type="range"
+          min="10"
+          max="100"
+          step="1"
+          [value]="qualityPercent()"
+          [style.background]="qualityTrackBackground()"
+          (input)="onQualitySliderInput($event)"
+          class="quality-range-slider"
+          aria-label="Compression quality percentage"
+        />
+        <div class="slider-ticks-row font-mono">
+          <span (click)="setQualityPercent(10)" class="cursor-pointer">10% (Small)</span>
+          <span (click)="setQualityPercent(85)" class="cursor-pointer">85% (Balanced)</span>
+          <span (click)="setQualityPercent(100)" class="cursor-pointer">100% (Best)</span>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Section 3: Resize (Optional, for image jobs only) -->
+  @if (hasImageJobs()) {
+    <div class="sidebar-section">
+      <label class="sidebar-section-label" for="resizeSelect">RESIZE DIMENSION (OPTIONAL)</label>
+      <div class="select-wrapper">
+        <select
+          id="resizeSelect"
+          class="resize-native-select font-mono"
+          [ngModel]="engine.batchMaxWidth() ?? ''"
+          (ngModelChange)="onBatchResizeChange($event ? +$event : undefined)"
+        >
+          <option value="">Original (No resize)</option>
+          <option value="1920">1920px (Full HD)</option>
+          <option value="1280">1280px (HD 720p)</option>
+          <option value="800">800px (Web Optimized)</option>
+        </select>
+        <ts-icon name="chevron-down" [size]="15" class="select-arrow-icon" />
+      </div>
+    </div>
+  }
+
+  <!-- Section 4: Advanced Settings Accordion -->
+  <div class="advanced-settings-container">
+    <div class="advanced-settings-header">
+      <button
+        type="button"
+        class="advanced-settings-header-btn"
+        (click)="isAdvancedSettingsOpen.update(v => !v)"
+        [attr.aria-expanded]="isAdvancedSettingsOpen()"
+        aria-label="Toggle advanced settings"
+      >
+        <span class="advanced-settings-title">Advanced settings</span>
+        <ts-icon name="chevron-down" [size]="14" class="accordion-chevron" [class.rotated]="isAdvancedSettingsOpen()" />
+      </button>
+    </div>
+
+    @if (isAdvancedSettingsOpen()) {
+      <div class="advanced-settings-list">
+        <!-- 0. Output Filename (Shown only when exactly 1 file is loaded) -->
+        @if (engine.jobs().length === 1) {
+          <div class="settings-accordion-item">
+            <button
+              type="button"
+              class="accordion-header-btn"
+              (click)="isNamingOpen.update(v => !v)"
+              [attr.aria-expanded]="isNamingOpen()"
+            >
+              <div class="accordion-header-left">
+                <ts-icon name="pencil" [size]="14" class="accordion-icon" />
+                <span class="accordion-title">Output filename</span>
+              </div>
+              <ts-icon name="chevron-down" [size]="13" class="accordion-chevron" [class.rotated]="isNamingOpen()" />
+            </button>
+
+            @if (isNamingOpen()) {
+              <div class="accordion-body-content">
+                <div class="single-rename-field font-mono">
+                  <input
+                    type="text"
+                    class="single-rename-input"
+                    [value]="singleJobBaseName()"
+                    (change)="onSingleJobNameChange($any($event.target).value)"
+                    (keydown.enter)="onSingleJobNameChange($any($event.target).value)"
+                    placeholder="Output filename"
+                    aria-label="Output filename without extension"
+                  />
+                  <span class="single-rename-ext font-mono">.{{ (engine.batchTargetFormat() || 'webp') | lowercase }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- 1. Crop, Rotate & Flip -->
+        <div class="settings-accordion-item">
+          <button
+            type="button"
+            class="accordion-header-btn"
+            (click)="isTransformOpen.update(v => !v)"
+            [attr.aria-expanded]="isTransformOpen()"
+          >
+            <div class="accordion-header-left">
+              <ts-icon name="crop" [size]="14" class="accordion-icon" />
+              <span class="accordion-title">Crop, rotate & flip</span>
+              @if (hasActiveTransforms()) {
+                <span class="accordion-active-dot"></span>
+              }
+            </div>
+            <ts-icon name="chevron-down" [size]="13" class="accordion-chevron" [class.rotated]="isTransformOpen()" />
+          </button>
+
+          @if (isTransformOpen()) {
+            <div class="accordion-body-content">
+              <!-- Rotation & Flip -->
+              <div class="transform-actions-row">
+                <div class="btn-group-pill" role="group" aria-label="Rotate and flip">
+                  <button type="button" class="tool-mini-btn" (click)="rotate(90)" title="Rotate 90° Clockwise">
+                    <ts-icon name="rotate-cw" [size]="12" />
+                    <span>90°</span>
+                  </button>
+                  <button type="button" class="tool-mini-btn" (click)="rotate(180)" title="Rotate 180°">
+                    <span>180°</span>
+                  </button>
+                  <button type="button" class="tool-mini-btn" (click)="flip('horizontal')" [class.is-active]="engine.batchTransformOptions().flipHorizontal" title="Flip Horizontal">
+                    <ts-icon name="flip-horizontal" [size]="12" />
+                    <span>Flip H</span>
+                  </button>
+                  <button type="button" class="tool-mini-btn" (click)="flip('vertical')" [class.is-active]="engine.batchTransformOptions().flipVertical" title="Flip Vertical">
+                    <ts-icon name="flip-vertical" [size]="12" />
+                    <span>Flip V</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Crop aspect ratios -->
+              <div class="crop-ratios-subgroup">
+                <span class="subgroup-label">Crop Ratio</span>
+                <div class="crop-ratios-pills" role="radiogroup">
+                  <button type="button" class="crop-ratio-btn" [class.is-active]="!engine.batchTransformOptions().crop" (click)="setCropAspect(undefined)">Free</button>
+                  <button type="button" class="crop-ratio-btn" [class.is-active]="engine.batchTransformOptions().crop?.aspectRatio === '1:1'" (click)="setCropAspect('1:1')">1:1</button>
+                  <button type="button" class="crop-ratio-btn" [class.is-active]="engine.batchTransformOptions().crop?.aspectRatio === '4:3'" (click)="setCropAspect('4:3')">4:3</button>
+                  <button type="button" class="crop-ratio-btn" [class.is-active]="engine.batchTransformOptions().crop?.aspectRatio === '16:9'" (click)="setCropAspect('16:9')">16:9</button>
+                  <button type="button" class="crop-ratio-btn" [class.is-active]="engine.batchTransformOptions().crop?.aspectRatio === '3:2'" (click)="setCropAspect('3:2')">3:2</button>
+                </div>
+              </div>
+
+              @if (hasActiveTransforms()) {
+                <div class="reset-row">
+                  <button type="button" class="accordion-reset-btn" (click)="resetTransforms()">
+                    <ts-icon name="rotate-ccw" [size]="11" />
+                    <span>Reset transforms</span>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- 2. Background & Transparency -->
+        <div class="settings-accordion-item">
+          <button
+            type="button"
+            class="accordion-header-btn"
+            (click)="isBackgroundOpen.update(v => !v)"
+            [attr.aria-expanded]="isBackgroundOpen()"
+          >
+            <div class="accordion-header-left">
+              <ts-icon name="swatch" [size]="14" class="accordion-icon" />
+              <span class="accordion-title">Background & transparency</span>
+              @if (engine.batchBackgroundOptions().mode === 'solid') {
+                <span class="accordion-active-dot"></span>
+              }
+            </div>
+            <ts-icon name="chevron-down" [size]="13" class="accordion-chevron" [class.rotated]="isBackgroundOpen()" />
+          </button>
+
+          @if (isBackgroundOpen()) {
+            <div class="accordion-body-content">
+              <div class="bg-mode-segmented" role="radiogroup" aria-label="Background mode">
+                <button
+                  type="button"
+                  class="bg-mode-btn"
+                  [class.is-active]="engine.batchBackgroundOptions().mode === 'transparent'"
+                  (click)="setBackgroundMode('transparent')"
+                >
+                  Transparent
+                </button>
+                <button
+                  type="button"
+                  class="bg-mode-btn"
+                  [class.is-active]="engine.batchBackgroundOptions().mode === 'solid'"
+                  (click)="setBackgroundMode('solid')"
+                >
+                  Solid Color
+                </button>
+              </div>
+
+              @if (engine.batchBackgroundOptions().mode === 'solid') {
+                <div class="bg-swatches-row">
+                  @for (hex of bgSwatches; track hex) {
+                    <button
+                      type="button"
+                      class="color-swatch-circle"
+                      [style.background-color]="hex"
+                      [class.is-active]="(engine.batchBackgroundOptions().color || '#FFFFFF').toUpperCase() === hex.toUpperCase()"
+                      (click)="setBackgroundColor(hex)"
+                      [title]="'Set background to ' + hex"
+                    ></button>
+                  }
+                  <label class="custom-color-picker-label" [class.is-active]="isCustomColorSelected()" title="Pick custom color">
+                    <ts-icon name="plus" [size]="11" />
+                    <input
+                      type="color"
+                      class="native-color-input"
+                      [value]="engine.batchBackgroundOptions().color || '#FFFFFF'"
+                      (change)="setBackgroundColor($any($event.target).value)"
+                    />
+                  </label>
+                </div>
+              }
+
+              <p class="accordion-footnote">
+                JPG/BMP output replaces transparent regions with the chosen background color.
+              </p>
+            </div>
+          }
+        </div>
+
+        <!-- 3. Metadata & Privacy -->
+        <div class="settings-accordion-item">
+          <button
+            type="button"
+            class="accordion-header-btn"
+            (click)="isMetadataOpen.update(v => !v)"
+            [attr.aria-expanded]="isMetadataOpen()"
+          >
+            <div class="accordion-header-left">
+              <ts-icon name="shield" [size]="14" class="accordion-icon" />
+              <span class="accordion-title">Metadata & privacy</span>
+              @if (engine.batchMetadataOptions().mode !== 'preserve') {
+                <span class="accordion-badge font-mono">Protected</span>
+              }
+            </div>
+            <ts-icon name="chevron-down" [size]="13" class="accordion-chevron" [class.rotated]="isMetadataOpen()" />
+          </button>
+
+          @if (isMetadataOpen()) {
+            <div class="accordion-body-content">
+              <div class="radio-options-list" role="radiogroup">
+                <label class="custom-radio-row">
+                  <input
+                    type="radio"
+                    name="metadataMode"
+                    value="preserve"
+                    [checked]="engine.batchMetadataOptions().mode === 'preserve'"
+                    (change)="setMetadataMode('preserve')"
+                  />
+                  <div class="radio-text-col">
+                    <span class="radio-main-label">Preserve all metadata</span>
+                    <span class="radio-sub-label">Keeps camera EXIF, date/time and color tags.</span>
+                  </div>
+                </label>
+
+                <label class="custom-radio-row">
+                  <input
+                    type="radio"
+                    name="metadataMode"
+                    value="strip-gps"
+                    [checked]="engine.batchMetadataOptions().mode === 'strip-gps'"
+                    (change)="setMetadataMode('strip-gps')"
+                  />
+                  <div class="radio-text-col">
+                    <span class="radio-main-label">Remove GPS only (Privacy protection)</span>
+                    <span class="radio-sub-label">Erases location coordinates, retains camera settings.</span>
+                  </div>
+                </label>
+
+                <label class="custom-radio-row">
+                  <input
+                    type="radio"
+                    name="metadataMode"
+                    value="strip-all"
+                    [checked]="engine.batchMetadataOptions().mode === 'strip-all'"
+                    (change)="setMetadataMode('strip-all')"
+                  />
+                  <div class="radio-text-col">
+                    <span class="radio-main-label">Strip all metadata</span>
+                    <span class="radio-sub-label">Cleans all non-essential headers for smallest file size.</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- 4. DPI & Print Resolution -->
+        <div class="settings-accordion-item">
+          <button
+            type="button"
+            class="accordion-header-btn"
+            (click)="isDpiOpen.update(v => !v)"
+            [attr.aria-expanded]="isDpiOpen()"
+          >
+            <div class="accordion-header-left">
+              <ts-icon name="printer" [size]="14" class="accordion-icon" />
+              <span class="accordion-title">DPI & print resolution</span>
+              <span class="accordion-badge font-mono">{{ engine.batchDpi() }} DPI</span>
+            </div>
+            <ts-icon name="chevron-down" [size]="13" class="accordion-chevron" [class.rotated]="isDpiOpen()" />
+          </button>
+
+          @if (isDpiOpen()) {
+            <div class="accordion-body-content">
+              <div class="dpi-chips-row font-mono" role="radiogroup">
+                @for (dpi of dpiOptions; track dpi) {
+                  <button
+                    type="button"
+                    class="dpi-chip-btn"
+                    [class.is-active]="engine.batchDpi() === dpi"
+                    (click)="setDpi(dpi)"
+                  >
+                    {{ dpi }} DPI
+                  </button>
+                }
+              </div>
+
+              @if (printDimensionsSummary(); as printInfo) {
+                <div class="print-calc-card font-mono">
+                  <span class="print-calc-label">Print size (at {{ printInfo.dpi }} DPI):</span>
+                  <span class="print-calc-val">{{ printInfo.inches }} ({{ printInfo.cm }})</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- 5. Animation & Multi-frame -->
+        <div class="settings-accordion-item">
+          <button
+            type="button"
+            class="accordion-header-btn"
+            (click)="isAnimationOpen.update(v => !v)"
+            [attr.aria-expanded]="isAnimationOpen()"
+          >
+            <div class="accordion-header-left">
+              <ts-icon name="film" [size]="14" class="accordion-icon" />
+              <span class="accordion-title">Animation & frames</span>
+              @if ((engine.batchAnimationOptions().loopMode ?? 'auto') === 'infinite') {
+                <span class="accordion-badge font-mono">Looping</span>
+              }
+            </div>
+            <ts-icon name="chevron-down" [size]="13" class="accordion-chevron" [class.rotated]="isAnimationOpen()" />
+          </button>
+
+          @if (isAnimationOpen()) {
+            <div class="accordion-body-content">
+              @if (targetSupportsAnimation()) {
+                <div class="radio-options-list" role="radiogroup">
+                  <label class="custom-radio-row">
+                    <input
+                      type="radio"
+                      name="animationMode"
+                      value="preserve"
+                      [checked]="(engine.batchAnimationOptions().mode ?? 'preserve') === 'preserve'"
+                      (change)="setAnimationMode('preserve')"
+                    />
+                    <div class="radio-text-col">
+                      <span class="radio-main-label">Preserve animation</span>
+                      <span class="radio-sub-label">Keeps all frames and motion timing.</span>
+                    </div>
+                  </label>
+
+                  <label class="custom-radio-row">
+                    <input
+                      type="radio"
+                      name="animationMode"
+                      value="first-frame"
+                      [checked]="engine.batchAnimationOptions().mode === 'first-frame'"
+                      (change)="setAnimationMode('first-frame')"
+                    />
+                    <div class="radio-text-col">
+                      <span class="radio-main-label">Extract first frame only</span>
+                      <span class="radio-sub-label">Saves a static image from frame 1.</span>
+                    </div>
+                  </label>
+                </div>
+
+                @if ((engine.batchAnimationOptions().mode ?? 'preserve') === 'preserve') {
+                  <div class="animation-subgroup">
+                    <label class="subgroup-label font-mono">LOOP BEHAVIOR</label>
+                    <div class="animation-loop-segmented" role="radiogroup" aria-label="Loop behavior">
+                      <button
+                        type="button"
+                        class="loop-segment-btn"
+                        [class.is-active]="(engine.batchAnimationOptions().loopMode ?? 'auto') === 'auto'"
+                        (click)="setAnimationLoopMode('auto')"
+                        title="Match source file: single-play if original only played once, looping if original looped"
+                      >
+                        <ts-icon name="refresh-cw" [size]="11" />
+                        <span>Same as source</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="loop-segment-btn"
+                        [class.is-active]="engine.batchAnimationOptions().loopMode === 'infinite'"
+                        (click)="setAnimationLoopMode('infinite')"
+                        title="Keep animation looping continuously all the time"
+                      >
+                        <ts-icon name="repeat" [size]="11" />
+                        <span>Loop all time</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="loop-segment-btn"
+                        [class.is-active]="engine.batchAnimationOptions().loopMode === 'once'"
+                        (click)="setAnimationLoopMode('once')"
+                        title="Play initial animation once without repeating"
+                      >
+                        <ts-icon name="play" [size]="11" />
+                        <span>Play once</span>
+                      </button>
+                    </div>
+                  </div>
+                }
+              } @else {
+                <div class="static-animation-notice">
+                  <ts-icon name="info" [size]="14" class="static-notice-icon" />
+                  <span>The target format ({{ engine.batchTargetFormat() | uppercase }}) is static. The first frame will be converted.</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- 6. Color Profile -->
+        <div class="settings-accordion-item">
+          <div class="accordion-body-content" style="border-top: none;">
+            <div class="color-profile-row" style="border-top: none; padding-top: 0; margin-top: 0;">
+              <span class="subgroup-label">Color Profile</span>
+              <div class="profile-chips-row font-mono" role="radiogroup">
+                @for (prof of colorProfileOptions; track prof) {
+                  <button
+                    type="button"
+                    class="profile-chip-btn"
+                    [class.is-active]="engine.batchColorProfile() === prof"
+                    (click)="setColorProfile(prof)"
+                  >
+                    {{ prof === 'srgb' ? 'sRGB' : (prof === 'display-p3' ? 'Display P3' : 'Preserve') }}
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    }
+  </div>
+</ng-template>

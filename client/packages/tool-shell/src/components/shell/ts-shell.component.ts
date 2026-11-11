@@ -1,4 +1,4 @@
-import { Component, input, output, signal, computed, inject, HostListener, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, viewChild, isDevMode, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, signal, computed, effect, inject, HostListener, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, viewChild, isDevMode, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolRegistryItem, getAllTools } from '@acklet/tool-registry';
 import { ToolShellConfig, ToolTab } from '../../models/tool-shell.models';
@@ -19,6 +19,7 @@ import { RevealDirective } from '../../directives/reveal.directive';
 import { PerfFlagsService } from '../../services/perf-flags.service';
 import { TsSettingsModalComponent } from '../settings/ts-settings-modal.component';
 import { DrawerGestureService } from '../../services/drawer-gesture.service';
+import { FileTransferService } from '../../services/file-transfer.service';
 
 @Component({
   selector: 'ts-shell, lib-tool-layout',
@@ -45,9 +46,10 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
       [class.is-full-bleed]="isFullBleed()"
       [attr.data-tool]="tool()?.slug || 'default'"
       [attr.data-theme]="themeService.effectiveTheme()"
-      [attr.data-accent]="tool()?.accent || 'neutral'"
+      [attr.data-accent]="themeService.currentAccent()"
+      [attr.data-background]="themeService.currentBackground()"
       [attr.data-surface]="effectiveSurface()"
-      [style]="computedThemeStyles()"
+      [attr.style]="computedThemeStyleString()"
     >
       
       <!-- Skip to main content accessibility link -->
@@ -200,6 +202,35 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
 
       <!-- Global Shell Settings Modal -->
       <ts-settings-modal />
+
+      <!-- Universal Full-Screen Drag-and-Drop Overlay (ChatGPT exact match) -->
+      @if (isUniversalDragActive()) {
+        <div 
+          class="ts-universal-drag-overlay"
+          (dragover)="onDragOverUniversal($event)"
+          (dragleave)="onDragLeaveUniversal($event)"
+          (drop)="onDropUniversal($event)"
+          role="region"
+          aria-label="Drop files"
+        >
+          <div class="ts-drag-blur-backdrop" aria-hidden="true"></div>
+          <div class="ts-drag-content-container">
+            <div class="chatgpt-icon-stack" aria-hidden="true">
+              <div class="stack-card card-left">
+                <ts-icon name="code" [size]="22" />
+              </div>
+              <div class="stack-card card-right">
+                <ts-icon name="file-text" [size]="22" />
+              </div>
+              <div class="stack-card card-center">
+                <ts-icon name="image" [size]="26" />
+              </div>
+            </div>
+            <h2 class="ts-drag-title">Land here...</h2>
+            <p class="ts-drag-subtitle">{{ universalDragSubtitle() }}</p>
+          </div>
+        </div>
+      }
 
     </div>
   `,
@@ -395,8 +426,8 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
       left: 0;
       top: 0;
       bottom: 0;
-      width: 14px;
-      z-index: 65;
+      width: 24px;
+      z-index: 9999 !important;
       pointer-events: auto;
       cursor: e-resize;
       display: flex;
@@ -789,6 +820,12 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
       }
     }
 
+    @media (max-width: 1023px) {
+      .ts-goto-tool-btn {
+        display: none !important;
+      }
+    }
+
     .ts-tool-card-surface.full-bleed {
       height: 100%;
       max-height: 100%;
@@ -935,6 +972,7 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
 
     @media (max-width: 767px) {
       .ts-root {
+        --header-height: 56px;
         padding: max(8px, env(safe-area-inset-top, 0px))
                  max(8px, env(safe-area-inset-right, 0px))
                  max(8px, env(safe-area-inset-bottom, 0px))
@@ -955,6 +993,9 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
       }
       .ts-main-content-card {
         border-radius: 16px;
+        transform: none !important;
+        contain: none !important;
+        container-type: normal !important;
       }
       .ts-main-scroll-container:not(.full-bleed) {
         padding: 16px;
@@ -968,6 +1009,7 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
 
     @media (max-width: 399px) {
       .ts-root {
+        --header-height: 52px;
         padding: max(4px, env(safe-area-inset-top, 0px))
                  max(4px, env(safe-area-inset-right, 0px))
                  max(4px, env(safe-area-inset-bottom, 0px))
@@ -985,6 +1027,9 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
         background: transparent;
         border: none;
         box-shadow: none;
+        transform: none !important;
+        contain: none !important;
+        container-type: normal !important;
       }
       .ts-main-scroll-container:not(.full-bleed) {
         padding: 0;
@@ -997,6 +1042,166 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
         border: none;
       }
     }
+
+    /* ═══════════════════════════════════════════════════════════ */
+    /* UNIVERSAL FULL-SCREEN DRAG OVERLAY (ChatGPT Reference)     */
+    /* Covers entire tab screen including navbar, sidebar, content*/
+    /* ═══════════════════════════════════════════════════════════ */
+    .ts-universal-drag-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 999999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      pointer-events: auto;
+      animation: tsDragFadeIn 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes tsDragFadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.99);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .ts-drag-blur-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      pointer-events: none;
+    }
+
+    :host-context([data-theme="dark"]) .ts-drag-blur-backdrop,
+    .ts-root[data-theme="dark"] .ts-drag-blur-backdrop {
+      background: rgba(15, 17, 23, 0.68);
+    }
+
+    .ts-drag-content-container {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      pointer-events: none;
+      transform: translateZ(0);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .chatgpt-icon-stack {
+      position: relative;
+      width: 140px;
+      height: 90px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 22px;
+      animation: stackFloat 2.6s ease-in-out infinite alternate;
+    }
+
+    @keyframes stackFloat {
+      0% {
+        transform: translateY(0);
+      }
+      100% {
+        transform: translateY(-6px);
+      }
+    }
+
+    .stack-card {
+      position: absolute;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFFFFF;
+      user-select: none;
+      transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .card-left {
+      width: 52px;
+      height: 52px;
+      background: #7C3AED;
+      transform: translate(-42px, -16px) rotate(-16deg);
+      z-index: 1;
+      box-shadow: 0 10px 24px -2px rgba(124, 58, 237, 0.45);
+    }
+
+    .card-right {
+      width: 52px;
+      height: 52px;
+      background: #3B82F6;
+      transform: translate(42px, -16px) rotate(16deg);
+      z-index: 1;
+      box-shadow: 0 10px 24px -2px rgba(59, 130, 246, 0.45);
+    }
+
+    .card-center {
+      width: 60px;
+      height: 60px;
+      border-radius: 18px;
+      background: var(--tool-accent, var(--accent, #1D4ED8));
+      transform: translate(0px, 14px) rotate(-2deg);
+      z-index: 2;
+      box-shadow: 0 14px 30px -3px color-mix(in srgb, var(--tool-accent, var(--accent, #1D4ED8)) 60%, transparent),
+                  0 4px 12px rgba(0, 0, 0, 0.18);
+      border: 1.5px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .ts-drag-title {
+      margin: 0;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      color: #0F172A;
+      line-height: 1.2;
+    }
+
+    :host-context([data-theme="dark"]) .ts-drag-title,
+    .ts-root[data-theme="dark"] .ts-drag-title {
+      color: #F8FAFC;
+    }
+
+    .ts-drag-subtitle {
+      margin: 8px 0 0 0;
+      font-size: 15px;
+      font-weight: 450;
+      color: #475569;
+      letter-spacing: -0.01em;
+      max-width: 460px;
+      line-height: 1.4;
+    }
+
+    :host-context([data-theme="dark"]) .ts-drag-subtitle,
+    .ts-root[data-theme="dark"] .ts-drag-subtitle {
+      color: #94A3B8;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ts-universal-drag-overlay,
+      .chatgpt-icon-stack,
+      .stack-card {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
   `]
 })
 export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -1007,6 +1212,7 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly surface = input<'clear' | 'frost' | 'tinted' | 'solid'>('clear');
   readonly activeTab = input<string | undefined>(undefined);
   readonly tabChange = output<string>();
+  readonly filesDropped = output<File[]>();
 
   readonly mainCard = viewChild<ElementRef<HTMLElement>>('mainCard');
   readonly scrollContainer = viewChild<ElementRef<HTMLElement>>('scrollContainer');
@@ -1026,12 +1232,177 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   private scrollListener: (() => void) | null = null;
 
   readonly computedThemeStyles = computed(() => {
-    return this.themeProvider.resolveThemeTokens(this.tool(), this.themeService.effectiveTheme());
+    return this.themeProvider.resolveThemeTokens(this.tool(), this.themeService.effectiveTheme(), this.themeService.currentAccent());
+  });
+
+  readonly computedThemeStyleString = computed(() => {
+    return this.themeProvider.toStyleString(this.computedThemeStyles());
   });
 
   readonly isHotzoneHovered = signal<boolean>(false);
   private hotzoneIntentTimer: ReturnType<typeof setTimeout> | null = null;
   private peekGraceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  readonly fileTransfer = inject(FileTransferService);
+
+  readonly isUniversalDragActive = signal<boolean>(false);
+  private universalDragCounter = 0;
+
+  readonly universalDragSubtitle = computed(() => {
+    const name = this.tool()?.name;
+    if (name) {
+      if (name.toLowerCase().includes('clipboard')) {
+        return 'Drop any file here to add it to the clipboard';
+      }
+      return `Drop any file here to add it to ${name}`;
+    }
+    return 'Drop files, folders or text to get started.';
+  });
+
+  private hasFilesBeingDragged(event: DragEvent): boolean {
+    const types = event.dataTransfer?.types;
+    if (!types) return false;
+    return Array.from(types).includes('Files');
+  }
+
+  @HostListener('window:dragenter', ['$event'])
+  onWindowDragEnter(event: DragEvent): void {
+    if (this.hasFilesBeingDragged(event)) {
+      event.preventDefault();
+      this.universalDragCounter++;
+      this.isUniversalDragActive.set(true);
+      this.fileTransfer.isGlobalDragging.set(true);
+    }
+  }
+
+  @HostListener('window:dragover', ['$event'])
+  onWindowDragOver(event: DragEvent): void {
+    if (this.hasFilesBeingDragged(event)) {
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'copy';
+      }
+      if (!this.isUniversalDragActive()) {
+        this.isUniversalDragActive.set(true);
+        this.fileTransfer.isGlobalDragging.set(true);
+      }
+    }
+  }
+
+  @HostListener('window:dragleave', ['$event'])
+  onWindowDragLeave(event: DragEvent): void {
+    if (this.hasFilesBeingDragged(event)) {
+      event.preventDefault();
+      this.universalDragCounter = Math.max(0, this.universalDragCounter - 1);
+      if (this.universalDragCounter === 0) {
+        this.isUniversalDragActive.set(false);
+        this.fileTransfer.clearDragging();
+      }
+    }
+  }
+
+  @HostListener('window:dragend')
+  @HostListener('window:blur')
+  @HostListener('window:keydown.escape')
+  onWindowDragCancel(): void {
+    this.universalDragCounter = 0;
+    this.isUniversalDragActive.set(false);
+    this.fileTransfer.clearDragging();
+  }
+
+  onDragOverUniversal(event: DragEvent): void {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
+  }
+
+  onDragLeaveUniversal(event: DragEvent): void {
+    event.preventDefault();
+    const related = event.relatedTarget as Node | null;
+    const currentTarget = event.currentTarget as HTMLElement | null;
+    if (!related || (currentTarget && !currentTarget.contains(related))) {
+      this.universalDragCounter = 0;
+      this.isUniversalDragActive.set(false);
+      this.fileTransfer.clearDragging();
+    }
+  }
+
+  async onDropUniversal(event: DragEvent): Promise<void> {
+    event.preventDefault();
+    this.universalDragCounter = 0;
+    this.isUniversalDragActive.set(false);
+    this.fileTransfer.clearDragging();
+
+    const dt = event.dataTransfer;
+    if (!dt) return;
+
+    const files = await this.extractFilesFromDataTransfer(dt);
+    if (files.length > 0) {
+      this.onFilesDropped(files);
+    }
+  }
+
+  private async extractFilesFromDataTransfer(dt: DataTransfer): Promise<File[]> {
+    const files: File[] = [];
+    if (dt.items && dt.items.length > 0) {
+      const entries: any[] = [];
+      for (let i = 0; i < dt.items.length; i++) {
+        const item = dt.items[i];
+        if (item.kind === 'file') {
+          const entry = (item as any).webkitGetAsEntry ? (item as any).webkitGetAsEntry() : null;
+          if (entry) {
+            entries.push(entry);
+          } else {
+            const file = item.getAsFile();
+            if (file) files.push(file);
+          }
+        }
+      }
+
+      if (entries.length > 0) {
+        for (const entry of entries) {
+          await this.traverseEntry(entry, files);
+        }
+        return files;
+      }
+    }
+
+    if (files.length === 0 && dt.files && dt.files.length > 0) {
+      files.push(...Array.from(dt.files));
+    }
+    return files;
+  }
+
+  private async traverseEntry(entry: any, outFiles: File[]): Promise<void> {
+    if (entry.isFile) {
+      return new Promise<void>((resolve) => {
+        entry.file((f: File) => {
+          outFiles.push(f);
+          resolve();
+        }, () => resolve());
+      });
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      const readEntries = (): Promise<any[]> => {
+        return new Promise((resolve) => {
+          reader.readEntries((results: any[]) => resolve(results || []), () => resolve([]));
+        });
+      };
+      let batch = await readEntries();
+      while (batch.length > 0) {
+        for (const child of batch) {
+          await this.traverseEntry(child, outFiles);
+        }
+        batch = await readEntries();
+      }
+    }
+  }
+
+  onFilesDropped(files: File[]): void {
+    this.filesDropped.emit(files);
+    this.fileTransfer.setPendingFiles(files);
+  }
 
   readonly showFirstHint = signal<boolean>(false);
   private hintDismissTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1062,7 +1433,7 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.hotzoneIntentTimer = setTimeout(() => {
       this.sidebarState.peekOpen();
-    }, 100);
+    }, 50);
   }
 
   onHotzoneLeave(): void {
@@ -1205,7 +1576,27 @@ export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.devSurfaceOverride() ?? this.surface() ?? 'clear';
   });
 
+  constructor() {
+    effect(() => {
+      const currentTool = this.tool();
+      if (currentTool) {
+        this.themeService.initForTool(
+          currentTool.slug || currentTool.id,
+          this.config()?.layout || currentTool.layout
+        );
+      }
+    });
+  }
+
   ngOnInit(): void {
+    const currentTool = this.tool();
+    if (currentTool) {
+      this.themeService.initForTool(
+        currentTool.slug || currentTool.id,
+        this.config()?.layout || currentTool.layout
+      );
+    }
+
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('panel') === 'about') {

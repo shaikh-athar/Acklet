@@ -136,12 +136,12 @@ import { LinkPreviewData } from '../../models/temp-email.models';
     }
 
     .shield-icon {
-      color: var(--accent, #8B5CF6);
+      color: var(--accent, #3B82F6);
     }
 
     :host-context([data-theme="light"]) .shield-icon,
     [data-theme="light"] .shield-icon {
-      color: #7C3AED;
+      color: #2563EB;
     }
 
     .modal-title {
@@ -254,7 +254,7 @@ import { LinkPreviewData } from '../../models/temp-email.models';
       border-radius: 8px;
       background: var(--ts-surface-inset, #131416);
       border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
-      color: var(--accent-strong, #C4B5FD);
+      color: var(--accent-strong, #93C5FD);
       font-size: 14px;
       font-weight: 700;
     }
@@ -263,7 +263,7 @@ import { LinkPreviewData } from '../../models/temp-email.models';
     [data-theme="light"] .domain-display {
       background: #F8FAFC;
       border-color: #CBD5E1;
-      color: #6D28D9;
+      color: #1D4ED8;
     }
 
     .url-display-box {
@@ -366,24 +366,24 @@ import { LinkPreviewData } from '../../models/temp-email.models';
     }
 
     .btn-copy-link:hover {
-      background: var(--accent-soft, rgba(139, 92, 246, 0.15));
-      border-color: var(--accent-border, rgba(139, 92, 246, 0.4));
-      color: var(--accent-strong, #A78BFA);
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 15%, transparent));
+      border-color: var(--accent-border, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 40%, transparent));
+      color: var(--accent-strong, #60A5FA);
     }
 
     :host-context([data-theme="light"]) .btn-copy-link:hover,
     [data-theme="light"] .btn-copy-link:hover {
-      background: #EDE9FE;
-      border-color: #7C3AED;
-      color: #6D28D9;
+      background: #EFF6FF;
+      border-color: #2563EB;
+      color: #1D4ED8;
     }
 
     .btn-proceed {
       height: 36px;
       padding: 0 16px;
       border-radius: 8px;
-      background: var(--accent, #8B5CF6);
-      border: 1px solid var(--accent, #8B5CF6);
+      background: var(--accent, #3B82F6);
+      border: 1px solid var(--accent, #3B82F6);
       color: #FFFFFF !important;
       font-size: 13px;
       font-weight: 700;
@@ -397,18 +397,18 @@ import { LinkPreviewData } from '../../models/temp-email.models';
 
     :host-context([data-theme="light"]) .btn-proceed,
     [data-theme="light"] .btn-proceed {
-      background: #7C3AED;
-      border-color: #6D28D9;
+      background: #2563EB;
+      border-color: #1D4ED8;
     }
 
     .btn-proceed:hover {
-      background: #7C3AED;
+      background: #2563EB;
       transform: translateY(-1px);
     }
 
     :host-context([data-theme="light"]) .btn-proceed:hover,
     [data-theme="light"] .btn-proceed:hover {
-      background: #5B21B6;
+      background: #1E40AF;
     }
   `]
 })

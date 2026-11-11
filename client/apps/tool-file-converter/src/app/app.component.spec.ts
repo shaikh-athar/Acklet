@@ -2,25 +2,27 @@
 import { describe, it, expect } from 'vitest';
 import { TOOL_REGISTRY, ToolRegistryItem } from '../../../../packages/tool-registry/src';
 
-describe('Image Converter & File Converter Tool Shell & Manifest Integrity', () => {
-  const manifest: ToolRegistryItem = TOOL_REGISTRY['image-converter'];
-  const fileManifest: ToolRegistryItem = TOOL_REGISTRY['file-converter'];
+describe('File Converter Tool Shell & Manifest Integrity', () => {
+  const manifest: ToolRegistryItem = TOOL_REGISTRY['file-converter'];
 
-  it('should have a registered image-converter tool manifest in TOOL_REGISTRY', () => {
+  it('should have a registered file-converter tool manifest in TOOL_REGISTRY', () => {
     expect(manifest).toBeDefined();
-    expect(manifest.id).toBe('image-converter');
-    expect(manifest.slug).toBe('image-converter');
-    expect(manifest.name).toBe('Image Converter');
-    expect(manifest.accent).toBe('indigo');
-    expect(manifest.icon).toBe('images');
+    expect(manifest.id).toBe('file-converter');
+    expect(manifest.slug).toBe('file-converter');
+    expect(manifest.name).toBe('File Converter');
+    expect(manifest.sidebarLabel).toBe('File Converter');
+    expect(manifest.breadcrumbLabel).toBe('File Converter');
+    expect(manifest.subdomain).toBe('file-converter');
+    expect(manifest.accent).toBe('blue');
   });
 
-  it('should register image-converter and file-converter distinctly in TOOL_REGISTRY', () => {
-    expect(TOOL_REGISTRY['image-converter']).toBe(manifest);
-    expect(TOOL_REGISTRY['img-converter']).toBe(manifest);
-    expect(TOOL_REGISTRY['file-converter']).toBe(fileManifest);
-    expect(TOOL_REGISTRY['converter']).toBe(fileManifest);
-    expect(fileManifest.id).toBe('file-converter');
+  it('should register file-converter and image-converter as independent manifests', () => {
+    expect(TOOL_REGISTRY['file-converter']).toBe(manifest);
+    expect(TOOL_REGISTRY['converter']).toBe(manifest);
+    expect(TOOL_REGISTRY['image-converter']).toBeDefined();
+    expect(TOOL_REGISTRY['image-converter'].name).toBe('Image Converter');
+    expect(TOOL_REGISTRY['image-converter'].id).toBe('image-converter');
+    expect(TOOL_REGISTRY['file-converter'].id).toBe('file-converter');
   });
 
   it('should have required metadata, descriptions, highlights, and FAQs defined', () => {

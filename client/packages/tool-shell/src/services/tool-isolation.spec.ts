@@ -56,26 +56,39 @@ describe('Tool Theming & Isolation Suite', () => {
       const darkTokens = themeProvider.resolveThemeTokens(CLIPBOARD_MANIFEST, 'dark');
       const lightTokens = themeProvider.resolveThemeTokens(CLIPBOARD_MANIFEST, 'light');
 
-      expect(darkTokens['--tool-accent']).toBe('#2DD4BF');
-      expect(darkTokens['--accent']).toBe('#2DD4BF');
+      expect(darkTokens['--tool-accent']).toBe('#3B82F6');
+      expect(darkTokens['--accent']).toBe('#3B82F6');
       expect(darkTokens['--font-sans']).toContain('Scoutie Sans');
 
-      expect(lightTokens['--tool-accent']).toBe('#0F766E');
-      expect(lightTokens['--accent']).toBe('#0F766E');
+      expect(lightTokens['--tool-accent']).toBe('#2563EB');
+      expect(lightTokens['--accent']).toBe('#2563EB');
       expect(lightTokens['--font-sans']).toContain('Scoutie Sans');
     });
 
     it('ensures accents applied to Tool A do not contaminate Tool B while sharing unified tool font', () => {
+      const customThemedTool: ToolRegistryItem = {
+        ...CLIPBOARD_MANIFEST,
+        id: 'custom-tool',
+        slug: 'custom-tool',
+        accent: 'teal',
+        theme: {
+          accent: {
+            light: { base: '#0D9488', strong: '#0F766E', soft: 'rgba(13, 148, 136, 0.1)', border: '#5EEAD4', ink: '#FFFFFF', glow: 'rgba(13, 148, 136, 0.2)' },
+            dark: { base: '#2DD4BF', strong: '#14B8A6', soft: 'rgba(45, 212, 191, 0.12)', border: '#0F766E', ink: '#04211E', glow: 'rgba(45, 212, 191, 0.2)' }
+          }
+        }
+      };
+
       const qrTokens = themeProvider.resolveThemeTokens(QR_MANIFEST, 'dark');
-      const clipTokens = themeProvider.resolveThemeTokens(CLIPBOARD_MANIFEST, 'dark');
+      const customTokens = themeProvider.resolveThemeTokens(customThemedTool, 'dark');
 
       // Distinct accents
-      expect(qrTokens['--tool-accent']).not.toBe(clipTokens['--tool-accent']);
-      expect(qrTokens['--accent']).not.toBe(clipTokens['--accent']);
+      expect(qrTokens['--tool-accent']).not.toBe(customTokens['--tool-accent']);
+      expect(qrTokens['--accent']).not.toBe(customTokens['--accent']);
 
       // Unified tool font across all tools
       expect(qrTokens['--font-sans']).toContain('Scoutie Sans');
-      expect(clipTokens['--font-sans']).toContain('Scoutie Sans');
+      expect(customTokens['--font-sans']).toContain('Scoutie Sans');
 
       // Verify idempotency and immutability
       const qrTokensSecondCall = themeProvider.resolveThemeTokens(QR_MANIFEST, 'dark');
@@ -111,19 +124,32 @@ describe('Tool Theming & Isolation Suite', () => {
 
   describe('3. Sidebar Tool Row Accent Independence', () => {
     it('resolves individual tool row accents without cross-tool inheritance', () => {
+      const customThemedTool: ToolRegistryItem = {
+        ...CLIPBOARD_MANIFEST,
+        id: 'custom-tool',
+        slug: 'custom-tool',
+        accent: 'teal',
+        theme: {
+          accent: {
+            light: { base: '#0D9488', strong: '#0F766E', soft: 'rgba(13, 148, 136, 0.1)', border: '#5EEAD4', ink: '#FFFFFF', glow: 'rgba(13, 148, 136, 0.2)' },
+            dark: { base: '#2DD4BF', strong: '#14B8A6', soft: 'rgba(45, 212, 191, 0.12)', border: '#0F766E', ink: '#04211E', glow: 'rgba(45, 212, 191, 0.2)' }
+          }
+        }
+      };
+
       const qrDark = resolveToolAccent(QR_MANIFEST, 'dark');
-      const clipDark = resolveToolAccent(CLIPBOARD_MANIFEST, 'dark');
+      const customDark = resolveToolAccent(customThemedTool, 'dark');
 
       expect(qrDark.base).toBe('#3B82F6');
-      expect(clipDark.base).toBe('#2DD4BF');
-      expect(qrDark.base).not.toBe(clipDark.base);
+      expect(customDark.base).toBe('#2DD4BF');
+      expect(qrDark.base).not.toBe(customDark.base);
 
       const qrLight = resolveToolAccent(QR_MANIFEST, 'light');
-      const clipLight = resolveToolAccent(CLIPBOARD_MANIFEST, 'light');
+      const customLight = resolveToolAccent(customThemedTool, 'light');
 
       expect(qrLight.base).toBe('#2563EB');
-      expect(clipLight.base).toBe('#0F766E');
-      expect(qrLight.base).not.toBe(clipLight.base);
+      expect(customLight.base).toBe('#0D9488');
+      expect(qrLight.base).not.toBe(customLight.base);
     });
   });
 });

@@ -41,7 +41,8 @@ import {
   HlmButton,
   HlmBadge,
   HlmInput,
-  HlmTooltipImports
+  HlmTooltipImports,
+  EmptyDropStateComponent
 } from '@acklet/tool-shell';
 
 export type MainTab = 'text' | 'files';
@@ -80,7 +81,8 @@ export interface ToastMessage {
     CommonModule,
     FormsModule,
     TsIconComponent,
-    HlmTooltipImports
+    HlmTooltipImports,
+    EmptyDropStateComponent
   ],
   templateUrl: './clipboard.component.html',
   styleUrls: ['./clipboard.component.css']
@@ -198,6 +200,16 @@ export class ClipboardComponent implements OnInit, OnDestroy {
   readonly localDraftText = signal<string>('');
   readonly remoteTextHighlight = signal<boolean>(false);
   private textUndoSnapshot: string | null = null;
+
+  readonly hasVisibleItems = computed<boolean>(() => {
+    const text = this.sharedText()?.trim();
+    if (text && text.length > 0) return true;
+    const files = this.displayFileItems();
+    if (files && files.length > 0) return true;
+    const uploading = this.uploadingFiles();
+    if (uploading && uploading.length > 0) return true;
+    return false;
+  });
 
   // History & Revisions State
   readonly historyDrawerTab = signal<'recent' | 'revisions'>('recent');
@@ -817,57 +829,11 @@ export class ClipboardComponent implements OnInit, OnDestroy {
   // Global Window Drag & Drop Listeners (Entire Screen Dropzone)
   private dragCounter = 0;
 
-  @HostListener('window:dragenter', ['$event'])
-  onWindowDragEnter(event: DragEvent): void {
-    if (this.hasFilesBeingDragged(event)) {
-      event.preventDefault();
-      this.dragCounter++;
-      this.isDragOver.set(true);
-    }
-  }
-
-  @HostListener('window:dragover', ['$event'])
-  onWindowDragOver(event: DragEvent): void {
-    if (this.hasFilesBeingDragged(event)) {
-      event.preventDefault();
-      if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = 'copy';
-      }
-      if (!this.isDragOver()) {
-        this.isDragOver.set(true);
-      }
-    }
-  }
-
-  @HostListener('window:dragleave', ['$event'])
-  onWindowDragLeave(event: DragEvent): void {
-    if (this.hasFilesBeingDragged(event)) {
-      event.preventDefault();
-      this.dragCounter = Math.max(0, this.dragCounter - 1);
-      if (this.dragCounter === 0) {
-        this.isDragOver.set(false);
-      }
-    }
-  }
-
-  @HostListener('window:drop', ['$event'])
-  async onWindowDrop(event: DragEvent): Promise<void> {
-    if (this.hasFilesBeingDragged(event)) {
-      event.preventDefault();
-      this.dragCounter = 0;
-      this.isDragOver.set(false);
-      this.setTab('files');
-
-      const dataTransfer = event.dataTransfer;
-      if (!dataTransfer) return;
-
-      const items = dataTransfer.items;
-      if (items && items.length > 0) {
-        await this.handleDroppedItems(Array.from(items), dataTransfer.files);
-      } else if (dataTransfer.files && dataTransfer.files.length > 0) {
-        this.processFilesUpload(Array.from(dataTransfer.files));
-      }
-    }
+  focusEditor(): void {
+    this.isEditorFocused.set(true);
+    setTimeout(() => {
+      this.wysiwygEditor?.nativeElement?.focus();
+    }, 50);
   }
 
   private async handleDroppedItems(items: DataTransferItem[], fallbackFiles: FileList | null): Promise<void> {

@@ -1941,33 +1941,33 @@ import { TsIconComponent } from '@acklet/tool-shell';
       box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.45), 0 4px 16px rgba(0, 0, 0, 0.4) !important;
     }
 
-    :host-context([data-theme="light"]) .peek-btn {
+    :host-context([data-theme="light"]) .peek-btn,
+    [data-theme="light"] .peek-btn {
       background: #0F172A !important;
       color: #FFFFFF !important;
-      border-color: rgba(255, 255, 255, 0.35) !important;
+      border: 1.5px solid rgba(255, 255, 255, 0.4) !important;
     }
 
-    :host-context([data-theme="light"]) .peek-btn:hover {
+    :host-context([data-theme="light"]) .peek-btn:hover,
+    [data-theme="light"] .peek-btn:hover {
       background: #1E293B !important;
       color: #FFFFFF !important;
-      border-color: #93C5FD !important;
+      border-color: #60A5FA !important;
     }
 
     :host-context([data-theme="light"]) .peek-btn.active,
-    :host-context([data-theme="light"]) .peek-btn:active {
+    :host-context([data-theme="light"]) .peek-btn:active,
+    [data-theme="light"] .peek-btn.active,
+    [data-theme="light"] .peek-btn:active {
       background: #2563EB !important;
       color: #FFFFFF !important;
       border-color: #93C5FD !important;
     }
 
-    .peek-btn ts-icon {
-      flex-shrink: 0;
-      color: #FFFFFF !important;
-    }
-
+    .peek-btn ts-icon,
     .peek-btn span {
       color: #FFFFFF !important;
-      white-space: nowrap;
+      fill: currentColor !important;
     }
 
     /* ── Color Inspector Floating Loupe ──────────────────────────────────── */
@@ -2541,33 +2541,41 @@ import { TsIconComponent } from '@acklet/tool-shell';
     }
 
     /* ── Responsive Behavior ──────────────────────────────────────────────── */
-    @media (max-width: 1023px) {
+    @media (max-width: 1180px) and (min-width: 640px) {
       .compact-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.5rem;
-        height: auto;
-        padding: 0.5rem;
+        flex-wrap: wrap;
+        gap: 0.5rem 0.75rem;
+        padding: 0.5rem 0.75rem;
       }
 
-      .tb-group-left,
-      .tb-group-center,
+      .tb-group-left {
+        order: 1;
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+
+      .file-meta-pill {
+        max-width: 220px;
+      }
+
       .tb-group-right {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        gap: 0.4rem;
-        padding-bottom: 2px;
-        scrollbar-width: none;
+        order: 2;
+        flex: 0 0 auto;
+        margin-left: auto;
       }
 
-      .tb-group-left::-webkit-scrollbar,
-      .tb-group-center::-webkit-scrollbar,
-      .tb-group-right::-webkit-scrollbar {
-        display: none;
+      .tb-group-center {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+        padding-top: 0.35rem;
+        border-top: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+        gap: 0.5rem;
       }
 
       .tb-btn {
-        min-height: 40px;
+        min-height: 38px;
         padding: 0.35rem 0.65rem;
       }
 

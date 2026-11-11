@@ -123,8 +123,8 @@ import { TsIconComponent } from '@acklet/tool-shell';
       width: 36px;
       height: 36px;
       border-radius: 10px;
-      background: var(--accent-soft, rgba(139, 92, 246, 0.12));
-      color: var(--accent, #8B5CF6);
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 12%, transparent));
+      color: var(--accent, #3B82F6);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -133,8 +133,8 @@ import { TsIconComponent } from '@acklet/tool-shell';
 
     :host-context([data-theme="light"]) .modal-icon-badge,
     [data-theme="light"] .modal-icon-badge {
-      background: rgba(124, 58, 237, 0.1);
-      color: #7C3AED;
+      background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 10%, transparent);
+      color: #2563EB;
     }
 
     .modal-title {
@@ -258,9 +258,9 @@ import { TsIconComponent } from '@acklet/tool-shell';
       height: 28px;
       padding: 0 10px;
       border-radius: 6px;
-      background: var(--accent-soft, rgba(139, 92, 246, 0.12));
-      border: 1px solid var(--accent-border, rgba(139, 92, 246, 0.25));
-      color: var(--accent-strong, #A78BFA);
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 12%, transparent));
+      border: 1px solid var(--accent-border, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 25%, transparent));
+      color: var(--accent-strong, #60A5FA);
       font-size: 12px;
       font-weight: 600;
       display: inline-flex;
@@ -273,14 +273,14 @@ import { TsIconComponent } from '@acklet/tool-shell';
 
     :host-context([data-theme="light"]) .copy-mini-btn,
     [data-theme="light"] .copy-mini-btn {
-      background: rgba(124, 58, 237, 0.1);
-      border-color: rgba(124, 58, 237, 0.3);
-      color: #6D28D9;
+      background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 10%, transparent);
+      border-color: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 30%, transparent);
+      color: #1D4ED8;
       font-weight: 700;
     }
 
     .copy-mini-btn:hover {
-      background: var(--accent, #8B5CF6);
+      background: var(--accent, #3B82F6);
       color: var(--accent-ink, #FFFFFF);
     }
 
@@ -342,7 +342,7 @@ import { TsIconComponent } from '@acklet/tool-shell';
       width: 20px;
       height: 20px;
       border: 2px solid rgba(0, 0, 0, 0.1);
-      border-top-color: #7C3AED;
+      border-top-color: #2563EB;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }

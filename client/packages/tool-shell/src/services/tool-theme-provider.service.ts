@@ -10,12 +10,14 @@ export interface ToolThemeStyles {
   '--tool-accent-border': string;
   '--tool-accent-glow': string;
   '--tool-accent-ink': string;
+  '--tool-accent-hover': string;
   '--accent': string;
   '--accent-strong': string;
   '--accent-soft': string;
   '--accent-border': string;
   '--accent-glow': string;
   '--accent-ink': string;
+  '--accent-hover': string;
   '--font-display': string;
   '--font-sans': string;
   '--font-body': string;
@@ -38,9 +40,10 @@ export class ToolThemeProviderService {
    */
   resolveThemeTokens(
     tool: ToolRegistryItem | null | undefined,
-    mode: 'dark' | 'light' = 'dark'
+    mode: 'dark' | 'light' = 'dark',
+    overrideAccent?: string
   ): Record<string, string> {
-    const colors: ToolThemeColorVariants = resolveToolAccent(tool, mode);
+    const colors: ToolThemeColorVariants = resolveToolAccent(tool, mode, overrideAccent);
     const fontStr = tool?.theme?.font?.fontFamily || SHARED_DEFAULT_FONT;
 
     const styles: Record<string, string> = {
@@ -49,12 +52,14 @@ export class ToolThemeProviderService {
       '--tool-accent-border': colors.border,
       '--tool-accent-glow': colors.glow,
       '--tool-accent-ink': colors.ink,
+      '--tool-accent-hover': colors.strong,
       '--accent': colors.base,
       '--accent-strong': colors.strong,
       '--accent-soft': colors.soft,
       '--accent-border': colors.border,
       '--accent-glow': colors.glow,
       '--accent-ink': colors.ink,
+      '--accent-hover': colors.strong,
       '--font-display': fontStr,
       '--font-sans': fontStr,
       '--font-body': fontStr,

@@ -131,11 +131,9 @@ export class SidebarStateService {
     // 1. Check capability signals
     this.updateCapabilities();
 
-    // 2. Read stored hover preference (default true)
-    const hoverPref = readPreference(HOVER_COOKIE_KEY);
-    if (hoverPref !== null) {
-      this.isHoverEnabled.set(hoverPref !== 'false');
-    }
+    // 2. Hover reveal is always active across all tools by default
+    this.isHoverEnabled.set(true);
+    writePreference(HOVER_COOKIE_KEY, 'true', this.cookieDomain);
 
     // 3. Read stored pinned state
     const pinnedPref = readPreference(PINNED_COOKIE_KEY);
@@ -161,9 +159,10 @@ export class SidebarStateService {
     const allowsPin = window.innerWidth >= MIN_PIN_VIEWPORT_WIDTH;
     this.canPin.set(allowsPin);
 
-    // Pointer hover check
-    const hoverMedia = window.matchMedia('(hover: hover) and (pointer: fine)');
-    this.canHover.set(hoverMedia.matches);
+    // Pointer hover check: true if hover matches or any fine pointer exists
+    const hoverMatches = window.matchMedia?.('(hover: hover)')?.matches ?? false;
+    const fineMatches = window.matchMedia?.('(any-pointer: fine)')?.matches ?? false;
+    this.canHover.set(hoverMatches || fineMatches);
   }
 
   private bindWindowListeners(): void {
@@ -187,20 +186,20 @@ export class SidebarStateService {
       }
     };
 
-    const hoverMedia = window.matchMedia('(hover: hover) and (pointer: fine)');
-    const onHoverChange = (e: MediaQueryListEvent) => {
-      this.canHover.set(e.matches);
-      if (!e.matches && this.mode() === 'peek') {
+    const hoverMedia = window.matchMedia?.('(hover: hover)');
+    const onHoverChange = () => {
+      this.updateCapabilities();
+      if (!this.canHover() && this.mode() === 'peek') {
         this.peekClose();
       }
     };
 
     window.addEventListener('resize', onResize, { passive: true });
-    hoverMedia.addEventListener?.('change', onHoverChange);
+    hoverMedia?.addEventListener?.('change', onHoverChange);
 
     this.destroyRef?.onDestroy(() => {
       window.removeEventListener('resize', onResize);
-      hoverMedia.removeEventListener?.('change', onHoverChange);
+      hoverMedia?.removeEventListener?.('change', onHoverChange);
     });
   }
 

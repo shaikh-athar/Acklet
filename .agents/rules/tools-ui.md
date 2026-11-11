@@ -27,6 +27,13 @@
 4. Register the accent name on the tool in `tools.manifest.ts` (`accent: '<name>'`).
 5. Tool shell automatically injects `[data-accent="<name>"]` onto `.ts-root` to theme the entire tool experience.
 
+## Background Gradients (Layout-Driven & Automatic)
+- **Automatic Layout Pools**: Page background gradients are automatically selected based on the tool's layout.
+  - **Centered Tools Pool** (`ambient-orb`, `top-wash`, `dual-spotlight`): Applied to tools with centered cards (e.g., URL Shortener, File Converter, Image Converter, Barcode Generator).
+  - **Wide Tools Pool** (`soft-mesh`, `diagonal-stream`): Applied to screen-covering/full-bleed workbench tools (e.g., Online Clipboard, DataLens, Temp Email, QR Generator).
+- **Settings Exclusion**: Background gradient and accent picker options are intentionally excluded from the Settings modal to keep user configuration strictly focused on Interface Theme and Accessibility, with Acklet Blue as the single unified brand accent.
+- **Dynamic Accent Reactive**: Gradients automatically incorporate the active `--tool-accent` at 4–6% opacity with WCAG AA compliance across both light and dark themes.
+
 ## Interaction
 - Hover on icons/buttons/rows: rounded gray background. NO border, outline or ring on mouse hover or click. Active = soft gray fill. Keyboard-only :focus-visible ring is allowed.
 - Icon-only buttons: 40px hit area, aria-label, tooltip.

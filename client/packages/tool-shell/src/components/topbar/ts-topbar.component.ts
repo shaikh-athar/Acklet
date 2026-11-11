@@ -64,17 +64,17 @@ export interface SectionNavLink {
             <a
               [href]="parentToolUrl() || (portalUrl + '/' + currentTool.slug)"
               class="ts-tool-chip ts-tool-chip-link"
-              [attr.aria-label]="'Parent tool: ' + currentTool.name"
+              [attr.aria-label]="'Parent tool: ' + (currentTool.breadcrumbLabel || currentTool.sidebarLabel || currentTool.name)"
             >
-              <span class="ts-tool-chip-name">{{ currentTool.name }}</span>
+              <span class="ts-tool-chip-name">{{ currentTool.breadcrumbLabel || currentTool.sidebarLabel || currentTool.name }}</span>
             </a>
             <div class="ts-breadcrumb-separator" aria-hidden="true">/</div>
             <div class="ts-tool-chip ts-subtool-chip" [attr.aria-label]="'Current sub-tool: ' + subTool()">
               <span class="ts-tool-chip-name">{{ subTool() }}</span>
             </div>
           } @else {
-            <div class="ts-tool-chip" [attr.aria-label]="'Current tool: ' + currentTool.name">
-              <span class="ts-tool-chip-name">{{ currentTool.name }}</span>
+            <div class="ts-tool-chip" [attr.aria-label]="'Current tool: ' + (currentTool.breadcrumbLabel || currentTool.sidebarLabel || currentTool.name)">
+              <span class="ts-tool-chip-name">{{ currentTool.breadcrumbLabel || currentTool.sidebarLabel || currentTool.name }}</span>
             </div>
           }
         }
@@ -525,18 +525,31 @@ export interface SectionNavLink {
     }
 
     .ts-nav-link-btn:hover:not(.active) {
-      color: var(--text, #18181B);
-      background: var(--ts-row-hover, rgba(15, 23, 42, 0.035));
+      color: var(--tool-accent, var(--accent)) !important;
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
     }
 
     [data-theme="dark"] .ts-nav-link-btn:hover:not(.active) {
-      color: var(--text, #FCFCFC);
-      background: var(--ts-row-hover, rgba(255, 255, 255, 0.04));
+      color: var(--tool-accent, var(--accent)) !important;
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
     }
 
-    .ts-nav-link-btn.active {
-      color: var(--accent-strong);
-      font-weight: 700;
+    .ts-nav-link-btn.active,
+    .ts-nav-link-btn.active * {
+      color: var(--tool-accent, var(--accent)) !important;
+      font-weight: 700 !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    :host-context([data-theme="dark"]) .ts-nav-link-btn.active,
+    :host-context([data-theme="dark"]) .ts-nav-link-btn.active *,
+    [data-theme="dark"] .ts-nav-link-btn.active,
+    [data-theme="dark"] .ts-nav-link-btn.active * {
+      color: var(--tool-accent, var(--accent)) !important;
+      font-weight: 700 !important;
+      opacity: 1 !important;
+      visibility: visible !important;
     }
 
     .ts-nav-link-btn:focus-visible {
@@ -580,13 +593,15 @@ export interface SectionNavLink {
     }
 
     .ts-nav-action-btn:hover {
-      background: var(--ts-row-hover, rgba(15, 23, 42, 0.035));
-      color: var(--text, #18181B);
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
+      border-color: var(--tool-accent-border, var(--accent-border)) !important;
     }
 
     :host-context([data-theme="dark"]) .ts-nav-action-btn:hover {
-      background: var(--ts-row-hover, rgba(255, 255, 255, 0.04));
-      color: var(--text, #FCFCFC);
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
+      border-color: var(--tool-accent-border, var(--accent-border)) !important;
     }
 
     .ts-nav-action-btn:active {
@@ -623,16 +638,16 @@ export interface SectionNavLink {
 
     .ts-tools-grid-btn:hover,
     .ts-tools-grid-btn.active {
-      background: var(--ts-row-hover, rgba(15, 23, 42, 0.04));
-      color: var(--accent, #2563eb);
-      border-color: var(--border, rgba(0, 0, 0, 0.15));
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
+      border-color: var(--tool-accent-border, var(--accent-border)) !important;
     }
 
     :host-context([data-theme="dark"]) .ts-tools-grid-btn:hover,
     :host-context([data-theme="dark"]) .ts-tools-grid-btn.active {
-      background: var(--ts-row-hover, rgba(255, 255, 255, 0.06));
-      color: var(--accent, #60a5fa);
-      border-color: var(--border, rgba(255, 255, 255, 0.18));
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
+      border-color: var(--tool-accent-border, var(--accent-border)) !important;
     }
 
     .ts-tools-grid-btn:active {
@@ -963,10 +978,16 @@ export interface SectionNavLink {
     }
 
     :host-context([data-theme="light"]) .ts-nav-link-btn.active,
-    :host-context(:not([data-theme="dark"])) .ts-nav-link-btn.active {
-      color: var(--accent-strong, var(--accent, #1D4ED8));
-      font-weight: 700;
+    :host-context([data-theme="light"]) .ts-nav-link-btn.active *,
+    :host-context(:not([data-theme="dark"])) .ts-nav-link-btn.active,
+    :host-context(:not([data-theme="dark"])) .ts-nav-link-btn.active *,
+    [data-theme="light"] .ts-nav-link-btn.active,
+    [data-theme="light"] .ts-nav-link-btn.active * {
+      color: var(--tool-accent, var(--accent, #2563EB)) !important;
+      font-weight: 700 !important;
       letter-spacing: -0.01em;
+      opacity: 1 !important;
+      visibility: visible !important;
     }
 
     /* Enhanced Dark Theme Navbar Calm & High-Legibility Focus Links */
@@ -992,10 +1013,15 @@ export interface SectionNavLink {
       background: rgba(255, 255, 255, 0.08);
     }
 
-    :host-context([data-theme="dark"]) .ts-nav-link-btn.active {
-      color: var(--accent-strong, var(--accent, #60A5FA));
-      font-weight: 700;
+    :host-context([data-theme="dark"]) .ts-nav-link-btn.active,
+    :host-context([data-theme="dark"]) .ts-nav-link-btn.active *,
+    [data-theme="dark"] .ts-nav-link-btn.active,
+    [data-theme="dark"] .ts-nav-link-btn.active * {
+      color: var(--tool-accent, var(--accent, #60A5FA)) !important;
+      font-weight: 700 !important;
       letter-spacing: -0.01em;
+      opacity: 1 !important;
+      visibility: visible !important;
     }
 
     /* Save Button Stage, Gradient & Celebration Animation */
@@ -1167,8 +1193,8 @@ export interface SectionNavLink {
     }
 
     /* Responsive Breakpoints: Exact standardized 4 breakpoints */
-    /* Medium screens (md: 640px - 1023px): Logo, title, center segmented Generator control, icon-only Share/Save, theme toggle visible, 56px height */
-    @media (min-width: 640px) and (max-width: 1023px) {
+    /* Medium screens (md: 768px - 1023px): Logo, title, center segmented Generator control, icon-only Share/Save, theme toggle visible, 56px height */
+    @media (min-width: 768px) and (max-width: 1023px) {
       .ts-topbar-card {
         padding: 0 12px;
         height: 56px;
@@ -1208,8 +1234,11 @@ export interface SectionNavLink {
       }
     }
 
-    /* Small screens (Mobile <640px): Hide center navigation tabs, display tool chip, Share, Save, Theme and Menu button */
-    @media (max-width: 639px) {
+    /* Small screens (Mobile <768px): Hide center navigation tabs, display tool chip, Share, Save, Theme and Menu button */
+    @media (max-width: 767px) {
+      .hide-xs {
+        display: none !important;
+      }
       .ts-tools-grid-btn {
         display: inline-flex !important;
         width: 44px;

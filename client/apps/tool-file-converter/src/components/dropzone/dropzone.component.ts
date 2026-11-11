@@ -1,7 +1,7 @@
 // apps/tool-file-converter/src/components/dropzone/dropzone.component.ts
-import { Component, ChangeDetectionStrategy, output, signal, ViewChild, ElementRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, signal, ViewChild, ElementRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TsIconComponent } from '@acklet/tool-shell';
+import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
 
 @Component({
   selector: 'app-dropzone',
@@ -10,62 +10,58 @@ import { TsIconComponent } from '@acklet/tool-shell';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
-      class="hero-dropzone-container"
-      [class.is-dragover]="isDragOver()"
+      class="hero-clean-section"
       (dragover)="onDragOver($event)"
       (dragleave)="onDragLeave($event)"
       (drop)="onDrop($event)"
-      (click)="fileInput.click()"
-      (keydown.enter)="fileInput.click()"
-      (keydown.space)="fileInput.click()"
-      tabindex="0"
-      role="button"
-      aria-label="Upload images for conversion"
     >
       <input
         #fileInput
         type="file"
         multiple
-        accept="image/*,.png,.jpg,.jpeg,.webp,.avif,.svg,.gif,.bmp,.ico"
+        [accept]="acceptTypes()"
         class="hidden-file-input"
         (change)="onFileInputChange($event)"
         aria-hidden="true"
         tabindex="-1"
       />
 
-      <div class="hero-dropzone-content">
-        <h1 class="hero-main-title">Image Converter</h1>
-        <p class="hero-main-subtitle">
-          Convert JPG, PNG, WebP, AVIF, SVG, and GIF in seconds. Easily adjust quality and dimensions.
-        </p>
+      <!-- Main Clean Content (Centered, Minimal, iLoveIMG/iLovePDF Inspiration) -->
+      <div class="hero-center-content">
+        @if (conversionPair(); as pair) {
+          <div class="pair-pill">
+            <span class="pair-dot"></span>
+            <span>Preselected: <strong>{{ pair.source | uppercase }}</strong> to <strong>{{ pair.target | uppercase }}</strong></span>
+          </div>
+          <h1 class="hero-title">{{ pair.source | uppercase }} to {{ pair.target | uppercase }}</h1>
+          <p class="hero-desc">
+            Convert {{ pair.source | uppercase }} files to {{ pair.target | uppercase }} quickly and securely.
+          </p>
+        } @else {
+          <h1 class="hero-title">File Converter</h1>
+          <p class="hero-desc">
+            Convert files between popular formats quickly and securely.
+          </p>
+        }
 
-        <div class="hero-cta-wrapper">
+        <!-- Primary CTA Area -->
+        <div class="hero-action-group">
           <button
             type="button"
-            class="hero-select-btn"
-            (click)="$event.stopPropagation(); fileInput.click()"
-            aria-label="Select images from computer"
+            class="primary-select-btn"
+            (click)="fileInput.click()"
+            aria-label="Select files from device"
           >
-            <ts-icon name="images" [size]="22" />
-            <span>Select Images</span>
+            <ts-icon name="arrow-left-right" [size]="19" class="btn-icon" />
+            <span class="btn-label">Select Files</span>
           </button>
+          <span class="drag-drop-text">or drop files here</span>
         </div>
 
-        <p class="hero-drop-hint">or drop images here</p>
-
-        <div class="format-chips-cluster" aria-label="Supported formats">
-          <span class="format-chip">PNG</span>
-          <span class="format-chip">JPG</span>
-          <span class="format-chip">WebP</span>
-          <span class="format-chip">AVIF</span>
-          <span class="format-chip">SVG</span>
-          <span class="format-chip">GIF</span>
-          <span class="format-chip">BMP</span>
-        </div>
-
-        <div class="security-meta-badge">
-          <ts-icon name="shield-check" [size]="14" class="security-icon" />
-          <span>Up to 50 images · Max 50 MB each · 100% In-Browser</span>
+        <!-- Subtle Supported Formats Note (Compact, clean presentation) -->
+        <div class="supported-formats-subtle" aria-label="Supported file categories">
+          <span class="formats-prefix">Supported:</span>
+          <span class="formats-text">Images (PNG, JPG, WebP, AVIF, SVG) · Subtitles (SRT, VTT) · Contacts (VCF, CSV)</span>
         </div>
       </div>
     </div>
@@ -76,55 +72,16 @@ import { TsIconComponent } from '@acklet/tool-shell';
       width: 100%;
     }
 
-    .hero-dropzone-container {
+    .hero-clean-section {
       position: relative;
-      border: 2px dashed var(--border-subtle, rgba(255, 255, 255, 0.14));
-      border-radius: var(--ts-radius-card, 24px);
-      background: var(--ts-surface-raised, #18181B);
-      padding: 64px 28px 56px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 72px 24px 64px;
       text-align: center;
-      cursor: pointer;
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-      outline: none;
-      user-select: none;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
-    }
-
-    :host-context([data-theme="light"]) .hero-dropzone-container,
-    [data-theme="light"] .hero-dropzone-container {
-      background: #FFFFFF;
-      border-color: #CBD5E1;
-      box-shadow: 0 4px 24px rgba(15, 23, 42, 0.05);
-    }
-
-    .hero-dropzone-container:hover,
-    .hero-dropzone-container:focus-visible {
-      border-color: var(--accent, #6366F1);
-      background: var(--accent-soft, rgba(99, 102, 241, 0.05));
-      transform: translateY(-2px);
-      box-shadow: 0 8px 32px var(--accent-glow, rgba(99, 102, 241, 0.2));
-    }
-
-    :host-context([data-theme="light"]) .hero-dropzone-container:hover,
-    [data-theme="light"] .hero-dropzone-container:hover {
-      border-color: #4F46E5;
-      background: rgba(79, 70, 229, 0.03);
-      box-shadow: 0 8px 32px rgba(79, 70, 229, 0.12);
-    }
-
-    .hero-dropzone-container.is-dragover {
-      border-color: var(--accent, #6366F1) !important;
-      border-style: solid !important;
-      background: var(--accent-soft, rgba(99, 102, 241, 0.14)) !important;
-      transform: scale(1.01);
-      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25);
-    }
-
-    :host-context([data-theme="light"]) .hero-dropzone-container.is-dragover,
-    [data-theme="light"] .hero-dropzone-container.is-dragover {
-      border-color: #4F46E5 !important;
-      background: rgba(79, 70, 229, 0.08) !important;
-      box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.2);
+      max-width: 820px;
+      margin: 0 auto;
     }
 
     .hidden-file-input {
@@ -135,159 +92,298 @@ import { TsIconComponent } from '@acklet/tool-shell';
       pointer-events: none;
     }
 
-    .hero-dropzone-content {
+    .hero-center-content {
       display: flex;
       flex-direction: column;
       align-items: center;
-      max-width: 680px;
-      margin: 0 auto;
+      width: 100%;
     }
 
-    .hero-main-title {
-      font-size: 38px;
+    .pair-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 4px 14px;
+      border-radius: 9999px;
+      background: var(--accent-soft, rgba(59, 130, 246, 0.14));
+      border: 1px solid var(--accent-border, rgba(59, 130, 246, 0.28));
+      color: var(--accent, #60A5FA);
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    :host-context([data-theme="light"]) .pair-pill,
+    [data-theme="light"] .pair-pill {
+      background: rgba(37, 99, 235, 0.08);
+      border-color: rgba(37, 99, 235, 0.20);
+      color: #1D4ED8;
+    }
+
+    .pair-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .hero-title {
+      font-size: 44px;
       font-weight: 800;
-      color: var(--text, #FFFFFF);
-      margin: 0 0 10px;
+      color: var(--text, #F8FAFC);
+      margin: 0 0 12px;
       letter-spacing: -0.03em;
       line-height: 1.15;
     }
 
-    :host-context([data-theme="light"]) .hero-main-title,
-    [data-theme="light"] .hero-main-title {
+    :host-context([data-theme="light"]) .hero-title,
+    [data-theme="light"] .hero-title {
       color: #0F172A;
     }
 
     @media (max-width: 640px) {
-      .hero-main-title {
-        font-size: 28px;
+      .hero-title {
+        font-size: 32px;
       }
     }
 
-    .hero-main-subtitle {
-      font-size: 16px;
+    .hero-desc {
+      font-size: 17px;
       color: var(--text-muted, #94A3B8);
-      margin: 0 0 32px;
+      margin: 0 0 40px;
       line-height: 1.5;
-      max-width: 560px;
+      max-width: 540px;
     }
 
-    :host-context([data-theme="light"]) .hero-main-subtitle,
-    [data-theme="light"] .hero-main-subtitle {
-      color: #475569;
+    :host-context([data-theme="light"]) .hero-desc,
+    [data-theme="light"] .hero-desc {
+      color: #64748B;
     }
 
-    .hero-cta-wrapper {
-      margin-bottom: 12px;
+    /* ── Action Area & Button ── */
+    .hero-action-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 48px;
     }
 
-    .hero-select-btn {
+    /* ── High-Contrast Primary CTA Button (Hover Bug Explicitly Fixed) ── */
+    .primary-select-btn {
       height: 54px;
-      padding: 0 38px;
-      border-radius: 9999px;
-      background: var(--accent, #6366F1);
-      border: 1px solid var(--accent, #6366F1);
-      color: #FFFFFF;
+      padding: 0 42px;
+      border-radius: 12px;
+      background: var(--accent, #3B82F6) !important;
+      border: 1px solid var(--accent, #3B82F6) !important;
+      color: #FFFFFF !important;
       font-size: 16.5px;
       font-weight: 700;
       letter-spacing: 0.01em;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 10px;
       cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      box-shadow: 0 6px 22px rgba(99, 102, 241, 0.38);
+      user-select: none;
+      outline: none;
+      transition: background-color 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+                  border-color 0.18s ease;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
     }
 
-    :host-context([data-theme="light"]) .hero-select-btn,
-    [data-theme="light"] .hero-select-btn {
-      background: #4F46E5;
-      border-color: #4F46E5;
-      color: #FFFFFF;
-      box-shadow: 0 6px 22px rgba(79, 70, 229, 0.28);
+    .primary-select-btn * {
+      color: #FFFFFF !important;
+      fill: currentColor !important;
     }
 
-    .hero-select-btn:hover {
-      transform: translateY(-2px) scale(1.02);
-      box-shadow: 0 10px 28px rgba(160, 161, 255, 0.48);
+    /* Dark Mode Hover / Active / Focus */
+    .primary-select-btn:hover {
+      background: #2563EB !important;
+      border-color: #1D4ED8 !important;
+      color: #FFFFFF !important;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
     }
 
-    :host-context([data-theme="light"]) .hero-select-btn:hover,
-    [data-theme="light"] .hero-select-btn:hover {
-      border-color: #4338CA;
-      box-shadow: 0 10px 28px rgba(79, 70, 229, 0.36);
+    .primary-select-btn:hover * {
+      color: #FFFFFF !important;
+      fill: currentColor !important;
     }
 
-    .hero-select-btn:active {
-      transform: translateY(0) scale(0.99);
+    .primary-select-btn:active {
+      background: #1D4ED8 !important;
+      border-color: #3730A3 !important;
+      color: #FFFFFF !important;
+      transform: translateY(0);
     }
 
-    .hero-drop-hint {
+    .primary-select-btn:focus-visible {
+      outline: 2px solid var(--accent, #3B82F6);
+      outline-offset: 3px;
+      color: #FFFFFF !important;
+    }
+
+    .primary-select-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Light Mode Overrides */
+    :host-context([data-theme="light"]) .primary-select-btn,
+    [data-theme="light"] .primary-select-btn {
+      background: #2563EB !important;
+      border-color: #2563EB !important;
+      color: #FFFFFF !important;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+    }
+
+    :host-context([data-theme="light"]) .primary-select-btn:hover,
+    [data-theme="light"] .primary-select-btn:hover {
+      background: #1D4ED8 !important;
+      border-color: #1D4ED8 !important;
+      color: #FFFFFF !important;
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+    }
+
+    :host-context([data-theme="light"]) .primary-select-btn:active,
+    [data-theme="light"] .primary-select-btn:active {
+      background: #1E40AF !important;
+      border-color: #1E3A8A !important;
+      color: #FFFFFF !important;
+    }
+
+    .btn-icon {
+      flex-shrink: 0;
+      color: #FFFFFF !important;
+    }
+
+    .btn-label {
+      color: #FFFFFF !important;
+    }
+
+    .drag-drop-text {
       font-size: 14px;
       color: var(--text-muted, #94A3B8);
-      margin: 0 0 24px;
       font-weight: 500;
     }
 
-    :host-context([data-theme="light"]) .hero-drop-hint,
-    [data-theme="light"] .hero-drop-hint {
+    :host-context([data-theme="light"]) .drag-drop-text,
+    [data-theme="light"] .drag-drop-text {
       color: #64748B;
     }
 
-    .format-chips-cluster {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
-    }
-
-    .format-chip {
-      display: inline-flex;
-      align-items: center;
-      padding: 4px 11px;
-      border-radius: 7px;
-      background: var(--ts-surface-inset, rgba(255, 255, 255, 0.05));
-      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
-      color: var(--text-muted, #CBD5E1);
-      font-size: 11.5px;
-      font-weight: 700;
-      letter-spacing: 0.03em;
-    }
-
-    :host-context([data-theme="light"]) .format-chip,
-    [data-theme="light"] .format-chip {
-      background: #F1F5F9;
-      border-color: #E2E8F0;
-      color: #334155;
-    }
-
-    .security-meta-badge {
+    /* ── Subtle Formats Presentation ── */
+    .supported-formats-subtle {
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      font-size: 12.5px;
+      color: var(--text-muted, #94A3B8);
       padding: 6px 14px;
       border-radius: 9999px;
-      background: var(--accent-soft, rgba(99, 102, 241, 0.1));
-      border: 1px solid var(--accent-border, rgba(99, 102, 241, 0.25));
-      color: var(--accent, #818CF8);
-      font-size: 12px;
+      background: var(--ts-surface-inset, rgba(255, 255, 255, 0.04));
+      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    }
+
+    :host-context([data-theme="light"]) .supported-formats-subtle,
+    [data-theme="light"] .supported-formats-subtle {
+      background: #F1F5F9;
+      border-color: #E2E8F0;
+      color: #64748B;
+    }
+
+    .formats-prefix {
       font-weight: 600;
+      color: var(--text, #E2E8F0);
     }
 
-    :host-context([data-theme="light"]) .security-meta-badge,
-    [data-theme="light"] .security-meta-badge {
-      background: rgba(79, 70, 229, 0.06);
-      border-color: rgba(79, 70, 229, 0.2);
-      color: #4338CA;
+    :host-context([data-theme="light"]) .formats-prefix,
+    [data-theme="light"] .formats-prefix {
+      color: #334155;
     }
 
-    .security-icon {
-      color: currentColor;
+    .formats-text {
+      letter-spacing: 0.01em;
+    }
+
+    /* ── Full Drag-and-Drop Overlay (Active ONLY on Drag Over) ── */
+    .drag-active-overlay {
+      position: absolute;
+      inset: -12px;
+      border-radius: 24px;
+      background: rgba(15, 23, 42, 0.82);
+      border: 1px solid var(--accent-border, rgba(59, 130, 246, 0.35));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    :host-context([data-theme="light"]) .drag-active-overlay,
+    [data-theme="light"] .drag-active-overlay {
+      background: rgba(248, 250, 252, 0.88);
+      border-color: rgba(37, 99, 235, 0.25);
+    }
+
+    .drag-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    .drag-icon-box {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: var(--accent-soft, rgba(59, 130, 246, 0.16));
+      color: var(--accent, #60A5FA);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    :host-context([data-theme="light"]) .drag-icon-box,
+    [data-theme="light"] .drag-icon-box {
+      background: rgba(37, 99, 235, 0.1);
+      color: #2563EB;
+    }
+
+    .drag-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text, #FFFFFF);
+      margin: 0;
+    }
+
+    :host-context([data-theme="light"]) .drag-title,
+    [data-theme="light"] .drag-title {
+      color: #0F172A;
+    }
+
+    .drag-subtitle {
+      font-size: 13px;
+      color: var(--text-muted, #94A3B8);
+      margin: 0;
+    }
+
+    :host-context([data-theme="light"]) .drag-subtitle,
+    [data-theme="light"] .drag-subtitle {
+      color: #64748B;
     }
   `]
 })
 export class DropzoneComponent {
+  private readonly fileTransfer = inject(FileTransferService, { optional: true });
+
+  readonly conversionPair = input<{ source: string; target: string } | null>(null);
+  readonly acceptTypes = input<string>('*/*');
   readonly filesDropped = output<FileList | File[]>();
   readonly isDragOver = signal<boolean>(false);
 
@@ -299,20 +395,18 @@ export class DropzoneComponent {
 
   onDragOver(e: DragEvent): void {
     e.preventDefault();
-    e.stopPropagation();
     this.isDragOver.set(true);
   }
 
   onDragLeave(e: DragEvent): void {
     e.preventDefault();
-    e.stopPropagation();
     this.isDragOver.set(false);
   }
 
   onDrop(e: DragEvent): void {
     e.preventDefault();
-    e.stopPropagation();
     this.isDragOver.set(false);
+    this.fileTransfer?.isGlobalDragging.set(false);
 
     if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
       this.filesDropped.emit(e.dataTransfer.files);
@@ -323,7 +417,7 @@ export class DropzoneComponent {
     const input = e.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       this.filesDropped.emit(input.files);
-      input.value = ''; // Reset for repeated selection of same files
+      input.value = '';
     }
   }
 }

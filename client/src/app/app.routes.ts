@@ -90,29 +90,26 @@ export const routes: Routes = [
   { path: 'tools/temp-mail', redirectTo: 'tools/temp-email', pathMatch: 'full' },
   { path: 'tools/mail', redirectTo: 'tools/temp-email', pathMatch: 'full' },
   {
-    path: 'image-converter',
+    path: 'tools/file-converter',
     loadComponent: () => import('../../apps/tool-file-converter/src/app/app.component').then(m => m.AppComponent),
-    title: 'Image Converter — Acklet'
+    title: 'File Converter | Acklet'
   },
-  { path: 'img-converter', redirectTo: 'image-converter', pathMatch: 'full' },
+  {
+    path: 'convert/:pair',
+    loadComponent: () => import('../../apps/tool-file-converter/src/app/app.component').then(m => m.AppComponent),
+    title: 'File Converter | Acklet'
+  },
+  { path: 'file-converter', redirectTo: 'tools/file-converter', pathMatch: 'full' },
+  { path: 'converter', redirectTo: 'tools/file-converter', pathMatch: 'full' },
+  { path: 'tools/converter', redirectTo: 'tools/file-converter', pathMatch: 'full' },
   {
     path: 'tools/image-converter',
     loadComponent: () => import('../../apps/tool-file-converter/src/app/app.component').then(m => m.AppComponent),
-    title: 'Image Converter — Acklet'
+    title: 'Image Converter | Acklet'
   },
+  { path: 'image-converter', redirectTo: 'tools/image-converter', pathMatch: 'full' },
+  { path: 'img-converter', redirectTo: 'tools/image-converter', pathMatch: 'full' },
   { path: 'tools/img-converter', redirectTo: 'tools/image-converter', pathMatch: 'full' },
-  {
-    path: 'converter',
-    loadComponent: () => import('../../apps/tool-file-converter/src/app/app.component').then(m => m.AppComponent),
-    title: 'File Converter — Multi-Format Document Converter | Acklet'
-  },
-  { path: 'file-converter', redirectTo: 'converter', pathMatch: 'full' },
-  {
-    path: 'tools/converter',
-    loadComponent: () => import('../../apps/tool-file-converter/src/app/app.component').then(m => m.AppComponent),
-    title: 'File Converter — Multi-Format Document Converter | Acklet'
-  },
-  { path: 'tools/file-converter', redirectTo: 'tools/converter', pathMatch: 'full' },
   {
     path: 'colorstudio',
     loadComponent: () => import('../../apps/tool-color-studio/src/app/app.component').then(m => m.AppComponent),

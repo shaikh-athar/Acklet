@@ -1,5 +1,5 @@
 // apps/tool-file-converter/src/app/app.component.ts
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolLayoutComponent, ToolShellConfig } from '@acklet/tool-shell';
 import { TOOL_REGISTRY, ToolRegistryItem } from '@acklet/tool-registry';
@@ -19,7 +19,7 @@ import { FileConverterComponent as DocumentConverterToolComponent } from '../con
   template: `
     <ts-shell [tool]="manifest" [config]="shellConfig">
       @if (isImageConverter) {
-        <app-file-converter-tool />
+        <app-file-converter-tool #converterComp />
       } @else {
         <app-file-converter />
       }
@@ -44,7 +44,7 @@ export class AppComponent {
 
   get manifest(): ToolRegistryItem {
     return this.isImageConverter
-      ? TOOL_REGISTRY['image-converter']
+      ? (TOOL_REGISTRY['image-converter'] || TOOL_REGISTRY['file-converter'])
       : (TOOL_REGISTRY['file-converter'] || TOOL_REGISTRY['converter']);
   }
 
@@ -52,6 +52,8 @@ export class AppComponent {
     layout: 'fullBleed',
     showDescriptionCard: false
   };
+
+  readonly converterComp = viewChild<ImageConverterToolComponent>('converterComp');
 }
 
 export const ImageConverterAppComponent = AppComponent;

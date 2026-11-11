@@ -17,6 +17,27 @@ export interface GutterConfig {
   width?: number; // default 160px
 }
 
+export type ToolDropCategory = 
+  | 'image' 
+  | 'video' 
+  | 'audio' 
+  | 'document' 
+  | 'spreadsheet' 
+  | 'archive' 
+  | 'code' 
+  | 'text';
+
+export interface ToolDropConfig {
+  enabled: boolean;
+  acceptedCategories: ToolDropCategory[];
+  acceptedMimeTypes?: string[];
+  acceptedExtensions?: string[];
+  maxVisibleIcons?: number; // max 6
+  heading?: string;
+  instruction?: string;
+  allowMultiple?: boolean;
+}
+
 export interface ToolShellConfig {
   activeTabId?: string;
   tabs?: ToolTab[];
@@ -28,5 +49,6 @@ export interface ToolShellConfig {
   showSearch?: boolean;
   showPrimaryAction?: boolean;
   layout?: 'standard' | 'fullBleed';
+  dropConfig?: ToolDropConfig;
 }
 
