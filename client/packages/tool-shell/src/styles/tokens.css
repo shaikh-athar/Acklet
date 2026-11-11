@@ -164,6 +164,17 @@ html[data-theme="dark"],
   --border-accent: #FCFCFC;
 
   /* Semantic Surface & Accent Tokens (Dark Mode: Deep Navy Base) */
+  --app-background: #09090B;
+  --surface: #141416;
+  --surface-secondary: #1E293B;
+  --text-primary: #F4F4F5;
+  --text-secondary: #A1A1AA;
+  --border-color: #27272A;
+  --bg-base: var(--app-background);
+  --bg-1: var(--surface);
+  --bg-2: var(--surface-secondary);
+  --bg-3: #2E2E33;
+
   --surface-base: #0B1120;
   --surface-1: #111A2E;
   --surface-2: #16233D;
@@ -325,6 +336,17 @@ html[data-theme="light"],
   --border-accent: #09090B;
 
   /* Semantic Surface & Accent Tokens (Light Mode: Clean Minimal) */
+  --app-background: #F8FAFC;
+  --surface: #FFFFFF;
+  --surface-secondary: #F1F5F9;
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
+  --border-color: #E2E8F0;
+  --bg-base: var(--app-background);
+  --bg-1: var(--surface);
+  --bg-2: var(--surface-secondary);
+  --bg-3: #E2E8F0;
+
   --surface-base: #F8FAFC;
   --surface-1: #FFFFFF;
   --surface-2: #F1F5F9;

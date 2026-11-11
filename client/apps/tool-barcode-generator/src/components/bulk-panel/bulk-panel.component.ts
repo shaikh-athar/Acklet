@@ -1684,6 +1684,8 @@ import { BarcodeFormatPickerComponent } from '../format-picker/format-picker.com
 
     .count-badge {
       font-size: 11px;
+      margin-bottom: 10px;
+      margin-left: 15px;
       color: var(--text-muted, #94a3b8);
     }
 

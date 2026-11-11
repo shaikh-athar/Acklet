@@ -208,12 +208,11 @@ import { TsIconComponent } from '@acklet/tool-shell';
 
     .hero-select-btn:hover {
       transform: translateY(-2px) scale(1.02);
-      box-shadow: 0 10px 28px rgba(99, 102, 241, 0.48);
+      box-shadow: 0 10px 28px rgba(160, 161, 255, 0.48);
     }
 
     :host-context([data-theme="light"]) .hero-select-btn:hover,
     [data-theme="light"] .hero-select-btn:hover {
-      background: #4338CA;
       border-color: #4338CA;
       box-shadow: 0 10px 28px rgba(79, 70, 229, 0.36);
     }

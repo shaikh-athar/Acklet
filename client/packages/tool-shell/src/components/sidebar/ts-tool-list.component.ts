@@ -783,7 +783,11 @@ export class TsToolListComponent implements OnInit {
 
   isCurrentSubPath(path: string): boolean {
     if (typeof window === 'undefined') return false;
-    return window.location.pathname === path;
+    const current = window.location.pathname.toLowerCase().replace(/\/$/, '');
+    const target = path.toLowerCase().replace(/\/$/, '');
+    if (current === target || current.endsWith(target)) return true;
+    const cleanTarget = target.replace(/^\//, '');
+    return cleanTarget.length > 2 && current.includes(cleanTarget);
   }
 
   onToolSelect(): void {

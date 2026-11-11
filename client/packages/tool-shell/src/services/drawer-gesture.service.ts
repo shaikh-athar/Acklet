@@ -48,7 +48,7 @@ export class DrawerGestureService {
   isTargetExcluded(target: HTMLElement | null): boolean {
     if (!target) return false;
     const excluded = target.closest(
-      'input, textarea, select, button, a, [role="button"], [role="slider"], [role="tab"], .slider, .custom-scrollbar, .horizontal-scroll, [data-no-swipe], .ts-nav-links-track'
+      'input, textarea, select, button, a, [role="button"], [role="slider"], [role="tab"], .slider, .custom-scrollbar, .horizontal-scroll, [data-no-swipe], .ts-nav-links-track, canvas, .spectrum-area, .spectrum-handle, .gradient-rail-track, .stop-marker, .interactive-gradient-rail, .viewport-canvas-container, .rendered-canvas, .split-hud-bar, .split-handle, .presets-carousel, .swatches-strip, .theme-mode-segmented, .quick-swatch-circle, .swatch-card, .stop-slider'
     );
     return !!excluded;
   }

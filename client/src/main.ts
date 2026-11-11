@@ -15,7 +15,9 @@ const isShortenerPath = pathname === '/urlshortener' || pathname === '/short';
 const isTempEmailPath = pathname === '/temp-email' || pathname === '/temp-mail' || pathname === '/mail' || pathname.startsWith('/tools/temp-email') || pathname.startsWith('/tools/temp-mail');
 const isImageConverterPath = pathname === '/image-converter' || pathname === '/img-converter' || pathname.startsWith('/tools/image-converter') || pathname.startsWith('/tools/img-converter');
 const isConverterPath = pathname === '/converter' || pathname === '/file-converter' || pathname.startsWith('/tools/converter') || pathname.startsWith('/tools/file-converter');
-const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short', 'temp-email', 'temp-mail', 'tempmail', 'image-converter', 'img-converter', 'file-converter', 'converter'];
+const COLOR_STUDIO_MODULE_PATHS = ['/color-picker', '/image-extractor', '/gradient-generator', '/contrast-checker', '/palette-generator', '/vision-simulator', '/picker', '/extractor', '/gradient', '/contrast', '/palette', '/simulator'];
+const isColorStudioPath = pathname === '/colorstudio' || pathname === '/color-studio' || pathname.startsWith('/colorstudio/') || pathname.startsWith('/color-studio/') || pathname.startsWith('/tools/colorstudio') || pathname.startsWith('/tools/color-studio') || COLOR_STUDIO_MODULE_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
+const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short', 'temp-email', 'temp-mail', 'tempmail', 'image-converter', 'img-converter', 'file-converter', 'converter', 'colorstudio', 'color-studio'];
 const toolSlug = extractToolSlugFromHostname(hostname) || (queryTool && validQueryTools.includes(queryTool) ? queryTool : null);
 
 if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools') {
@@ -120,6 +122,23 @@ if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools'
       });
     })
     .catch((err) => console.error('[Tool File Converter Bootstrap Error]', err));
+} else if (toolSlug === 'colorstudio' || toolSlug === 'color-studio' || isColorStudioPath) {
+  // Bootstrap Color Studio tool (apps/tool-color-studio)
+  Promise.all([
+    import('../apps/tool-color-studio/src/app/app.component'),
+    import('../apps/tool-color-studio/src/app/color-studio.routes'),
+    import('@angular/router'),
+    import('@angular/common/http')
+  ])
+    .then(([{ AppComponent }, { colorStudioRoutes }, { provideRouter, withComponentInputBinding }, { provideHttpClient, withFetch }]) => {
+      return bootstrapApplication(AppComponent, {
+        providers: [
+          provideHttpClient(withFetch()),
+          provideRouter(colorStudioRoutes, withComponentInputBinding())
+        ]
+      });
+    })
+    .catch((err) => console.error('[Tool Color Studio Bootstrap Error]', err));
 } else {
   // Bootstrap Acklet Portal (default)
   Promise.all([

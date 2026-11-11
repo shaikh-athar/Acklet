@@ -14,12 +14,8 @@ import { TsAboutCardComponent } from '../primitive/ts-about-card.component';
 import { TsAboutPanelComponent } from '../about-modal/ts-about-panel.component';
 import { TsBackdropComponent } from '../primitive/ts-backdrop.component';
 import { TsToolContentComponent } from '../primitive/ts-tool-content.component';
-import { TsToolHeaderComponent } from '../header/ts-tool-header.component';
-import { TsToolDetailsComponent } from '../rail/ts-tool-details.component';
-import { TsToolRelatedComponent } from '../rail/ts-tool-related.component';
 import { TsIconComponent } from '../icon/ts-icon.component';
-import { TsTooltipDirective } from '../primitive/ts-tooltip.directive';
-import { RevealDirective, TsRevealDirective } from '../../directives/reveal.directive';
+import { RevealDirective } from '../../directives/reveal.directive';
 import { PerfFlagsService } from '../../services/perf-flags.service';
 import { TsSettingsModalComponent } from '../settings/ts-settings-modal.component';
 import { DrawerGestureService } from '../../services/drawer-gesture.service';
@@ -38,7 +34,6 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
     TsBackdropComponent,
     TsToolContentComponent,
     TsIconComponent,
-    TsTooltipDirective,
     RevealDirective,
     TsSettingsModalComponent
   ],
@@ -75,7 +70,7 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
       }
 
       <!-- First-Visit Left Edge Hint (pulses once, auto-dismisses, cookie-backed) -->
-      @if (showFirstHint()) {
+      @if (showFirstHint() && showSidebar()) {
         <div class="ts-sidebar-edge-hint" role="status" aria-live="polite">
           <span class="ts-hint-dot" aria-hidden="true"></span>
           <span class="ts-hint-text">Hover edge or press <kbd class="ts-hint-kbd">⌘B</kbd> for tools</span>
@@ -93,6 +88,8 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
           <div class="ts-navbar-card-slot">
             <ts-topbar 
               [tool]="tool()"
+              [subTool]="subTool()"
+              [parentToolUrl]="parentToolUrl()"
               [currentCategory]="tool()?.category || 'Utilities'"
               [activeTabId]="activeTabId()"
               [showSidebar]="showSidebar()"
@@ -179,7 +176,6 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
               (click)="scrollToTool()" 
               [attr.aria-label]="'Go to ' + (tool()?.name || 'Tool')"
               [attr.tabindex]="showBackToTool() ? 0 : -1"
-              [tsTooltip]="'Go to ' + (tool()?.name || 'Tool')"
               tooltipPosition="left"
             >
               <ts-icon name="chevron-up" [size]="20" class="ts-goto-icon" />
@@ -853,7 +849,11 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
 
     @media (max-width: 767px) {
       .ts-main-scroll-container.full-bleed .ts-content-below-grid {
-        padding: 24px 16px 80px;
+        padding: 24px 16px calc(80px + env(safe-area-inset-bottom, 0px));
+      }
+      .ts-goto-tool-btn {
+        bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+        right: 16px;
       }
     }
 
@@ -1001,6 +1001,8 @@ import { DrawerGestureService } from '../../services/drawer-gesture.service';
 })
 export class ToolLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly tool = input<ToolRegistryItem | null>(null);
+  readonly subTool = input<string | null>(null);
+  readonly parentToolUrl = input<string | null>(null);
   readonly config = input<ToolShellConfig | null>(null);
   readonly surface = input<'clear' | 'frost' | 'tinted' | 'solid'>('clear');
   readonly activeTab = input<string | undefined>(undefined);

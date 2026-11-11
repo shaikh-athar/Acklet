@@ -60,9 +60,23 @@ export interface SectionNavLink {
         <!-- Current Tool Chip / Breadcrumb -->
         @if (tool(); as currentTool) {
           <div class="ts-breadcrumb-separator" aria-hidden="true">/</div>
-          <div class="ts-tool-chip" [attr.aria-label]="'Current tool: ' + currentTool.name">
-            <span class="ts-tool-chip-name">{{ currentTool.name }}</span>
-          </div>
+          @if (subTool()) {
+            <a
+              [href]="parentToolUrl() || (portalUrl + '/' + currentTool.slug)"
+              class="ts-tool-chip ts-tool-chip-link"
+              [attr.aria-label]="'Parent tool: ' + currentTool.name"
+            >
+              <span class="ts-tool-chip-name">{{ currentTool.name }}</span>
+            </a>
+            <div class="ts-breadcrumb-separator" aria-hidden="true">/</div>
+            <div class="ts-tool-chip ts-subtool-chip" [attr.aria-label]="'Current sub-tool: ' + subTool()">
+              <span class="ts-tool-chip-name">{{ subTool() }}</span>
+            </div>
+          } @else {
+            <div class="ts-tool-chip" [attr.aria-label]="'Current tool: ' + currentTool.name">
+              <span class="ts-tool-chip-name">{{ currentTool.name }}</span>
+            </div>
+          }
         }
       </div>
 
@@ -417,6 +431,18 @@ export interface SectionNavLink {
       background: #1E1E22;
       border-color: rgba(255, 255, 255, 0.08);
       color: var(--text, #FCFCFC);
+    }
+
+    a.ts-tool-chip-link {
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+    }
+
+    a.ts-tool-chip-link:hover {
+      background: var(--surface-2, #E2E8F0);
+      border-color: var(--tool-accent, #2563EB);
+      color: var(--tool-accent, #2563EB);
     }
 
     /* Center Zone */
@@ -1089,23 +1115,32 @@ export interface SectionNavLink {
       }
     }
 
-    /* Hide text labels below lg (<1024px): Share & Save become icon-only */
+    /* Hide text labels below lg (<1024px): Share & Save become icon-only with 44px touch target */
     @media (max-width: 1023px) {
       .hide-below-1100 {
         display: none !important;
       }
       .ts-nav-action-btn {
         padding: 0;
-        width: 40px;
-        min-width: 40px;
-        min-height: 40px;
+        width: 44px;
+        min-width: 44px;
+        min-height: 44px;
+        height: 44px;
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
       }
     }
 
-    /* Small screens (<640px): Move Share/Save into "..." menu */
+    /* Small screens (<640px): Breadcrumb shows only current tool; Share & Save remain icon buttons */
     @media (max-width: 639px) {
-      .hide-xs {
+      .ts-brand-link,
+      .ts-breadcrumb-separator,
+      .ts-tool-chip-link {
         display: none !important;
+      }
+      .ts-nav-action-btn.hide-xs {
+        display: inline-flex !important;
       }
     }
 
@@ -1137,12 +1172,28 @@ export interface SectionNavLink {
       .ts-topbar-card {
         padding: 0 12px;
         height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .ts-brand-wordmark {
+        display: none;
       }
       .ts-zone-left {
-        gap: 8px;
+        gap: 6px;
+        min-width: 0;
+        flex: 0 1 auto;
       }
       .ts-tool-chip {
-        max-width: 140px;
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .ts-zone-center {
+        min-width: 0;
+        flex: 0 1 auto;
+        max-width: clamp(160px, 30vw, 240px);
       }
       .ts-nav-link-btn {
         padding: 5px 10px;
@@ -1150,19 +1201,28 @@ export interface SectionNavLink {
       }
       .ts-zone-right {
         gap: 8px;
+        flex-shrink: 0;
       }
       .ts-tools-grid-btn {
         display: none !important;
       }
     }
 
-    /* Small screens (Mobile <768px): Hide center navigation tabs, display brand + tool name and menu button */
-    @media (max-width: 767px) {
+    /* Small screens (Mobile <640px): Hide center navigation tabs, display tool chip, Share, Save, Theme and Menu button */
+    @media (max-width: 639px) {
       .ts-tools-grid-btn {
         display: inline-flex !important;
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
+        min-height: 44px;
       }
       ts-theme-toggle {
         display: inline-flex !important;
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
+        min-height: 44px;
       }
       .ts-zone-center {
         display: none !important;
@@ -1170,7 +1230,7 @@ export interface SectionNavLink {
       .ts-topbar-card {
         grid-template-columns: 1fr auto;
         height: 56px;
-        padding: 0 12px;
+        padding: 0 8px;
         border-radius: 16px;
       }
       .ts-zone-left {
@@ -1179,10 +1239,14 @@ export interface SectionNavLink {
         flex: 1;
         overflow: hidden;
       }
-      .ts-tool-chip {
-        max-width: clamp(100px, 45vw, 220px);
+      .ts-tool-chip:not(.ts-tool-chip-link) {
+        max-width: clamp(100px, 40vw, 160px);
         overflow: hidden;
-        display: flex !important;
+        display: inline-flex !important;
+      }
+      .ts-tool-chip-link,
+      a.ts-tool-chip-link {
+        display: none !important;
       }
       .ts-tool-chip-name {
         overflow: hidden;
@@ -1190,7 +1254,7 @@ export interface SectionNavLink {
         white-space: nowrap;
       }
       .ts-zone-right {
-        gap: 8px;
+        gap: 4px;
         flex-shrink: 0;
       }
       .hide-mobile {
@@ -1213,6 +1277,8 @@ export interface SectionNavLink {
 })
 export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly tool = input<ToolRegistryItem | null>(null);
+  readonly subTool = input<string | null>(null);
+  readonly parentToolUrl = input<string | null>(null);
   readonly currentCategory = input<string>('Utilities');
   readonly activeTabId = input<string>('');
   readonly showSidebar = input<boolean>(true);
@@ -1248,6 +1314,8 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private touchStartY = 0;
   private touchCurrentY = 0;
+
+
 
   toggleNavMenu(event?: MouseEvent): void {
     if (event) {
@@ -1367,7 +1435,8 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   shareTool(): void {
     if (typeof window === 'undefined') return;
     const url = window.location.href.split('#')[0];
-    const title = this.tool()?.name || 'Acklet Tool';
+    const sub = this.subTool();
+    const title = sub ? `${sub} — ${this.tool()?.name || 'Acklet'}` : (this.tool()?.name || 'Acklet Tool');
     if (typeof navigator !== 'undefined' && navigator.share) {
       navigator.share({ title, url }).catch(() => {});
     } else {
@@ -1407,14 +1476,16 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   private loadFavoriteState(): void {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
-        const slug = this.tool()?.slug;
+        const sub = this.subTool();
+        const baseSlug = this.tool()?.slug;
+        const slug = sub ? `${baseSlug}/${sub.toLowerCase().replace(/\s+/g, '-')}` : baseSlug;
         if (!slug) {
           this.isFavorited.set(false);
           return;
         }
         const raw = window.localStorage.getItem(FAVORITES_KEY);
         const list: string[] = raw ? JSON.parse(raw) : [];
-        this.isFavorited.set(list.includes(slug));
+        this.isFavorited.set(list.includes(slug) || (!sub && baseSlug ? list.includes(baseSlug) : false));
       }
     } catch {}
   }
@@ -1428,7 +1499,9 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
-        const slug = this.tool()?.slug;
+        const sub = this.subTool();
+        const baseSlug = this.tool()?.slug;
+        const slug = sub ? `${baseSlug}/${sub.toLowerCase().replace(/\s+/g, '-')}` : baseSlug;
         if (slug) {
           const raw = window.localStorage.getItem(FAVORITES_KEY);
           let list: string[] = raw ? JSON.parse(raw) : [];
@@ -1451,6 +1524,7 @@ export class TsTopbarComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor() {
     effect(() => {
       this.tool();
+      this.subTool();
       this.loadFavoriteState();
     });
 
