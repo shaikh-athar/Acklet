@@ -1,18 +1,19 @@
 /* Color System & Theme Tokens */
-:root,
+:host,
+:host-context([data-theme="dark"]),
 [data-theme="dark"] {
-  --jl-bg-dark: #0B0D10;
-  --jl-surface-primary: #111419;
-  --jl-surface-secondary: #171B21;
-  --jl-border-dark: #252B33;
-  --jl-text-main: #E8EAED;
-  --jl-text-secondary: #8B949E;
-  --jl-success: #6FCF97;
-  --jl-error: #F85149;
-  --jl-warning: #D29922;
-  --jl-accent: #2FA084;
-  --jl-accent-hover: #1F6F5F;
-  --jl-accent-light: #6FCF97;
+  --jl-bg-dark: #111318;
+  --jl-surface-primary: #181B22;
+  --jl-surface-secondary: #1C2029;
+  --jl-border-dark: #303744;
+  --jl-text-main: #F3F4F6;
+  --jl-text-secondary: #A1A8B5;
+  --jl-success: #10B981;
+  --jl-error: #EF4444;
+  --jl-warning: #F59E0B;
+  --jl-accent: var(--tool-accent, var(--accent, #3B82F6));
+  --jl-accent-hover: var(--tool-accent-hover, var(--accent-hover, #60A5FA));
+  --jl-accent-light: var(--tool-accent-soft, var(--accent-soft, rgba(59, 130, 246, 0.15)));
   --jl-bg-light: #EEEEEE;
 
   --jl-font-ui: 'Inter', system-ui, -apple-system, sans-serif;
@@ -67,6 +68,7 @@
   --jl-indent-guide: rgba(255, 255, 255, 0.12);
 }
 
+:host-context([data-theme="light"]),
 [data-theme="light"] {
   --jl-bg-dark: #F8F9FA;
   --jl-surface-primary: #FFFFFF;
@@ -77,9 +79,9 @@
   --jl-success: #28A745;
   --jl-error: #D73A49;
   --jl-warning: #D97706;
-  --jl-accent: #2FA084;
-  --jl-accent-hover: #1F6F5F;
-  --jl-accent-light: #2FA084;
+  --jl-accent: var(--tool-accent, var(--accent, #2563EB));
+  --jl-accent-hover: var(--tool-accent-hover, var(--accent-hover, #1D4ED8));
+  --jl-accent-light: var(--tool-accent-soft, var(--accent-soft, rgba(37, 99, 235, 0.1)));
 
   /* JSON & Syntax Highlighting Tokens — Light Theme (VS Code Light+ High Contrast) */
   --json-key: #005CC5;
@@ -302,7 +304,7 @@ app-feedback-modal {
 }
 
 .brand-lens-icon {
-  color: var(--jl-accent, #2FA084) !important;
+  color: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
   display: flex;
   align-items: center;
 }
@@ -368,15 +370,47 @@ app-feedback-modal {
   white-space: nowrap;
 }
 
-.nav-tab-btn:hover {
-  color: var(--jl-text-main);
-  background: rgba(255, 255, 255, 0.06);
+.nav-tab-btn:hover:not(.active) {
+  color: var(--tool-accent, var(--accent)) !important;
+  background: var(--tool-accent-soft, var(--accent-soft)) !important;
+}
+
+:host-context([data-theme="light"]) .nav-tab-btn:hover:not(.active),
+[data-theme="light"] .nav-tab-btn:hover:not(.active) {
+  color: var(--tool-accent, var(--accent)) !important;
+  background: var(--tool-accent-soft, var(--accent-soft)) !important;
 }
 
 .nav-tab-btn.active {
-  color: #ffffff !important;
-  background: var(--jl-accent, #2FA084) !important;
-  box-shadow: 0 1px 4px rgba(47, 160, 132, 0.35);
+  color: var(--tool-accent-ink, #ffffff) !important;
+  background: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
+  box-shadow: 0 1px 4px var(--tool-focus-ring, rgba(37, 99, 235, 0.35));
+  font-weight: 600;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.nav-tab-btn.active * {
+  color: var(--tool-accent-ink, #ffffff) !important;
+  stroke: var(--tool-accent-ink, #ffffff) !important;
+  background: transparent !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.nav-tab-btn.active:hover {
+  color: var(--tool-accent-ink, #ffffff) !important;
+  background: var(--tool-accent-hover, var(--accent-hover, #1D4ED8)) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.nav-tab-btn.active:hover * {
+  color: var(--tool-accent-ink, #ffffff) !important;
+  stroke: var(--tool-accent-ink, #ffffff) !important;
+  background: transparent !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .diff-highlight-tab-btn {
@@ -481,8 +515,9 @@ app-feedback-modal {
 }
 
 .btn-secondary:hover {
-  background: var(--jl-border-dark);
-  border-color: var(--jl-text-secondary);
+  background: var(--tool-accent-soft, var(--accent-soft)) !important;
+  border-color: var(--tool-accent-border, var(--accent-border)) !important;
+  color: var(--tool-accent, var(--accent)) !important;
 }
 
 .btn-fix {
@@ -498,9 +533,9 @@ app-feedback-modal {
 }
 
 .btn-utility:hover {
-  color: var(--jl-text-main);
-  border-color: var(--jl-text-secondary);
-  background: var(--jl-surface-secondary);
+  color: var(--tool-accent, var(--accent)) !important;
+  border-color: var(--tool-accent-border, var(--accent-border)) !important;
+  background: var(--tool-accent-soft, var(--accent-soft)) !important;
 }
 
 .icon-only-btn,
@@ -682,8 +717,8 @@ app-feedback-modal {
   gap: 0.45rem;
   font-size: 0.7rem;
   color: var(--jl-accent);
-  background: rgba(47, 160, 132, 0.08);
-  border: 1px solid rgba(47, 160, 132, 0.2);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 20%, transparent);
   padding: 0.3rem 0.65rem;
   border-radius: 20px;
 }
@@ -808,17 +843,45 @@ app-feedback-modal {
   user-select: none;
 }
 
-.toggle-control-btn:hover {
-  color: var(--jl-text-main);
-  border-color: var(--jl-text-secondary);
-  background: var(--jl-surface-secondary);
+.toggle-control-btn:hover:not(.active) {
+  color: var(--tool-accent, var(--accent)) !important;
+  border-color: var(--tool-accent-border, var(--accent-border)) !important;
+  background: var(--tool-accent-soft, var(--accent-soft)) !important;
 }
 
 .toggle-control-btn.active {
-  background: rgba(47, 160, 132, 0.15) !important;
-  border-color: var(--jl-accent) !important;
-  color: var(--jl-accent) !important;
+  background: var(--tool-accent-soft, var(--accent-soft, rgba(37, 99, 235, 0.12))) !important;
+  border-color: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
+  color: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
+  stroke: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
   font-weight: 600 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.toggle-control-btn.active * {
+  color: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
+  stroke: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
+  background: transparent !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.toggle-control-btn.active:hover {
+  background: var(--tool-accent-soft, var(--accent-soft, rgba(37, 99, 235, 0.20))) !important;
+  border-color: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
+  color: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
+  stroke: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.toggle-control-btn.active:hover * {
+  color: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
+  stroke: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
+  background: transparent !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .toggle-control-btn:disabled {
@@ -881,7 +944,7 @@ app-feedback-modal {
 }
 
 .indent-menu-item.active {
-  background: rgba(47, 160, 132, 0.12);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 12%, transparent);
   color: var(--jl-accent);
   font-weight: 600;
 }
@@ -973,7 +1036,7 @@ app-feedback-modal {
 
 .search-box:focus-within {
   border-color: var(--jl-accent);
-  box-shadow: 0 0 0 2px rgba(47, 160, 132, 0.15);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 15%, transparent);
 }
 
 .search-icon {
@@ -1002,7 +1065,7 @@ app-feedback-modal {
 
 .search-input-group:focus-within {
   border-color: var(--jl-accent);
-  box-shadow: 0 0 0 2px rgba(47, 160, 132, 0.2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 20%, transparent);
 }
 
 .search-input-field {
@@ -1034,8 +1097,8 @@ app-feedback-modal {
   font-size: 0.68rem;
   font-weight: 700;
   color: var(--jl-accent);
-  background: rgba(47, 160, 132, 0.15);
-  border: 1px solid rgba(47, 160, 132, 0.3);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 30%, transparent);
   padding: 0.1rem 0.4rem;
   border-radius: 10px;
   white-space: nowrap;
@@ -1212,12 +1275,12 @@ app-feedback-modal {
 }
 
 .menu-item-btn:hover {
-  background: rgba(47, 160, 132, 0.15);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 15%, transparent);
   color: var(--jl-accent);
 }
 
 .menu-item-btn.selected {
-  background: rgba(47, 160, 132, 0.2);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 20%, transparent);
   color: var(--jl-accent);
   font-weight: 600;
 }
@@ -1385,24 +1448,24 @@ app-json-lens-diff {
 
 @keyframes neonBorderPulse {
   0% {
-    border-color: rgba(47, 160, 132, 0.6);
-    box-shadow: inset 0 0 15px rgba(47, 160, 132, 0.2), 0 0 15px rgba(47, 160, 132, 0.35);
+    border-color: var(--tool-accent-border, rgba(37, 99, 235, 0.6));
+    box-shadow: inset 0 0 15px var(--tool-accent-soft, rgba(37, 99, 235, 0.2)), 0 0 15px var(--tool-focus-ring, rgba(37, 99, 235, 0.35));
   }
 
   50% {
-    border-color: var(--jl-accent, #2FA084);
-    box-shadow: inset 0 0 35px rgba(47, 160, 132, 0.4), 0 0 35px rgba(47, 160, 132, 0.7);
+    border-color: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB)));
+    box-shadow: inset 0 0 35px var(--tool-accent-soft, rgba(37, 99, 235, 0.4)), 0 0 35px var(--tool-focus-ring, rgba(37, 99, 235, 0.7));
   }
 
   100% {
-    border-color: rgba(47, 160, 132, 0.6);
-    box-shadow: inset 0 0 15px rgba(47, 160, 132, 0.2), 0 0 15px rgba(47, 160, 132, 0.35);
+    border-color: var(--tool-accent-border, rgba(37, 99, 235, 0.6));
+    box-shadow: inset 0 0 15px var(--tool-accent-soft, rgba(37, 99, 235, 0.2)), 0 0 15px var(--tool-focus-ring, rgba(37, 99, 235, 0.35));
   }
 }
 
 .input-panel.drag-active-neon {
-  border: 2px dashed var(--jl-accent, #2FA084) !important;
-  animation: neonBorderPulse 1.2s infinite ease-in-out;
+  border: 1px solid var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
+  background-color: var(--tool-accent-soft, var(--accent-soft, rgba(37, 99, 235, 0.08))) !important;
   position: relative;
   z-index: 10;
 }
@@ -1419,9 +1482,9 @@ app-json-lens-diff {
   padding: 0.45rem 1.1rem;
   border-radius: 9999px;
   background: var(--jl-surface-primary);
-  border: 1.5px solid var(--jl-accent);
-  box-shadow: 0 0 25px rgba(47, 160, 132, 0.55);
-  color: var(--jl-accent-light, #2FA084);
+  border: 1.5px solid var(--tool-accent, var(--jl-accent, var(--accent, #2563EB)));
+  box-shadow: 0 0 25px var(--tool-focus-ring, rgba(37, 99, 235, 0.45));
+  color: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB)));
   font-size: 0.8rem;
   font-weight: 600;
   pointer-events: none;
@@ -1538,21 +1601,31 @@ app-json-lens-diff {
   padding: 0 !important;
 }
 
-.inspector-view-tab-btn:hover {
+.inspector-view-tab-btn:hover:not(.active) {
   color: var(--jl-text-main);
   background: rgba(255, 255, 255, 0.08);
 }
 
-:host-context([data-theme="light"]) .inspector-view-tab-btn:hover,
-[data-theme="light"] .inspector-view-tab-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
+:host-context([data-theme="light"]) .inspector-view-tab-btn:hover:not(.active),
+[data-theme="light"] .inspector-view-tab-btn:hover:not(.active) {
+  background: #E2E8F0 !important;
+  color: #0F172A !important;
 }
 
 .inspector-view-tab-btn.active {
-  color: #ffffff !important;
-  background: var(--jl-accent, #2FA084) !important;
-  box-shadow: 0 1px 3px rgba(47, 160, 132, 0.35);
+  color: var(--tool-accent-ink, #ffffff) !important;
+  background: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
+  box-shadow: 0 1px 3px var(--tool-focus-ring, rgba(37, 99, 235, 0.35));
   font-weight: 600;
+}
+
+.inspector-view-tab-btn.active:hover {
+  color: var(--tool-accent-ink, #ffffff) !important;
+  background: var(--tool-accent-hover, var(--accent-hover, #1D4ED8)) !important;
+}
+
+.inspector-view-tab-btn.active .format-tab-trigger-btn {
+  color: var(--tool-accent-ink, #ffffff) !important;
 }
 
 .inspector-view-tab-btn.format-dropdown-tab {
@@ -1621,10 +1694,10 @@ app-json-lens-diff {
 }
 
 .inspector-format-select.highlighted {
-  background: rgba(47, 160, 132, 0.2);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 20%, transparent);
   border-color: var(--jl-accent);
   color: var(--jl-accent-light);
-  box-shadow: 0 0 8px rgba(47, 160, 132, 0.3);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 30%, transparent);
 }
 
 .csv-unavailable-banner {
@@ -1650,10 +1723,10 @@ app-json-lens-diff {
   font-size: 0.68rem;
   font-weight: 600;
   color: var(--jl-accent);
-  background: rgba(47, 160, 132, 0.12);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 12%, transparent);
   padding: 0.1rem 0.4rem;
   border-radius: 4px;
-  border: 1px solid rgba(47, 160, 132, 0.2);
+  border: 1px solid color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 20%, transparent);
 }
 
 .status-valid-badge {
@@ -1733,14 +1806,14 @@ app-json-lens-diff {
   padding: 0 !important;
 }
 
-.panel-btn:hover:not(:disabled) {
-  color: var(--jl-text-main);
-  border-color: var(--jl-text-secondary);
-  background: var(--jl-surface-secondary);
+.panel-btn:hover:not(:disabled):not(.active) {
+  color: var(--tool-accent, var(--accent)) !important;
+  border-color: var(--tool-accent-border, var(--accent-border)) !important;
+  background: var(--tool-accent-soft, var(--accent-soft)) !important;
 }
 
 .panel-btn.active {
-  background: rgba(47, 160, 132, 0.15) !important;
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 15%, transparent) !important;
   border-color: var(--jl-accent) !important;
   color: var(--jl-accent) !important;
   font-weight: 600 !important;
@@ -1823,7 +1896,7 @@ app-json-lens-diff {
 .fold-btn:hover {
   opacity: 1;
   color: var(--jl-accent);
-  background: rgba(47, 160, 132, 0.15);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 15%, transparent);
 }
 
 .editor-input-wrapper {
@@ -1914,7 +1987,7 @@ app-json-lens-diff {
   background: var(--jl-surface-secondary, rgba(255, 255, 255, 0.08));
   border: 1px solid var(--jl-border-dark, rgba(255, 255, 255, 0.15));
   border-radius: 4px;
-  color: var(--jl-accent, #2FA084);
+  color: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB)));
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer !important;
@@ -1923,9 +1996,9 @@ app-json-lens-diff {
 }
 
 .hl-fold-pill:hover {
-  background: var(--jl-accent, #2FA084);
-  color: #FFFFFF;
-  border-color: var(--jl-accent, #2FA084);
+  background: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB)));
+  color: var(--tool-accent-ink, #FFFFFF);
+  border-color: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB)));
 }
 
 /* Empty Watermark Window Overlay */
@@ -1947,13 +2020,13 @@ app-json-lens-diff {
   width: 64px;
   height: 64px;
   border-radius: 16px;
-  background: rgba(47, 160, 132, 0.08);
-  border: 1px solid rgba(47, 160, 132, 0.2);
+  background: var(--tool-accent-soft, var(--accent-soft, rgba(37, 99, 235, 0.08)));
+  border: 1px solid var(--tool-accent-border, var(--accent-border, rgba(37, 99, 235, 0.2)));
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 1rem;
-  color: var(--jl-accent);
+  color: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB)));
 }
 
 .empty-watermark-icon {
@@ -2124,7 +2197,7 @@ app-inspector-empty-state {
 }
 
 .json-table tr:hover td {
-  background: rgba(47, 160, 132, 0.06);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 6%, transparent);
 }
 
 /* Cell Value Type Specific Highlights */
@@ -2243,7 +2316,7 @@ app-inspector-empty-state {
 }
 
 .export-menu-item.export-hover-xml:hover {
-  background: rgba(47, 160, 132, 0.12);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 12%, transparent);
   color: var(--jl-accent);
 }
 
@@ -2649,34 +2722,8 @@ app-inspector-empty-state {
 
 /* Drag & Drop Active Overlay */
 .panel.input-panel.drag-over {
-  border: 2px dashed var(--jl-accent);
-}
-
-.drag-drop-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(17, 20, 25, 0.92);
-  backdrop-filter: blur(4px);
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--jl-accent);
-  pointer-events: none;
-}
-
-.drag-overlay-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-top: 0.5rem;
-  color: var(--jl-text-main);
-}
-
-.drag-overlay-subtitle {
-  font-size: 0.78rem;
-  color: var(--jl-text-secondary);
-  margin-top: 0.2rem;
+  border: 1px solid var(--tool-accent, var(--accent, #2563EB)) !important;
+  background-color: var(--tool-accent-soft, var(--accent-soft, rgba(37, 99, 235, 0.08))) !important;
 }
 
 /* Search Match Indicator Bar */
@@ -2685,8 +2732,8 @@ app-inspector-empty-state {
   align-items: center;
   gap: 0.4rem;
   padding: 0.35rem 0.8rem;
-  background: rgba(47, 160, 132, 0.15);
-  border-bottom: 1px solid rgba(47, 160, 132, 0.3);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 15%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 30%, transparent);
   font-size: 0.75rem;
   color: var(--jl-accent-light);
 }
@@ -2727,7 +2774,7 @@ app-inspector-empty-state {
 }
 
 .tree-node.search-matched {
-  background: rgba(47, 160, 132, 0.2);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 20%, transparent);
   border-radius: 4px;
 }
 
@@ -2774,7 +2821,7 @@ app-inspector-empty-state {
 }
 
 .node-row:hover {
-  background: rgba(47, 160, 132, 0.08);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 8%, transparent);
 }
 
 .node-parent {
@@ -2892,8 +2939,8 @@ app-inspector-empty-state {
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem 0.8rem;
-  background: rgba(47, 160, 132, 0.15);
-  border-bottom: 1px solid rgba(47, 160, 132, 0.3);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 15%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 30%, transparent);
   font-size: 0.75rem;
   color: var(--jl-accent-light);
 }
@@ -3122,13 +3169,13 @@ app-inspector-empty-state {
 
 .history-card:hover {
   border-color: var(--jl-accent);
-  box-shadow: 0 4px 14px rgba(47, 160, 132, 0.12);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 12%, transparent);
   transform: translateY(-1px);
 }
 
 .history-card.is-pinned-card {
-  border-color: rgba(47, 160, 132, 0.45);
-  background: rgba(47, 160, 132, 0.05);
+  border-color: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 45%, transparent);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 5%, transparent);
 }
 
 .history-card-top-row {
@@ -3184,7 +3231,7 @@ app-inspector-empty-state {
 }
 
 .history-preview-wrapper.is-expanded {
-  border-color: rgba(47, 160, 132, 0.4);
+  border-color: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 40%, transparent);
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
@@ -3468,7 +3515,7 @@ app-inspector-empty-state {
 .feedback-btn-primary:hover:not([disabled]) {
   background: var(--jl-accent-hover);
   border-color: var(--jl-accent-hover);
-  box-shadow: 0 2px 8px rgba(47, 160, 132, 0.3);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 30%, transparent);
 }
 
 .feedback-btn-primary[disabled] {
@@ -3489,7 +3536,7 @@ app-inspector-empty-state {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: rgba(47, 160, 132, 0.14);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 14%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3528,12 +3575,12 @@ app-inspector-empty-state {
 }
 
 .inspector-empty-dropzone.is-drag-over {
-  background: rgba(47, 160, 132, 0.06);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 6%, transparent);
 }
 
 .inspector-empty-dropzone.is-drag-over .empty-watermark-icon-box {
   border-color: var(--jl-accent);
-  background: rgba(47, 160, 132, 0.18);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 18%, transparent);
   transform: scale(1.08);
 }
 
@@ -3547,7 +3594,7 @@ app-inspector-empty-state {
   align-items: center;
   justify-content: center;
   position: relative;
-  box-shadow: 0 4px 20px var(--accent-glow, rgba(47, 160, 132, 0.2));
+  box-shadow: 0 4px 20px var(--accent-glow, color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 20%, transparent));
   animation: floatPulse 3s ease-in-out infinite;
 }
 
@@ -3615,7 +3662,7 @@ app-inspector-empty-state {
   color: #FFFFFF !important;
   cursor: pointer;
   transition: all 0.15s ease;
-  box-shadow: 0 4px 14px rgba(47, 160, 132, 0.28);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 28%, transparent);
 }
 
 .empty-action-btn span,
@@ -3627,7 +3674,7 @@ app-inspector-empty-state {
   background: var(--jl-accent-hover);
   border-color: var(--jl-accent-hover);
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(47, 160, 132, 0.35);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 35%, transparent);
 }
 
 .inspector-empty-dropzone:hover .empty-drop-hint .text-accent {
@@ -3646,8 +3693,8 @@ app-inspector-empty-state {
   font-size: 0.7rem;
   font-weight: 700;
   color: var(--jl-accent);
-  background: rgba(47, 160, 132, 0.12);
-  border: 1px solid rgba(47, 160, 132, 0.25);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 25%, transparent);
   padding: 0.15rem 0.45rem;
   border-radius: 4px;
   letter-spacing: 0.02em;
@@ -3684,7 +3731,7 @@ app-inspector-empty-state {
 .card-action-btn.expand-btn:hover,
 .card-action-btn.expand-btn.expanded {
   color: var(--jl-accent);
-  background: rgba(47, 160, 132, 0.15);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 15%, transparent);
   border-color: var(--jl-accent);
 }
 
@@ -3699,7 +3746,7 @@ app-inspector-empty-state {
 .card-action-btn.pin-btn:hover,
 .card-action-btn.pin-btn.pinned {
   color: var(--jl-accent);
-  background: rgba(47, 160, 132, 0.15);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 15%, transparent);
   border-color: var(--jl-accent);
 }
 
@@ -3713,7 +3760,7 @@ app-inspector-empty-state {
 .card-action-btn.restore-btn:hover {
   background: var(--jl-accent-hover);
   border-color: var(--jl-accent-hover);
-  box-shadow: 0 2px 8px rgba(47, 160, 132, 0.3);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 30%, transparent);
 }
 
 .card-action-btn.delete-btn {
@@ -3881,46 +3928,6 @@ app-inspector-empty-state {
 .empty-palette {
   padding: 2rem;
   text-align: center;
-  font-size: 0.8rem;
-  color: var(--jl-text-secondary);
-}
-
-/* Section 37 Workspace Drag Overlay Styling */
-.workspace-drag-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(11, 13, 16, 0.85);
-  backdrop-filter: blur(4px);
-  z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.drag-drop-card {
-  background: var(--jl-surface-primary);
-  border: 2px dashed var(--jl-accent);
-  border-radius: 12px;
-  padding: 2.5rem 3.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.8rem;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
-}
-
-.drag-icon {
-  color: var(--jl-accent-light);
-}
-
-.drag-drop-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--jl-text-main);
-}
-
-.drag-drop-subtitle {
   font-size: 0.8rem;
   color: var(--jl-text-secondary);
 }
@@ -4937,7 +4944,7 @@ select:focus-visible {
   font-size: 0.7rem;
   font-weight: 700;
   padding: 0.15rem 0.5rem;
-  background: rgba(47, 160, 132, 0.15);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 15%, transparent);
   color: var(--jl-accent);
   border-radius: 10px;
 }
@@ -5177,7 +5184,7 @@ select:focus-visible {
 
 .graph-node-card.is-node-dragging {
   border-color: var(--jl-accent) !important;
-  box-shadow: 0 8px 28px rgba(47, 160, 132, 0.4) !important;
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 40%, transparent) !important;
   z-index: 30 !important;
 }
 
@@ -5187,7 +5194,7 @@ select:focus-visible {
 
 .graph-node-card:hover {
   border-color: var(--jl-accent);
-  box-shadow: 0 6px 20px rgba(47, 160, 132, 0.25);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 25%, transparent);
 }
 
 .graph-card-header {
@@ -5283,7 +5290,7 @@ select:focus-visible {
   font-size: 0.68rem;
   font-weight: 700;
   color: var(--jl-accent);
-  background: rgba(47, 160, 132, 0.12);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 12%, transparent);
   padding: 0.08rem 0.4rem;
   border: 1px solid transparent;
   border-radius: 4px;
@@ -5352,7 +5359,7 @@ select:focus-visible {
 .footer-action-pill-btn:hover {
   color: var(--jl-text-main);
   border-color: var(--jl-accent);
-  background: rgba(47, 160, 132, 0.12);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 12%, transparent);
 }
 
 .footer-action-pill-btn:active {
@@ -5488,7 +5495,7 @@ select:focus-visible {
 }
 
 .more-menu-item:hover {
-  background: rgba(47, 160, 132, 0.15);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 15%, transparent);
   color: var(--jl-accent-light);
 }
 
@@ -5625,8 +5632,8 @@ select:focus-visible {
   font-size: 0.65rem;
   font-weight: 700;
   color: var(--jl-accent);
-  background: rgba(47, 160, 132, 0.12);
-  border: 1px solid rgba(47, 160, 132, 0.25);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 25%, transparent);
   padding: 0.1rem 0.5rem;
   border-radius: 4px;
   letter-spacing: 0.04em;
@@ -5681,7 +5688,7 @@ select:focus-visible {
   font-size: 0.68rem;
   font-weight: 700;
   color: var(--jl-accent);
-  background: rgba(47, 160, 132, 0.12);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 12%, transparent);
   padding: 0.1rem 0.45rem;
   border-radius: 4px;
   white-space: nowrap;
@@ -5853,7 +5860,7 @@ select:focus-visible {
 }
 
 .filter-toggle-btn.active {
-  background: rgba(47, 160, 132, 0.15);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 15%, transparent);
   border-color: var(--jl-accent);
   color: var(--jl-accent);
 }
@@ -5919,8 +5926,8 @@ select:focus-visible {
   align-items: center;
   gap: 0.4rem;
   padding: 0.2rem 0.55rem;
-  background: rgba(47, 160, 132, 0.12);
-  border: 1px solid rgba(47, 160, 132, 0.3);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 30%, transparent);
   border-radius: 6px;
   font-size: 0.72rem;
   color: var(--jl-text-main);
@@ -5947,7 +5954,7 @@ select:focus-visible {
   font-weight: 700;
   font-size: 0.65rem;
   color: var(--jl-accent);
-  background: rgba(47, 160, 132, 0.2);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 20%, transparent);
   padding: 0.05rem 0.35rem;
   border-radius: 4px;
 }
@@ -5971,11 +5978,11 @@ select:focus-visible {
 
 .filter-matched-line {
   display: block;
-  background: rgba(47, 160, 132, 0.2) !important;
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 20%, transparent) !important;
   border-left: 3px solid var(--jl-accent) !important;
   padding-left: 4px;
   border-radius: 3px;
-  box-shadow: inset 0 0 0 1px rgba(47, 160, 132, 0.25);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 25%, transparent);
 }
 
 .filter-popover-anchor {
@@ -6360,8 +6367,8 @@ select:focus-visible {
 }
 
 .diff-mode-btn.active {
-  background: var(--jl-accent, #2FA084) !important;
-  color: #FFFFFF !important;
+  background: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
+  color: var(--tool-accent-ink, #FFFFFF) !important;
   font-weight: 600;
 }
 
@@ -6401,7 +6408,7 @@ select:focus-visible {
 .diff-option-btn.active {
   border-color: var(--jl-accent);
   color: var(--jl-accent);
-  background: rgba(47, 160, 132, 0.12);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 12%, transparent);
 }
 
 .diff-nav-btn {
@@ -6552,11 +6559,11 @@ select:focus-visible {
 }
 
 .filter-pill.active {
-  background: var(--jl-accent, #2fa084) !important;
-  color: #ffffff !important;
-  border-color: var(--jl-accent, #2fa084) !important;
+  background: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
+  color: var(--tool-accent-ink, #ffffff) !important;
+  border-color: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
   font-weight: 700;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 3px var(--tool-focus-ring, rgba(37, 99, 235, 0.25));
 }
 
 .filter-pill.pill-added {
@@ -6746,7 +6753,7 @@ select:focus-visible {
 }
 
 .diff-fold-strip:hover {
-  background: rgba(47, 160, 132, 0.15);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 15%, transparent);
 }
 
 .structural-diff-list {
@@ -6964,7 +6971,7 @@ select:focus-visible {
   justify-content: center;
   color: var(--jl-accent);
   cursor: pointer;
-  background: rgba(47, 160, 132, 0.1);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 10%, transparent);
   user-select: none;
 }
 
@@ -6993,7 +7000,7 @@ select:focus-visible {
 .diff-fold-btn:hover {
   opacity: 1;
   color: var(--jl-accent);
-  background: rgba(47, 160, 132, 0.15);
+  background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 15%, transparent);
 }
 
 .diff-fold-pill {
@@ -8056,10 +8063,10 @@ select:focus-visible {
 }
 
 .ops-preset-btn:hover {
-  border-color: var(--jl-accent, #2FA084) !important;
-  background: var(--jl-accent, #2FA084) !important;
-  color: #ffffff !important;
-  box-shadow: 0 1px 3px rgba(47, 160, 132, 0.3);
+  border-color: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
+  background: var(--tool-accent, var(--jl-accent, var(--accent, #2563EB))) !important;
+  color: var(--tool-accent-ink, #ffffff) !important;
+  box-shadow: 0 1px 3px var(--tool-focus-ring, rgba(37, 99, 235, 0.3));
 }
 
 .match-key-input-wrap {

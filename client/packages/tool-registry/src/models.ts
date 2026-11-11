@@ -40,6 +40,8 @@ export interface ToolSubItem {
 export interface ToolRegistryItem {
   id: string;
   name: string;
+  sidebarLabel?: string;
+  breadcrumbLabel?: string;
   slug: string;
   category: string;
   categorySlug?: string;

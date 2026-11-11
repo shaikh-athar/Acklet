@@ -746,6 +746,7 @@
         class="tab-content-pane files-pane-layout" 
         [class.slide-from-left]="tabDirection() === 'left'"
         [class.slide-from-right]="tabDirection() === 'right'"
+        [class.is-drag-active]="isDragOver()"
         aria-label="Shared Files Library"
       >
         
@@ -1158,16 +1159,15 @@
                 {{ copy.filesTab.clearFilters }}
               </button>
             } @else {
-              <!-- Default Empty State -->
-              <div class="empty-tile-graphic" (click)="openFilePicker()">
-                <ts-icon name="folder-up" [size]="32" />
-              </div>
-              <h3 class="empty-title">{{ copy.filesTab.emptyTitle }}</h3>
-              <p class="empty-subtitle">{{ copy.filesTab.emptySubtitle }}</p>
-              <button type="button" class="empty-action-btn" (click)="openFilePicker()">
-                <ts-icon name="plus" [size]="16" />
-                <span>{{ copy.filesTab.emptyAddButton }}</span>
-              </button>
+              <!-- Default Empty State (Shared Empty Drop State) -->
+              <shared-empty-drop-state
+                icon="upload-cloud"
+                heading="Add anything"
+                subtext="Drop files, folders or text to get started."
+                actionLabel="Browse files"
+                (action)="openFilePicker()"
+                (filesDropped)="processFilesUpload($event)"
+              />
             }
           </div>
         }
@@ -1338,31 +1338,6 @@
       >
         <ts-icon name="x" [size]="16" />
       </button>
-    </div>
-  }
-
-  <!-- ═══════════════════════════════════════════════════════════ -->
-  <!-- DRAG-AND-DROP FULL OVERLAY                                 -->
-  <!-- ═══════════════════════════════════════════════════════════ -->
-  @if (isDragOver()) {
-    <div class="drag-drop-full-overlay">
-      <div class="drag-drop-modal-content">
-        <!-- Floating colorful icon badges cluster -->
-        <div class="drop-icon-cluster" aria-hidden="true">
-          <div class="drop-badge drop-badge-left">
-            <ts-icon name="code" [size]="24" class="drop-badge-icon" />
-          </div>
-          <div class="drop-badge drop-badge-right">
-            <ts-icon name="file-text" [size]="24" class="drop-badge-icon" />
-          </div>
-          <div class="drop-badge drop-badge-center">
-            <ts-icon name="image" [size]="28" class="drop-badge-icon" />
-          </div>
-        </div>
-
-        <h3 class="drop-headline">{{ copy.filesTab.dropOverlayTitle }}</h3>
-        <p class="drop-subline">{{ copy.filesTab.dropOverlaySubtitle }}</p>
-      </div>
     </div>
   }
 

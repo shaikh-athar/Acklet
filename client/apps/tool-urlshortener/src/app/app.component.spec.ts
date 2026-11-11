@@ -10,7 +10,7 @@ describe('URL Shortener Tool Shell & Manifest Integrity', () => {
     expect(manifest.slug).toBe('urlshortener');
     expect(manifest.name).toBe('URL Shortener');
     expect(manifest.category).toBe('Links/Web');
-    expect(manifest.accent).toBe('amber');
+    expect(manifest.accent).toBe('blue');
     expect(manifest.icon).toBe('link');
   });
 

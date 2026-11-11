@@ -19,7 +19,7 @@ import { IconComponent } from './icon.component';
       <!-- Dedicated Input Sub-Navbar Control Bar -->
       <div class="panel-header">
         <div class="panel-header-left">
-          <app-icon name="file-input" class="icon-xs text-emerald-400"></app-icon>
+          <app-icon name="file-input" class="icon-xs text-[var(--tool-accent,var(--accent,#2563EB))]"></app-icon>
           <span class="panel-label">INPUT</span>
           <span class="panel-sublabel">{{ activeFormat().toUpperCase() }}</span>
         </div>
@@ -68,7 +68,7 @@ import { IconComponent } from './icon.component';
       @if (activeFilterCondition() && activeFilterCondition()!.query.trim()) {
         <div class="panel-active-filter-bar">
           <div class="active-filter-chip">
-            <app-icon name="filter" class="icon-xs text-emerald-400"></app-icon>
+            <app-icon name="filter" class="icon-xs text-[var(--tool-accent,var(--accent,#2563EB))]"></app-icon>
             <span class="chip-operator">{{ activeFilterCondition()!.operator | uppercase }}</span>
             <span class="chip-query">"{{ activeFilterCondition()!.query }}"</span>
             <span class="chip-scope">({{ activeFilterCondition()!.scope }})</span>
@@ -86,7 +86,7 @@ import { IconComponent } from './icon.component';
         <div class="filter-condition-popover" (click)="$event.stopPropagation()">
           <div class="filter-popover-header">
             <div class="filter-popover-title">
-              <app-icon name="filter" class="icon-xs text-emerald-400"></app-icon>
+              <app-icon name="filter" class="icon-xs text-[var(--tool-accent,var(--accent,#2563EB))]"></app-icon>
               <span>Apply Input Filter Condition</span>
             </div>
             <button class="filter-popover-close" (click)="closeFilterPopover()">
@@ -161,13 +161,6 @@ import { IconComponent } from './icon.component';
         </div>
       }
 
-      <!-- Floating Pulsating Neon Drop Pill Banner -->
-      @if (isDragging() || isWorkspaceDragging()) {
-        <div class="input-panel-neon-banner">
-          <app-icon name="upload-cloud" class="icon-xs text-emerald-400 animate-pulse"></app-icon>
-          <span>Drop here</span>
-        </div>
-      }
 
       <!-- Monaco-Style Code Window with Line Numbers & VSCode Syntax Highlighting -->
       <div class="code-editor-container">
@@ -189,8 +182,8 @@ import { IconComponent } from './icon.component';
             <div class="empty-watermark-icon-box">
               <app-icon name="upload" class="empty-watermark-icon"></app-icon>
             </div>
-            <div class="empty-watermark-title">Start with {{ activeFormatLabel() }}</div>
-            <div class="empty-watermark-subtitle">Paste or import {{ activeFormatLabel() }} content to format, validate & inspect</div>
+            <div class="empty-watermark-title">Add anything</div>
+            <div class="empty-watermark-subtitle">Drop files, folders or text to get started.</div>
           </div>
         }
 

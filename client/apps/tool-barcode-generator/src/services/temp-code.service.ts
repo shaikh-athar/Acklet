@@ -187,8 +187,13 @@ export class TempCodeService {
   }
 
   verifyCode(token: string): Observable<TempCodeVerifyResult> {
+    const headers = new HttpHeaders({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      'Pragma': 'no-cache'
+    });
     return this.http.get<ApiResponse<TempCodeVerifyResult>>(
-      `${this.apiBaseUrl}/verify/${encodeURIComponent(token)}`
+      `${this.apiBaseUrl}/verify/${encodeURIComponent(token)}`,
+      { headers }
     ).pipe(
       tap(() => this.isServiceUnreachable.set(false)),
       map(res => res.data),

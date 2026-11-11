@@ -153,7 +153,7 @@
                 <div class="transform-menu-header">Specialized {{ activeFormat().toUpperCase() }} Operations</div>
                 @for (op of secondaryOperations(); track op.id) {
                   <button class="transform-menu-item" (click)="executeTransformation(op.id)" [attr.data-tooltip]="op.tooltip">
-                    <app-icon [name]="op.icon" class="icon-xs text-emerald-400"></app-icon>
+                    <app-icon [name]="op.icon" class="icon-xs text-[var(--tool-accent,var(--accent,#2563EB))]"></app-icon>
                     <span>{{ op.label }}</span>
                   </button>
                 }
@@ -332,11 +332,6 @@
             </div>
           }
         </div>
-
-        <!-- 3. Share Action (Icon Only) -->
-        <button class="toggle-control-btn icon-only-btn" (click)="toggleShareModal()" data-tooltip="Share JSON Architecture">
-          <app-icon name="share-2" class="icon-xs"></app-icon>
-        </button>
         
       </div>
     </div>
@@ -457,10 +452,6 @@
   <app-json-lens-settings-drawer [isOpen]="showSettingsDrawer()" [settings]="settings()"
     (closeDrawer)="toggleSettingsDrawer()" (settingsChange)="updateSettings($event)"></app-json-lens-settings-drawer>
 
-  <!-- Section 41: Share Feature Modal Component -->
-  <app-json-lens-share-modal [isOpen]="showShareModal()" (closeModal)="toggleShareModal()"
-    (triggerToast)="triggerToast($event)"></app-json-lens-share-modal>
-
   <!-- Section 32: Privacy Explanation Modal Component -->
   <app-json-lens-privacy-modal></app-json-lens-privacy-modal>
 
@@ -506,9 +497,6 @@
     [toolName]="'JSONLens'"
     (closeModal)="isFeedbackModalOpen.set(false)"
   ></app-feedback-modal>
-
-  <!-- Section 37: Drag & Drop Overlay Component -->
-  <app-json-lens-drag-overlay></app-json-lens-drag-overlay>
 
   <!-- Section 38: Toast Container Component -->
   <app-json-lens-toast-container></app-json-lens-toast-container>

@@ -124,27 +124,54 @@ html[data-theme="light"] body:has(.ts-root),
 .ts-root .ts-btn,
 .ts-root .ts-icon-btn,
 .ts-root .ts-action-btn {
-  outline: none !important;
-  border: none;
+  outline: none;
   border-radius: var(--ts-radius-md, 12px);
   cursor: pointer;
   transition: background-color var(--ts-dur-fast, 150ms) var(--ts-ease),
-    color var(--ts-dur-fast, 150ms) var(--ts-ease);
+    color var(--ts-dur-fast, 150ms) var(--ts-ease),
+    border-color var(--ts-dur-fast, 150ms) var(--ts-ease),
+    box-shadow var(--ts-dur-fast, 150ms) var(--ts-ease),
+    opacity var(--ts-dur-fast, 150ms) var(--ts-ease);
 }
 
-.ts-root button:not([data-variant="primary"]):not([data-variant="destructive"]):not(.spartan-button-variant-destructive):not(.split-primary-btn):not(.split-arrow-btn):not(.guided-next-btn):not(.btn-primary):not([class*="primary"]):not([class*="accent"]):not([class*="destructive"]):not([class*="danger"]):not([class*="delete"]):not(.copied):not(.dark-pill-add-btn):not(.join-open-btn):not(.empty-action-btn):not(.empty-cta-btn):not([class*="cta"]):not(.view-toggle-btn):not(.segment-btn):not([class*="segment"]):hover,
-.ts-root .ts-btn:hover,
-.ts-root .ts-icon-btn:hover,
-.ts-root .ts-action-btn:hover {
-  background: var(--ts-row-hover, rgba(15, 23, 42, 0.035));
+.ts-root button:focus-visible,
+.ts-root .ts-btn:focus-visible,
+.ts-root .ts-icon-btn:focus-visible,
+.ts-root .ts-action-btn:focus-visible {
+  outline: 2px solid var(--tool-accent, var(--accent)) !important;
+  outline-offset: 2px !important;
+}
+
+/* Subtle/Ghost button hover: apply strictly to explicitly named ghost/action buttons */
+.ts-root .ts-btn-ghost:hover:not(:disabled),
+.ts-root .ts-ghost-btn:hover:not(:disabled),
+.ts-root .ts-icon-btn:hover:not(:disabled):not([class*="primary"]):not([class*="accent"]):not([class*="danger"]):not([class*="destructive"]),
+.ts-root .ts-action-btn:hover:not(:disabled):not([class*="primary"]):not([class*="accent"]):not([class*="danger"]):not([class*="destructive"]) {
+  background: var(--tool-accent-soft, var(--accent-soft)) !important;
+  color: var(--tool-accent, var(--accent)) !important;
+  border-color: var(--tool-accent-border, var(--accent-border)) !important;
   outline: none !important;
 }
 
-.ts-root button:not([data-variant="primary"]):not([data-variant="destructive"]):not(.spartan-button-variant-destructive):not(.split-primary-btn):not(.split-arrow-btn):not(.guided-next-btn):not(.btn-primary):not([class*="primary"]):not([class*="accent"]):not([class*="destructive"]):not([class*="danger"]):not([class*="delete"]):not(.copied):not(.dark-pill-add-btn):not(.join-open-btn):not(.empty-action-btn):not(.empty-cta-btn):not([class*="cta"]):not(.view-toggle-btn):not(.segment-btn):not([class*="segment"]):active,
-.ts-root .ts-btn:active,
-.ts-root .ts-icon-btn:active,
-.ts-root .ts-action-btn:active {
-  background: var(--ts-raised-hover);
+.ts-root .ts-btn-ghost:hover ts-icon,
+.ts-root .ts-ghost-btn:hover ts-icon,
+.ts-root .ts-icon-btn:hover:not([class*="primary"]):not([class*="accent"]):not([class*="danger"]):not([class*="destructive"]) ts-icon,
+.ts-root .ts-action-btn:hover:not([class*="primary"]):not([class*="accent"]):not([class*="danger"]):not([class*="destructive"]) ts-icon,
+.ts-root .ts-btn-ghost:hover svg,
+.ts-root .ts-ghost-btn:hover svg,
+.ts-root .ts-icon-btn:hover:not([class*="primary"]):not([class*="accent"]):not([class*="danger"]):not([class*="destructive"]) svg,
+.ts-root .ts-action-btn:hover:not([class*="primary"]):not([class*="accent"]):not([class*="danger"]):not([class*="destructive"]) svg {
+  color: inherit !important;
+  stroke: currentColor !important;
+}
+
+.ts-root .ts-btn-ghost:active,
+.ts-root .ts-ghost-btn:active,
+.ts-root .ts-icon-btn:active:not([class*="primary"]):not([class*="accent"]):not([class*="danger"]):not([class*="destructive"]),
+.ts-root .ts-action-btn:active:not([class*="primary"]):not([class*="accent"]):not([class*="danger"]):not([class*="destructive"]) {
+  background: var(--tool-accent-soft, var(--accent-soft)) !important;
+  color: var(--tool-accent, var(--accent)) !important;
+  transform: scale(0.97);
   outline: none !important;
 }
 
@@ -352,17 +379,72 @@ html[data-theme="light"] body:has(.ts-root),
 
 /* 1. Primary (default) */
 .spartan-button-variant-default {
-  background-color: var(--accent);
-  color: var(--accent-ink);
+  background-color: var(--tool-accent, var(--accent)) !important;
+  color: var(--tool-accent-ink, var(--accent-ink, #FFFFFF)) !important;
   font-weight: 600;
   box-shadow: 0 0 0 0 transparent;
+  transition: all var(--ts-dur-fast, 150ms) var(--ts-ease);
 }
 
 @media (hover: hover) {
   .spartan-button-variant-default:hover:not(:disabled):not([data-disabled]) {
-    box-shadow: 0 6px 24px -4px var(--accent-glow);
-    filter: brightness(1.04);
+    background-color: var(--tool-accent-hover, var(--accent-hover, var(--accent))) !important;
+    color: var(--tool-accent-ink, var(--accent-ink, #FFFFFF)) !important;
+    box-shadow: 0 6px 24px -4px var(--tool-accent-glow, var(--accent-glow));
+    filter: brightness(1.05);
   }
+}
+
+.spartan-button-variant-default:active:not(:disabled):not([data-disabled]) {
+  background-color: var(--tool-accent-hover, var(--accent-hover, var(--accent))) !important;
+  color: var(--tool-accent-ink, var(--accent-ink, #FFFFFF)) !important;
+  transform: translateY(0.5px);
+}
+
+/* Tool Primary & CTA Buttons Guarantee */
+.ts-root .btn-primary,
+.ts-root .primary-btn,
+.ts-root .split-primary-btn,
+.ts-root .guided-next-btn,
+.ts-root button[data-variant="primary"] {
+  background-color: var(--tool-accent, var(--accent)) !important;
+  color: var(--tool-accent-ink, var(--accent-ink, #FFFFFF)) !important;
+  border-color: var(--tool-accent, var(--accent)) !important;
+}
+
+@media (hover: hover) {
+  .ts-root .btn-primary:hover:not(:disabled),
+  .ts-root .primary-btn:hover:not(:disabled),
+  .ts-root .split-primary-btn:hover:not(:disabled),
+  .ts-root .guided-next-btn:hover:not(:disabled),
+  .ts-root button[data-variant="primary"]:hover:not(:disabled) {
+    background-color: var(--tool-accent-hover, var(--accent-hover, var(--accent))) !important;
+    color: var(--tool-accent-ink, var(--accent-ink, #FFFFFF)) !important;
+    box-shadow: 0 6px 24px -4px var(--tool-accent-glow, var(--accent-glow));
+    filter: brightness(1.05);
+  }
+}
+
+/* Typography & Content-Fit Guarantee */
+.ts-root button,
+.ts-root .ts-btn,
+.ts-root [hlmBtn] {
+  min-width: 0;
+}
+
+.ts-root .btn-label,
+.ts-root .ts-btn-label,
+.ts-root [hlmBtn] span:not([class*="icon"]) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ts-root .sub-pill-chip,
+.ts-root .chip-item,
+.ts-root [role="tab"] {
+  min-width: 0;
+  flex-shrink: 0;
 }
 
 /* 2. Secondary */
@@ -375,15 +457,16 @@ html[data-theme="light"] body:has(.ts-root),
 
 @media (hover: hover) {
   .spartan-button-variant-secondary:hover:not(:disabled):not([data-disabled]) {
-    background-color: var(--surface-active, var(--surface-hover));
-    color: var(--text);
+    background-color: var(--tool-accent-soft, var(--accent-soft)) !important;
+    color: var(--tool-accent, var(--accent)) !important;
+    border-color: var(--tool-accent-border, var(--accent-border)) !important;
   }
 
   .spartan-button-variant-secondary:hover:not(:disabled):not([data-disabled]) svg,
   .spartan-button-variant-secondary:hover:not(:disabled):not([data-disabled]) [class*="icon"],
   .spartan-button-variant-secondary:hover:not(:disabled):not([data-disabled]) lib-tool-icon,
   .spartan-button-variant-secondary:hover:not(:disabled):not([data-disabled]) ts-icon {
-    color: var(--accent-strong);
+    color: inherit !important;
   }
 }
 
@@ -397,14 +480,16 @@ html[data-theme="light"] body:has(.ts-root),
 
 @media (hover: hover) {
   .spartan-button-variant-outline:hover:not(:disabled):not([data-disabled]) {
-    background-color: var(--surface-hover);
+    background-color: var(--tool-accent-soft, var(--accent-soft)) !important;
+    color: var(--tool-accent, var(--accent)) !important;
+    border-color: var(--tool-accent-border, var(--accent-border)) !important;
   }
 
   .spartan-button-variant-outline:hover:not(:disabled):not([data-disabled]) svg,
   .spartan-button-variant-outline:hover:not(:disabled):not([data-disabled]) [class*="icon"],
   .spartan-button-variant-outline:hover:not(:disabled):not([data-disabled]) lib-tool-icon,
   .spartan-button-variant-outline:hover:not(:disabled):not([data-disabled]) ts-icon {
-    color: var(--accent-strong);
+    color: inherit !important;
   }
 }
 
@@ -417,15 +502,16 @@ html[data-theme="light"] body:has(.ts-root),
 
 @media (hover: hover) {
   .spartan-button-variant-ghost:hover:not(:disabled):not([data-disabled]) {
-    background-color: var(--surface-hover);
-    color: var(--text);
+    background-color: var(--tool-accent-soft, var(--accent-soft)) !important;
+    color: var(--tool-accent, var(--accent)) !important;
+    border-color: var(--tool-accent-border, var(--accent-border)) !important;
   }
 
   .spartan-button-variant-ghost:hover:not(:disabled):not([data-disabled]) svg,
   .spartan-button-variant-ghost:hover:not(:disabled):not([data-disabled]) [class*="icon"],
   .spartan-button-variant-ghost:hover:not(:disabled):not([data-disabled]) lib-tool-icon,
   .spartan-button-variant-ghost:hover:not(:disabled):not([data-disabled]) ts-icon {
-    color: var(--accent-strong);
+    color: inherit !important;
   }
 }
 
@@ -555,25 +641,101 @@ html[data-theme="light"] body:has(.ts-root),
    input focus ring, links (--accent-strong), scrollbar thumb on hover (tinted).
 */
 .ts-root a {
-  color: var(--accent-strong);
+  color: var(--tool-accent, var(--accent-strong));
+  text-decoration: none;
+  transition: color var(--ts-dur-fast, 150ms) var(--ts-ease);
+}
+
+.ts-root a:hover {
+  color: var(--tool-accent-hover, var(--accent-hover, var(--tool-accent)));
+}
+
+/* Only body / article / prose content text links receive an underline on hover */
+.ts-root .ts-prose a:hover,
+.ts-root .prose a:hover,
+.ts-root p a:hover,
+.ts-root a.ts-text-link:hover {
+  text-decoration: underline;
+}
+
+/* All navigation, sidebar, rail, tabs, and action links strictly have NO underline */
+.ts-root a.ts-tool-item,
+.ts-root a.ts-sub-item,
+.ts-root a.ts-action-row,
+.ts-root a.ts-footer-btn,
+.ts-root a.ts-rail-action-btn,
+.ts-root a.ts-brand-link,
+.ts-root a.ts-nav-link,
+.ts-sidebar-card a,
+.ts-sidebar a,
+.ts-tool-list-container a,
+[class*="sidebar"] a,
+[class*="nav-"] a {
+  text-decoration: none !important;
+}
+
+/* Universal hover for tabs, segmented buttons, chips & badges */
+.ts-root [role="tab"]:hover:not([aria-selected="true"]):not(.active),
+.ts-root .segmented-btn:hover:not(.is-selected):not(.active) {
+  color: var(--tool-accent, var(--accent)) !important;
+  background-color: var(--tool-accent-soft, var(--accent-soft)) !important;
+}
+
+.ts-root [role="tab"][aria-selected="true"],
+.ts-root [role="tab"].active,
+.ts-root .segmented-btn.is-selected,
+.ts-root .segmented-btn.active {
+  color: var(--tool-accent, var(--accent)) !important;
+}
+
+.ts-root .sub-pill-chip:hover:not(.active),
+.ts-root .chip-item:hover:not(.active),
+.ts-root .ts-chip:hover:not(.active) {
+  color: var(--tool-accent, var(--accent)) !important;
+  background-color: var(--tool-accent-soft, var(--accent-soft)) !important;
+  border-color: var(--tool-accent-border, var(--accent-border)) !important;
+}
+
+
+
+.ts-root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.dropdown-search-input):not(.borderless-input):not(.no-focus-ring):focus,
+.ts-root textarea:not(.no-focus-ring):focus,
+.ts-root select:not(.no-focus-ring):focus,
+.ts-root .spartan-input:not(.no-focus-ring):focus {
+  border-color: var(--tool-accent, var(--accent)) !important;
+  box-shadow: 0 0 0 3px var(--tool-accent-soft, var(--accent-soft)) !important;
+  outline: none !important;
+}
+
+.ts-root input.dropdown-search-input,
+.ts-root input.dropdown-search-input:focus,
+.ts-root input.dropdown-search-input:focus-visible,
+.ts-root .dropdown-search-box input,
+.ts-root .dropdown-search-box input:focus,
+.ts-root .dropdown-search-box input:focus-visible {
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background: transparent !important;
 }
 
 .ts-root input[type="checkbox"]:checked,
 .ts-root input[type="radio"]:checked {
-  accent-color: var(--accent);
+  accent-color: var(--tool-accent, var(--accent));
 }
 
 .ts-root progress::-webkit-progress-value {
-  background-color: var(--accent);
+  background-color: var(--tool-accent, var(--accent));
 }
 
 .ts-root progress::-moz-progress-bar {
-  background-color: var(--accent);
+  background-color: var(--tool-accent, var(--accent));
 }
 
 /* Scrollbar thumb tinted hover */
 .ts-root ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--accent-soft);
+  background-color: var(--tool-accent-soft, var(--accent-soft));
 }
 
 /* ══ MOBILE, TOUCH & DEVICE RESPONSIVENESS ══════════════════════════ */

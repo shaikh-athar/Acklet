@@ -35,9 +35,9 @@ describe('URL Shortener - Client Specification Tests', () => {
       expect(linksSubItem!.path).toBe('/links');
     });
 
-    it('should preserve isolated amber/bronze identity', () => {
-      expect(manifest.accent).toBe('amber');
-      expect(manifest.accentHue).toBe(38);
+    it('should adhere to unified brand accent identity', () => {
+      expect(manifest.accent).toBe('blue');
+      expect(manifest.accentHue).toBe(221);
     });
   });
 

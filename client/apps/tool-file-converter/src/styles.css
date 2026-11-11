@@ -33,6 +33,10 @@ app-file-converter-tool {
   min-height: 0 !important;
   width: 100% !important;
   flex: 1 1 0% !important;
+  overflow: hidden !important;
+}
+
+app-file-converter-tool.has-jobs {
   overflow-y: auto !important;
 }
 

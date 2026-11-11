@@ -2,13 +2,13 @@
 import { Component, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { TsIconComponent } from '@acklet/tool-shell';
+import { TsIconComponent, EmptyDropStateComponent } from '@acklet/tool-shell';
 import { MessageSummary, InboxFilter, AutoRefreshInterval, ProviderStatus } from '../../models/temp-email.models';
 
 @Component({
   selector: 'app-inbox-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, TsIconComponent],
+  imports: [CommonModule, FormsModule, TsIconComponent, EmptyDropStateComponent],
   template: `
     <div class="inbox-list-container" role="region" aria-label="Incoming Email List">
       
@@ -143,30 +143,25 @@ import { MessageSummary, InboxFilter, AutoRefreshInterval, ProviderStatus } from
             }
           </div>
         } @else if (messages().length === 0) {
-          <!-- Empty State -->
-          <div class="inbox-empty-card" role="status">
-            <div class="empty-icon-wrap">
-              <ts-icon name="inbox" [size]="36" />
+          @if (searchQuery() || activeFilter() !== 'all') {
+            <!-- No Search Matches -->
+            <div class="inbox-empty-card" role="status">
+              <div class="empty-icon-wrap">
+                <ts-icon name="inbox" [size]="36" />
+              </div>
+              <h4 class="empty-title">No matching messages</h4>
+              <p class="empty-desc">Try clearing your search query or switching filters.</p>
             </div>
-            <h4 class="empty-title">
-              @if (searchQuery() || activeFilter() !== 'all') {
-                No matching messages
-              } @else {
-                Your inbox is waiting
-              }
-            </h4>
-            <p class="empty-desc">
-              @if (searchQuery() || activeFilter() !== 'all') {
-                Try clearing your search query or switching filters.
-              } @else {
-                Incoming emails sent to this address will automatically appear here within seconds.
-              }
-            </p>
-            <div class="empty-meta-chip">
-              <span class="status-indicator-dot"></span>
-              <span>Auto-refresh active ({{ refreshInterval() }}s)</span>
-            </div>
-          </div>
+          } @else {
+            <!-- Shared Empty Drop State (Image 2 Style) -->
+            <shared-empty-drop-state
+              leftIcon="mail"
+              centerIcon="inbox"
+              rightIcon="file-text"
+              heading="Add anything"
+              subtext="Drop files, folders or text to get started."
+            />
+          }
         } @else {
           <!-- Message Cards List -->
           <div class="messages-list-wrap" role="list">
@@ -343,12 +338,12 @@ import { MessageSummary, InboxFilter, AutoRefreshInterval, ProviderStatus } from
     }
 
     .search-input:focus {
-      border-color: var(--accent, #8B5CF6);
+      border-color: var(--accent, #3B82F6);
     }
 
     :host-context([data-theme="light"]) .search-input:focus,
     [data-theme="light"] .search-input:focus {
-      border-color: #7C3AED;
+      border-color: #2563EB;
       background: #FFFFFF;
     }
 
@@ -388,12 +383,12 @@ import { MessageSummary, InboxFilter, AutoRefreshInterval, ProviderStatus } from
     }
 
     .interval-icon {
-      color: var(--accent, #8B5CF6);
+      color: var(--accent, #3B82F6);
     }
 
     :host-context([data-theme="light"]) .interval-icon,
     [data-theme="light"] .interval-icon {
-      color: #7C3AED;
+      color: #2563EB;
     }
 
     .interval-select {
@@ -450,29 +445,45 @@ import { MessageSummary, InboxFilter, AutoRefreshInterval, ProviderStatus } from
       font-weight: 600;
     }
 
-    .filter-pill:hover {
-      background: var(--ts-row-hover, rgba(255, 255, 255, 0.06));
-      color: var(--text, #FFFFFF);
+    .filter-pill:hover:not(.is-active) {
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      border-color: var(--tool-accent-border, var(--accent-border)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
     }
 
-    :host-context([data-theme="light"]) .filter-pill:hover,
-    [data-theme="light"] .filter-pill:hover {
-      background: #F1F5F9;
-      color: #0F172A;
+    :host-context([data-theme="light"]) .filter-pill:hover:not(.is-active),
+    [data-theme="light"] .filter-pill:hover:not(.is-active) {
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      border-color: var(--tool-accent-border, var(--accent-border)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
     }
 
     .filter-pill.is-active {
-      background: var(--accent-soft, rgba(139, 92, 246, 0.15));
-      border-color: var(--accent-border, rgba(139, 92, 246, 0.3));
-      color: var(--accent-strong, #A78BFA);
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      border-color: var(--tool-accent, var(--accent)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
+      font-weight: 700;
+    }
+
+    .filter-pill.is-active:hover {
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      border-color: var(--tool-accent, var(--accent)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
     }
 
     :host-context([data-theme="light"]) .filter-pill.is-active,
     [data-theme="light"] .filter-pill.is-active {
-      background: rgba(124, 58, 237, 0.1);
-      border-color: rgba(124, 58, 237, 0.35);
-      color: #6D28D9;
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      border-color: var(--tool-accent, var(--accent)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
       font-weight: 700;
+    }
+
+    :host-context([data-theme="light"]) .filter-pill.is-active:hover,
+    [data-theme="light"] .filter-pill.is-active:hover {
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      border-color: var(--tool-accent, var(--accent)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
     }
 
     .count-tag {
@@ -491,13 +502,13 @@ import { MessageSummary, InboxFilter, AutoRefreshInterval, ProviderStatus } from
     }
 
     .unread-tag {
-      background: var(--accent, #8B5CF6);
+      background: var(--accent, #3B82F6);
       color: var(--accent-ink, #FFFFFF);
     }
 
     :host-context([data-theme="light"]) .unread-tag,
     [data-theme="light"] .unread-tag {
-      background: #7C3AED;
+      background: #2563EB;
       color: #FFFFFF;
     }
 
@@ -590,23 +601,23 @@ import { MessageSummary, InboxFilter, AutoRefreshInterval, ProviderStatus } from
     }
 
     .message-card.is-selected {
-      background: var(--accent-soft, rgba(139, 92, 246, 0.1));
-      border-left: 3px solid var(--accent, #8B5CF6);
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 10%, transparent));
+      border-left: 3px solid var(--accent, #3B82F6);
     }
 
     :host-context([data-theme="light"]) .message-card.is-selected,
     [data-theme="light"] .message-card.is-selected {
-      background: rgba(124, 58, 237, 0.08);
-      border-left: 3px solid #7C3AED;
+      background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 8%, transparent);
+      border-left: 3px solid #2563EB;
     }
 
     .message-card.is-unread {
-      background: rgba(139, 92, 246, 0.03);
+      background: color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 3%, transparent);
     }
 
     :host-context([data-theme="light"]) .message-card.is-unread,
     [data-theme="light"] .message-card.is-unread {
-      background: rgba(124, 58, 237, 0.03);
+      background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 3%, transparent);
     }
 
     .sender-avatar {
@@ -615,7 +626,7 @@ import { MessageSummary, InboxFilter, AutoRefreshInterval, ProviderStatus } from
       border-radius: 10px;
       background: var(--ts-surface-inset, #1A1B1E);
       border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
-      color: var(--accent-strong, #A78BFA);
+      color: var(--accent-strong, #60A5FA);
       font-size: 12px;
       font-weight: 700;
       display: flex;
@@ -628,7 +639,7 @@ import { MessageSummary, InboxFilter, AutoRefreshInterval, ProviderStatus } from
     [data-theme="light"] .sender-avatar {
       background: #F1F5F9;
       border-color: #E2E8F0;
-      color: #7C3AED;
+      color: #2563EB;
     }
 
     .card-content-area {
@@ -679,13 +690,13 @@ import { MessageSummary, InboxFilter, AutoRefreshInterval, ProviderStatus } from
       width: 7px;
       height: 7px;
       border-radius: 50%;
-      background: var(--accent, #8B5CF6);
+      background: var(--accent, #3B82F6);
       flex-shrink: 0;
     }
 
     :host-context([data-theme="light"]) .unread-dot,
     [data-theme="light"] .unread-dot {
-      background: #7C3AED;
+      background: #2563EB;
     }
 
     .subject-text {
@@ -729,38 +740,38 @@ import { MessageSummary, InboxFilter, AutoRefreshInterval, ProviderStatus } from
       margin-top: 6px;
       padding: 4px 10px;
       border-radius: 8px;
-      background: var(--accent-soft, rgba(139, 92, 246, 0.18));
-      border: 1px solid var(--accent-border, rgba(139, 92, 246, 0.35));
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 18%, transparent));
+      border: 1px solid var(--accent-border, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 35%, transparent));
       width: fit-content;
     }
 
     :host-context([data-theme="light"]) .card-otp-banner,
     [data-theme="light"] .card-otp-banner {
-      background: rgba(124, 58, 237, 0.08);
-      border-color: rgba(124, 58, 237, 0.3);
+      background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 8%, transparent);
+      border-color: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 30%, transparent);
     }
 
     .otp-banner-icon {
-      color: var(--accent, #8B5CF6);
+      color: var(--accent, #3B82F6);
       display: flex;
       align-items: center;
     }
 
     :host-context([data-theme="light"]) .otp-banner-icon,
     [data-theme="light"] .otp-banner-icon {
-      color: #7C3AED;
+      color: #2563EB;
     }
 
     .otp-code-text {
       font-size: 13px;
       font-weight: 700;
-      color: var(--accent-strong, #A78BFA);
+      color: var(--accent-strong, #60A5FA);
       letter-spacing: 1px;
     }
 
     :host-context([data-theme="light"]) .otp-code-text,
     [data-theme="light"] .otp-code-text {
-      color: #6D28D9;
+      color: #1D4ED8;
       font-weight: 800;
     }
 
@@ -768,7 +779,7 @@ import { MessageSummary, InboxFilter, AutoRefreshInterval, ProviderStatus } from
       height: 24px;
       padding: 0 10px;
       border-radius: 6px;
-      background: #8B5CF6 !important;
+      background: #3B82F6 !important;
       color: #FFFFFF !important;
       border: 1px solid rgba(255, 255, 255, 0.2) !important;
       font-size: 11px;
@@ -779,7 +790,7 @@ import { MessageSummary, InboxFilter, AutoRefreshInterval, ProviderStatus } from
       cursor: pointer;
       transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
       opacity: 1 !important;
-      box-shadow: 0 1px 3px rgba(124, 58, 237, 0.25);
+      box-shadow: 0 1px 3px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 25%, transparent);
     }
 
     .copy-otp-chip-btn span,
@@ -791,25 +802,25 @@ import { MessageSummary, InboxFilter, AutoRefreshInterval, ProviderStatus } from
     }
 
     .copy-otp-chip-btn:hover {
-      background: #7C3AED !important;
+      background: #2563EB !important;
       border-color: rgba(255, 255, 255, 0.4) !important;
       color: #FFFFFF !important;
       filter: none !important;
       transform: translateY(-1px);
-      box-shadow: 0 2px 6px rgba(124, 58, 237, 0.4);
+      box-shadow: 0 2px 6px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 40%, transparent);
     }
 
     :host-context([data-theme="light"]) .copy-otp-chip-btn,
     [data-theme="light"] .copy-otp-chip-btn {
-      background: #7C3AED !important;
+      background: #2563EB !important;
       color: #FFFFFF !important;
-      border: 1px solid #6D28D9 !important;
+      border: 1px solid #1D4ED8 !important;
     }
 
     :host-context([data-theme="light"]) .copy-otp-chip-btn:hover,
     [data-theme="light"] .copy-otp-chip-btn:hover {
-      background: #5B21B6 !important;
-      border-color: #4C1D95 !important;
+      background: #1E40AF !important;
+      border-color: #1E3A8A !important;
       color: #FFFFFF !important;
     }
 
@@ -930,8 +941,8 @@ import { MessageSummary, InboxFilter, AutoRefreshInterval, ProviderStatus } from
       width: 64px;
       height: 64px;
       border-radius: 18px;
-      background: var(--accent-soft, rgba(139, 92, 246, 0.1));
-      color: var(--accent, #8B5CF6);
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 10%, transparent));
+      color: var(--accent, #3B82F6);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -940,8 +951,8 @@ import { MessageSummary, InboxFilter, AutoRefreshInterval, ProviderStatus } from
 
     :host-context([data-theme="light"]) .empty-icon-wrap,
     [data-theme="light"] .empty-icon-wrap {
-      background: rgba(124, 58, 237, 0.08);
-      color: #7C3AED;
+      background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 8%, transparent);
+      color: #2563EB;
     }
 
     .empty-title {

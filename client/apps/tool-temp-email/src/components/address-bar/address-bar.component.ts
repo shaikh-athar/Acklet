@@ -241,9 +241,6 @@ import { MailAccount } from '../../models/temp-email.models';
           >
             <ts-icon name="refresh" [size]="15" [class.spinning]="isRefreshing()" />
             <span class="btn-text hide-mobile-btn-text">Refresh</span>
-            @if (countdown() > 0 && !isRefreshing()) {
-              <span class="countdown-badge">{{ countdown() }}s</span>
-            }
           </button>
 
           <!-- Change / Custom Address -->
@@ -367,18 +364,18 @@ import { MailAccount } from '../../models/temp-email.models';
       gap: 6px;
       padding: 3px 8px;
       border-radius: 9999px;
-      background: rgba(139, 92, 246, 0.12);
-      border: 1px solid rgba(139, 92, 246, 0.25);
-      color: var(--accent-strong, #C4B5FD);
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      border: 1px solid var(--tool-accent-border, var(--accent-border)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
       font-size: 11px;
       font-weight: 600;
     }
 
     :host-context([data-theme="light"]) .expiry-indicator-pill,
     [data-theme="light"] .expiry-indicator-pill {
-      background: #F3E8FF;
-      border-color: #D8B4FE;
-      color: #6B21A8;
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      border-color: var(--tool-accent-border, var(--accent-border)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
     }
 
     .expiry-indicator-pill.is-expired {
@@ -400,9 +397,9 @@ import { MailAccount } from '../../models/temp-email.models';
     }
 
     .expiry-action-chip {
-      background: var(--accent, #8B5CF6) !important;
+      background: var(--tool-accent, var(--accent)) !important;
       border: 1px solid transparent !important;
-      color: #FFFFFF !important;
+      color: var(--tool-accent-ink, #FFFFFF) !important;
       font-size: 10px;
       font-weight: 700;
       padding: 2px 7px;
@@ -416,24 +413,24 @@ import { MailAccount } from '../../models/temp-email.models';
     }
 
     .expiry-action-chip:hover {
-      background: #7C3AED !important;
-      color: #FFFFFF !important;
+      background: var(--tool-accent-hover, var(--accent-hover)) !important;
+      color: var(--tool-accent-ink, #FFFFFF) !important;
       transform: translateY(-0.5px);
     }
 
     :host-context([data-theme="light"]) .expiry-action-chip,
     [data-theme="light"] .expiry-action-chip {
-      background: #7C3AED !important;
-      border-color: #6D28D9 !important;
-      color: #FFFFFF !important;
+      background: var(--tool-accent, var(--accent)) !important;
+      border-color: var(--tool-accent-hover, var(--accent-hover)) !important;
+      color: var(--tool-accent-ink, #FFFFFF) !important;
     }
 
     :host-context([data-theme="light"]) .expiry-action-chip:hover,
     [data-theme="light"] .expiry-action-chip:hover {
-      background: #5B21B6 !important;
-      border-color: #4C1D95 !important;
-      color: #FFFFFF !important;
-      box-shadow: 0 2px 6px rgba(124, 58, 237, 0.35);
+      background: var(--tool-accent-hover, var(--accent-hover)) !important;
+      border-color: var(--tool-accent-hover, var(--accent-hover)) !important;
+      color: var(--tool-accent-ink, #FFFFFF) !important;
+      box-shadow: 0 2px 6px var(--tool-accent-glow, var(--accent-glow));
     }
 
     .expiry-action-chip.is-new {
@@ -499,16 +496,16 @@ import { MailAccount } from '../../models/temp-email.models';
     }
 
     .alert-toggle-btn.is-active {
-      color: var(--accent-strong, #A78BFA);
-      border-color: var(--accent-border, rgba(139, 92, 246, 0.35));
-      background: var(--accent-soft, rgba(139, 92, 246, 0.15));
+      color: var(--accent-strong, #60A5FA);
+      border-color: var(--accent-border, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 35%, transparent));
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 15%, transparent));
     }
 
     :host-context([data-theme="light"]) .alert-toggle-btn.is-active,
     [data-theme="light"] .alert-toggle-btn.is-active {
-      color: #7C3AED;
-      border-color: #D8B4FE;
-      background: #F5F3FF;
+      color: var(--tool-accent, #2563EB);
+      border-color: var(--tool-accent-border, color-mix(in srgb, var(--tool-accent, #2563EB) 28%, transparent));
+      background: var(--tool-accent-soft, color-mix(in srgb, var(--tool-accent, #2563EB) 10%, transparent));
     }
 
     .address-pill-box-container {
@@ -524,7 +521,7 @@ import { MailAccount } from '../../models/temp-email.models';
       padding: 7px 12px;
       border-radius: 12px;
       background: var(--ts-surface-inset, #1A1B1E);
-      border: 1.5px solid var(--accent-border, rgba(139, 92, 246, 0.25));
+      border: 1.5px solid var(--accent-border, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 25%, transparent));
       user-select: none;
       transition: all 0.2s ease;
       width: fit-content;
@@ -535,31 +532,31 @@ import { MailAccount } from '../../models/temp-email.models';
     :host-context([data-theme="light"]) .address-pill-box,
     [data-theme="light"] .address-pill-box {
       background: #F8FAFC;
-      border-color: rgba(124, 58, 237, 0.35);
+      border-color: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 35%, transparent);
     }
 
     .address-pill-box:hover,
     .address-pill-box.has-dropdown-open {
-      border-color: var(--accent, #8B5CF6);
-      box-shadow: 0 0 16px var(--accent-glow, rgba(139, 92, 246, 0.25));
+      border-color: var(--accent, #3B82F6);
+      box-shadow: 0 0 16px var(--accent-glow, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 25%, transparent));
     }
 
     :host-context([data-theme="light"]) .address-pill-box:hover,
     :host-context([data-theme="light"]) .address-pill-box.has-dropdown-open,
     [data-theme="light"] .address-pill-box:hover,
     [data-theme="light"] .address-pill-box.has-dropdown-open {
-      border-color: #7C3AED;
+      border-color: #2563EB;
       background: #FFFFFF;
-      box-shadow: 0 0 12px rgba(124, 58, 237, 0.18);
+      box-shadow: 0 0 12px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 18%, transparent);
     }
 
     .address-pill-box.is-copied {
-      background: var(--accent-soft, rgba(139, 92, 246, 0.2));
-      border-color: var(--accent, #8B5CF6);
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 20%, transparent));
+      border-color: var(--accent, #3B82F6);
     }
 
     .email-icon {
-      color: var(--accent, #8B5CF6);
+      color: var(--accent, #3B82F6);
       display: flex;
       align-items: center;
       flex-shrink: 0;
@@ -567,7 +564,7 @@ import { MailAccount } from '../../models/temp-email.models';
 
     :host-context([data-theme="light"]) .email-icon,
     [data-theme="light"] .email-icon {
-      color: #7C3AED;
+      color: #2563EB;
     }
 
     .email-address-wrapper {
@@ -609,7 +606,7 @@ import { MailAccount } from '../../models/temp-email.models';
 
     :host-context([data-theme="light"]) .address-loading-pulse,
     [data-theme="light"] .address-loading-pulse {
-      color: #6D28D9;
+      color: #1D4ED8;
       font-weight: 600;
     }
 
@@ -620,9 +617,9 @@ import { MailAccount } from '../../models/temp-email.models';
       gap: 5px;
       padding: 3px 8px;
       border-radius: 8px;
-      background: var(--accent-soft, rgba(139, 92, 246, 0.2)) !important;
-      border: 1.5px solid var(--accent-border, rgba(139, 92, 246, 0.4)) !important;
-      color: #DDD6FE !important;
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 20%, transparent)) !important;
+      border: 1.5px solid var(--accent-border, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 40%, transparent)) !important;
+      color: #BFDBFE !important;
       font-size: 11px;
       font-weight: 700;
       cursor: pointer;
@@ -641,24 +638,24 @@ import { MailAccount } from '../../models/temp-email.models';
 
     :host-context([data-theme="light"]) .inbox-dropdown-toggle-btn,
     [data-theme="light"] .inbox-dropdown-toggle-btn {
-      background: #EDE9FE !important;
-      border-color: #C4B5FD !important;
-      color: #6D28D9 !important;
+      background: #EFF6FF !important;
+      border-color: #93C5FD !important;
+      color: #1D4ED8 !important;
     }
 
     :host-context([data-theme="light"]) .inbox-dropdown-toggle-btn ts-icon,
     :host-context([data-theme="light"]) .inbox-dropdown-toggle-btn .inbox-count-badge,
     [data-theme="light"] .inbox-dropdown-toggle-btn ts-icon,
     [data-theme="light"] .inbox-dropdown-toggle-btn .inbox-count-badge {
-      color: #6D28D9 !important;
+      color: #1D4ED8 !important;
     }
 
     .inbox-dropdown-toggle-btn:hover,
     .inbox-dropdown-toggle-btn.is-open {
-      background: #8B5CF6 !important;
+      background: #3B82F6 !important;
       color: #FFFFFF !important;
-      border-color: #8B5CF6 !important;
-      box-shadow: 0 0 10px rgba(139, 92, 246, 0.35) !important;
+      border-color: #3B82F6 !important;
+      box-shadow: 0 0 10px color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 35%, transparent) !important;
     }
 
     .inbox-dropdown-toggle-btn:hover ts-icon,
@@ -672,10 +669,10 @@ import { MailAccount } from '../../models/temp-email.models';
     :host-context([data-theme="light"]) .inbox-dropdown-toggle-btn.is-open,
     [data-theme="light"] .inbox-dropdown-toggle-btn:hover,
     [data-theme="light"] .inbox-dropdown-toggle-btn.is-open {
-      background: #7C3AED !important;
+      background: #2563EB !important;
       color: #FFFFFF !important;
-      border-color: #6D28D9 !important;
-      box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3) !important;
+      border-color: #1D4ED8 !important;
+      box-shadow: 0 2px 8px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 30%, transparent) !important;
     }
 
     :host-context([data-theme="light"]) .inbox-dropdown-toggle-btn:hover ts-icon,
@@ -702,9 +699,9 @@ import { MailAccount } from '../../models/temp-email.models';
       gap: 5px;
       padding: 5px 10px;
       border-radius: 8px;
-      background: var(--accent-soft, rgba(139, 92, 246, 0.18)) !important;
-      color: #DDD6FE !important;
-      border: 1.5px solid rgba(139, 92, 246, 0.35) !important;
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 18%, transparent)) !important;
+      color: #BFDBFE !important;
+      border: 1.5px solid color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 35%, transparent) !important;
       font-size: 11px;
       font-weight: 700;
       white-space: nowrap;
@@ -724,23 +721,23 @@ import { MailAccount } from '../../models/temp-email.models';
 
     :host-context([data-theme="light"]) .copy-indicator-badge,
     [data-theme="light"] .copy-indicator-badge {
-      background: #EDE9FE !important;
-      color: #6D28D9 !important;
-      border-color: #C4B5FD !important;
+      background: #EFF6FF !important;
+      color: #1D4ED8 !important;
+      border-color: #93C5FD !important;
     }
 
     :host-context([data-theme="light"]) .copy-indicator-badge ts-icon,
     :host-context([data-theme="light"]) .copy-indicator-badge .indicator-text,
     [data-theme="light"] .copy-indicator-badge ts-icon,
     [data-theme="light"] .copy-indicator-badge .indicator-text {
-      color: #6D28D9 !important;
+      color: #1D4ED8 !important;
     }
 
     .copy-indicator-badge:hover {
-      background: #8B5CF6 !important;
+      background: #3B82F6 !important;
       color: #FFFFFF !important;
-      border-color: #8B5CF6 !important;
-      box-shadow: 0 0 10px rgba(139, 92, 246, 0.35) !important;
+      border-color: #3B82F6 !important;
+      box-shadow: 0 0 10px color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 35%, transparent) !important;
     }
 
     .copy-indicator-badge:hover ts-icon,
@@ -750,10 +747,10 @@ import { MailAccount } from '../../models/temp-email.models';
 
     :host-context([data-theme="light"]) .copy-indicator-badge:hover,
     [data-theme="light"] .copy-indicator-badge:hover {
-      background: #7C3AED !important;
+      background: #2563EB !important;
       color: #FFFFFF !important;
-      border-color: #6D28D9 !important;
-      box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3) !important;
+      border-color: #1D4ED8 !important;
+      box-shadow: 0 2px 8px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 30%, transparent) !important;
     }
 
     :host-context([data-theme="light"]) .copy-indicator-badge:hover ts-icon,
@@ -890,14 +887,14 @@ import { MailAccount } from '../../models/temp-email.models';
     }
 
     .dropdown-item-row.is-active {
-      background: var(--accent-soft, rgba(139, 92, 246, 0.15));
-      border-color: var(--accent-border, rgba(139, 92, 246, 0.35));
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 15%, transparent));
+      border-color: var(--accent-border, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 35%, transparent));
     }
 
     :host-context([data-theme="light"]) .dropdown-item-row.is-active,
     [data-theme="light"] .dropdown-item-row.is-active {
-      background: rgba(124, 58, 237, 0.08);
-      border-color: rgba(124, 58, 237, 0.3);
+      background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 8%, transparent);
+      border-color: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 30%, transparent);
     }
 
     .item-left {
@@ -909,7 +906,7 @@ import { MailAccount } from '../../models/temp-email.models';
     }
 
     .item-status-icon {
-      color: var(--accent, #8B5CF6);
+      color: var(--accent, #3B82F6);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -919,7 +916,7 @@ import { MailAccount } from '../../models/temp-email.models';
 
     :host-context([data-theme="light"]) .item-status-icon,
     [data-theme="light"] .item-status-icon {
-      color: #7C3AED;
+      color: #2563EB;
     }
 
     .inactive-bullet {
@@ -964,13 +961,13 @@ import { MailAccount } from '../../models/temp-email.models';
       font-weight: 700;
       padding: 0 5px;
       border-radius: 4px;
-      background: var(--accent, #8B5CF6);
+      background: var(--accent, #3B82F6);
       color: #FFFFFF;
     }
 
     :host-context([data-theme="light"]) .item-badge-active,
     [data-theme="light"] .item-badge-active {
-      background: #7C3AED;
+      background: #2563EB;
       color: #FFFFFF;
     }
 
@@ -1054,16 +1051,16 @@ import { MailAccount } from '../../models/temp-email.models';
     }
 
     .dropdown-action-btn:hover:not(:disabled) {
-      background: var(--accent-soft, rgba(139, 92, 246, 0.15));
-      border-color: var(--accent-border, rgba(139, 92, 246, 0.4));
-      color: var(--accent-strong, #A78BFA);
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 15%, transparent));
+      border-color: var(--accent-border, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 40%, transparent));
+      color: var(--accent-strong, #60A5FA);
     }
 
     :host-context([data-theme="light"]) .dropdown-action-btn:hover:not(:disabled),
     [data-theme="light"] .dropdown-action-btn:hover:not(:disabled) {
-      background: rgba(124, 58, 237, 0.08);
-      border-color: #7C3AED;
-      color: #6D28D9;
+      background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 8%, transparent);
+      border-color: #2563EB;
+      color: #1D4ED8;
     }
 
     .dropdown-action-btn:disabled {
@@ -1153,17 +1150,17 @@ import { MailAccount } from '../../models/temp-email.models';
       color: #0F172A;
     }
 
-    .action-btn:hover:not(:disabled) {
-      background: var(--ts-row-hover, rgba(255, 255, 255, 0.08));
-      border-color: var(--border-focus, rgba(255, 255, 255, 0.22));
-      color: var(--text, #FFFFFF);
+    .action-btn:hover:not(:disabled):not(.delete-btn) {
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      border-color: var(--tool-accent-border, var(--accent-border)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
     }
 
-    :host-context([data-theme="light"]) .action-btn:hover:not(:disabled),
-    [data-theme="light"] .action-btn:hover:not(:disabled) {
-      background: #EDF2F7;
-      border-color: #94A3B8;
-      color: #000000;
+    :host-context([data-theme="light"]) .action-btn:hover:not(:disabled):not(.delete-btn),
+    [data-theme="light"] .action-btn:hover:not(:disabled):not(.delete-btn) {
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      border-color: var(--tool-accent-border, var(--accent-border)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
     }
 
     .action-btn:disabled {
@@ -1172,29 +1169,30 @@ import { MailAccount } from '../../models/temp-email.models';
     }
 
     .refresh-btn {
-      background: var(--accent-soft, rgba(139, 92, 246, 0.12));
-      border-color: var(--accent-border, rgba(139, 92, 246, 0.3));
-      color: var(--accent-strong, #A78BFA);
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      border-color: var(--tool-accent-border, var(--accent-border)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
     }
 
     :host-context([data-theme="light"]) .action-btn.refresh-btn,
     [data-theme="light"] .action-btn.refresh-btn {
-      background: rgba(124, 58, 237, 0.08);
-      border-color: rgba(124, 58, 237, 0.4);
-      color: #6D28D9;
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      border-color: var(--tool-accent-border, var(--accent-border)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
       font-weight: 700;
     }
 
     .refresh-btn:hover:not(:disabled) {
-      background: var(--accent-soft, rgba(139, 92, 246, 0.25));
-      border-color: var(--accent, #8B5CF6);
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      border-color: var(--tool-accent, var(--accent)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
     }
 
     :host-context([data-theme="light"]) .action-btn.refresh-btn:hover:not(:disabled),
     [data-theme="light"] .action-btn.refresh-btn:hover:not(:disabled) {
-      background: rgba(124, 58, 237, 0.15);
-      border-color: #7C3AED;
-      color: #5B21B6;
+      background: var(--tool-accent-soft, var(--accent-soft)) !important;
+      border-color: var(--tool-accent, var(--accent)) !important;
+      color: var(--tool-accent, var(--accent)) !important;
     }
 
     .countdown-badge {
@@ -1202,14 +1200,14 @@ import { MailAccount } from '../../models/temp-email.models';
       font-weight: 700;
       padding: 1px 6px;
       border-radius: 4px;
-      background: rgba(139, 92, 246, 0.25);
-      color: #C4B5FD;
+      background: color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 25%, transparent);
+      color: #93C5FD;
     }
 
     :host-context([data-theme="light"]) .countdown-badge,
     [data-theme="light"] .countdown-badge {
-      background: rgba(124, 58, 237, 0.15);
-      color: #6D28D9;
+      background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 15%, transparent);
+      color: #1D4ED8;
     }
 
     .delete-btn {

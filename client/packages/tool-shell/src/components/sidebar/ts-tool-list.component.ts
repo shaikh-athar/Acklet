@@ -46,7 +46,7 @@ export const RECENT_KEY = 'acklet.tools.recent';
                     <ts-tool-tile [icon]="tool.icon" [name]="tool.name" [size]="20" [flat]="true" />
                   }
                   @if (!isRail()) {
-                    <span class="ts-tool-name">{{ tool.name }}</span>
+                    <span class="ts-tool-name">{{ tool.sidebarLabel || tool.name }}</span>
                     @if (tool.slug === currentSlug()) {
                       <span class="ts-active-dot" aria-hidden="true"></span>
                     }
@@ -95,7 +95,7 @@ export const RECENT_KEY = 'acklet.tools.recent';
                       (click)="onToolSelect()"
                     >
                       <ts-tool-tile [icon]="fav.icon" [name]="fav.name" [size]="20" [flat]="true" />
-                      <span class="ts-tool-name">{{ fav.name }}</span>
+                      <span class="ts-tool-name">{{ fav.sidebarLabel || fav.name }}</span>
                     </a>
                   </li>
                 }
@@ -142,7 +142,7 @@ export const RECENT_KEY = 'acklet.tools.recent';
                       (click)="onToolSelect()"
                     >
                       <ts-tool-tile [icon]="rec.icon" [name]="rec.name" [size]="20" [flat]="true" />
-                      <span class="ts-tool-name">{{ rec.name }}</span>
+                      <span class="ts-tool-name">{{ rec.sidebarLabel || rec.name }}</span>
                     </a>
                   </li>
                 }
@@ -232,7 +232,7 @@ export const RECENT_KEY = 'acklet.tools.recent';
                             } @else {
                               <ts-tool-tile [icon]="tool.icon" [name]="tool.name" [size]="20" [flat]="true" />
                             }
-                            <span class="ts-tool-name">{{ tool.name }}</span>
+                            <span class="ts-tool-name">{{ tool.sidebarLabel || tool.name }}</span>
                             @if (isToolActive(tool.slug)) {
                               <span class="ts-active-dot" aria-hidden="true"></span>
                             }
@@ -557,14 +557,19 @@ export const RECENT_KEY = 'acklet.tools.recent';
 
     @media (hover: hover) {
       .ts-tool-item:hover {
-        background: var(--ts-row-hover, rgba(15, 23, 42, 0.05));
-        color: var(--text, #09090B);
+        background: var(--tool-accent-soft, var(--row-accent-soft, rgba(37, 99, 235, 0.08)));
+        color: var(--tool-accent, var(--row-accent, #2563EB)) !important;
+        text-decoration: none !important;
+      }
+      .ts-tool-item:hover .ts-tool-name {
+        color: var(--tool-accent, var(--row-accent, #2563EB)) !important;
+        text-decoration: none !important;
       }
       .ts-tool-item:hover ts-tool-tile {
-        color: var(--row-accent, var(--accent-strong, #111111));
+        color: var(--tool-accent, var(--row-accent, #2563EB)) !important;
       }
       .ts-tool-item:hover .ts-hollow-dot {
-        border-color: var(--row-accent, var(--accent-strong, #111111));
+        border-color: var(--tool-accent, var(--row-accent, #2563EB)) !important;
       }
     }
 
@@ -573,25 +578,39 @@ export const RECENT_KEY = 'acklet.tools.recent';
     }
 
     .ts-tool-item.active {
-      background: var(--row-accent-soft, var(--accent-soft, var(--ts-row-active, rgba(15, 23, 42, 0.07))));
+      background: var(--tool-accent-soft, var(--row-accent-soft, var(--accent-soft, rgba(37, 99, 235, 0.08))));
       color: var(--text, #09090B);
       font-weight: 500;
     }
 
     .ts-tool-item.active ts-tool-tile {
-      color: var(--row-accent, var(--accent-strong, #111111));
+      color: var(--tool-accent, var(--row-accent, #2563EB));
     }
 
     .ts-tool-item.active .ts-hollow-dot {
-      border-color: var(--row-accent, var(--accent-strong, #111111));
+      border-color: var(--tool-accent, var(--row-accent, #2563EB));
     }
 
     :host-context([data-theme="dark"]) .ts-tool-item {
       color: var(--text-2, #B3B3B8);
     }
 
+    :host-context([data-theme="dark"]) .ts-tool-item:hover {
+      background: var(--tool-accent-soft, var(--row-accent-soft, rgba(59, 130, 246, 0.14)));
+      color: var(--tool-accent, var(--row-accent, #60A5FA)) !important;
+    }
+
+    :host-context([data-theme="dark"]) .ts-tool-item:hover .ts-tool-name {
+      color: var(--tool-accent, var(--row-accent, #60A5FA)) !important;
+      text-decoration: none !important;
+    }
+
+    :host-context([data-theme="dark"]) .ts-tool-item:hover ts-tool-tile {
+      color: var(--tool-accent, var(--row-accent, #60A5FA)) !important;
+    }
+
     :host-context([data-theme="dark"]) .ts-tool-item.active {
-      background: var(--row-accent-soft, var(--accent-soft, rgba(255, 255, 255, 0.08)));
+      background: var(--tool-accent-soft, var(--row-accent-soft, rgba(59, 130, 246, 0.14)));
       color: var(--text, #FCFCFC);
     }
 
@@ -688,13 +707,20 @@ export const RECENT_KEY = 'acklet.tools.recent';
     }
 
     .ts-sub-item:hover {
-      background: var(--ts-row-hover, rgba(0, 0, 0, 0.04));
-      color: var(--text, #111111);
+      background: var(--tool-accent-soft, var(--row-accent-soft, rgba(37, 99, 235, 0.08)));
+      color: var(--tool-accent, var(--row-accent, #2563EB)) !important;
+      text-decoration: none !important;
+    }
+
+    .ts-sub-item:hover .ts-sub-name,
+    .ts-sub-item:hover .ts-sub-icon {
+      color: var(--tool-accent, var(--row-accent, #2563EB)) !important;
+      text-decoration: none !important;
     }
 
     .ts-sub-item.active {
-      background: var(--row-accent-soft, var(--accent-soft, rgba(0, 0, 0, 0.06)));
-      color: var(--text, #111111);
+      background: var(--tool-accent-soft, var(--row-accent-soft, var(--accent-soft, rgba(37, 99, 235, 0.08))));
+      color: var(--tool-accent, var(--row-accent, #2563EB));
       font-weight: 500;
     }
 
@@ -703,13 +729,19 @@ export const RECENT_KEY = 'acklet.tools.recent';
     }
 
     :host-context([data-theme="dark"]) .ts-sub-item:hover {
-      background: rgba(255, 255, 255, 0.06);
-      color: var(--text, #FCFCFC);
+      background: var(--tool-accent-soft, var(--row-accent-soft, rgba(59, 130, 246, 0.14)));
+      color: var(--tool-accent, var(--row-accent, #60A5FA)) !important;
+    }
+
+    :host-context([data-theme="dark"]) .ts-sub-item:hover .ts-sub-name,
+    :host-context([data-theme="dark"]) .ts-sub-item:hover .ts-sub-icon {
+      color: var(--tool-accent, var(--row-accent, #60A5FA)) !important;
+      text-decoration: none !important;
     }
 
     :host-context([data-theme="dark"]) .ts-sub-item.active {
-      background: var(--row-accent-soft, var(--accent-soft, rgba(255, 255, 255, 0.08)));
-      color: var(--text, #FCFCFC);
+      background: var(--tool-accent-soft, var(--row-accent-soft, rgba(59, 130, 246, 0.14)));
+      color: var(--tool-accent, var(--row-accent, #60A5FA));
     }
 
     .ts-sub-line {

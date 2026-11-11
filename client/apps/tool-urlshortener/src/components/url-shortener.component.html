@@ -281,15 +281,14 @@
   @else if (activePage() === 'LINKS') {
     <div class="links-page-workspace animate-fade-in">
 
-      <!-- Workspace Header -->
+      <!-- Workspace Header (ChatGPT Clean) -->
       <div class="links-page-header">
         <div class="header-title-slot">
           <div class="title-with-badge">
-            <ts-icon name="history" [size]="22" class="header-icon" />
+            <ts-icon name="history" [size]="20" class="header-icon" />
             <h1 class="links-page-title">My links</h1>
             <span class="links-count-pill">{{ myLinks().length }}</span>
           </div>
-          <p class="links-page-subtitle">Links created on this device and securely synchronized with Acklet.</p>
         </div>
 
         <div class="header-actions-slot">
@@ -628,32 +627,32 @@
                 </div>
               </div>
             } @else {
-              <div class="links-empty-surface">
-                <ts-icon name="link" [size]="36" class="empty-state-icon" />
-                <h3 class="empty-state-title">
-                  @if (searchQuery().trim() || statusFilter() !== 'ALL') {
-                    No matching links
-                  } @else {
-                    No links created yet
-                  }
-                </h3>
-                <p class="empty-state-desc">
-                  @if (searchQuery().trim() || statusFilter() !== 'ALL') {
-                    Try adjusting your search query or status filter.
-                  } @else {
-                    Shortened links will appear here on this device.
-                  }
-                </p>
-                <button
-                  type="button"
-                  hlmBtn
-                  class="ts-primary-btn"
-                  (click)="navigateTo('MAIN')"
-                >
-                  <ts-icon name="plus" [size]="16" />
-                  <span>Create a link</span>
-                </button>
-              </div>
+              @if (searchQuery().trim() || statusFilter() !== 'ALL') {
+                <div class="links-empty-surface">
+                  <ts-icon name="link" [size]="36" class="empty-state-icon" />
+                  <h3 class="empty-state-title">No matching links</h3>
+                  <p class="empty-state-desc">Try adjusting your search query or status filter.</p>
+                  <button
+                    type="button"
+                    hlmBtn
+                    class="ts-primary-btn"
+                    (click)="searchQuery.set(''); statusFilter.set('ALL')"
+                  >
+                    <span>Clear Filters</span>
+                  </button>
+                </div>
+              } @else {
+                <!-- Shared Empty Drop State (Image 2 Style) -->
+                <shared-empty-drop-state
+                  leftIcon="link"
+                  centerIcon="file-text"
+                  rightIcon="sparkles"
+                  heading="Add anything"
+                  subtext="Drop files, folders or text to get started."
+                  actionLabel="Create a link"
+                  (action)="navigateTo('MAIN')"
+                />
+              }
             }
           } @else {
             <!-- Desktop Table (>=1024px) -->

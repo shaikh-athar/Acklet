@@ -38,8 +38,8 @@
   padding: 10px 16px;
   border-radius: 10px;
   background: var(--ts-surface-raised, #141416);
-  border: 1px solid var(--accent, #8B5CF6);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 15px var(--accent-glow, rgba(139, 92, 246, 0.25));
+  border: 1px solid var(--tool-accent, var(--accent, #3B82F6));
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 15px var(--tool-focus-ring, rgba(59, 130, 246, 0.25));
   color: var(--text, #FCFCFC);
   font-size: 13px;
   font-weight: 600;
@@ -48,8 +48,8 @@
 :host-context([data-theme="light"]) .temp-email-toast,
 [data-theme="light"] .temp-email-toast {
   background: #FFFFFF;
-  border-color: #7C3AED;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15), 0 0 15px rgba(124, 58, 237, 0.15);
+  border-color: var(--tool-accent, var(--accent, #2563EB));
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15), 0 0 15px var(--tool-focus-ring, rgba(37, 99, 235, 0.15));
   color: #0F172A;
 }
 

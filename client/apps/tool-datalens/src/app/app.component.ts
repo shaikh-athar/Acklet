@@ -1,5 +1,5 @@
 // apps/tool-datalens/src/app/app.component.ts
-import { Component, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToolLayoutComponent, ToolShellConfig } from '@acklet/tool-shell';
 import { TOOL_REGISTRY, ToolRegistryItem } from '@acklet/tool-registry';
@@ -16,8 +16,10 @@ import { JsonLensComponent } from '../data-lens.component';
       [config]="shellConfig"
       [activeTab]="activeTab()"
       (tabChange)="onTabChange($event)"
+      (filesDropped)="onFilesDropped($event)"
     >
       <app-json-lens 
+        #lensComp
         [externalActiveTab]="activeTab()"
         (activeTabChange)="onToolTabChange($event)"
       />
@@ -32,6 +34,7 @@ export class AppComponent {
   };
 
   readonly activeTab = signal<string>('format');
+  readonly lensComp = viewChild<JsonLensComponent>('lensComp');
 
   onTabChange(tabId: string): void {
     this.activeTab.set(tabId);
@@ -39,5 +42,11 @@ export class AppComponent {
 
   onToolTabChange(tabId: string): void {
     this.activeTab.set(tabId);
+  }
+
+  onFilesDropped(files: File[]): void {
+    if (files.length > 0 && this.lensComp()) {
+      this.lensComp()!.handleFileObject(files[0]);
+    }
   }
 }

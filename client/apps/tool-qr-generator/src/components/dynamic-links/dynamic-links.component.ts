@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { TsIconComponent } from '@acklet/tool-shell';
+import { TsIconComponent, EmptyDropStateComponent } from '@acklet/tool-shell';
 import { SmartLinkService, LiveSmartLink } from '../../services/smart-link.service';
 import { QrDynamicService } from '../../services/qr-dynamic.service';
 import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.component';
@@ -19,7 +19,7 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
 @Component({
   selector: 'app-dynamic-links',
   standalone: true,
-  imports: [CommonModule, FormsModule, TsIconComponent, QrSelectComponent],
+  imports: [CommonModule, FormsModule, TsIconComponent, QrSelectComponent, EmptyDropStateComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="dynamic-links-container" aria-label="Dynamic QR Links Studio">
@@ -269,29 +269,31 @@ import { QrSelectComponent, QrSelectOption } from '../qr-select/qr-select.compon
           }
         </div>
       } @else if (filteredLinks().length === 0) {
-        <!-- Empty State -->
-        <div class="empty-state-card slide-fade-up">
-          <div class="empty-icon-wrap">
-            <ts-icon name="qr-code" [size]="32" class="empty-icon" />
-          </div>
-          @if (searchQuery() || typeFilter() !== 'ALL' || statusFilter() !== 'ALL') {
+        @if (searchQuery() || typeFilter() !== 'ALL' || statusFilter() !== 'ALL') {
+          <!-- Filtered Empty State -->
+          <div class="empty-state-card slide-fade-up">
+            <div class="empty-icon-wrap">
+              <ts-icon name="qr-code" [size]="32" class="empty-icon" />
+            </div>
             <h3 class="empty-title">No matching dynamic links</h3>
             <p class="empty-desc">No dynamic links matched your active filters or search terms.</p>
             <button type="button" class="empty-btn secondary" (click)="resetFilters()">
               <ts-icon name="refresh-cw" [size]="14" />
               <span>Clear Filters</span>
             </button>
-          } @else {
-            <h3 class="empty-title">No dynamic QR links yet</h3>
-            <p class="empty-desc">
-              Dynamic links allow you to change your QR destination anytime after printing, and track scan counts automatically.
-            </p>
-            <button type="button" class="empty-btn primary" (click)="isCreateOpen.set(true)">
-              <ts-icon name="plus" [size]="14" />
-              <span>Create Your First Dynamic QR</span>
-            </button>
-          }
-        </div>
+          </div>
+        } @else {
+          <!-- Shared Empty Drop State (Image 2 Style) -->
+          <shared-empty-drop-state
+            leftIcon="link"
+            centerIcon="qr-code"
+            rightIcon="scan-qr-code"
+            heading="Add anything"
+            subtext="Drop files, folders or text to get started."
+            actionLabel="Create Your First Dynamic QR"
+            (action)="isCreateOpen.set(true)"
+          />
+        }
       } @else {
         <!-- Desktop Table View (>= 768px) -->
         <div class="table-responsive-container desktop-table-view">

@@ -28,9 +28,9 @@ export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
   'json-formatter': DATALENS_MANIFEST,
   'temp-email': TEMP_EMAIL_MANIFEST,
   'temp-mail': TEMP_EMAIL_MANIFEST,
+  'file-converter': FILE_CONVERTER_MANIFEST,
+  'converter': FILE_CONVERTER_MANIFEST,
   'image-converter': IMAGE_CONVERTER_MANIFEST,
-  'file-converter': IMAGE_CONVERTER_MANIFEST,
-  'converter': IMAGE_CONVERTER_MANIFEST,
   'img-converter': IMAGE_CONVERTER_MANIFEST,
   'urlshortener': {
     id: 'urlshortener',
@@ -55,8 +55,8 @@ export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
     layout: 'fullBleed',
     addedAt: '2026-10-28',
     updatedAt: '2026-10-28',
-    accent: 'amber',
-    accentHue: 38,
+    accent: 'blue',
+    accentHue: 221,
     supports: ['shield-check', 'zap', 'lock'],
     facts: [
       { label: 'Storage', value: 'Per-browser' },

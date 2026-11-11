@@ -188,3 +188,183 @@ For comprehensive architecture and rollout guides, see [responsive-design-system
 - **Single Unified Font across Tools**: All browser-native tools (Clipboard, QR Generator, DataLens, JSON Formatter, JWT Inspector, UUID Generator, Base64 Encoder) and the Tools Hub catalog page strictly share a single, unified typography system: `"Scoutie Sans", sans-serif`.
 - **Specialized Differentiating Monospace Font**: Technical readouts, payloads, code blocks, hashes, and tokens retain monospace styling using `--ts-font-mono: 'Geist Mono Variable', 'JetBrains Mono', ui-monospace, monospace;`.
 - **Strict Portal Scope Isolation**: Tool typography tokens (`--ts-font-sans`, `--ts-font-heading`) are strictly scoped to Tool Shell containers (`.ts-root`, `.hub-page-root`, `[data-tool]`). The Acklet portal itself preserves its canonical `'Instrument Sans', sans-serif` design system font; global Tailwind v4 `@theme` overrides in `tokens.css` were unlinked to prevent leakage into the main website.
+
+---
+
+## 8. Unified Acklet Blue Platform Accent & User Personalization
+
+### 8.1 Brand Accent Standardization
+Previously, individual Acklet tools used disparate brand colors (e.g. Online Clipboard used teal, Temporary Email used violet, DataLens used emerald, URL Shortener used amber, File Converter used indigo). The platform is standardized around ONE canonical brand accent: **Acklet Blue** (`#2563EB` light / `#3B82F6` dark), derived from the QR Generator Light Mode reference design.
+
+All tool manifests in `packages/tool-registry` now register `accent: 'blue'` and `BLUE_ACCENT` by default, establishing a unified visual identity across the entire suite of tools while leaving tool layouts, workflows, and business logic intact.
+
+### 8.2 Neutral Charcoal / Graphite Dark Theme
+Dark mode tool surfaces were revised to eliminate heavy blue/navy tints (`#0B1120`, `#111A2E`, `#16233D`), creating an elegant, distraction-free neutral graphite foundation:
+- **Main page background**: `#111318`
+- **Secondary background**: `#181B22`
+- **Card surface background**: `#1C2029`
+- **Elevated / modal surface**: `#242936`
+- **Input resting background**: `#202530`
+- **Subtle borders**: `#303744`
+- **Primary text**: `#F3F4F6`
+- **Secondary text**: `#A1A8B5`
+- **Muted text**: `#7D8796`
+
+The blue accent is reserved strictly for primary actions, active navigation tabs, focus rings, progress indicators, and key interactive highlights.
+
+### 8.3 Single Unified Brand Accent (Acklet Blue)
+The platform is standardized around ONE canonical brand accent: **Acklet Blue** (`#2563EB` light / `#3B82F6` dark), derived from the QR Generator Light Mode reference design. Multiple user-selectable accent presets have been completely retired from the user interface to ensure absolute brand consistency and visual cohesion across all tools.
+
+All tools, components, buttons, tabs, links, and background gradients uniformly bind to Acklet Blue:
+- **Light Theme**:
+  - Base accent: `#2563EB`
+  - Strong / hover accent: `#1D4ED8`
+  - Soft accent background: `rgba(37, 99, 235, 0.08)`
+  - Accent border: `rgba(37, 99, 235, 0.20)`
+  - Accent glow: `rgba(37, 99, 235, 0.15)`
+  - Text on accent (`--tool-accent-ink`): `#FFFFFF`
+- **Dark Theme**:
+  - Base accent: `#3B82F6`
+  - Strong / hover accent: `#60A5FA`
+  - Soft accent background: `rgba(59, 130, 246, 0.12)`
+  - Accent border: `rgba(59, 130, 246, 0.25)`
+  - Accent glow: `rgba(59, 130, 246, 0.20)`
+  - Text on accent (`--tool-accent-ink`): `#FFFFFF`
+
+### 8.4 Critical Scope Boundary Guarantee
+The Acklet Blue accent standardization applies **STRICTLY to individual tools** (`client/packages/tool-shell/**`, `client/apps/tool-*/**`, `client/apps/tools-hub/**`). The main Acklet platform (`client/src/**`, landing page, platform header, main dashboard, and `--vercel-*` variables) remains 100% frozen and untouched.
+
+---
+
+## 9. Shell Background Variants, Hover-Only Grid, & Interaction Standards
+
+### 9.1 Automated Layout-Driven Background Gradients
+Background variants are layout-driven and fully automated per tool, keeping user settings uncluttered and focused strictly on Interface Theme, Tool Accent Color, and Accessibility:
+
+1. **Two Layout-Driven Pools**:
+   - **Centered Tools Pool** (`ambient-orb`, `top-wash`, `dual-spotlight`): Applied to tools with centered content layouts (e.g., URL Shortener, File Converter, Image Converter, Barcode Generator). Ambient lighting remains centered around the tool card without distracting edge clutter.
+   - **Wide Tools Pool** (`soft-mesh`, `diagonal-stream`): Applied to screen-covering/full-bleed workbench tools (e.g., Online Clipboard, DataLens, Temp Email, QR Generator). Spans soft ambient lighting across wide multi-pane layouts.
+2. **Deterministic Pseudo-Random Assignment**:
+   - Each tool slug deterministically hashes to a specific gradient variant within its pool.
+   - Whenever a new tool is added with either centered or full-bleed layout, it automatically receives a distinct, appropriate gradient.
+3. **Settings Panel Exclusion**:
+   - Background gradient selection is intentionally excluded from the Settings modal, keeping the user interface focused on Theme, Accent Color, and Accessibility toggles.
+4. **Dynamic Color Integration**:
+   - All 5 gradient variants (`ambient-orb`, `top-wash`, `dual-spotlight`, `soft-mesh`, `diagonal-stream`) dynamically adapt in real-time to the user's selected Tool Accent Color (`var(--tool-accent)`) at subtle 4–6% opacity with WCAG AA compliance across both light and dark themes.
+
+### 9.2 Universal Button & Chip Hover Contrast Protection
+To eliminate low-contrast or invisible text during hover and active states across all tools:
+- **Active / Selected Buttons & Chips**: Always retain brand accent background (`var(--tool-accent)`) with solid contrast text (`var(--tool-accent-ink, #FFFFFF) !important`). On hover, background deepens to `var(--tool-accent-hover)` while preserving crisp white ink.
+- **Non-Active Buttons & Chips**: In Light Mode, hover styles guarantee dark text (`#0F172A !important`) on light elevated backgrounds (`#E2E8F0` or `var(--ts-row-hover)`). In Dark Mode, hover styles guarantee bright white text (`#FFFFFF !important`).
+- **Specificity Safety**: Blanket catch-all `.ts-root button:hover` rules that previously overwrote active chip backgrounds were replaced with targeted ghost button classes, protecting active filter pills, segmented controls, and toggle chips across all tools.
+
+### 9.2 Complete Removal of Pointer Glow & Spotlight Layers
+Per the senior engineering and design standard:
+- All cursor-following glow elements, mousemove listeners, RAF loops, and CSS spotlight layers (`.ts-bg-spot-glow`, `.ts-bg-spot-grid`, `.hub-spotlight-layer`, `TsPointerGlowDirective`, `TsSpotlightDirective`) have been completely removed from shell and shared components.
+- Directives were converted to lightweight no-op deprecation stubs to guarantee backward-compatibility for consumers without overhead.
+
+### 9.3 Hover-Only Page Grid Layer
+- The grid background (`.ts-bg-grid`) is hidden by default (`opacity: 0`).
+- When a pointer device hovers directly over the page background (ignoring buttons, links, inputs, cards, dialogs, and interactive widgets), the grid smoothly fades in over 200ms at 5% opacity.
+- Transition is managed on a dedicated sibling layer with `pointer-events: none` outside Angular change detection cycles.
+- Hidden entirely on touch devices via `@media (hover: none)`.
+- Instant toggle without animation on `prefers-reduced-motion: reduce`.
+
+### 9.4 Hidden Scrollbars in Secondary Chrome
+- In the sidebar (`.ts-sidebar-scroll-body`) and settings dialog (`.ts-settings-body`), scrollbars are hidden using `scrollbar-width: none; -ms-overflow-style: none;` and `::-webkit-scrollbar { display: none; }`.
+- Full scrolling functionality (mouse wheel, touch gesture, keyboard arrows/PageUp/PageDown) is preserved.
+- Main content areas preserve standard visible scrollbars.
+
+### 9.5 Tool Hub Card Hover & Focus System (`hub-home.component.ts`)
+- **Resting state**: Clean surface with standard 1px border.
+- **Hover state**: Precise 1px outline using `--border-strong` without disruptive background shifts or shadows.
+- **Focus-visible state**: Accessible 2px outline using the tool's own accent color with a 2px outline offset.
+- **Motion**: 150ms `border-color` transition with instant disable on `prefers-reduced-motion`.
+
+---
+
+## 10. Universal Drag-and-Drop & Calm Semantic Standardization
+
+### 10.1 Universal Drag-and-Drop Experience (`TsDropOverlayComponent`)
+- **Shared Component**: Located at `client/packages/tool-shell/src/components/drop-overlay/ts-drop-overlay.component.ts` and exported via `@acklet/tool-shell`.
+- **Drag-Depth Tracking**: Manages viewport `dragenter` / `dragleave` via an integer depth counter to prevent child-element flickering.
+- **Glass Visual Architecture**: Frosted glass surface (`backdrop-filter: blur(16px)`), neutral soft tint (`rgba(255, 255, 255, 0.84)` light / `rgba(17, 19, 24, 0.88)` dark) keeping underlying workspace subtly visible, and an inset dashed accent border.
+- **Flower-Opening Radial Bloom**:
+  - Floating supported file-category icons (max 6, no text extension lists) start clustered at center (`transform: scale(0.2); opacity: 0;`).
+  - Bloom radially outward to balanced coordinates over 550ms with staggered 45ms offsets (`cubic-bezier(0.16, 1, 0.3, 1)`).
+  - Responsive radius adaptation: Desktop 175px, Tablet 135px, Mobile 95px.
+  - Reduced-motion support (`prefers-reduced-motion: reduce`) transitions immediately to settled coordinates.
+- **Configurable Contract (`ToolDropConfig`)**:
+  - `enabled`: boolean toggle per tool.
+  - `acceptedCategories`: ToolDropCategory array (`image`, `video`, `audio`, `document`, `spreadsheet`, `archive`, `code`, `text`).
+  - `maxVisibleIcons`: Maximum floating icons displayed (capped at 6).
+  - Supported tools: `tool-file-converter` (documents, images, videos, audio, archives, spreadsheets), `image-converter` (images), `tool-online-clipboard` (documents, images, spreadsheets, archives, code, text), `tool-datalens` (code, documents).
+  - Unsupported tools (e.g. `urlshortener`, `temp-email`, `barcode-generator`) have file drop disabled to prevent inappropriate overlay triggers.
+
+### 10.2 Calm Semantic Color Palette
+- **High-Contrast Calm Danger Palette**:
+  - Light mode: Foreground `#B45353`, soft background `#FEF2F2`, border `#FECACA` (WCAG 2.2 AA compliant >= 4.5:1).
+  - Dark mode: Foreground `#FCA5A5`, soft background `rgba(248, 113, 113, 0.12)`, border `rgba(248, 113, 113, 0.28)`.
+- **Calm Warning Palette**: Light mode `#92400E` / `#FFFBEB`, Dark mode `#FCD34D` / `rgba(245, 158, 11, 0.12)`.
+- **Calm Success Palette**: Light mode `#065F46` / `#ECFDF5`, Dark mode `#6EE7B7` / `rgba(16, 185, 129, 0.12)`.
+
+---
+
+## 11. Universal Blue Accent Interaction & Settings Standards
+
+### 11.1 Platform-Wide Blue Accent Application
+All interactive elements across every tool in both Light and Dark themes dynamically resolve from the canonical Acklet Blue tokens (`--tool-accent`, `--tool-accent-soft`, `--tool-accent-border`, `--tool-accent-hover`, `--tool-accent-ink`):
+
+- **Buttons & Icon Buttons on Hover**:
+  - Ghost, outline, secondary, action, and icon buttons dynamically tint on `:hover` using `background-color: var(--tool-accent-soft, var(--accent-soft))` and `color: var(--tool-accent, var(--accent))` with `border-color: var(--tool-accent-border, var(--accent-border))`.
+  - Nested icons (`ts-icon`, `svg`, `lib-tool-icon`) inherit `currentColor` so icons match the active accent immediately.
+- **Primary Action Buttons**:
+  - Default: `background-color: var(--tool-accent, var(--accent))` with high-contrast `color: var(--tool-accent-ink, #FFFFFF)`.
+  - Hover: `background-color: var(--tool-accent-hover, var(--accent-hover))` with subtle elevation glow (`box-shadow: 0 6px 24px -4px var(--tool-accent-glow, var(--accent-glow))`).
+- **Text Links (`a`)**:
+  - Default state uses `var(--tool-accent, var(--accent-strong))` with matching subtle text-decoration color.
+  - Hover state highlights with `var(--tool-accent-hover, var(--accent-hover))` and an underline.
+- **Tabs, Nav Links & Segmented Controls**:
+  - Inactive tabs on hover tint using `var(--tool-accent-soft, var(--accent-soft))` and `var(--tool-accent, var(--accent))`.
+  - Active tabs prominently display `var(--tool-accent, var(--accent))` with high-contrast text and font weight 700.
+- **Inputs & Textareas**:
+  - Hover state subtly highlights the border with `var(--tool-accent-border, var(--accent-border))`.
+  - Focus and focus-visible states use `border-color: var(--tool-accent, var(--accent))` with a 3px soft accent ring (`box-shadow: 0 0 0 3px var(--tool-accent-soft)`).
+- **Core Files**:
+  - Base rules: [base.css](../client/packages/tool-shell/src/styles/base.css)
+  - Topbar navigation: [ts-topbar.component.ts](../client/packages/tool-shell/src/components/topbar/ts-topbar.component.ts)
+  - Online Clipboard styles: [clipboard.component.css](../client/apps/tool-online-clipboard/src/clipboard.component.css)
+  - DataLens styles: [data-lens.component.css](../client/apps/tool-datalens/src/data-lens.component.css)
+  - Temp Email address bar: [address-bar.component.ts](../client/apps/tool-temp-email/src/components/address-bar/address-bar.component.ts)
+  - Barcode Generator: [barcode-generator.component.ts](../client/apps/tool-barcode-generator/src/components/barcode-generator.component.ts)
+  - QR Code Generator: [qr-generator.component.ts](../client/apps/tool-qr-generator/src/qr-generator.component.ts)
+
+### 11.2 ChatGPT-Minimalist Appearance Settings
+The Appearance settings dialog in [ts-settings-modal.component.ts](../client/packages/tool-shell/src/components/settings/ts-settings-modal.component.ts) eliminates verbose explanatory text, subtitles, and redundant copy, following ChatGPT's compact visual design:
+- Mode segmented control (`Light`, `Dark`, `System`)
+- High-contrast toggle switches for Display & Accessibility (`Reduce transparency`, `Reduce motion`)
+- Compact Done button with zero dead whitespace
+- Multiple accent color dropdown removed to enforce unified Acklet Blue branding
+
+## 12. Shared Empty Drop State & Drag Highlighting
+
+To eliminate inconsistent local full-screen overlays and maintain a calm, universal drag-and-drop experience across all Acklet tools:
+
+### 12.1 Shared UI Primitives
+- **`<shared-empty-drop-state>`** ([empty-drop-state.component.ts](../client/packages/tool-shell/src/components/ui/empty-drop-state/empty-drop-state.component.ts)):
+  - Sits centered in the main content area; does not cover header, toolbar, or footer.
+  - Single-line icon in a soft accent tile (`--tool-accent` and `--tool-accent-soft`). No multiple stacked icons.
+  - Standard heading: `"Add anything"` in default text color.
+  - Standard subtext: `"Drop files, folders or text to get started."` in secondary/muted color.
+  - Optional action button (e.g. `"Browse files"`, `"Select Files"`), fully accessible with keyboard navigation (Enter / Space).
+- **`<shared-drop-highlight>`** ([drop-highlight.component.ts](../client/packages/tool-shell/src/components/ui/drop-highlight/drop-highlight.component.ts)):
+  - Wraps the active content area.
+  - Toggles `1px solid var(--tool-accent)` and `var(--tool-accent-soft)` on drag enter/leave.
+  - Strictly no full-screen takeover, no dashed border, no neon animations, no glow, and no shadow.
+  - Exposes `itemCount`: when `0`, automatically displays `<shared-empty-drop-state>`; when `>= 1`, projects active workspace items.
+
+### 12.2 State Rules
+1. `itemCount === 0`: Show the shared empty drop state.
+2. `itemCount >= 1`: Show normal content screen.
+3. When the user removes the last item, the screen returns to the empty drop state immediately without page reload or lingering overlays.
+4. Dropping files or folders uses the tool's existing upload path with minimal inline progress bars.

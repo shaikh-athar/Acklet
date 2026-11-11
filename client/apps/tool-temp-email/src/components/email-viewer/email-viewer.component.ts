@@ -1,28 +1,26 @@
 // apps/tool-temp-email/src/components/email-viewer/email-viewer.component.ts
 import { Component, input, output, signal, computed, effect, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TsIconComponent } from '@acklet/tool-shell';
+import { TsIconComponent, EmptyDropStateComponent } from '@acklet/tool-shell';
 import { MessageDetail, EmailScanResults, MessageAttachment } from '../../models/temp-email.models';
 import { TempEmailService } from '../../services/temp-email.service';
 
 @Component({
   selector: 'app-email-viewer',
   standalone: true,
-  imports: [CommonModule, TsIconComponent],
+  imports: [CommonModule, TsIconComponent, EmptyDropStateComponent],
   template: `
     <div class="email-viewer-container" role="region" aria-label="Email Message Content">
       
       @if (!message()) {
-        <!-- Empty Selection State -->
-        <div class="viewer-empty-state">
-          <div class="empty-envelope-icon">
-            <ts-icon name="mail" [size]="44" />
-          </div>
-          <h3 class="empty-header">No Email Selected</h3>
-          <p class="empty-subtext">
-            Choose a message from your inbox on the left to read its full content, inspect OTP codes, or open verification links.
-          </p>
-        </div>
+        <!-- Empty Selection State (Image 2 Style) -->
+        <shared-empty-drop-state
+          leftIcon="mail"
+          centerIcon="file-text"
+          rightIcon="inbox"
+          heading="Add anything"
+          subtext="Drop files, folders or text to get started."
+        />
       } @else {
         <!-- Active Email View -->
         <div class="email-content-view animate-fade-in">
@@ -274,8 +272,8 @@ import { TempEmailService } from '../../services/temp-email.service';
       width: 72px;
       height: 72px;
       border-radius: 20px;
-      background: var(--accent-soft, rgba(139, 92, 246, 0.1));
-      color: var(--accent, #8B5CF6);
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 10%, transparent));
+      color: var(--accent, #3B82F6);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -284,8 +282,8 @@ import { TempEmailService } from '../../services/temp-email.service';
 
     :host-context([data-theme="light"]) .empty-envelope-icon,
     [data-theme="light"] .empty-envelope-icon {
-      background: rgba(124, 58, 237, 0.08);
-      color: #7C3AED;
+      background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 8%, transparent);
+      color: #2563EB;
     }
 
     .empty-header {
@@ -348,9 +346,9 @@ import { TempEmailService } from '../../services/temp-email.service';
       gap: 8px;
       padding: 6px 14px;
       border-radius: 8px;
-      background: var(--accent-soft, rgba(139, 92, 246, 0.12));
-      border: 1px solid var(--accent-border, rgba(139, 92, 246, 0.25));
-      color: var(--accent-strong, #A78BFA);
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 12%, transparent));
+      border: 1px solid var(--accent-border, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 25%, transparent));
+      color: var(--accent-strong, #60A5FA);
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
@@ -358,22 +356,22 @@ import { TempEmailService } from '../../services/temp-email.service';
     }
 
     .back-to-inbox-btn:hover {
-      background: var(--accent-soft, rgba(139, 92, 246, 0.22));
-      border-color: var(--accent, #8B5CF6);
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 22%, transparent));
+      border-color: var(--accent, #3B82F6);
       transform: translateX(-2px);
     }
 
     :host-context([data-theme="light"]) .back-to-inbox-btn,
     [data-theme="light"] .back-to-inbox-btn {
-      background: #F5F3FF;
-      border-color: #DDD6FE;
-      color: #6D28D9;
+      background: var(--tool-accent-soft, color-mix(in srgb, var(--tool-accent, #2563EB) 10%, transparent));
+      border-color: var(--tool-accent-border, color-mix(in srgb, var(--tool-accent, #2563EB) 25%, transparent));
+      color: var(--tool-accent, #2563EB);
     }
 
     :host-context([data-theme="light"]) .back-to-inbox-btn:hover,
     [data-theme="light"] .back-to-inbox-btn:hover {
-      background: #EDE9FE;
-      border-color: #7C3AED;
+      background: #EFF6FF;
+      border-color: #2563EB;
     }
 
     /* Header Card */
@@ -479,14 +477,14 @@ import { TempEmailService } from '../../services/temp-email.service';
       gap: 12px;
       padding: 8px 12px;
       border-radius: 8px;
-      background: var(--accent-soft, rgba(139, 92, 246, 0.12));
-      border: 1px solid var(--accent-border, rgba(139, 92, 246, 0.3));
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 12%, transparent));
+      border: 1px solid var(--accent-border, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 30%, transparent));
     }
 
     :host-context([data-theme="light"]) .subtle-otp-strip,
     [data-theme="light"] .subtle-otp-strip {
-      background: rgba(124, 58, 237, 0.08);
-      border-color: rgba(124, 58, 237, 0.25);
+      background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 8%, transparent);
+      border-color: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 25%, transparent);
     }
 
     .subtle-otp-left {
@@ -497,12 +495,12 @@ import { TempEmailService } from '../../services/temp-email.service';
     }
 
     .subtle-otp-icon {
-      color: var(--accent, #8B5CF6);
+      color: var(--accent, #3B82F6);
     }
 
     :host-context([data-theme="light"]) .subtle-otp-icon,
     [data-theme="light"] .subtle-otp-icon {
-      color: #7C3AED;
+      color: #2563EB;
     }
 
     .subtle-otp-label {
@@ -548,7 +546,7 @@ import { TempEmailService } from '../../services/temp-email.service';
       height: 26px;
       padding: 0 10px;
       border-radius: 6px;
-      background: #8B5CF6 !important;
+      background: #3B82F6 !important;
       color: #FFFFFF !important;
       border: 1px solid rgba(255, 255, 255, 0.2) !important;
       font-size: 11px;
@@ -560,7 +558,7 @@ import { TempEmailService } from '../../services/temp-email.service';
       flex-shrink: 0;
       transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
       opacity: 1 !important;
-      box-shadow: 0 1px 3px rgba(124, 58, 237, 0.25);
+      box-shadow: 0 1px 3px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 25%, transparent);
     }
 
     .subtle-otp-copy-btn span,
@@ -572,25 +570,25 @@ import { TempEmailService } from '../../services/temp-email.service';
     }
 
     .subtle-otp-copy-btn:hover {
-      background: #7C3AED !important;
+      background: #2563EB !important;
       border-color: rgba(255, 255, 255, 0.4) !important;
       color: #FFFFFF !important;
       filter: none !important;
       transform: translateY(-1px);
-      box-shadow: 0 2px 6px rgba(124, 58, 237, 0.4);
+      box-shadow: 0 2px 6px color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 40%, transparent);
     }
 
     :host-context([data-theme="light"]) .subtle-otp-copy-btn,
     [data-theme="light"] .subtle-otp-copy-btn {
-      background: #7C3AED !important;
+      background: #2563EB !important;
       color: #FFFFFF !important;
-      border: 1px solid #6D28D9 !important;
+      border: 1px solid #1D4ED8 !important;
     }
 
     :host-context([data-theme="light"]) .subtle-otp-copy-btn:hover,
     [data-theme="light"] .subtle-otp-copy-btn:hover {
-      background: #5B21B6 !important;
-      border-color: #4C1D95 !important;
+      background: #1E40AF !important;
+      border-color: #1E3A8A !important;
       color: #FFFFFF !important;
     }
 
@@ -627,9 +625,9 @@ import { TempEmailService } from '../../services/temp-email.service';
       width: 36px;
       height: 36px;
       border-radius: 10px;
-      background: var(--accent-soft, rgba(139, 92, 246, 0.15));
-      border: 1px solid var(--accent-border, rgba(139, 92, 246, 0.3));
-      color: var(--accent-strong, #A78BFA);
+      background: var(--accent-soft, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 15%, transparent));
+      border: 1px solid var(--accent-border, color-mix(in srgb, var(--tool-accent, var(--accent, #3B82F6)) 30%, transparent));
+      color: var(--accent-strong, #60A5FA);
       font-size: 13px;
       font-weight: 700;
       display: flex;
@@ -640,9 +638,9 @@ import { TempEmailService } from '../../services/temp-email.service';
 
     :host-context([data-theme="light"]) .sender-avatar-lg,
     [data-theme="light"] .sender-avatar-lg {
-      background: rgba(124, 58, 237, 0.1);
-      border-color: rgba(124, 58, 237, 0.3);
-      color: #7C3AED;
+      background: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 10%, transparent);
+      border-color: color-mix(in srgb, var(--tool-accent, var(--accent, #2563EB)) 30%, transparent);
+      color: #2563EB;
     }
 
     .sender-info-text {
@@ -770,7 +768,7 @@ import { TempEmailService } from '../../services/temp-email.service';
     }
 
     .attachment-pill:hover {
-      border-color: var(--accent, #8B5CF6);
+      border-color: var(--accent, #3B82F6);
       background: var(--ts-row-hover, rgba(255, 255, 255, 0.08));
     }
 
@@ -1085,7 +1083,7 @@ export class EmailViewerComponent {
     // Linkify URLs
     const linkified = escaped.replace(
       /(https?:\/\/[^\s<]+)/g,
-      '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#7C3AED;text-decoration:underline;">$1</a>'
+      '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#2563EB;text-decoration:underline;">$1</a>'
     );
 
     return `

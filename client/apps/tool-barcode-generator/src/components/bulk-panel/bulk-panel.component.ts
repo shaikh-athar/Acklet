@@ -13,7 +13,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { TsIconComponent, ResponsiveService } from '@acklet/tool-shell';
+import { TsIconComponent, ResponsiveService, EmptyDropStateComponent } from '@acklet/tool-shell';
 import { firstValueFrom } from 'rxjs';
 import {
   BarcodeDesignOptions,
@@ -42,7 +42,7 @@ import { BarcodeFormatPickerComponent } from '../format-picker/format-picker.com
 @Component({
   selector: 'app-barcode-bulk-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, TsIconComponent, BarcodeFormatPickerComponent],
+  imports: [CommonModule, FormsModule, TsIconComponent, BarcodeFormatPickerComponent, EmptyDropStateComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bulk-flow-body" [class.is-running-locked]="isRunning()">
@@ -516,36 +516,24 @@ import { BarcodeFormatPickerComponent } from '../format-picker/format-picker.com
         @if (state.sourceMode() === 'csv') {
           <div class="form-row">
             @if (!csvFileName()) {
-              <div
-                class="file-dropzone"
-                [class.is-disabled]="isRunning()"
-                [class.is-dragover]="isDropzoneActive()"
-                (click)="!isRunning() && fileInput.click()"
-                (keydown.enter)="!isRunning() && fileInput.click()"
-                (keydown.space)="!isRunning() && fileInput.click()"
-                (dragover)="onDropzoneDragOver($event)"
-                (dragleave)="onDropzoneDragLeave($event)"
-                (drop)="onDropzoneDrop($event)"
-                tabindex="0"
-                role="button"
-                aria-label="Upload CSV or TSV file"
-              >
-                <input
-                  #fileInput
-                  type="file"
-                  accept=".csv,.tsv,.txt"
-                  class="hidden-file-input"
-                  [disabled]="isRunning()"
-                  (change)="onFileSelected($event)"
-                />
-                <ts-icon name="upload-cloud" [size]="28" class="dropzone-icon" />
-                <div class="dropzone-text">
-                  <span class="dropzone-title">
-                    {{ isDropzoneActive() ? 'Drop CSV or TSV file here' : 'Drop CSV or TSV file here, or click to browse' }}
-                  </span>
-                  <span class="dropzone-sub">Max file size 2 MB. Up to 500 records.</span>
-                </div>
-              </div>
+              <shared-empty-drop-state
+                leftIcon="file-text"
+                centerIcon="barcode"
+                rightIcon="scan-barcode"
+                heading="Add anything"
+                subtext="Drop files, folders or text to get started."
+                actionLabel="Browse CSV or TSV"
+                (action)="fileInput.click()"
+                (filesDropped)="onFilesDroppedFromEmptyState($event)"
+              />
+              <input
+                #fileInput
+                type="file"
+                accept=".csv,.tsv,.txt"
+                class="hidden-file-input"
+                [disabled]="isRunning()"
+                (change)="onFileSelected($event)"
+              />
             } @else {
               <div class="file-summary-card">
                 <div class="file-info-col">
@@ -1710,10 +1698,10 @@ import { BarcodeFormatPickerComponent } from '../format-picker/format-picker.com
     }
 
     .file-dropzone.is-dragover {
-      border-color: var(--tool-accent, #3B82F6);
-      background: rgba(59, 130, 246, 0.12);
-      box-shadow: 0 0 20px rgba(59, 130, 246, 0.25);
-      transform: scale(1.01);
+      border: 1px solid var(--tool-accent, var(--accent, #60A5FA)) !important;
+      background: var(--tool-accent-soft, var(--accent-soft, rgba(59, 130, 246, 0.14))) !important;
+      box-shadow: none !important;
+      transform: none !important;
     }
 
     :host-context([data-theme="light"]) .file-dropzone {
@@ -1727,10 +1715,10 @@ import { BarcodeFormatPickerComponent } from '../format-picker/format-picker.com
     }
 
     :host-context([data-theme="light"]) .file-dropzone.is-dragover {
-      border-color: #2563EB;
-      background: #DBEAFE;
-      box-shadow: 0 0 20px rgba(37, 99, 235, 0.2);
-      transform: scale(1.01);
+      border: 1px solid var(--tool-accent, var(--accent, #2563EB)) !important;
+      background: var(--tool-accent-soft, var(--accent-soft, rgba(37, 99, 235, 0.08))) !important;
+      box-shadow: none !important;
+      transform: none !important;
     }
 
     .file-dropzone.is-disabled {
@@ -3432,6 +3420,11 @@ export class BarcodeBulkPanelComponent implements OnInit {
     event.preventDefault();
     event.stopPropagation();
     this.isDropzoneActive.set(false);
+  }
+
+  onFilesDroppedFromEmptyState(files: File[]): void {
+    if (this.isRunning() || !files || files.length === 0) return;
+    this.processFile(files[0]);
   }
 
   onDropzoneDrop(event: DragEvent): void {

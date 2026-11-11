@@ -39,9 +39,9 @@
 }
 
 .action-trigger-btn.is-primary {
-  background: var(--btn-primary-bg, #C98B4E);
-  color: var(--btn-primary-text, #1F1608);
-  border-color: transparent;
+  background: var(--tool-accent, var(--btn-primary-bg, #2563EB)) !important;
+  color: var(--tool-accent-ink, #FFFFFF) !important;
+  border-color: transparent !important;
   font-weight: 700;
 }
 
@@ -58,8 +58,9 @@
   }
 
   .action-trigger-btn.is-primary:hover {
-    background: var(--btn-primary-hover, #D49A5E);
-    border-color: transparent;
+    background: var(--tool-accent-hover, var(--btn-primary-hover, #1D4ED8)) !important;
+    color: var(--tool-accent-ink, #FFFFFF) !important;
+    border-color: transparent !important;
   }
 }
 
@@ -68,17 +69,18 @@
 }
 
 .action-trigger-btn.is-primary:active {
-  background: var(--btn-primary-pressed, #B87C42);
+  background: var(--tool-accent-pressed, var(--btn-primary-pressed, #1E40AF)) !important;
+  color: var(--tool-accent-ink, #FFFFFF) !important;
 }
 
 .action-trigger-btn:focus-visible {
-  outline: 2px solid var(--btn-primary-focus-ring, var(--accent, #C98B4E));
+  outline: 2px solid var(--btn-primary-focus-ring, var(--accent, #2563EB));
   outline-offset: 2px;
 }
 
 .action-trigger-btn.is-active {
-  border-color: var(--accent, #C98B4E);
-  box-shadow: 0 0 0 1px var(--accent, #C98B4E);
+  border-color: var(--accent, #2563EB);
+  box-shadow: 0 0 0 1px var(--accent, #2563EB);
 }
 
 .trigger-icon {
@@ -102,8 +104,8 @@
   border-radius: 10px;
   font-size: 11px;
   font-weight: 700;
-  background: var(--btn-primary-bg, #C98B4E);
-  color: var(--btn-primary-text, #1F1608);
+  background: var(--tool-accent, var(--btn-primary-bg, #2563EB));
+  color: var(--tool-accent-ink, #FFFFFF);
   margin-left: 2px;
 }
 
@@ -134,8 +136,8 @@
 
 :host-context([data-theme="light"]) .action-trigger-btn.is-primary,
 [data-theme="light"] .action-trigger-btn.is-primary {
-  background: var(--btn-primary-bg, #C98B4E);
-  color: var(--btn-primary-text, #1F1608);
+  background: var(--tool-accent, var(--btn-primary-bg, #2563EB)) !important;
+  color: var(--tool-accent-ink, #FFFFFF) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
@@ -276,7 +278,7 @@
 }
 
 .action-menu-item:focus-visible {
-  outline: 2px solid var(--btn-primary-focus-ring, var(--accent, #C98B4E));
+  outline: 2px solid var(--btn-primary-focus-ring, var(--accent, #2563EB));
   outline-offset: -2px;
 }
 
