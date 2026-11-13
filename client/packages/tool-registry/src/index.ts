@@ -8,5 +8,6 @@ export * from './manifests/temp-email.manifest';
 export * from './manifests/file-converter.manifest';
 export * from './manifests/converter.manifest';
 export * from './manifests/color-studio.manifest';
+export * from './manifests/device-studio.manifest';
 export * from './manifests/watermark-remover.manifest';
 export * from './tools.manifest';

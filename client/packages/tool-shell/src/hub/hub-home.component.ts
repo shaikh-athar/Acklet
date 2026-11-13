@@ -1144,12 +1144,14 @@ export class HubHomeComponent implements OnInit, OnDestroy {
     return getAllTools().filter(t => t.status === 'live' || t.status === 'beta');
   });
 
-  // Tab definitions: All | Utilities | Developer | Security | Favorites | Recent
+  // Tab definitions: All | Utilities | Developer | Diagnostics | Design | Security | Favorites | Recent
   readonly tabsList = computed<PillTabItem[]>(() => {
     return [
       { id: 'all', label: 'All' },
       { id: 'utilities', label: 'Utilities' },
       { id: 'developer', label: 'Developer' },
+      { id: 'diagnostics', label: 'Diagnostics' },
+      { id: 'design', label: 'Design' },
       { id: 'security', label: 'Security' },
       { id: 'favorites', label: 'Favorites', count: this.favoriteSlugs().length },
       { id: 'recent', label: 'Recent', count: this.recentSlugs().length },

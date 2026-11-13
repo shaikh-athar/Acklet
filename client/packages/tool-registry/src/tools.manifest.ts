@@ -8,6 +8,8 @@ import { TEMP_EMAIL_MANIFEST } from './manifests/temp-email.manifest';
 import { IMAGE_CONVERTER_MANIFEST, FILE_CONVERTER_MANIFEST } from './manifests/file-converter.manifest';
 import { CONVERTER_MANIFEST } from './manifests/converter.manifest';
 import { COLOR_STUDIO_MANIFEST } from './manifests/color-studio.manifest';
+import { DEVICE_STUDIO_MANIFEST } from './manifests/device-studio.manifest';
+import { AMBER_ACCENT, BLUE_ACCENT, ROSE_ACCENT, VIOLET_ACCENT, EMERALD_ACCENT, INDIGO_ACCENT, ORANGE_ACCENT, STEEL_BLUE_ACCENT, OLIVE_ACCENT, TEAL_ACCENT } from './accent-presets';
 import { WATERMARK_REMOVER_MANIFEST } from './manifests/watermark-remover.manifest';
 import { AMBER_ACCENT, BLUE_ACCENT, ROSE_ACCENT, VIOLET_ACCENT, EMERALD_ACCENT, INDIGO_ACCENT, ORANGE_ACCENT, STEEL_BLUE_ACCENT, OLIVE_ACCENT } from './accent-presets';
 
@@ -19,6 +21,8 @@ export { TEMP_EMAIL_MANIFEST } from './manifests/temp-email.manifest';
 export { IMAGE_CONVERTER_MANIFEST, FILE_CONVERTER_MANIFEST } from './manifests/file-converter.manifest';
 export { CONVERTER_MANIFEST } from './manifests/converter.manifest';
 export { COLOR_STUDIO_MANIFEST } from './manifests/color-studio.manifest';
+export { DEVICE_STUDIO_MANIFEST } from './manifests/device-studio.manifest';
+export { ORANGE_ACCENT, STEEL_BLUE_ACCENT, OLIVE_ACCENT, TEAL_ACCENT } from './accent-presets';
 export { WATERMARK_REMOVER_MANIFEST } from './manifests/watermark-remover.manifest';
 export { ORANGE_ACCENT, STEEL_BLUE_ACCENT, OLIVE_ACCENT } from './accent-presets';
 
@@ -26,6 +30,8 @@ export { ORANGE_ACCENT, STEEL_BLUE_ACCENT, OLIVE_ACCENT } from './accent-presets
  * Single Source of Truth for all tools in Acklet.
  */
 export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
+  'devicestudio': DEVICE_STUDIO_MANIFEST,
+  'device-studio': DEVICE_STUDIO_MANIFEST,
   'watermark-remover': WATERMARK_REMOVER_MANIFEST,
   'watermark': WATERMARK_REMOVER_MANIFEST,
   'colorstudio': COLOR_STUDIO_MANIFEST,
