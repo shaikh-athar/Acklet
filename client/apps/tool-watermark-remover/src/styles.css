@@ -1,0 +1,52 @@
+/* apps/tool-watermark-remover/src/styles.css */
+@import "tailwindcss";
+@import "../../../packages/tool-shell/src/styles/tokens.css";
+@import "../../../packages/tool-shell/src/styles/base.css";
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--ts-font-sans);
+  transition: background-color var(--ts-dur-base, 200ms) var(--ts-ease),
+              color var(--ts-dur-base, 200ms) var(--ts-ease);
+}
+
+app-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+ts-shell {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  flex: 1 1 0% !important;
+}
+
+.ts-main-content-card {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+.ts-main-scroll-container,
+.ts-main-scroll-container.full-bleed {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  flex: 1 1 0% !important;
+  overflow: hidden !important;
+}
+

@@ -120,6 +120,73 @@ export const routes: Routes = [
   { path: 'imagecompressor', redirectTo: 'tools/image-compressor', pathMatch: 'full' },
   { path: 'tools/img-compressor', redirectTo: 'tools/image-compressor', pathMatch: 'full' },
   { path: 'tools/imagecompressor', redirectTo: 'tools/image-compressor', pathMatch: 'full' },
+    path: 'colorstudio',
+    loadComponent: () => import('../../apps/tool-color-studio/src/app/app.component').then(m => m.AppComponent),
+    title: 'Color Studio — Professional Color Tools | Acklet',
+    children: [
+      { path: '', loadComponent: () => import('../../apps/tool-color-studio/src/components/landing/color-studio-landing.component').then(m => m.ColorStudioLandingComponent) },
+      { path: ':module', loadComponent: () => import('../../apps/tool-color-studio/src/app/app.component').then(m => m.AppComponent) }
+    ]
+  },
+  { path: 'color-studio', redirectTo: 'colorstudio', pathMatch: 'full' },
+  { path: 'color-picker', redirectTo: 'colorstudio/color-picker', pathMatch: 'full' },
+  { path: 'image-extractor', redirectTo: 'colorstudio/image-extractor', pathMatch: 'full' },
+  { path: 'gradient-generator', redirectTo: 'colorstudio/gradient-generator', pathMatch: 'full' },
+  { path: 'contrast-checker', redirectTo: 'colorstudio/contrast-checker', pathMatch: 'full' },
+  { path: 'palette-generator', redirectTo: 'colorstudio/palette-generator', pathMatch: 'full' },
+  { path: 'vision-simulator', redirectTo: 'colorstudio/vision-simulator', pathMatch: 'full' },
+  {
+    path: 'tools/colorstudio',
+    loadComponent: () => import('../../apps/tool-color-studio/src/app/app.component').then(m => m.AppComponent),
+    title: 'Color Studio — Professional Color Tools | Acklet',
+    children: [
+      { path: '', loadComponent: () => import('../../apps/tool-color-studio/src/components/landing/color-studio-landing.component').then(m => m.ColorStudioLandingComponent) },
+      { path: ':module', loadComponent: () => import('../../apps/tool-color-studio/src/app/app.component').then(m => m.AppComponent) }
+    ]
+  },
+  { path: 'tools/color-studio', redirectTo: 'tools/colorstudio', pathMatch: 'full' },
+  {
+    path: 'devicestudio',
+    loadComponent: () => import('../../apps/tool-device-studio/src/app/app.component').then(m => m.AppComponent),
+    title: 'Device Studio — Hardware & Network Diagnostics | Acklet',
+    children: [
+      { path: '', loadComponent: () => import('../../apps/tool-device-studio/src/components/landing/device-studio-landing.component').then(m => m.DeviceStudioLandingComponent) },
+      { path: ':module', loadComponent: () => import('../../apps/tool-device-studio/src/app/app.component').then(m => m.AppComponent) }
+    ]
+  },
+  { path: 'device-studio', redirectTo: 'devicestudio', pathMatch: 'full' },
+  { path: 'webcam-test', redirectTo: 'devicestudio/webcam', pathMatch: 'full' },
+  { path: 'webcam', redirectTo: 'devicestudio/webcam', pathMatch: 'full' },
+  { path: 'mic-test', redirectTo: 'devicestudio/microphone', pathMatch: 'full' },
+  { path: 'microphone-test', redirectTo: 'devicestudio/microphone', pathMatch: 'full' },
+  { path: 'speaker-test', redirectTo: 'devicestudio/speaker', pathMatch: 'full' },
+  { path: 'audio-test', redirectTo: 'devicestudio/speaker', pathMatch: 'full' },
+  { path: 'speed-test', redirectTo: 'devicestudio/speed', pathMatch: 'full' },
+  { path: 'ip-checker', redirectTo: 'devicestudio/ip', pathMatch: 'full' },
+  { path: 'ip-lookup', redirectTo: 'devicestudio/ip', pathMatch: 'full' },
+  { path: 'screen-test', redirectTo: 'devicestudio/screen', pathMatch: 'full' },
+  { path: 'screenshare-test', redirectTo: 'devicestudio/screen', pathMatch: 'full' },
+  {
+    path: 'tools/devicestudio',
+    loadComponent: () => import('../../apps/tool-device-studio/src/app/app.component').then(m => m.AppComponent),
+    title: 'Device Studio — Hardware & Network Diagnostics | Acklet',
+    children: [
+      { path: '', loadComponent: () => import('../../apps/tool-device-studio/src/components/landing/device-studio-landing.component').then(m => m.DeviceStudioLandingComponent) },
+      { path: ':module', loadComponent: () => import('../../apps/tool-device-studio/src/app/app.component').then(m => m.AppComponent) }
+    ]
+  },
+  { path: 'tools/device-studio', redirectTo: 'tools/devicestudio', pathMatch: 'full' },
+    path: 'watermark-remover',
+    loadComponent: () => import('../../apps/tool-watermark-remover/src/app/app.component').then(m => m.AppComponent),
+    title: 'Watermark Remover — AI Image Cleaner | Acklet'
+  },
+  { path: 'watermark', redirectTo: 'watermark-remover', pathMatch: 'full' },
+  {
+    path: 'tools/watermark-remover',
+    loadComponent: () => import('../../apps/tool-watermark-remover/src/app/app.component').then(m => m.AppComponent),
+    title: 'Watermark Remover — AI Image Cleaner | Acklet'
+  },
+  { path: 'tools/watermark', redirectTo: 'tools/watermark-remover', pathMatch: 'full' },
 
   // --- Public Pages under main header/navbar layout ---
   {

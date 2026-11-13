@@ -74,6 +74,7 @@ import {
   LucideDatabase,
   LucideBoxes,
   LucideSparkles,
+  LucideLoader,
   LucideHardDrive,
   LucideSliders,
   LucideCompass,
@@ -138,6 +139,7 @@ import {
   LucideFrame,
   LucideArrowLeftRight,
   LucideActivity,
+  LucideCrosshair,
   LucideAward,
   LucideBadge,
   LucideTarget,
@@ -161,6 +163,9 @@ import {
   LucideMinimize2,
   LucideNetwork,
   LucideRepeat,
+  LucidePipette,
+  LucideUnlock,
+  LucideSquare,
   LucideRotateCcw,
   LucideRotateCw,
   LucideRuler,
@@ -174,9 +179,23 @@ import {
   LucidePrinter,
   LucideFlipHorizontal,
   LucideFlipVertical,
-  LucideUnlock,
   LucideCrop,
-  LucidePipette
+  LucideCamera,
+  LucideCameraOff,
+  LucideMic,
+  LucideMicOff,
+  LucideHeadphones,
+  LucideGauge,
+  LucideScreenShare,
+  LucideMonitor,
+  LucideRadio
+  LucideEraser,
+  LucideBrush,
+  LucidePaintbrush,
+  LucideUndo,
+  LucideRedo,
+  LucideHand,
+  LucideMove
 } from '@lucide/angular';
 
 import {
@@ -285,6 +304,9 @@ export const LUCIDE_MOTION_MAP: Record<string, string> = {
   'imagecompressor': 'motion-scale-up',
   'file-converter': 'motion-rotate-15',
   converter: 'motion-rotate-15',
+  loader: 'motion-rotate-45',
+  crosshair: 'motion-scale-up',
+  select: 'motion-scale-up',
   mail: 'motion-scale-up',
   inbox: 'motion-scale-up'
 };
@@ -585,6 +607,12 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
     animated: SparklesIcon,
     lucide: LucideSparkles
   },
+  loader: {
+    lucide: LucideLoader
+  },
+  spinner: {
+    lucide: LucideLoader
+  },
   'hard-drive': {
     lucide: LucideHardDrive
   },
@@ -831,6 +859,34 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
     lucide: LucideArrowLeftRight,
     notes: 'Used in Universal File Converter tool identity'
   },
+  colorstudio: {
+    lucide: LucidePalette,
+    notes: 'Used in Color Studio tool identity'
+  },
+  'color-studio': {
+    lucide: LucidePalette,
+    notes: 'Used in Color Studio tool identity'
+  },
+  devicestudio: {
+    lucide: LucideActivity,
+    notes: 'Used in Device Studio tool identity'
+  },
+  'device-studio': {
+    lucide: LucideActivity,
+    notes: 'Used in Device Studio tool identity'
+  },
+  pipette: {
+    lucide: LucidePipette,
+    notes: 'Eyedropper / Color Picker'
+  },
+  unlock: {
+    lucide: LucideUnlock,
+    notes: 'Unlocked state'
+  },
+  square: {
+    lucide: LucideSquare,
+    notes: 'Background / Square'
+  },
   phone: {
     lucide: LucidePhone
   },
@@ -891,6 +947,12 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   target: {
     lucide: LucideTarget
   },
+  crosshair: {
+    lucide: LucideCrosshair
+  },
+  select: {
+    lucide: LucideCrosshair
+  },
   'graph-star': {
     lucide: LucideStar
   },
@@ -913,6 +975,12 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
     lucide: LucideArrowUpDown
   },
   'bar-chart-2': {
+    lucide: LucideBarChart2
+  },
+  'bar-chart': {
+    lucide: LucideBarChart2
+  },
+  'chart-bar': {
     lucide: LucideBarChart2
   },
   'chevrons-up-down': {
@@ -969,14 +1037,8 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   'flip-vertical': {
     lucide: LucideFlipVertical
   },
-  unlock: {
-    lucide: LucideUnlock
-  },
   crop: {
     lucide: LucideCrop
-  },
-  pipette: {
-    lucide: LucidePipette
   },
   ruler: {
     lucide: LucideRuler
@@ -1037,5 +1099,104 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   },
   qr: {
     lucide: LucideQrCode
+  },
+  camera: {
+    lucide: LucideCamera,
+    notes: 'Webcam and camera test'
+  },
+  webcam: {
+    lucide: LucideCamera,
+    notes: 'Webcam test'
+  },
+  'camera-off': {
+    lucide: LucideCameraOff,
+    notes: 'Camera turned off'
+  },
+  mic: {
+    lucide: LucideMic,
+    notes: 'Microphone test'
+  },
+  microphone: {
+    lucide: LucideMic,
+    notes: 'Microphone test'
+  },
+  'mic-off': {
+    lucide: LucideMicOff,
+    notes: 'Microphone muted'
+  },
+  headphones: {
+    lucide: LucideHeadphones,
+    notes: 'Speaker and headphone test'
+  },
+  headphone: {
+    lucide: LucideHeadphones,
+    notes: 'Headphone test'
+  },
+  speaker: {
+    lucide: LucideVolume2,
+    notes: 'Speaker test'
+  },
+  volume: {
+    lucide: LucideVolume2,
+    notes: 'Audio volume'
+  },
+  speed: {
+    lucide: LucideGauge,
+    notes: 'Internet speed test'
+  },
+  gauge: {
+    lucide: LucideGauge,
+    notes: 'Speedometer gauge'
+  },
+  screen: {
+    lucide: LucideScreenShare,
+    notes: 'Screen sharing test'
+  },
+  'screen-share': {
+    lucide: LucideScreenShare,
+    notes: 'Screen share'
+  },
+  monitor: {
+    lucide: LucideMonitor,
+    notes: 'Display monitor'
+  },
+  radio: {
+    lucide: LucideRadio,
+    notes: 'Audio broadcast / sweep'
+  eraser: {
+    lucide: LucideEraser,
+    notes: 'Eraser tool for masks'
+  },
+  brush: {
+    lucide: LucideBrush,
+    notes: 'Brush tool for painting masks'
+  },
+  paintbrush: {
+    lucide: LucidePaintbrush,
+    notes: 'Paintbrush'
+  },
+  undo: {
+    lucide: LucideUndo,
+    notes: 'Undo action'
+  },
+  redo: {
+    lucide: LucideRedo,
+    notes: 'Redo action'
+  },
+  'watermark-remover': {
+    lucide: LucideWand2,
+    notes: 'Watermark Remover tool'
+  },
+  watermark: {
+    lucide: LucideWand2,
+    notes: 'Watermark Remover tool alias'
+  },
+  hand: {
+    lucide: LucideHand,
+    notes: 'Hand/Pan tool'
+  },
+  move: {
+    lucide: LucideMove,
+    notes: 'Move/Pan tool'
   }
 };

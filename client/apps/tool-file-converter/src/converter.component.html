@@ -1,0 +1,70 @@
+<div
+  class="converter-page-wrapper"
+  role="region"
+  aria-label="File Converter workspace"
+  (dragover)="onPageDragOver($event)"
+  (dragleave)="onPageDragLeave($event)"
+  (drop)="onPageDrop($event)"
+>
+  <!-- Full-Page Drag Overlay (shown only during page dragover) -->
+  @if (isPageDragOver()) {
+    <div class="fullpage-drag-overlay" aria-hidden="true">
+      <ts-icon name="upload-cloud" [size]="32" class="alert-icon" />
+      <span class="drag-overlay-text">Drop to add files</span>
+    </div>
+  }
+
+  <!-- Calm Alert Notification (Validation / Error messages) -->
+  @if (notification(); as note) {
+    <div class="calm-alert-banner" role="alert" aria-live="polite">
+      <ts-icon name="info" [size]="16" class="alert-icon" />
+      <span class="alert-text">{{ note }}</span>
+      <button
+        type="button"
+        class="alert-dismiss-btn"
+        (click)="notification.set(null)"
+        aria-label="Dismiss notification"
+      >
+        <ts-icon name="x" [size]="16" />
+      </button>
+    </div>
+  }
+
+  <!-- Screen State Switching -->
+  @if (files().length === 0) {
+    <!-- IDLE STATE -->
+    <app-file-drop-zone (filesDropped)="onFilesDropped($event)" />
+  } @else {
+    <!-- ACTIVE STATE: 2-Column Workspace -->
+    <div class="active-workspace">
+      <div class="workspace-left">
+        <app-file-list
+          [files]="files()"
+          (addFiles)="onFilesDropped($event)"
+          (remove)="removeFile($event)"
+          (retry)="retryFile($event)"
+          (changeFormat)="onChangeFormat($event)"
+          (clear)="clearAll()"
+        />
+      </div>
+
+      <div class="workspace-right">
+        <app-conversion-settings
+          [files]="files()"
+          [options]="options()"
+          [capabilities]="capabilities()"
+          [isConverting]="isConverting()"
+          [pageRangeError]="pageRangeError()"
+          [zipDownloadUrl]="zipDownloadUrl()"
+          (optionsChange)="onOptionsChange($event)"
+          (convert)="startBatchConversion()"
+        />
+      </div>
+    </div>
+  }
+
+  <!-- Screen reader status announcements -->
+  <div class="sr-only" aria-live="polite" aria-atomic="true">
+    {{ screenReaderStatus() }}
+  </div>
+</div>

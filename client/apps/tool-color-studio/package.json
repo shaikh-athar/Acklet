@@ -1,0 +1,10 @@
+{
+  "name": "tool-color-studio",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "cd \"$(git rev-parse --show-toplevel)/client\" && npx vitest run apps/tool-color-studio",
+    "build": "cd \"$(git rev-parse --show-toplevel)/client\" && npx ng build"
+  }
+}
+

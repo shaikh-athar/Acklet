@@ -73,7 +73,7 @@ export class ToolContextService {
     this.badgeCount.set(count);
   }
 
-  toast(type: ToastMessage['type'], message: string, title?: string, durationMs = 4000): void {
+  toast(type: ToastMessage['type'], message: string, title?: string, durationMs = 5000): void {
     const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const newToast: ToastMessage = { id, type, title, message, durationMs };
     this.toasts.update(list => [...list, newToast]);

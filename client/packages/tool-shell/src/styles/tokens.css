@@ -179,6 +179,17 @@ html[data-theme="dark"],
   --bg-surface-hover: rgba(255, 255, 255, 0.06);
   --border-strong: #303744;
   --border-subtle: #303744;
+
+  /* Tool & App Alias Tokens */
+  --app-background: #111318;
+  --surface-secondary: #202530;
+  --text-primary: #FCFCFC;
+  --text-secondary: #94A3B8;
+  --border-color: #303744;
+  --bg-base: var(--app-background);
+  --bg-1: var(--surface-1);
+  --bg-2: var(--surface-2);
+  --bg-3: var(--surface-3);
   --tool-accent: var(--accent);
   --tool-accent-soft: var(--accent-soft);
   --tool-accent-border: var(--accent-border);
@@ -333,6 +344,17 @@ html[data-theme="light"],
   --border-accent: #09090B;
 
   /* Semantic Surface & Accent Tokens (Light Mode: Clean Minimal) */
+  --app-background: #F8FAFC;
+  --surface: #FFFFFF;
+  --surface-secondary: #F1F5F9;
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
+  --border-color: #E2E8F0;
+  --bg-base: var(--app-background);
+  --bg-1: var(--surface);
+  --bg-2: var(--surface-secondary);
+  --bg-3: #E2E8F0;
+
   --surface-base: #F8FAFC;
   --surface-1: #FFFFFF;
   --surface-2: #F1F5F9;
@@ -936,6 +958,62 @@ html[data-theme="light"],
   --tool-accent-border: rgba(225, 29, 72, 0.20);
   --tool-accent-glow: rgba(225, 29, 72, 0.15);
   --tool-accent-ink: #FFFFFF;
+  --on-accent: var(--accent-ink);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--accent-ink);
+  --tool-brand-accent: var(--accent);
+}
+
+/* Olive Palette (File Converter):
+   light: accent #5B7A1E, ink #FFFFFF, strong #4A6418
+   dark:  accent #A3C75A, ink #0F1608, strong #BBE070
+*/
+[data-accent="olive"],
+.ts-root[data-accent="olive"],
+[data-theme="dark"][data-accent="olive"],
+.ts-root[data-theme="dark"][data-accent="olive"],
+[data-theme="dark"] [data-accent="olive"],
+.ts-root[data-theme="dark"] [data-accent="olive"] {
+  --page-bg: #0F1011;
+  --ts-page-bg: #0F1011;
+  --accent: #A3C75A;
+  --accent-ink: #0F1608;
+  --accent-strong: #BBE070;
+  --accent-soft: #1F2A10;
+  --accent-border: rgba(163, 199, 90, 0.28);
+  --accent-glow: rgba(163, 199, 90, 0.20);
+  --accent-2-glow: rgba(163, 199, 90, 0.20);
+  --accent-2-glow-dark: rgba(163, 199, 90, 0.12);
+  --border-accent: #A3C75A;
+  --tool-accent: #A3C75A;
+  --tool-accent-soft: #1F2A10;
+  --tool-accent-border: rgba(163, 199, 90, 0.28);
+  --tool-accent-glow: rgba(163, 199, 90, 0.20);
+  --on-accent: var(--accent-ink);
+  --ts-accent: var(--accent);
+  --ts-accent-contrast: var(--accent-ink);
+  --tool-brand-accent: var(--accent);
+}
+
+[data-theme="light"][data-accent="olive"],
+.ts-root[data-theme="light"][data-accent="olive"],
+[data-theme="light"] [data-accent="olive"],
+.ts-root[data-theme="light"] [data-accent="olive"] {
+  --page-bg: #F7F8F8;
+  --ts-page-bg: #F7F8F8;
+  --accent: #5B7A1E;
+  --accent-ink: #FFFFFF;
+  --accent-strong: #4A6418;
+  --accent-soft: #F3F7E8;
+  --accent-border: rgba(91, 122, 30, 0.22);
+  --accent-glow: rgba(91, 122, 30, 0.15);
+  --accent-2-glow: rgba(91, 122, 30, 0.15);
+  --accent-2-glow-dark: rgba(91, 122, 30, 0.08);
+  --border-accent: #5B7A1E;
+  --tool-accent: #5B7A1E;
+  --tool-accent-soft: #F3F7E8;
+  --tool-accent-border: rgba(91, 122, 30, 0.22);
+  --tool-accent-glow: rgba(91, 122, 30, 0.15);
   --on-accent: var(--accent-ink);
   --ts-accent: var(--accent);
   --ts-accent-contrast: var(--accent-ink);
