@@ -1,0 +1,223 @@
+<!-- apps/tool-watermark-remover/src/watermark-remover.component.html -->
+<div 
+  class="wm-remover-root"
+  (dragenter)="onWindowDragEnter($event)"
+  (dragover)="onWindowDragOver($event)"
+  (dragleave)="onWindowDragLeave($event)"
+  (drop)="onWindowDrop($event)"
+>
+  
+  <!-- Full Window Drag-and-Drop Overlay -->
+  @if (isWindowDragging()) {
+    <div class="window-drag-overlay animate-fade-in" role="status" aria-live="polite">
+      <div class="drag-card">
+        <ts-icon name="upload" [size]="48" class="drag-icon" />
+        <h3 class="drag-title">Drop your image here</h3>
+        <p class="drag-subtitle">Release to load into Watermark Remover</p>
+      </div>
+    </div>
+  }
+
+  <!-- Error Banner -->
+  @if (errorMessage()) {
+    <div class="wm-error-banner animate-fade-in" role="alert">
+      <div class="error-content">
+        <ts-icon name="circle-alert" [size]="18" class="error-icon" />
+        <span class="error-text">{{ errorMessage() }}</span>
+      </div>
+      <button type="button" class="error-close-btn" (click)="errorMessage.set(null)" aria-label="Dismiss error">
+        <ts-icon name="x" [size]="16" />
+      </button>
+    </div>
+  }
+
+  <!-- Toast Notification -->
+  @if (toastMessage()) {
+    <div class="wm-toast animate-slide-up" role="status" aria-live="polite">
+      <ts-icon name="check" [size]="16" class="toast-check-icon" />
+      <span>{{ toastMessage() }}</span>
+    </div>
+  }
+
+  <!-- Main Content Workbench Area -->
+  <div class="wm-workbench-content">
+
+    <!-- Stage 1: Empty Upload State -->
+    @if (stage() === 'upload') {
+      <app-upload-zone 
+        (fileDropped)="onFileDropped($event)"
+        (filesDropped)="onFilesDropped($event)"
+        (sampleSelected)="onSampleSelected($event)"
+      />
+    }
+
+    <!-- Stage 2: Mask Editing State -->
+    @if (stage() === 'edit' && imageElement()) {
+      <div class="editing-workbench animate-fade-in">
+        
+        <!-- Batch Edit Banner (Shown when customizing an image from batch) -->
+        @if (editingBatchItemId()) {
+          <div class="batch-edit-header-bar">
+            <div class="batch-edit-info">
+              <ts-icon name="square-pen" [size]="16" class="batch-edit-icon" />
+              <span>Editing mask for batch item: <strong>{{ currentImage()?.name }}</strong></span>
+            </div>
+            <div class="batch-edit-actions">
+              <button type="button" class="ts-batch-nav-btn primary" (click)="onSaveBatchItemEdit()">
+                <ts-icon name="check" [size]="15" />
+                <span>Save to Batch</span>
+              </button>
+              <button type="button" class="ts-batch-nav-btn secondary" (click)="onCancelBatchItemEdit()">
+                <ts-icon name="x" [size]="15" />
+                <span>Cancel</span>
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- Image Metadata Strip -->
+        @if (currentImage()) {
+          <div class="image-meta-bar">
+            <div class="meta-left">
+              <ts-icon name="image" [size]="16" class="meta-icon" />
+              <span class="meta-name" [title]="currentImage()!.name">{{ currentImage()!.name }}</span>
+            </div>
+            <div class="meta-specs">
+              <span class="spec-pill">{{ currentImage()!.width }} × {{ currentImage()!.height }} px</span>
+              <span class="spec-pill">{{ formatBytes(currentImage()!.sizeBytes) }}</span>
+              <span class="spec-pill uppercase">{{ currentImage()!.mimeType.replace('image/', '') }}</span>
+              @if (currentImage()?.hasAlpha) {
+                <span class="spec-pill alpha-pill">Transparent</span>
+              }
+              @if (currentImage()?.exifDetected) {
+                <span class="spec-pill exif-pill">EXIF</span>
+              }
+
+              @if (!editingBatchItemId()) {
+                <button 
+                  type="button" 
+                  class="switch-batch-btn" 
+                  (click)="onSwitchToBatchMode()" 
+                  title="Switch to Batch Processing Workspace"
+                >
+                  <ts-icon name="layers" [size]="13" />
+                  <span>Batch Mode</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Workspace Toolbar -->
+        <app-watermark-toolbar 
+          [activeTool]="activeTool()"
+          [brushSize]="brushSize()"
+          [maskOpacity]="maskOpacity()"
+          [zoom]="currentZoom()"
+          [hasMask]="hasMask()"
+          [activeRegionCount]="regionCount()"
+          [selectedRegionId]="selectedRegionId()"
+          [canUndo]="canUndo()"
+          [canRedo]="canRedo()"
+          [isProcessing]="isProcessing()"
+          [sensitivity]="detectionSensitivity()"
+          [inpaintingMode]="inpaintingMode()"
+          (toolChange)="onToolChange($event)"
+          (brushSizeChange)="onBrushSizeChange($event)"
+          (maskOpacityChange)="onMaskOpacityChange($event)"
+          (sensitivityChange)="detectionSensitivity.set($event)"
+          (inpaintingModeChange)="inpaintingMode.set($event)"
+          (autoDetect)="onAutoDetect()"
+          (autoProtect)="onAutoProtectSubjects()"
+          (clearMask)="onClearMask()"
+          (undo)="onUndo()"
+          (redo)="onRedo()"
+          (zoomIn)="onZoomIn()"
+          (zoomOut)="onZoomOut()"
+          (resetZoom)="onResetZoom()"
+          (fitScreen)="onFitScreen()"
+          (removeWatermark)="onRemoveWatermark()"
+          (removeSingleRegion)="onRemoveSingleRegion($event)"
+          (replaceImage)="onPromptReplaceImage()"
+        />
+
+        <!-- Canvas Workspace Viewport -->
+        <div class="canvas-viewport-slot">
+          <app-canvas-workspace 
+            #canvasWorkspace
+            [imageSource]="imageElement()!"
+            [activeTool]="activeTool()"
+            [brushSize]="brushSize()"
+            [maskOpacity]="maskOpacity()"
+            (maskStateChange)="onMaskStateChange($event)"
+            (zoomChange)="onZoomLevelChanged($event)"
+          />
+        </div>
+
+      </div>
+    }
+
+    <!-- Stage 3: Comparison View State -->
+    @if (stage() === 'comparing' && currentImage() && processedDataUrl()) {
+      <div class="comparison-workbench animate-fade-in">
+        <app-comparison-slider 
+          [originalDataUrl]="currentImage()!.dataUrl"
+          [processedDataUrl]="processedDataUrl()!"
+          [imageWidth]="currentImage()!.width"
+          [imageHeight]="currentImage()!.height"
+          [qualityMetrics]="qualityMetrics()"
+          (reEdit)="onReEditMask()"
+          (retryWithUltra)="onRetryWithUltra()"
+          (resetOriginal)="onPromptResetOriginal()"
+          (openExport)="onOpenExport()"
+        />
+      </div>
+    }
+
+    <!-- Stage 4: Batch Dashboard State -->
+    @if (stage() === 'batch') {
+      <div class="batch-workbench animate-fade-in">
+        <app-batch-dashboard
+          (editItemRequested)="onEditBatchItem($event)"
+          (addFilesRequested)="onFilesDropped($event)"
+          (toastRequested)="showToast($event)"
+        />
+      </div>
+    }
+
+  </div>
+
+  <!-- Inpainting Processing Overlay -->
+  @if (isProcessing()) {
+    <app-processing-indicator 
+      [progress]="inpaintingProgress()"
+      (cancel)="onCancelProcessing()"
+    />
+  }
+
+  <!-- Export Dialog Modal -->
+  @if (showExportModal() && currentImage()) {
+    <app-export-modal 
+      [imageWidth]="currentImage()!.width"
+      [imageHeight]="currentImage()!.height"
+      [defaultFilename]="currentImage()!.name"
+      [hasAlpha]="currentImage()?.hasAlpha ?? false"
+      [exifDetected]="currentImage()?.exifDetected ?? false"
+      (download)="onExecuteDownload($event)"
+      (close)="showExportModal.set(false)"
+    />
+  }
+
+  <!-- Confirmation Dialog Modal -->
+  @if (confirmDialog()) {
+    <app-confirm-modal 
+      [title]="confirmDialog()!.title"
+      [message]="confirmDialog()!.message"
+      [confirmText]="confirmDialog()!.confirmText"
+      [danger]="confirmDialog()!.danger ?? false"
+      (confirm)="onConfirmDialogAction()"
+      (cancel)="onCancelDialogAction()"
+    />
+  }
+
+</div>
