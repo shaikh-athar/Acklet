@@ -46,50 +46,67 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
           <!-- Speedometer Gauge Card -->
           <div class="gauge-card">
             
-            <div class="gauge-wrapper">
-              <!-- Circular Speedometer SVG (Ookla Speedtest Horseshoe Layout) -->
-              <svg class="speedometer-svg" viewBox="0 0 240 160" aria-hidden="true">
-                <!-- Background Arc -->
-                <path
-                  class="gauge-bg-arc"
-                  d="M 63.3 135.6 A 74 74 0 1 1 176.7 135.6"
-                />
+            @if (metrics().status === 'idle') {
+              <!-- Initial GO Action State (Ookla Style with Acklet Blue Accent) -->
+              <div class="go-wrapper">
+                <button
+                  type="button"
+                  class="btn-go-action"
+                  (click)="startTest()"
+                  aria-label="Start speed test"
+                >
+                  <span class="go-pulse-ring" aria-hidden="true"></span>
+                  <span class="go-text">GO</span>
+                </button>
+                <div class="live-phase-text">{{ metrics().currentPhaseText }}</div>
+              </div>
+            } @else {
+              <!-- Active / Completed Gauge Wrapper -->
+              <div class="gauge-wrapper">
+                <!-- Circular Speedometer SVG (Ookla Speedtest Horseshoe Layout) -->
+                <svg class="speedometer-svg" viewBox="0 0 240 160" aria-hidden="true">
+                  <!-- Background Arc -->
+                  <path
+                    class="gauge-bg-arc"
+                    d="M 63.3 135.6 A 74 74 0 1 1 176.7 135.6"
+                  />
 
-                <!-- Active Progress Arc -->
-                <path
-                  class="gauge-active-arc"
-                  [attr.stroke-dasharray]="gaugeArcDash()"
-                  d="M 63.3 135.6 A 74 74 0 1 1 176.7 135.6"
-                />
+                  <!-- Active Progress Arc -->
+                  <path
+                    class="gauge-active-arc"
+                    [attr.stroke-dasharray]="gaugeArcDash()"
+                    d="M 63.3 135.6 A 74 74 0 1 1 176.7 135.6"
+                  />
 
-                <!-- Scale Tick Markers -->
-                <g class="gauge-ticks">
-                  <text x="76.3" y="124.6" class="tick-label">0</text>
-                  <text x="63.0" y="86.9" class="tick-label">10</text>
-                  <text x="84.9" y="43.1" class="tick-label">50</text>
-                  <text x="120.0" y="31.0" class="tick-label">100</text>
-                  <text x="174.8" y="72.3" class="tick-label">250</text>
-                  <text x="163.7" y="124.6" class="tick-label">500+</text>
-                </g>
-
-                <!-- Rotating Needle -->
-                <g transform="translate(120, 88)">
-                  <g class="needle-group" [attr.transform]="'rotate(' + needleAngle() + ')'" [style.transform]="'rotate(' + needleAngle() + 'deg)'">
-                    <polygon points="-2.5,0 0,-48 2.5,0" class="needle-blade" />
-                    <circle cx="0" cy="0" r="4.5" class="needle-hub" />
+                  <!-- Scale Tick Markers -->
+                  <g class="gauge-ticks">
+                    <text x="76.3" y="124.6" class="tick-label">0</text>
+                    <text x="63.0" y="86.9" class="tick-label">10</text>
+                    <text x="84.9" y="43.1" class="tick-label">50</text>
+                    <text x="120.0" y="31.0" class="tick-label">100</text>
+                    <text x="174.8" y="72.3" class="tick-label">250</text>
+                    <text x="163.7" y="124.6" class="tick-label">500+</text>
                   </g>
-                </g>
 
-                <!-- Center Readout: Speed & Unit -->
-                <g class="gauge-center-readout">
-                  <text x="120" y="122" class="live-speed-num">{{ currentSpeedDisplay() }}</text>
-                  <text x="120" y="139" class="live-speed-unit">{{ metrics().status === 'ping' ? 'MS' : 'Mbps' }}</text>
-                </g>
-              </svg>
+                  <!-- Rotating Needle -->
+                  <g transform="translate(120, 88)">
+                    <g class="needle-group" [attr.transform]="'rotate(' + needleAngle() + ')'" [style.transform]="'rotate(' + needleAngle() + 'deg)'">
+                      <polygon points="-2.5,0 0,-48 2.5,0" class="needle-blade" />
+                      <circle cx="0" cy="0" r="4.5" class="needle-hub" />
+                    </g>
+                  </g>
 
-              <!-- Phase Status Subtitle -->
-              <div class="live-phase-text">{{ metrics().currentPhaseText }}</div>
-            </div>
+                  <!-- Center Readout: Speed & Unit -->
+                  <g class="gauge-center-readout">
+                    <text x="120" y="122" class="live-speed-num">{{ currentSpeedDisplay() }}</text>
+                    <text x="120" y="139" class="live-speed-unit">{{ metrics().status === 'ping' ? 'MS' : 'Mbps' }}</text>
+                  </g>
+                </svg>
+
+                <!-- Phase Status Subtitle -->
+                <div class="live-phase-text">{{ metrics().currentPhaseText }}</div>
+              </div>
+            }
 
             <!-- Overall Progress Bar -->
             @if (isRunning()) {
@@ -483,6 +500,122 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
       background: #FFFFFF;
       border-color: #E2E8F0;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    }
+
+    /* GO Action Wrapper (Initial Ookla-Style State) */
+    .go-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 360px;
+      min-height: 220px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+    }
+
+    .btn-go-action {
+      position: relative;
+      width: 168px;
+      height: 168px;
+      border-radius: 50%;
+      border: 3px solid var(--tool-accent, #3B82F6);
+      background: rgba(59, 130, 246, 0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      margin: 8px 0 16px;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :host-context([data-theme="light"]) .btn-go-action {
+      border-color: #2563EB;
+      background: rgba(37, 99, 235, 0.03);
+    }
+
+    .btn-go-action:hover {
+      transform: scale(1.05);
+      border-color: var(--tool-accent, #3B82F6);
+      background: rgba(59, 130, 246, 0.1);
+      box-shadow: 0 0 36px var(--ds-accent-glow, rgba(59, 130, 246, 0.3));
+    }
+
+    :host-context([data-theme="light"]) .btn-go-action:hover {
+      border-color: #2563EB;
+      background: rgba(37, 99, 235, 0.08);
+      box-shadow: 0 0 36px rgba(37, 99, 235, 0.25);
+    }
+
+    .btn-go-action:active {
+      transform: scale(0.97);
+    }
+
+    .btn-go-action:focus-visible {
+      box-shadow: 0 0 0 4px var(--ds-accent-glow, rgba(59, 130, 246, 0.4));
+    }
+
+    .go-pulse-ring {
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 2px solid var(--tool-accent, #3B82F6);
+      opacity: 0.5;
+      animation: go-pulse 2.4s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+      pointer-events: none;
+    }
+
+    :host-context([data-theme="light"]) .go-pulse-ring {
+      border-color: #2563EB;
+    }
+
+    @keyframes go-pulse {
+      0% {
+        transform: scale(0.96);
+        opacity: 0.6;
+      }
+      60% {
+        transform: scale(1.14);
+        opacity: 0.15;
+      }
+      100% {
+        transform: scale(1.22);
+        opacity: 0;
+      }
+    }
+
+    .go-text {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: var(--text, #F4F4F5);
+      transition: color 0.2s ease;
+    }
+
+    :host-context([data-theme="light"]) .go-text {
+      color: #0F172A;
+    }
+
+    .btn-go-action:hover .go-text {
+      color: var(--tool-accent, #3B82F6);
+    }
+
+    :host-context([data-theme="light"]) .btn-go-action:hover .go-text {
+      color: #2563EB;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .go-pulse-ring {
+        animation: none;
+        display: none;
+      }
+      .btn-go-action {
+        transition: none;
+      }
     }
 
     .gauge-wrapper {

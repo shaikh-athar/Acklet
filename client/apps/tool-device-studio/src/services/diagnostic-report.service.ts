@@ -490,8 +490,15 @@ export class DiagnosticReportService {
     ${spk ? `
     <tr>
       <td>Speaker & Headphones</td>
-      <td><span class="status-pill pill-pass">${spk.diagnosticSummary?.verdict?.toUpperCase() || 'VERIFIED'}</span></td>
-      <td>Stereo Separation: <strong>${spk.diagnosticSummary?.stereoSeparationScore ?? 100}%</strong> • Balanced Channels Verified</td>
+      <td><span class="status-pill ${spk.diagnosticSummary?.verdict === 'verified' ? 'pill-pass' : 'pill-warn'}">${spk.diagnosticSummary?.verdict?.toUpperCase() || 'VERIFIED'}</span></td>
+      <td>
+        Device: <strong>${spk.activeOutputDeviceLabel || 'Default Device'}</strong> •
+        Stereo Separation: <strong>${spk.diagnosticSummary?.stereoSeparationScore ?? 100}%</strong><br>
+        Left: <strong>${spk.confirmations?.leftConfirmed === true ? 'Passed' : spk.confirmations?.leftConfirmed === false ? 'Needs Attention' : 'Not Tested'}</strong> •
+        Right: <strong>${spk.confirmations?.rightConfirmed === true ? 'Passed' : spk.confirmations?.rightConfirmed === false ? 'Needs Attention' : 'Not Tested'}</strong> •
+        Stereo: <strong>${spk.confirmations?.stereoConfirmed === true ? 'Passed' : spk.confirmations?.stereoConfirmed === false ? 'Needs Attention' : 'Not Tested'}</strong> •
+        Frequency: <strong>${spk.confirmations?.frequenciesConfirmed === true ? 'Passed' : spk.confirmations?.frequenciesConfirmed === false ? 'Needs Attention' : 'Not Tested'}</strong>
+      </td>
     </tr>` : ''}
     ${scr ? `
     <tr>

@@ -1,14 +1,58 @@
-# Acklet Device Studio — System Specification & Architecture
+# Acklet Device Studio — Complete System Specification & Architecture Reference
 
-## 1. Overview & Tool Metadata
+> **Authoritative Technical Documentation & Architecture Decision Log**
+> *Last Updated: November 2026 | Surface: Tools (`client/apps/tool-device-studio`)*
+> *Reference Document for Engineers, Designers, and AI Agents Resuming or Extending Device Studio.*
 
-Acklet Device Studio is a unified, browser-side diagnostic and hardware/network calibration suite built for remote professionals, developers, and conference attendees. It consolidates six independent testing modules under one cohesive, high-performance workspace within the Acklet design system.
+---
 
-- **Tool Slug**: `devicestudio` (canonical alias: `device-studio`)
-- **Subdomain**: `devicestudio.acklet.com` (locally: `devicestudio.localhost:4200`)
-- **Status**: Production Ready / Active
+## Table of Contents
+
+1. [Executive Summary & Tool Metadata](#1-executive-summary--tool-metadata)
+2. [Core Architecture & Technology Stack](#2-core-architecture--technology-stack)
+3. [Architecture Decision Records (ADRs) — The Definitive Decision Log](#3-architecture-decision-records-adrs--the-definitive-decision-log)
+   - [ADR-001: Unified Acklet Blue Accent Palette](#adr-001-unified-acklet-blue-accent-palette)
+   - [ADR-002: Dual-Theme Contrast & Adaptive Media Containers](#adr-002-dual-theme-contrast--adaptive-media-containers)
+   - [ADR-003: Spartan UI & Custom Acklet Dropdown Primitives](#adr-003-spartan-ui--custom-acklet-dropdown-primitives)
+   - [ADR-004: Three-Tier Information Priority Hierarchy](#adr-004-three-tier-information-priority-hierarchy)
+   - [ADR-005: Two-Column Workspace Layout & Whitespace Elimination](#adr-005-two-column-workspace-layout--whitespace-elimination)
+   - [ADR-006: Speaker Test — Step-by-Step Default & Inline Final Results](#adr-006-speaker-test--step-by-step-default--inline-final-results)
+   - [ADR-007: Speaker Audio Engine — Bell Chime Asset & Synchronous Stop Pipeline](#adr-007-speaker-audio-engine--bell-chime-asset--synchronous-stop-pipeline)
+   - [ADR-008: Speaker Single-Source Audio Output & Volume Control](#adr-008-speaker-single-source-audio-output--volume-control)
+   - [ADR-009: Internet Speed Test — Ookla-Style "GO" Button & Zero-Overlap Horseshoe Gauge](#adr-009-internet-speed-test--ookla-style-go-button--zero-overlap-horseshoe-gauge)
+   - [ADR-010: Microphone Test — 310px Geometry & Glitch-Free Canvas Lifecycle](#adr-010-microphone-test--310px-geometry--glitch-free-canvas-lifecycle)
+   - [ADR-011: Public IP Lookup — Multi-Provider Fallback & Privacy Score Simplification](#adr-011-public-ip-lookup--multi-provider-fallback--privacy-score-simplification)
+   - [ADR-012: Screen Sharing Test — Auto-Fitting Card & Zero-Manual-Fit Buttons](#adr-012-screen-sharing-test--auto-fitting-card--zero-manual-fit-buttons)
+   - [ADR-013: Meeting Readiness — Single-Row Badges & Actionable Failure Guidance](#adr-013-meeting-readiness--single-row-badges--actionable-failure-guidance)
+   - [ADR-014: System Information — Consolidated 1-Line Spec Bar](#adr-014-system-information--consolidated-1-line-spec-bar)
+   - [ADR-015: 100% Client-Side Zero-Storage Privacy Guarantee](#adr-015-100-client-side-zero-storage-privacy-guarantee)
+   - [ADR-016: Zero-Dependency Printable PDF Reporting](#adr-016-zero-dependency-printable-pdf-reporting)
+4. [Module-by-Module Technical Deep Dive](#4-module-by-module-technical-deep-dive)
+   - [4.1 Webcam Test](#41-webcam-test-webcam-webcam-test-camera)
+   - [4.2 Microphone Test](#42-microphone-test-microphone-mic-test-mic)
+   - [4.3 Speaker & Headphone Test](#43-speaker--headphone-test-speaker-audio-test-headphone)
+   - [4.4 Internet Speed Test](#44-internet-speed-test-speed-speed-test)
+   - [4.5 Public IP Checker](#45-public-ip-checker-ip-ip-lookup)
+   - [4.6 Screen Sharing Test](#46-screen-sharing-test-screen-screen-test)
+   - [4.7 Meeting Readiness Quick Check](#47-meeting-readiness-quick-check)
+   - [4.8 Diagnostic History & Multi-Format Reports Dashboard](#48-diagnostic-history--multi-format-reports-dashboard-history-reports)
+5. [State Management, Signals & Lifecycle Architecture](#5-state-management-signals--lifecycle-architecture)
+6. [Comprehensive Codebase Map & File Inventory](#6-comprehensive-codebase-map--file-inventory)
+7. [Troubleshooting, Gotchas & Debugging Playbook](#7-troubleshooting-gotchas--debugging-playbook)
+8. [Future Roadmap & Open Decisions (Where to Pick Up)](#8-future-roadmap--open-decisions-where-to-pick-up)
+9. [Verification Commands & Quality Gates](#9-verification-commands--quality-gates)
+
+---
+
+## 1. Executive Summary & Tool Metadata
+
+Acklet Device Studio is a unified, browser-side diagnostic and hardware/network calibration suite built for remote professionals, software engineers, and conference attendees. It consolidates six independent testing modules under one cohesive, high-performance workspace within the Acklet monorepo ecosystem.
+
+- **Tool Slug**: `devicestudio` (canonical aliases: `device-studio`, `tools/devicestudio`)
+- **Subdomain Routing**: `devicestudio.acklet.com` (locally: `devicestudio.localhost:4200`)
+- **Status**: Production Ready / Fully Refined
 - **Requires Backend**: `false` (100% Client-Side In-Memory Execution)
-- **Primary Accent Color**: Blue (`#2563EB` light / `#3B82F6` dark, Hue: 217)
+- **Primary Accent Color**: Acklet Blue (`#2563EB` Light / `#3B82F6` Dark, Hue: 217)
 - **Surface**: Tools Surface ([client/apps/tool-device-studio](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio))
 - **Related Documentation**:
   - [ui-design-system.md](file:///Users/ayaz/Acklet-file-Converter/docs/ui-design-system.md)
@@ -17,384 +61,452 @@ Acklet Device Studio is a unified, browser-side diagnostic and hardware/network 
   - [color-studio.md](file:///Users/ayaz/Acklet-file-Converter/docs/color-studio.md)
   - [verification-guide.md](file:///Users/ayaz/Acklet-file-Converter/docs/verification-guide.md)
 
-### Privacy & Zero-Storage Guarantee
-- **100% Client-Side Memory Processing**: All webcam frames, microphone audio streams, audio oscillator tones, and display screen shares are processed exclusively in volatile browser RAM.
-- **Zero Server Uploads**: No video recordings, audio snippets, or screen capture data are ever transmitted or saved to any server or database.
-- **Immediate Ephemerality**: All MediaStream tracks (`stream.getTracks().forEach(t => t.stop())`), audio contexts, and object URLs are revoked immediately upon stopping tests or navigating away.
-
 ---
 
-## 2. Core Architecture & Design System
+## 2. Core Architecture & Technology Stack
 
-Acklet Device Studio adheres strictly to the canonical Acklet Design System and monorepo architectural rules:
+Device Studio is engineered with modern web standards, strict surface boundary isolation, and reactive Angular 22 primitives:
 
-### Technology Stack
-- **Framework**: Angular 22+ (Standalone Components, Signals, `ChangeDetectionStrategy.OnPush`)
-- **Routing**: Angular Router with lazy-loaded route modules and browser navigation synchronization
-- **Design Tokens**: Canonical dual-theme CSS variables (`--bg-*`, `--text-*`, `--border-*`, `--accent-*`, `--tool-accent`)
-- **Primitive Components**: Spartan UI Helm primitives (`HlmButton`, `HlmBadge`, `HlmInput`)
-- **Icons**: Acklet Tool Shell icon system (`TsIconComponent` mapped via `TS_ICON_MAP`)
-- **Build & Test Tools**: Angular CLI (`@angular/cli`), Tailwind CSS v4, Vitest
-
-### Canonical Blue Accent System & Design Tokens
-Device Studio adheres to Acklet's unified Blue accent color palette, standard across all Acklet tools:
-- **Manifest Accent**: `blue` (Hue: `217`)
-- **Light Theme**:
-  - Primary / Accent: `#2563EB` (Blue 600)
-  - Hover / Active: `#1D4ED8` (Blue 700)
-  - Soft Background: `rgba(37, 99, 235, 0.08)`
-  - Subdued Border: `rgba(37, 99, 235, 0.20)`
-- **Dark Theme**:
-  - Primary / Accent: `#3B82F6` (Blue 500)
-  - Hover / Active: `#60A5FA` (Blue 400)
-  - Soft Background: `rgba(59, 130, 246, 0.12)`
-  - Subdued Border: `rgba(59, 130, 246, 0.25)`
-- **WCAG AA Conformance**: All interactive states achieve $\ge 4.5:1$ contrast against light (`#FFFFFF`, `#F8FAFC`) and dark (`#09090B`, `#18181B`) backgrounds.
-- **Dual-Theme Adaptive Preview Containers**:
-  - Camera, Microphone, and Screen Share preview cards eliminate the unstyled pitch-black void in Light mode. When idle or waiting for permissions, viewports render clean `#F8FAFC` subtle dashed containers with friendly user prompts and explicit permission recovery states (`Camera Permission Blocked`, `Microphone Permission Blocked`, `Screen Sharing Permission Needed`). Containers switch to true black only during active hardware media streaming.
-- **Precision Speedometer Needle**:
-  - The Internet Speed Test speedometer gauge uses a nested origin translation `<g transform="translate(100, 110)">` with origin `(0, 0)` rotation, preventing viewBox scaling drift and ensuring the needle aligns flawlessly across all screen resolutions and browser zoom levels.
-
-### Information Architecture & Progressive Disclosure
-Following Acklet's global interface refinement standards, Device Studio strictly adheres to the principle: **"Show users what they need, when they need it. Hide everything else."**
-
-- **Semantic Progressive Disclosure (`<details class="technical-details">` & `<summary>`)**:
-  - Accessible, zero-dependency, keyboard-navigable disclosure widgets fold deep hardware telemetry, driver DSP constraints, resolution ladders, and troubleshooting guidance out of the primary viewport.
-  - Reduces initial card and column clutter by $\approx 60\%$ while retaining $100\%$ of underlying diagnostic precision for IT support and power users.
-  - Styled with dual-theme design tokens (`--ds-card-bg`, `--border`, `--tool-accent`) ensuring seamless high contrast in both Light and Dark themes.
-- **Minimalist Card Standardization**:
-  - Module cards on the landing page feature strictly: Icon + Title + 1-sentence description + Action affordance ("Open [Tool] &rarr;").
-  - Redundant decorative taglines, multi-tier spec pill badges, and duplicate technical labels are removed from primary card faces.
-- **Human-Friendly Status Language**:
-  - Complex hardware state codes are mapped to clear, everyday status indicators: `Working`, `Good`, `Needs attention`, `Offline`, and `Not tested`.
-  - Semantic status pills: Emerald (`Working`/`Good`), Amber (`Needs attention`), Rose (`Offline`), and Slate (`Not tested`).
-- **Acklet Custom Dropdown Component (`AckletDropdownComponent`)**:
-  - Replaces all native browser `<select>` elements across all six modules and the History & Reports dashboard.
-  - Implements keyboard navigation (`ArrowUp`, `ArrowDown`, `Enter`, `Space`, `Escape`), auto-focus scrolling, outside-click dismissal (`document:click`), and active selection indicators with teal checkmarks.
-  - Supports rich option metadata (icons, badges, secondary descriptions) with dual-theme design tokens (`--bg-1`, `--border`, `--tool-accent`).
-  - Implemented in [acklet-dropdown.component.ts](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/components/shared/acklet-dropdown.component.ts).
-
----
-
-## 3. The Six Independent Diagnostic Modules
-
-Device Studio consists of six independent, dedicated testing workspaces:
-
-### 1. Webcam Test (`/webcam`, `/webcam-test`, `/camera`)
-- **Camera Device Selection & Switching**: Enumerate all physical `videoinput` devices via `navigator.mediaDevices.enumerateDevices()`. Supports dynamic switching between front and rear cameras where available (`facingMode`: 'user' vs 'environment').
-- **Live Stream Viewport**: Real-time video preview with horizontal mirror toggle, fullscreen mode, and hardware interruption detection (`track.onended`, `track.onmute`, `track.onunmute`).
-- **Real-Time Stream HUD**:
-  - Live negotiated resolution tag (e.g. `1080p Full HD`).
-  - Actual measured FPS readout via `requestAnimationFrame` frame tracking.
-  - Lighting & exposure status badge.
-  - Composite quality grade badge.
-- **Camera Diagnostics (Actual Track Telemetry)**:
-  - Active device label and device ID.
-  - Negotiated stream dimensions ($W \times H$) and exact aspect ratio.
-  - Measured live render frame rate (FPS).
-  - Track capabilities inspection (`track.getCapabilities()`): zoom min/max/step, focus mode, exposure mode, white balance mode, and torch/flash.
-- **Advanced Camera Intelligence (Optical Analysis)**:
-  - *Lighting & Exposure Meter*: Average ITU-R BT.709 perceived luminance ($Y = 0.2126R + 0.7152G + 0.0722B$), classifying exposure into Underexposed ($<28\%$), Optimal/Balanced ($28-76\%$), or Overexposed ($>76\%$).
-  - *Image Sharpness & Clarity (Heuristic)*: Standard deviation of pixel luminance variance representing edge definition and texture contrast ($0 - 100\%$, Soft / Moderate / Sharp).
-  - *Color Temperature*: Red-to-Blue chromatic ratio classifying lighting into Warm ($\sim 3800\text{K}$), Neutral ($\sim 5500\text{K}$ daylight), or Cool ($\sim 7200\text{K}$).
-  - *Composite Quality Score & Grade*: Heuristic rating ($0 - 100$) and grade (`A+`, `A`, `B`, `C`, `D`) with meeting readiness assessment.
-  - *Clear Labeling*: Explicitly distinguishes measured hardware parameters from heuristic assessments.
-- **Resolution Comparison Ladder**:
-  - Compares the camera's active resolution against standard industry tiers: 4K UHD ($3840 \times 2160$), 2K QHD ($2560 \times 1440$), 1080p FHD ($1920 \times 1080$), 720p HD ($1280 \times 720$), and 480p SD ($640 \times 480$).
-  - Highlights active tier and displays verified platform support (Zoom, Google Meet, Microsoft Teams, OBS Studio).
-- **Snapshot Capture & Lightbox Inspector**:
-  - HTML Canvas frame capture respecting mirror orientation.
-  - Gallery thumbnail grid with quick download and delete.
-  - Full-screen Lightbox Inspector modal with 1-click **Copy to Clipboard** via `navigator.clipboard.write([new ClipboardItem(...)])`, **Download PNG**, Retake, and Delete.
-- **Robust Error & Permission Handling**:
-  - Differentiates `NotAllowedError` (permission denied), `NotFoundError` (no hardware), `NotReadableError` (locked by Zoom/Teams/FaceTime), `OverconstrainedError` (unsupported resolution), and insecure origin.
-  - Contextual step-by-step guidance for Chrome, Safari, Edge, Firefox, and macOS/Windows Privacy settings.
-- **Zero-Storage Privacy Guarantee**:
-  - All frame processing occurs purely in local browser memory. Zero video or snapshot data is ever sent to any remote server. Tracks are completely closed on test stop or navigation.
-
-### 2. Microphone Test (`/microphone`, `/mic-test`, `/mic`)
-- **Microphone Device Selection & Switching**: Enumerates all physical `audioinput` devices using `navigator.mediaDevices.enumerateDevices()`. Dynamically switches active input devices without page refresh, and listens for hardware connection changes via `navigator.mediaDevices.ondevicechange`.
-- **Live Audio Capture & Web Audio API Architecture**:
-  - Employs dedicated browser `AudioContext`, `MediaStreamAudioSourceNode`, and `AnalyserNode` (`fftSize = 2048`, `smoothingTimeConstant = 0.8`).
-  - Dual-mode high-performance canvas visualizer:
-    - *Oscilloscope (Time Domain)*: Continuous 60 FPS waveform rendering with subtle background grid and glow.
-    - *Frequency Spectrum (FFT)*: 56-band multi-frequency bar analyzer with blue-to-emerald gradient and high-frequency peak highlighting.
-    - *Glitch-Free Ephemeral Lifecycle*: Canvas visualizer is explicitly cleared via `ctx.clearRect()` and toggled to `display: none` when the microphone is stopped or destroyed, preventing frozen baseline artifacts during idle states.
-    - *Distortion-Proof Visualizer Geometry*: Container uses `310px` height with strict `flex-shrink: 0` 1:1 squircle icon dimensions (`56px × 56px`), ensuring consistent geometry and balanced spacing across Light and Dark themes.
-- **Volume & Dynamic Range Telemetry**:
-  - *Live Input Volume Meter*: Real-time RMS amplitude calculation ($0 - 100\%$) with logarithmic loudness scaling.
-  - *Peak Level & Decaying Peak-Hold*: Exact digital ceiling measurement in dBFS ($-60\text{ dBFS}$ to $0\text{ dBFS}$) with visual peak hold notch.
-  - *Silence Detection*: Continuous detection flagging input below $2\%$ / $-50\text{ dBFS}$ for $>1.5\text{s}$ with visual status alert.
-  - *Clipping Detection*: Real-time warning and counter when peak reaches $\ge -0.5\text{ dBFS}$ to protect against digital distortion.
-  - *Speech Dynamics History*: Mini rolling history buffer (last 32 samples) visualizing live speech level dynamics.
-- **Voice Recording & Playback Check**:
-  - Records local voice sample using `MediaRecorder` with automatic MIME type detection (`audio/webm;codecs=opus`, `audio/webm`, `audio/mp4`, `audio/ogg`).
-  - Configurable recording duration (5s, 10s, 15s) with live elapsed countdown timer and pulsing recording badge.
-  - In-browser playback with play, pause, progress status, retake, and download (`.webm`, `.mp4`).
-  - 100% Client-Side In-Memory: Audio sample is retained in volatile memory and never transmitted to any external server.
-- **Advanced Audio Intelligence (Acoustic Analysis)**:
-  - *Voice Clarity Analyzer (Heuristic)*: Analyzes spectral balance in the human speech formant range ($300\text{ Hz} - 3400\text{ Hz}$) vs low rumble ($<120\text{ Hz}$) and high hiss ($>8000\text{ Hz}$), rating clarity as Clear, Moderate, or Muffled.
-  - *Ambient Noise Floor Estimator*: Measures background room acoustics during silent pauses (Silent $<-52\text{ dBFS}$, Quiet $-52\text{ to }-42\text{ dBFS}$, Moderate, High Noise).
-  - *Composite Audio Quality Score & Grade*: Generates an overall letter grade (`A+`, `A`, `B`, `C`, `D`) and conference platform recommendation (Zoom, Google Meet, Microsoft Teams, Discord).
-- **Driver Hardware & DSP Constraints Telemetry**:
-  - Sample rate (e.g. $48,000\text{ Hz}$ or $44,100\text{ Hz}$).
-  - Channel count (1 Mono / 2 Stereo).
-  - Status of Acoustic Echo Cancellation (AEC), Background Noise Suppression (BNS), and Auto Gain Control (AGC).
-- **Mute Toggle & Lifecycle Control**:
-  - Independent software mute control via `track.enabled`.
-  - Full stream and AudioContext cleanup (`track.stop()`, `audioContext.close()`, disconnected audio nodes) on navigation or stop.
-
-### 3. Speaker & Headphone Test (`/speaker`, `/audio-test`, `/headphone`, `/speakers`)
-- **Audio Output Device Detection & Routing**:
-  - Enumerate physical `audiooutput` devices via `navigator.mediaDevices.enumerateDevices()`.
-  - Supports output routing via `AudioContext.setSinkId()` or `HTMLMediaElement.setSinkId()` where browser support permits, with graceful fallback to system default routing.
-  - Automatically updates on device connection changes via `navigator.mediaDevices.ondevicechange`.
-- **Stereo Channel Isolation & Balance Stage**:
-  - *Left Speaker Channel*: Pure sine tone ($440\text{ Hz}$ A4) hard-panned strictly to Left (`pan = -1.0`).
-  - *Right Speaker Channel*: Pure sine tone ($880\text{ Hz}$ A5) hard-panned strictly to Right (`pan = 1.0`).
-  - *Stereo Harmony*: Two-tone musical chime ($440\text{ Hz} + 554.37\text{ Hz}$ C#5 major third) balanced across both ears (`pan = 0.0`).
-  - *Auto Alternating Channel Test*: Cycles sound between Left and Right channels every 1.0s to verify headphone ear orientation hands-free.
-  - *Interactive Panning Balance Slider*: Smooth adjustable balance control ($-1.0$ Full Left to $+1.0$ Full Right) to test equal hearing volume between ears.
-  - *Acoustic Cone Visualizer*: Animated speaker diaphragms with radiating acoustic wave rings that pulse with active sound.
-- **Frequency Testing & Continuous Sweep**:
-  - *Continuous Logarithmic Sweep ($20\text{ Hz} - 20,000\text{ Hz}$)*: 12-second exponential frequency ramp across the complete audible spectrum with real-time Hz readout and progress tracking.
-  - *Discrete Frequency Presets*:
-    - Sub-Bass ($60\text{ Hz}$) — Subwoofer and deep low-end driver resonance.
-    - Mid-Bass ($120\text{ Hz}$, $250\text{ Hz}$) — Lower vocal warmth and punch.
-    - Vocal Mid ($1,000\text{ Hz}$) — Human speech intelligibility anchor.
-    - Presence & Treble ($4,000\text{ Hz}$, $8,000\text{ Hz}$) — Sibilance, clarity, and crispness.
-    - High Air ($15,000\text{ Hz}$) — High-frequency hearing cutoff and tweeter response.
-- **Acoustic Noise Calibration Generators**:
-  - *Pink Noise*: Balanced power per octave for flat acoustic calibration.
-  - *White Noise*: Equal energy per frequency for driver rattle and hiss checks.
-  - *Brown Noise*: Deep low-frequency rumble for subwoofer resonance and room dampening.
-- **Guided 5-Step Test Wizard & User Confirmation**:
-  - Step-by-step guided workflow (Output Device $\to$ Left Ear $\to$ Right Ear $\to$ Stereo Chime $\to$ Frequency Spectrum).
-  - Interactive user confirmation checklist (Heard Left, Heard Right, Balanced Stereo, Frequency Coverage).
-  - Diagnostic verdict generation with overall stereo separation score ($0 - 100\%$) and conference readiness verdict.
-- **Hearing Protection & Safe Gain Envelope**:
-  - Conservative default volume ($60\%$, effective gain factor $\le 0.30$) with logarithmic tapering.
-  - Gain ramping (`linearRampToValueAtTime`) on start, frequency switches, and stops to eliminate hardware popping artifacts.
-  - Estimated output latency and sample rate telemetry.
-
-### 4. Internet Speed Test (`/speed`, `/speed-test`)
-- **Speed Test Engine Architecture**:
-  - Independent, zero-backend testing powered by [SpeedTestService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/services/speed-test.service.ts).
-  - Utilizes high-performance Anycast edge nodes via Cloudflare Speed Test endpoints (`https://speed.cloudflare.com/__down` and `/__up`) with global low-latency routing, CORS headers enabled, aggressive cache busting, and immediate ephemeral in-memory payload discard (zero remote storage).
-  - Clean lifecycle cancellation supported via browser `AbortController` and `performance.now()` precision timing.
-- **Latency & Jitter Measurement Pipeline**:
-  - Sequential 8-probe ping burst with natural jitter intervals.
-  - Measures Round-Trip Time (RTT) per probe, recording Average Ping, Minimum Ping, and Maximum Ping in milliseconds (ms).
-  - Real-time Jitter formula: $\text{Jitter} = \frac{1}{N-1} \sum_{i=1}^{N-1} |\text{RTT}_{i+1} - \text{RTT}_i|$.
-  - Jitter stability classification: Ultra-stable ($\le 5\text{ms}$), Low variation ($\le 15\text{ms}$), Moderate variation ($\le 30\text{ms}$), High variance ($> 30\text{ms}$).
-- **Progressive Download Throughput Measurement**:
-  - Multi-tier progressive chunk streaming: 1MB warm-up payload $\to$ 5MB medium payload $\to$ 15MB large payload.
-  - Streaming chunk consumption using `ReadableStream` reader (`resp.body.getReader()`) with continuous byte accumulation.
-  - Real-time throughput calculations: $\text{Mbps} = \frac{\text{Bytes} \times 8}{\text{Elapsed Seconds} \times 1,000,000}$.
-  - Real-time gauge updates and progress interpolation ($25\% \to 65\%$).
-- **Progressive Upload Throughput Measurement**:
-  - Transmits chunked random binary payloads ($1.5\text{ MB}$ each) via HTTP POST to zero-storage test endpoints.
-  - Multi-round upload bursts calculating real outbound throughput and updating live progress ($65\% \to 100\%$).
-- **Speedometer HUD & Visual Telemetry (Ookla-Style Horseshoe Layout)**:
-  - Responsive $260^{\circ}$ open horseshoe SVG dial (`viewBox="0 0 240 160"`) with calibrated internal tick labels ($0$, $10$, $50$, $100$, $250$, $500+\text{ Mbps}$) and dynamic progress arc.
-  - Zero-overlap needle architecture: needle pivots at upper center `(120, 88)` with blade rotating exclusively across the upper arc sweep from $-130^{\circ}$ to $+130^{\circ}$, completely clear of the central digital readout below it.
-  - Piecewise perceptual scaling curve: maps $0 - 100\text{ Mbps}$ smoothly across the first $50\%$ of the arc (via square-root scaling) with $100\text{ Mbps}$ at the exact top center ($0^{\circ}$), and $100 - 500+\text{ Mbps}$ across the second $50\%$ (via logarithmic scaling).
-  - Centered digital readout: tabular speed figures (`live-speed-num`) with `Mbps` / `MS` unit indicator framed cleanly in the open bottom center mouth of the arc, with descriptive test phase status situated below the gauge.
-  - Spacebar keyboard accessibility shortcut (`<kbd>Space</kbd>`) for quick Start / Cancel.
-- **Scorecard Telemetry (4 Primary Metric Boxes)**:
-  - *Download Throughput*: Megabits per second (Mbps) with active streaming indicator.
-  - *Upload Throughput*: Megabits per second (Mbps) with active chunking indicator.
-  - *Ping Latency*: Average round-trip time in ms with min/max range telemetry.
-  - *Jitter*: Latency variation in ms with connection stability description.
-- **Network Readiness Assessment & Use-Case Suitability**:
-  - Overall Connection Health Score ($0 - 100$) combining weighted download ($45\%$), upload ($25\%$), latency ($20\%$), and jitter ($10\%$).
-  - Connection Quality Tiers: Gigabit ($\ge 450\text{ Mbps}$), Ultra ($\ge 100\text{ Mbps}$), Fast ($\ge 45\text{ Mbps}$), Good ($\ge 20\text{ Mbps}$), Moderate ($\ge 8\text{ Mbps}$), or Slow ($< 8\text{ Mbps}$).
-  - 4 Objective Application Suitability Checkpoints:
-    - *HD Video Conferencing*: Evaluates 1080p group calls, screen sharing, and audio jitter for Zoom, Google Meet, and Microsoft Teams.
-    - *Real-Time Online Gaming*: Checks sub-40ms latency and minimal jitter for competitive multiplayer and cloud gaming.
-    - *4K Ultra HD Streaming*: Verifies $\ge 25\text{ Mbps}$ throughput for 4K HDR and Dolby Vision buffer-free playback.
-    - *Web Browsing & Cloud Sync*: Assesses snappy website loading and background cloud asset synchronization.
-- **Browser Connection Telemetry & Diagnostic Info**:
-  - Extracts client network hints via `navigator.connection` (`effectiveType`, `downlink`, `rtt`), clearly labeled as *Browser API indicative*.
-  - Edge server location and zero-storage privacy compliance guarantee.
-- **Test History & Comparison**:
-  - Local history persisted via browser `localStorage` (`acklet_speedtest_history`) recording previous runs with timestamp, download, upload, ping, jitter, and rating pill.
-  - One-click Clear History management.
-
-### 5. Public IP Checker (`/ip`, `/ip-lookup`)
-- **Multi-Provider Dual-Stack Architecture**:
-  - Independent, zero-backend network intelligence powered by [IpCheckerService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/services/ip-checker.service.ts).
-  - Resilient multi-provider fallback engine:
-    - Primary: `ipwho.is` Anycast CDN for comprehensive geolocation, country flag, ASN routing, and regional timezone.
-    - Secondary: `freeipapi.com` for threat intelligence, proxy flags, and coordinate cross-verification.
-    - Dedicated IPv4: `api4.ipify.org` ensuring pure IPv4 A record reachability check.
-    - Dedicated IPv6: `api6.ipify.org` checking pure IPv6 AAAA record reachability.
-    - Fallback: `api.ipify.org` for guaranteed IP address resolution.
-- **Dual-Stack Reachability & Protocol Detection**:
-  - Distinguishes between `Dual-Stack` (both IPv4 and IPv6 active), `IPv4 Only`, and `IPv6 Only` network environments.
-  - Dedicated side-by-side protocol cards displaying active IPv4 and IPv6 addresses with individual copy buttons.
-  - Graceful handling of standard home broadband networks where IPv6 is omitted without error flags.
-- **Routing Organization & Network Identity**:
-  - Autonomous System Number (ASN e.g. `AS24560`) and Autonomous System Organization (`asnOrg`).
-  - Internet Service Provider (ISP) and upstream network operator.
-  - Heuristic Proxy / VPN / Datacenter detection identifying hosting ASNs (AWS, Cloudflare, DigitalOcean, Hetzner, etc.) vs residential broadband, accompanied by clear accuracy disclaimers.
-- **Geographic Point-of-Presence (PoP)**:
-  - Country with ISO alpha-2 code and official Unicode flag emoji.
-  - Region / State, City, Postal Code, and coordinates (Latitude / Longitude).
-  - One-click Google Maps pin inspection.
-  - Local wall-clock time and regional timezone (`Intl.DateTimeFormat`).
-  - Prominent architectural disclaimer: *Geolocation indicates your ISP's regional point-of-presence (PoP) or routing facility, never an exact physical residential street address.*
-- **WebRTC Local LAN Leak Audit**:
-  - Technically valid browser WebRTC candidate check using `RTCPeerConnection` with Google STUN (`stun:stun.l.google.com:19302`).
-  - Audits whether private LAN IPs ($192.168.x.x$, $10.x.x.x$, $172.16-31.x.x$) are leaked or safely masked by browser mDNS candidate randomization (`.local`).
-  - Visual status banner: *Protected: Zero Private IP Leaks* vs *Notice: Local LAN IP Exposed*.
-- **Explainable IP Privacy Score & Exposure Analysis**:
-  - Compact, high-signal privacy score card ($0 - 100$) focusing on objective factor weighting without paragraph clutter:
-    - *WebRTC Local LAN Masking*: $+35$ pts for mDNS candidate protection.
-    - *Protocol Surface Footprint*: $+25$ pts for single-protocol footprint; $+15$ pts for dual-stack.
-    - *ISP Intermediary Masking*: $+20$ pts for datacenter/VPN relay; $+10$ pts for residential ISP.
-    - *Geolocation Regional Masking*: $+20$ pts for PoP-level routing shielding residential street address.
-  - Qualitative ratings: `EXCELLENT` ($\ge 80$), `GOOD` ($\ge 65$), `MODERATE` ($\ge 45$), or `EXPOSED` ($< 45$).
-- **Diagnostic Export & Multi-Format Reports**:
-  - One-click clipboard copy for Public IP address.
-  - Formatted ASCII / Markdown summary report copy.
-  - Full structured JSON diagnostic payload copy.
-  - Direct file download for `.txt` text report and `.json` structured dump.
-  - Zero-storage privacy guarantee: 100% in-memory client execution with zero IP logging or profiling on Acklet servers.
-
-### 6. Screen Sharing Test (`/screen`, `/screen-test`)
-- **Screen Capture & Permissions Architecture**:
-  - Independent, zero-backend display capture powered by [ScreenShareService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/services/screen-share.service.ts).
-  - Explicit user interaction invokes `navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 60, max: 60 } }, audio: true })`.
-  - Secure context validation (`window.isSecureContext`) ensuring compliant HTTPS/localhost execution.
-  - Granular error classification: handles `NotAllowedError` (user cancelled browser dialog), `NotFoundError` (no display source), and `NotSupportedError` (mobile or platform limitation).
-- **Surface Category Telemetry**:
-  - Identifies display surface type via `track.getSettings().displaySurface`:
-    - *Entire Screen (`monitor`)*: Complete desktop capture; ideal for multi-monitor setups and full operating system demonstrations.
-    - *Application Window (`window`)*: Isolates a designated app window (VS Code, PowerPoint, Figma), concealing private notifications and unrelated apps.
-    - *Browser Tab (`browser`)*: Optimizes text clarity and enables synchronized tab audio broadcast for web slides, video playback, and web apps.
-- **Live Frame Rate (FPS) & Stream Telemetry**:
-  - *Measured Live FPS*: Continuous frame-by-frame measurement using `requestVideoFrameCallback()` (or fallback `requestAnimationFrame()`) calculating actual rendered frame delivery rates over a 1.0s sliding window.
-  - *Browser Target FPS*: Reads hardware/browser reported ceiling from `track.getSettings().frameRate`.
-  - *Resolution & Aspect Ratio*: Reads active dimensions (`video.videoWidth` $\times$ `video.videoHeight`) with intelligent aspect ratio reduction ($16:9$, $16:10$, $4:3$, $21:9$).
-  - *Dynamic Window Resize Detection*: Monitors `video.onresize` events, updating diagnostics instantaneously if the user resizes the captured application window.
-- **Stream Lifecycle & Interruption Detection**:
-  - Detects native browser "Stop sharing" floating bar termination via `track.onended` and performs automatic graceful cleanup.
-  - Detects stream suspension / mute via `track.onmute` and `track.onunmute` (e.g. when shared window is minimized or OS display sleeps), displaying a prominent amber warning banner.
-  - Comprehensive track cleanup (`track.stop()`) on component destroy or route navigation preventing residual browser capture icons.
-- **Advanced Screen Quality Analyzer**:
-  - Quality Tiers: 4K Ultra HD ($\ge 2160\text{p}$), 1440p Quad HD ($\ge 1440\text{p}$), 1080p Full HD ($\ge 1080\text{p}$), 720p HD ($\ge 720\text{p}$), or Standard Definition.
-  - Text Readability / Sharpness: Evaluates whether code syntax and small typography will be legible to remote meeting participants (`exceptional`, `crisp`, `acceptable`, `soft`).
-  - Frame Rate Stability: Assesses frame delivery consistency (`smooth-60`, `stable-30`, `variable`, `low`).
-  - Audio Capture Status: Verifies whether an accompanying audio track was captured from the system or tab.
-- **Post-Session Diagnostic Summary**:
-  - Automatically generates an archival summary upon stopping share: Session duration, max resolution achieved, average measured FPS, surface type used, and overall quality verdict (`EXCELLENT`, `GOOD`, `FAIR`).
-- **Interactive Viewport Controls & Frame Snapshot Gallery**:
-  - *Full Card Initial View*: Full-width, centered idle card without asymmetric black-box artifacts.
-  - *Automatic Responsive Fit*: Captured screen video automatically fills the entire card with aspect-ratio preserving `object-fit: contain` (manual fit/fill buttons removed for streamlined UX).
-  - *Fullscreen Mode*: Fullscreen preview via `requestFullscreen` to inspect fine pixel sharpness and code legibility.
-  - *Instantaneous Snapshot Capture*: In-memory `<canvas>` frame grab encoded as PNG (`dataUrl`).
-  - *Local Snapshot Gallery*: Thumbnails of up to 8 snapshots with 1-click clipboard copy (`navigator.clipboard.write([new ClipboardItem(...)])`), file download (`.png`), deletion, and modal lightbox zoom.
-- **OS Permissions & Platform Guidance**:
-  - macOS: Actionable instructions for *System Settings $\to$ Privacy & Security $\to$ Screen & System Audio Recording*.
-  - Windows / Linux: Guidance on hardware acceleration and Wayland PipeWire portal.
-  - Mobile: Clear notification explaining mobile browser API restrictions.
-  - Zero-Storage Guarantee: All captured frames remain strictly inside local browser volatile memory. Zero video or audio is ever transmitted to Acklet servers.
-
----
-
-### 4. Diagnostic History & Multi-Format Reports Dashboard (`/history`, `/reports`, `/diagnostic-history`)
-
-Device Studio includes a centralized, privacy-first diagnostic data and reporting suite managed via [DiagnosticHistoryService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/services/diagnostic-history.service.ts), [DiagnosticReportService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/services/diagnostic-report.service.ts), and [HistoryReportsModuleComponent](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/components/history/history-reports-module.component.ts):
-
-- **Centralized History Logging**:
-  - Persists completed test results across all six diagnostic modules plus Device Health and Meeting Readiness.
-  - Zero-storage privacy default: history recording is fully user-controllable with an explicit opt-in/opt-out switch (`acklet_ds_enable_history`).
-  - Stored strictly in browser `localStorage` (`acklet_ds_diagnostic_history_v1`) without any remote sync or server telemetry.
-  - Zero media persistence: snapshots, audio buffers, and video streams are never persisted to history.
-- **Filtering, Sorting & Search**:
-  - Filter by module: All, Webcam, Microphone, Speaker, Speed Test, Public IP, Screen Share, Health Score, Meeting Readiness.
-  - Filter by status: All, Passing, Warning, Critical.
-  - Real-time text search across test title, device names, IP addresses, and detailed metrics.
-  - Sorting: Date (Newest first, Oldest first), Score / Value (Highest first), and Status.
-  - Record management: 1-click modal details viewer, individual record deletion, and single-click clear entire history.
-- **Performance Comparison Engine**:
-  - Multi-session comparative audit enabling users to select two historical runs of the same diagnostic module.
-  - Automatic directional delta calculation:
-    - *Higher is better*: Download throughput, Upload throughput, Resolution, Frame Rate, Health Score (positive delta = `improved`).
-    - *Lower is better*: Round-trip ping latency, Jitter (negative delta = `improved`).
-  - Percentage change badges with semantic color coding (Emerald for improved, Rose for regressed, Slate for unchanged).
-  - Clear narrative comparison summary explaining session-over-session hardware or ISP connection shifts.
-- **Multi-Format Report Generator**:
-  - Five tailored diagnostic report templates:
-    1. *Full Diagnostic Audit*: Complete system snapshot covering all hardware, network, and browser telemetry.
-    2. *Network & Connectivity*: Focused on public IP, ISP routing, WebRTC leak risk, and speed throughput.
-    3. *Audio Hardware*: Specialized for microphone input levels, frequency response, and speaker channel balance.
-    4. *Camera & Video*: Concentrated on optical exposure, lighting, frame rate, and sensor capabilities.
-    5. *Meeting Readiness*: Audit for Zoom, Google Meet, Teams, and Webex compatibility.
-  - Granular module inclusion toggles allowing users to cherry-pick sections.
-  - **Privacy & Redaction Safeguards**:
-    - *IP Address Masking*: Automatically obfuscates sensitive public IPv4 (`27.56.xxx.xxx`) and IPv6 (`2001:db8:xxxx:...`) addresses to protect user privacy before sharing with IT support.
-    - *Location Suppression*: Strips city, region, coordinates, and postal code from exported reports.
-  - **Zero-Dependency PDF & Multi-Channel Export**:
-    - *Print / Save as PDF*: Renders dedicated high-fidelity printable HTML with embedded `@media print` rules, vector brand headers, and hardware tables via native `window.print()`.
-    - *Markdown Summary*: Formatted markdown table copied to clipboard in 1 click for Jira, Slack, or GitHub issues.
-    - *Plain Text (`.txt`)*: Clean ASCII diagnostic report download.
-    - *Structured JSON (`.json`)*: Full machine-readable dump for automated IT parsing.
-    - *Web Share API*: Native sharing modal via `navigator.share` on supported platforms.
-
----
-
-## 5. Unique Integrated Intelligence
-
-### Device Health Score
-A dynamic, reactive score ($0 - 100$) computed in [DeviceStudioStateService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/services/device-studio-state.service.ts):
-- Modern browser API support baseline: $+20$ points
-- Webcam verified: $+15$ points
-- Microphone verified: $+15$ points
-- Speaker verified: $+15$ points
-- Network speed & ping verified: $+15$ points
-- Public IP checked: $+10$ points
-- Screen share verified: $+10$ points
-
-### Meeting Readiness Test
-A 1-click automated audit running across Camera, Microphone, Speaker, Network Latency, and Screen Sharing support sequentially, producing a comprehensive readiness verdict for:
-- Zoom
-- Google Meet
-- Microsoft Teams
-- Cisco Webex
-
-### Downloadable Diagnostic Reports
-Powered by [DiagnosticReportService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/services/diagnostic-report.service.ts):
-- **Plain Text Report**: Formatted ASCII / Markdown summary ready to share with IT support or system administrators.
-- **Raw JSON Report**: Machine-readable diagnostic dump with full hardware inventory, browser capabilities, and network metrics.
-
----
-
-## 6. Ad Integration & Layout Gutters
-
-Device Studio adheres to the platform's non-intrusive advertising architecture:
-- Left and right gutters are preserved on ultra-wide viewports ($>1280\text{px}$) for future ad scripts without layout shift (Cumulative Layout Shift = 0).
-- Empty ad boxes are never rendered when ads are disabled (`showPlaceholders: false`).
-- Managed via [AdConfigService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/components/ads/ad-config.service.ts).
-
----
-
-## 7. Verification & Test Commands
-
-To verify Device Studio across all quality gates:
-
-```bash
-# Tier A Fast Verification (Type check, shell isolation, glass rules, vitest)
-node scripts/verify.mjs -A
-
-# Run Device Studio Unit Tests
-cd client && npx vitest run apps/tool-device-studio
-
-# Check Surface Boundaries
-node scripts/check-surface-scope.mjs tools HEAD
-
-# Full Application Build
-cd client && npx ng build
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        Acklet Device Studio                            │
+├────────────────────────────────────────────────────────────────────────┤
+│  Routing Layer: Angular Router with Lazy-Loaded Standalone Components  │
+│  [devicestudio.routes.ts]                                              │
+├────────────────────────────────────────────────────────────────────────┤
+│  State & Intelligence Layer: Signals-Driven Reactive Services          │
+│  ├── DeviceStudioStateService (Health score, active tab, toasts)       │
+│  ├── WebcamService (MediaStream, optical analysis, snapshot canvas)    │
+│  ├── MicrophoneService (AudioContext, FFT Analyser, MediaRecorder)     │
+│  ├── SpeakerService (AudioBufferSource, panning, frequency sweep)      │
+│  ├── SpeedTestService (Cloudflare Anycast, chunk streaming)            │
+│  ├── IpCheckerService (Multi-provider fallback, WebRTC STUN leak)      │
+│  ├── ScreenShareService (getDisplayMedia, FPS tracking, canvas grab)   │
+│  ├── SystemInfoService (OS, browser, screen resolution detection)      │
+│  ├── DiagnosticHistoryService (localStorage persistence, comparison)   │
+│  └── DiagnosticReportService (Zero-dependency printable PDF / JSON)    │
+├────────────────────────────────────────────────────────────────────────┤
+│  UI Primitives & Foundation:                                           │
+│  ├── Spartan UI Helm Primitives (HlmButton, HlmBadge, HlmInput)        │
+│  ├── Acklet Custom Dropdown Component (AckletDropdownComponent)        │
+│  ├── Tool Shell Icon System (TsIconComponent via TS_ICON_MAP)          │
+│  └── Dual-Theme CSS Variables (--bg-*, --text-*, --border-*, --accent-*)│
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
+- **Framework**: Angular 22+ (Standalone Components, Signals, `ChangeDetectionStrategy.OnPush`)
+- **Reactive Primitives**: Angular Signals (`signal()`, `computed()`) with zero RxJS subscription overhead in component templates.
+- **Styling Architecture**: Tailwind CSS v4, custom CSS properties defined in [device-studio-tokens.css](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/styles/device-studio-tokens.css), dual-theme tokens (`client/packages/tool-shell/src/styles/tokens.css`).
+- **Test Framework**: Vitest (5 test suites, 51 unit tests running in `apps/tool-device-studio`).
+
+---
+
+## 3. Architecture Decision Records (ADRs) — The Definitive Decision Log
+
+This section records every critical architectural and UX decision made during the evolution of Device Studio, including the context, considered alternatives, chosen solution, rationale, and consequences.
+
+---
+
+### ADR-001: Unified Acklet Blue Accent Palette
+
+- **Status**: Decided & Implemented
+- **Context**: Earlier iterations utilized conflicting green/teal accents (`#0D9488`, `#059669`) in Device Studio while the rest of the Acklet monorepo standardized on canonical Blue.
+- **Alternatives Considered**:
+  1. *Module-Specific Accents*: Camera (Amber), Mic (Red), Speaker (Indigo), Speed (Cyan), IP (Emerald), Screen (Purple). *Rejected*: Caused visual dissonance, cluttered UI, and violated Acklet platform identity.
+  2. *Green/Teal Accent*: *Rejected*: Inconsistent with the canonical tool shell token set.
+  3. *Canonical Acklet Blue (Hue 217)*: Light Mode `#2563EB` (Blue 600), Dark Mode `#3B82F6` (Blue 500).
+- **Decision Taken**: Standardize exclusively on Acklet Blue (`--tool-accent: #2563EB` light / `#3B82F6` dark) across all 6 modules, Meeting Readiness, and History.
+- **Consequences**: Flawless visual consistency across the monorepo, predictable contrast ratios, zero layout-specific theme friction.
+
+---
+
+### ADR-002: Dual-Theme Contrast & Adaptive Media Containers
+
+- **Status**: Decided & Implemented
+- **Context**: In Light theme, camera and screen preview cards previously rendered an unstyled, harsh, pitch-black rectangle (`#000000`) before media initialization, creating severe visual imbalance.
+- **Alternatives Considered**:
+  1. *Static Dark Viewport in Both Themes*: *Rejected*: Disrupted the clean, white/slate aesthetic of Light theme.
+  2. *Skeleton Shimmer Box*: *Rejected*: Looked like a perpetual loading state rather than an idle ready state.
+  3. *Adaptive Media Stage*: Light mode displays an elegant, subtle dashed container (`#F8FAFC` background with `--ds-border` and a central icon badge). The viewport switches dynamically to true `#000000` only during active video streaming.
+- **Decision Taken**: Adopt the Adaptive Media Stage pattern across Webcam, Microphone, and Screen Sharing.
+- **Consequences**: Clean visual balance in Light theme; immediate clarity on camera/mic state; effortless WCAG AA contrast compliance ($\ge 4.5:1$).
+
+---
+
+### ADR-003: Spartan UI & Custom Acklet Dropdown Primitives
+
+- **Status**: Decided & Implemented
+- **Context**: Modules originally used native browser `<select>` elements, which rendered inconsistent OS dropdowns, lacked dark mode styling, and failed keyboard/touch accessibility standards.
+- **Alternatives Considered**:
+  1. *Native `<select>` with custom CSS*: *Rejected*: Native select popups on macOS and Windows cannot be styled, breaking dark theme.
+  2. *Heavy External UI Library*: *Rejected*: Adding PrimeNG or Angular Material violated the monorepo's zero-unnecessary-dependencies policy.
+  3. *Acklet Custom Dropdown (`AckletDropdownComponent`)*: Custom standalone primitive built on Spartan UI Helm patterns with signals, full keyboard navigation (`ArrowUp`/`ArrowDown`/`Enter`/`Space`/`Escape`), outside click dismissal, and rich option metadata.
+- **Decision Taken**: Implement and enforce `AckletDropdownComponent` across all device pickers and filter controls.
+- **Consequences**: Consistent, theme-aware device selector UI across all browsers; support for dynamic device icons (`headphones` vs `volume-2`); flawless keyboard accessibility.
+
+---
+
+### ADR-004: Three-Tier Information Priority Hierarchy
+
+- **Status**: Decided & Implemented
+- **Context**: Early screens suffered from information overload, presenting raw WebRTC constraints, internal sample rates, and developer debug dumps on primary card faces.
+- **Decision Taken**: Enforce a strict three-tier information hierarchy:
+  - **Level 1 — Essential (Always Visible)**: Tool name, 1-line description, primary action, live interactive viewport, primary status badge.
+  - **Level 2 — Useful (Visible When Relevant)**: Device picker, active volume/frequency sliders, progress telemetry, actionable warnings.
+  - **Level 3 — Advanced (Collapsed by Default)**: Deep hardware capabilities, DSP flags, sample rates, WebRTC SDP telemetry, resolution ladders. Implemented via semantic `<details class="technical-details">`.
+- **Consequences**: Initial card visual clutter reduced by $pprox 60\%$; non-technical users get an immediate, friendly experience while IT administrators still retain 100% of diagnostic telemetry.
+
+---
+
+### ADR-005: Two-Column Workspace Layout & Whitespace Elimination
+
+- **Status**: Decided & Implemented
+- **Context**: Excessive vertical scrolling and sprawling full-width single-column layouts resulted in awkward empty whitespace and disjointed controls.
+- **Decision Taken**: Adopt a balanced two-column desktop workspace grid across all diagnostic modules:
+  - **Left Column (Primary Stage, $pprox 60-65\%$)**: Main interactive testing area, live media canvas, primary start/stop controls.
+  - **Right Column (Telemetry & Controls, $pprox 35-40\%$)**: Device selection, volume/gain controls, live status checklist, diagnostic score tag.
+- **Consequences**: Eliminates vertical page jumping; keeps controls and telemetry visible side-by-side during active tests; responsive flex/grid gracefully stacks on tablet and mobile.
+
+---
+
+### ADR-006: Speaker Test — Step-by-Step Default & Inline Final Results
+
+- **Status**: Decided & Implemented
+- **Context**: The Speaker & Headphone Test initially opened into a free-form "Stereo & Sound Test" workbench with 6+ buttons, leaving users uncertain about what to click first. Furthermore, test results were scattered across disjointed cards.
+- **Alternatives Considered**:
+  1. *Navigate to a separate `/results` page*: *Rejected*: Heavyweight, breaks the single-tool workflow, and introduces unnecessary route state synchronization.
+  2. *Workbench as Default*: *Rejected*: Most users simply want to know: "Are my headphones working and is stereo separated?"
+  3. *Step-by-Step Guided Wizard as Default with Inline Final Results (Step 6)*:
+     - Tab 1 (Default): **Step-by-Step Test** (Output Device $	o$ Left Channel $	o$ Right Channel $	o$ Stereo Output $	o$ Frequency Spectrum).
+     - Tab 2 (Optional): **Stereo & Sound Test** (Free-form workbench for manual panning, presets, and noise generators).
+     - **Step 6 — Final Results**: Renders directly inside the exact same card upon completing Step 5.
+- **Decision Taken**: Adopt the Guided Wizard as default and display Final Results in-component (Step 6) without route navigation.
+- **Consequences**: User confirmation dictates results (`Passed`, `Needs Attention`, `Not Completed`) rather than assuming speakers work just because playback started; includes **Save Report** (PDF) and **Start Again** actions.
+
+---
+
+### ADR-007: Speaker Audio Engine — Bell Chime Asset & Synchronous Stop Pipeline
+
+- **Status**: Decided & Implemented
+- **Context**: Synthesized sine wave beeps ($440	ext{ Hz}$) sounded harsh and artificial. Additionally, users reported that audio playback cut off abruptly after 35ms on rapid button presses due to an uncancelled `setTimeout(..., 35)` race condition in `SpeakerService.stop()`.
+- **Alternatives Considered**:
+  1. *Retain Pure Sine Oscillators*: *Rejected*: Poor user experience; doesn't feel like a modern, consumer-ready tool.
+  2. *HTMLAudioElement Playback*: *Rejected*: Lacks precise stereo panning (`StereoPannerNode`) and Web Audio API routing control.
+  3. *Decoded Web Audio Buffer with Bell Notification Sample (`mixkit-bell-notification-933.wav`)*:
+     - Preloaded into volatile RAM on initialization (`preloadHeadphoneSound()`).
+     - Decoded into an `AudioBuffer` played via `AudioBufferSourceNode` routed through `StereoPannerNode` and `GainNode`.
+     - Output curve scaled to `(masterVolume / 100) * 0.85` for crystal clarity without digital clipping.
+     - **Race Condition Fix**: Replaced the asynchronous 35ms delayed stop with synchronous node termination, immediate gain tapering, and active source reference tracking.
+- **Decision Taken**: Adopt `mixkit-bell-notification-933.wav` with the synchronous Web Audio pipeline.
+- **Consequences**: The full 3.36-second chime plays smoothly without cutoff; zero playback stutter; instant response on stop.
+
+---
+
+### ADR-008: Speaker Single-Source Audio Output & Volume Control
+
+- **Status**: Decided & Implemented
+- **Context**: The main testing card previously contained a duplicate `.connected-device-bar` with redundant device names, headings, and dropdowns, mirroring the right-hand "Audio Output & Volume" card.
+- **Decision Taken**: Delete the duplicate bar from the workbench card. Designate the right-hand column as the **single source of truth** for device selection, active connection chips, master volume slider, mute toggle, and rescan actions.
+- **Consequences**: Eliminated 100+ lines of duplicate DOM elements; zero state synchronization divergence between two selectors on the same page.
+
+---
+
+### ADR-009: Internet Speed Test — Ookla-Style "GO" Button & Zero-Overlap Horseshoe Gauge
+
+- **Status**: Decided & Implemented
+- **Context**: The initial speed test layout suffered from overlapping labels: the needle blade collided with the central `30.3 Mbps` digital readout, and the idle card lacked a clear, inviting call to action.
+- **Alternatives Considered**:
+  1. *Standard Circular Meter with Center Hub*: *Rejected*: The needle invariably pivots over the center where the digital readout lives, causing unavoidable visual overlap.
+  2. *Linear Bar Visualizer*: *Rejected*: Lacks the intuitive, familiar feel of an automotive speedometer.
+  3. *Ookla-Style Open Horseshoe ($260^\circ$) Dial with Elevated Pivot*:
+     - **Idle State**: Prominent circular 168px "GO" action button with Acklet blue breath/pulse animation (`go-pulse`).
+     - **Testing State**: Transitions smoothly to the $260^\circ$ open horseshoe SVG dial.
+     - **Zero-Overlap Geometry**: Needle pivot is elevated to upper center `(120, 88)` with the blade sweeping exclusively across the upper arc ($-130^\circ$ to $+130^\circ$).
+     - **Piecewise Perceptual Curve**: Square-root mapping for $0 - 100	ext{ Mbps}$ across the first $50\%$ of the arc; logarithmic mapping for $100 - 500+	ext{ Mbps}$ across the remaining $50\%$.
+     - **Centered Mouth Readout**: Digital speed numbers and unit (`Mbps`/`MS`) are framed cleanly in the open bottom mouth of the horseshoe, completely unobstructed by the needle.
+- **Decision Taken**: Implement the elevated-pivot horseshoe gauge with the circular "GO" button.
+- **Consequences**: Flawless readability at all speeds; zero text overlap; instant user familiarity.
+
+---
+
+### ADR-010: Microphone Test — 310px Geometry & Glitch-Free Canvas Lifecycle
+
+- **Status**: Decided & Implemented
+- **Context**: The microphone test had two UI issues: 1) The mic icon container had unstable dimensions during state transitions, and 2) After stopping the test, a residual blue horizontal line remained frozen across the idle card canvas.
+- **Decision Taken**:
+  - **Fixed 310px Stage Geometry**: The idle/active container enforces `height: 310px; display: flex; align-items: center; justify-content: center;` with a strict 1:1 squircle icon badge (`56px × 56px`, `border-radius: 14px`, `flex-shrink: 0`).
+  - **Glitch-Free Canvas Teardown**: In `MicrophoneModuleComponent.stopMicrophone()` and `ngOnDestroy()`, the animation loop (`cancelAnimationFrame`) is cancelled, the canvas 2D context is explicitly cleared via `ctx.clearRect(0, 0, width, height)`, and the `<canvas>` element is toggled to `display: none` during idle state.
+- **Consequences**: Zero visual glitches upon stopping the test; rock-solid layout stability with zero Cumulative Layout Shift (CLS = 0).
+
+---
+
+### ADR-011: Public IP Lookup — Multi-Provider Fallback & Privacy Score Simplification
+
+- **Status**: Decided & Implemented
+- **Context**: The IP tool relied on a single external IP service, which could fail if rate-limited or blocked. Furthermore, the Privacy Score section was cluttered with verbose paragraphs and duplicate explanation cards.
+- **Decision Taken**:
+  - **Multi-Provider Fallback Chain**: `ipwho.is` (Primary Anycast) $	o$ `freeipapi.com` (Threat/proxy intel) $	o$ `api6.ipify.org` (IPv6 check) $	o$ `api4.ipify.org` (IPv4 check) $	o$ `api.ipify.org` (Fallback resolution).
+  - **Dual-Stack Reachability**: Dedicated side-by-side cards for IPv4 and IPv6 with individual copy triggers.
+  - **Privacy Score Simplification**: Clean $0 - 100$ score with 4 objective factor weights (WebRTC LAN Leak $+35$, Protocol Surface $+25$, ISP Intermediary $+20$, Geolocation Regional Masking $+20$), eliminating essay-style paragraphs.
+- **Consequences**: High availability across global networks; instant understanding of IP privacy status without cognitive fatigue.
+
+---
+
+### ADR-012: Screen Sharing Test — Auto-Fitting Card & Zero-Manual-Fit Buttons
+
+- **Status**: Decided & Implemented
+- **Context**: The Screen Sharing preview originally included manual "Fit" and "Cover" toggle buttons, which frequently distorted the shared video aspect ratio or introduced awkward letterboxing.
+- **Decision Taken**: Remove manual fit buttons. The preview video uses `object-fit: contain; width: 100%; height: 100%;` inside an auto-fitting full-width container, preserving exact pixel aspect ratios while maximizing available screen area. Includes full-screen inspection mode.
+- **Consequences**: Simplified user controls; eliminated UI clutter; guaranteed aspect-ratio fidelity for reviewing small code fonts and slides.
+
+---
+
+### ADR-013: Meeting Readiness — Single-Row Badges & Actionable Failure Guidance
+
+- **Status**: Decided & Implemented
+- **Context**: The 1-click Meeting Readiness check previously wrapped status pills across multiple lines on smaller desktop screens (e.g., displaying `FAILE` on one line and `D` on the next). Additionally, failed checks offered no explanation of how to fix the issue.
+- **Decision Taken**:
+  - **Single-Row Badge Enforcement**: All status pills (`PASSED`, `FAILED`, `READY`, `WARNING`) enforce `white-space: nowrap !important; flex-shrink: 0 !important;` with responsive card typography truncation.
+  - **Actionable Guidance Panel**: When checks fail (e.g., high network latency $>120	ext{ms}$, camera locked by another app), an interactive guidance card displays:
+    1. *Identified Root Cause*: Explains the failure and its impact on live video calls.
+    2. *Step-by-Step Improvement Actions*: Specific steps to resolve the issue (e.g., switch to 5GHz Wi-Fi / Ethernet, close torrent/cloud uploads, unblock permissions).
+    3. *Direct Module Deep Links*: One-click triggers that navigate directly to the affected diagnostic module (`/devicestudio/speed`, `/devicestudio/webcam`, etc.).
+- **Consequences**: Flawless visual presentation; users immediately understand why a test failed and how to resolve it.
+
+---
+
+### ADR-014: System Information — Consolidated 1-Line Spec Bar
+
+- **Status**: Decided & Implemented
+- **Context**: The landing page previously presented Browser, Operating System, and Display Screen inside three separate heavy cards, consuming disproportionate vertical space.
+- **Decision Taken**: Consolidate system specifications into a single, compact, full-width 1-line footer bar (`system-spec-bar`) rendered cleanly at the bottom of the studio landing page.
+- **Consequences**: Saves $pprox 180	ext{px}$ of vertical scroll; presents hardware context in an unobtrusive, professional format.
+
+---
+
+### ADR-015: 100% Client-Side Zero-Storage Privacy Guarantee
+
+- **Status**: Decided & Implemented
+- **Context**: Users testing webcams, microphones, and screens are rightfully concerned about surveillance and data harvesting.
+- **Decision Taken**: Enforce a strict zero-server, zero-upload architecture:
+  - Video streams and audio buffers are processed 100% in local browser volatile memory.
+  - Zero frames, recordings, or telemetry are ever transmitted to Acklet servers.
+  - All MediaStream tracks (`track.stop()`) and AudioContexts are closed immediately upon test termination or navigation.
+  - History is stored purely in client-side `localStorage` (`acklet_ds_diagnostic_history_v1`) with an explicit opt-out toggle.
+- **Consequences**: Uncompromised user trust; zero backend storage infrastructure overhead; fully compliant with GDPR and CCPA.
+
+---
+
+### ADR-016: Zero-Dependency Printable PDF Reporting
+
+- **Status**: Decided & Implemented
+- **Context**: Users need to export diagnostic reports for employer IT support, remote work audits, or ISP troubleshooting. Adding heavy client-side PDF libraries (e.g., `jspdf`, `pdfmake`) adds hundreds of kilobytes to bundle size.
+- **Decision Taken**: Implement printable PDF export via dedicated `@media print` HTML templates opened in an isolated ephemeral print preview window using native `window.print()`.
+- **Consequences**: Zero bundle size bloat; pixel-perfect vector print rendering; automatic "Save as PDF" capability across all modern operating systems.
+
+---
+
+## 4. Module-by-Module Technical Deep Dive
+
+### 4.1 Webcam Test (`/webcam`, `/webcam-test`, `/camera`)
+
+- **Primary Component**: [WebcamModuleComponent](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/components/webcam/webcam-module.component.ts)
+- **Supporting Service**: [WebcamService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/services/webcam.service.ts)
+- **Key Capabilities**:
+  - Multi-camera enumeration via `navigator.mediaDevices.enumerateDevices()`.
+  - Dynamic camera switching (`facingMode: 'user'` vs `'environment'`).
+  - Real-time resolution detection ($W 	imes H$) with live FPS rendering tracker.
+  - Optical exposure meter ($Y = 0.2126R + 0.7152G + 0.0722B$), heuristic sharpness, and color temperature ($	ext{K}$).
+  - In-memory canvas snapshot capture with Lightbox Inspector, clipboard copy, and PNG download.
+  - Granular error classification (`NotAllowedError`, `NotFoundError`, `NotReadableError`, `OverconstrainedError`).
+
+### 4.2 Microphone Test (`/microphone`, `/mic-test`, `/mic`)
+
+- **Primary Component**: [MicrophoneModuleComponent](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/components/microphone/microphone-module.component.ts)
+- **Supporting Service**: [MicrophoneService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/services/microphone.service.ts)
+- **Key Capabilities**:
+  - Web Audio API pipeline (`AudioContext`, `MediaStreamAudioSourceNode`, `AnalyserNode`).
+  - Dual-mode 60 FPS canvas visualizer: Oscilloscope (Waveform) and 56-band FFT Frequency Spectrum.
+  - Fixed 310px stage height with explicit canvas clear on teardown, preventing frozen baseline glitches.
+  - Live RMS volume, decaying peak-hold in dBFS ($-60$ to $0	ext{ dBFS}$), silence detection, and clipping counter.
+  - Voice loopback recording via `MediaRecorder` (5s, 10s, 15s) with in-browser playback.
+
+### 4.3 Speaker & Headphone Test (`/speaker`, `/audio-test`, `/headphone`)
+
+- **Primary Component**: [SpeakerModuleComponent](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/components/speaker/speaker-module.component.ts)
+- **Supporting Service**: [SpeakerService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/services/speaker.service.ts)
+- **Key Capabilities**:
+  - **Default Mode**: Step-by-Step Test wizard opens immediately.
+  - **5 Guided Steps**: 1. Device Selection $	o$ 2. Left Channel $	o$ 3. Right Channel $	o$ 4. Stereo Output $	o$ 5. Frequency Sweep.
+  - **Step 6 Final Results View**: Replaces testing UI in the same card, presenting overall status (`Passed`, `Needs Attention`, `Not Completed`), channel breakdown, Identified Issues card, Save Report (PDF), and Start Again.
+  - **High-Fidelity Audio**: Preloaded `mixkit-bell-notification-933.wav` chime with synchronous stop logic eliminating cutoff bugs.
+  - **Single Source of Truth**: Right-hand panel manages device selection, volume slider, mute, and live status.
+
+### 4.4 Internet Speed Test (`/speed`, `/speed-test`)
+
+- **Primary Component**: [SpeedTestModuleComponent](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/components/speed/speed-test-module.component.ts)
+- **Supporting Service**: [SpeedTestService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/services/speed-test.service.ts)
+- **Key Capabilities**:
+  - **Circular "GO" Launch Button**: 168px circular button with blue breath animation during idle.
+  - **Elevated-Pivot Horseshoe Gauge**: $260^\circ$ arc (`viewBox="0 0 240 160"`) with zero-overlap needle rotating strictly in upper arc ($-130^\circ$ to $+130^\circ$).
+  - **Centered Digits**: Tabular speed numbers and units framed in open bottom mouth.
+  - **Piecewise Scaling**: Square-root curve for $0-100	ext{ Mbps}$, logarithmic curve for $100-500+	ext{ Mbps}$.
+  - **Anycast Streaming**: Progressive chunk streaming via Cloudflare edge nodes with zero server retention.
+
+### 4.5 Public IP Checker (`/ip`, `/ip-lookup`)
+
+- **Primary Component**: [IpCheckerModuleComponent](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/components/ip/ip-checker-module.component.ts)
+- **Supporting Service**: [IpCheckerService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/services/ip-checker.service.ts)
+- **Key Capabilities**:
+  - Multi-provider fallback chain (`ipwho.is` $	o$ `freeipapi.com` $	o$ `api6.ipify.org` $	o$ `api4.ipify.org` $	o$ `api.ipify.org`).
+  - Dual-stack IPv4 / IPv6 detection with individual copy buttons.
+  - WebRTC local LAN leak audit via Google STUN (`stun:stun.l.google.com:19302`).
+  - Simplified Explainable Privacy Score ($0-100$) with objective factor breakdown.
+
+### 4.6 Screen Sharing Test (`/screen`, `/screen-test`)
+
+- **Primary Component**: [ScreenShareModuleComponent](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/components/screen/screen-share-module.component.ts)
+- **Supporting Service**: [ScreenShareService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/services/screen-share.service.ts)
+- **Key Capabilities**:
+  - Display capture via `navigator.mediaDevices.getDisplayMedia()`.
+  - Surface categorization (`monitor`, `window`, `browser`).
+  - Measured live FPS via `requestVideoFrameCallback()` / `requestAnimationFrame()`.
+  - Auto-fitting responsive video container with `object-fit: contain` (zero manual fit buttons).
+  - In-memory snapshot gallery and Lightbox Inspector.
+
+### 4.7 Meeting Readiness Quick Check
+
+- **Primary Component**: [MeetingReadinessComponent](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/components/readiness/meeting-readiness.component.ts)
+- **Key Capabilities**:
+  - 1-click sequential audit across Camera, Microphone, Speaker, Network Latency, and Screen Sharing.
+  - Single-row status badges (`PASSED`, `FAILED`, `READY`, `WARNING`) preventing word wrapping.
+  - Actionable guidance panel with root cause identification, step-by-step fix, and deep links to tools.
+  - Platform suitability verdicts for Zoom, Google Meet, Microsoft Teams, and Cisco Webex.
+
+### 4.8 Diagnostic History & Multi-Format Reports Dashboard (`/history`, `/reports`)
+
+- **Primary Component**: [HistoryReportsModuleComponent](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/components/history/history-reports-module.component.ts)
+- **Supporting Services**: [DiagnosticHistoryService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/services/diagnostic-history.service.ts), [DiagnosticReportService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/services/diagnostic-report.service.ts)
+- **Key Capabilities**:
+  - Centralized `localStorage` logging (`acklet_ds_diagnostic_history_v1`) with user opt-in/opt-out.
+  - Multi-session comparative audit with directional delta badges (improved vs regressed).
+  - Multi-format exports: Printable HTML (`window.print()`), Markdown summary, Plain Text `.txt`, Structured JSON `.json`.
+  - Privacy protections: Automatic public IP address masking (`27.56.xxx.xxx`) and location suppression.
+
+---
+
+## 5. State Management, Signals & Lifecycle Architecture
+
+All module state is driven by Angular Signals, orchestrated through [DeviceStudioStateService](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/services/device-studio-state.service.ts):
+
+- **Health Score Computation**: Dynamic score ($0 - 100$) updated reactively as users test components:
+  - Baseline browser API support: $+20$ pts
+  - Webcam tested: $+15$ pts
+  - Microphone tested: $+15$ pts
+  - Speaker tested: $+15$ pts
+  - Speed tested: $+15$ pts
+  - IP checked: $+10$ pts
+  - Screen share tested: $+10$ pts
+- **Active Tab Tracking**: `activeTab = signal<DeviceStudioTab>('landing')` synced with router navigation.
+- **Ephemeral Toast Feedback**: `showToast(msg, type)` with auto-dismiss timer.
+- **Resource Cleanup Contract**: Every component implements `OnDestroy` to call `stop()` on its corresponding service, ensuring immediate media track release and hardware indicator LED shutoff.
+
+---
+
+## 6. Comprehensive Codebase Map & File Inventory
+
+| Path | Purpose / Responsibility |
+|:---|:---|
+| `src/app/device-studio.routes.ts` | Lazy-loaded routes for all 6 modules, landing page, history, and URL aliases. |
+| `src/models/device.models.ts` | Complete TypeScript type contracts, telemetry interfaces, and result models. |
+| `src/styles/device-studio-tokens.css` | Canonical dual-theme CSS variables, utility classes, and keyframe animations. |
+| `src/components/landing/device-studio-landing.component.ts` | Studio landing page, module grid, 1-line system spec bar, and header. |
+| `src/components/webcam/webcam-module.component.ts` | Webcam testing workspace, live stream stage, snapshot gallery, lightbox. |
+| `src/components/microphone/microphone-module.component.ts` | Microphone testing workspace, 60 FPS canvas visualizer, loopback recording. |
+| `src/components/speaker/speaker-module.component.ts` | Speaker testing workspace, 5-step wizard, Step 6 results, single-source right panel. |
+| `src/components/speed/speed-test-module.component.ts` | Speed test workspace, circular "GO" button, zero-overlap horseshoe dial. |
+| `src/components/ip/ip-checker-module.component.ts` | Public IP lookup workspace, dual-stack cards, explainable privacy score. |
+| `src/components/screen/screen-share-module.component.ts` | Screen share testing workspace, auto-fitting preview, snapshot inspector. |
+| `src/components/readiness/meeting-readiness.component.ts` | 1-click meeting readiness check, single-row badges, actionable guidance card. |
+| `src/components/history/history-reports-module.component.ts` | Diagnostic history dashboard, comparative delta audit, export modal. |
+| `src/components/shared/acklet-dropdown.component.ts` | Custom Spartan UI dropdown primitive replacing native select tags. |
+| `src/components/shared/module-header.component.ts` | Standardized header bar for individual diagnostic modules. |
+| `src/components/shared/health-score-badge.component.ts` | Circular health score pill with real-time numeric score and status. |
+| `src/services/device-studio-state.service.ts` | Core state coordinator, health score calculator, toast notification service. |
+| `src/services/webcam.service.ts` | Camera hardware manager, MediaStream controller, optical analyzer. |
+| `src/services/microphone.service.ts` | Web Audio API manager, AnalyserNode controller, MediaRecorder wrapper. |
+| `src/services/speaker.service.ts` | Audio playback engine, bell chime loader, frequency sweep generator. |
+| `src/services/speed-test.service.ts` | Cloudflare Anycast speed test engine, chunk streaming coordinator. |
+| `src/services/ip-checker.service.ts` | Multi-provider IP intelligence engine, WebRTC STUN candidate auditor. |
+| `src/services/screen-share.service.ts` | Display media capture controller, FPS measurement tracker. |
+| `src/services/system-info.service.ts` | Client platform detector (OS, browser engine, display screen resolution). |
+| `src/services/diagnostic-history.service.ts` | LocalStorage history storage, search, filter, and comparison engine. |
+| `src/services/diagnostic-report.service.ts` | Printable HTML report generator, PDF print preview, JSON/Markdown export. |
+| `src/assets/sounds/mixkit-bell-notification-933.wav` | Clean, 3.36s high-fidelity bell chime audio asset for speaker channel checks. |
+
+---
+
+## 7. Troubleshooting, Gotchas & Debugging Playbook
+
+1. **Hardware In-Use / Locked Camera (`NotReadableError`)**:
+   - *Cause*: Camera hardware is exclusively locked by Zoom, FaceTime, Microsoft Teams, or another browser tab.
+   - *Fix*: The UI guides the user to close competing video applications. In macOS, verify camera indicator LED status.
+2. **Audio Cutoff / Clipping in Headphone Check**:
+   - *Cause*: Calling `stop()` with an uncancelled `setTimeout` causes newly triggered audio sources to stop prematurely after 35ms.
+   - *Fix*: `SpeakerService.stop()` cancels any pending stop timeouts immediately and synchronous tracks active `AudioBufferSourceNode` references.
+3. **Microphone Canvas Frozen Blue Baseline Glitch**:
+   - *Cause*: Leaving the `<canvas>` element rendered with lingering pixel data after stopping the microphone.
+   - *Fix*: Call `ctx.clearRect(0, 0, width, height)` and hide the canvas element during idle state.
+4. **Speedometer Needle / Label Collision**:
+   - *Cause*: Center-pivot needle sweeping across the bottom half of the circle where digital numbers sit.
+   - *Fix*: The needle pivot is placed at `(120, 88)` with blade rotation restricted to the upper $-130^\circ$ to $+130^\circ$ arc. Numbers reside in the open bottom mouth.
+5. **WebRTC STUN Local IP Masking**:
+   - *Cause*: Modern browsers mask private LAN IPs with mDNS candidates (e.g. `*.local`) for privacy.
+   - *Fix*: The IP audit correctly identifies mDNS candidates as `Protected: Zero Private IP Leaks` rather than misinterpreting them as an error.
+
+---
+
+## 8. Future Roadmap & Open Decisions (Where to Pick Up)
+
+If you are continuing work on Device Studio in future iterations, use this matrix to understand what is locked in versus what is open for enhancement:
+
+### Locked In (Do Not Change Without Architecture Review)
+- Acklet Blue accent (`#2563EB` light / `#3B82F6` dark) — standard across all tools.
+- Step-by-Step Test as default in Speaker module with inline final results.
+- 100% Client-Side In-Memory privacy architecture (zero server media retention).
+- Spartan UI / Acklet Custom Dropdown primitive (never reintroduce native `<select>`).
+- 260° open horseshoe gauge with elevated pivot in Speed Test.
+- Single-source right-hand column for device control and status in Speaker module.
+
+### Open for Future Enhancements (Recommended Next Steps)
+1. **Webcam Virtual Background / Blur Test**:
+   - Add a client-side WebAssembly (e.g., MediaPipe Selfie Segmentation) toggle to preview how well the user's camera stream handles background blurring before entering Zoom or Google Meet calls.
+2. **Microphone AI Noise Cancellation Preview**:
+   - Integrate Web Audio API `AudioWorklet` to demonstrate real-time background noise suppression (e.g. typing sounds, dog barking).
+3. **Multi-Server Speed Test Selection**:
+   - Allow users to manually toggle between Cloudflare Anycast edge nodes and regional AWS/Fastly edge nodes for comparative routing audits.
+4. **Export to Calendar / Pre-Meeting Reminder**:
+   - Add a 1-click option to schedule a quick 30-second audio/video check 5 minutes before scheduled calendar meetings.
+
+---
+
+## 9. Verification Commands & Quality Gates
+
+Run these commands to verify that Device Studio builds, type-checks, and passes all monorepo quality standards:
+
+```bash
+# 1. Trailing Whitespace & Diff Check
+git diff --check
+
+# 2. Tier A Fast Verification (Type check, shell isolation, glass rules, vitest)
+node scripts/verify.mjs -A
+
+# 3. Unit Tests (apps/tool-device-studio)
+cd client && npx vitest run apps/tool-device-studio
+
+# 4. Tier B Feature Verification & Angular Build
+node scripts/verify.mjs -B
+
+# 5. Surface Scope Check
+node scripts/check-surface-scope.mjs tools HEAD
+```
