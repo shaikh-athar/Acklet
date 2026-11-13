@@ -379,7 +379,8 @@
               "apps/tool-datalens/src/styles.css"
             ],
             "allowedCommonJsDependencies": [
-              "lottie-web"
+              "lottie-web",
+              "jszip"
             ]
           },
           "configurations": {
@@ -495,6 +496,53 @@
                 },
                 "fonts": false
               },
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "4MB",
+                  "maximumError": "5MB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        }
+      }
+    },
+    "tool-watermark-remover": {
+      "projectType": "application",
+      "schematics": {},
+      "root": "apps/tool-watermark-remover",
+      "sourceRoot": "apps/tool-watermark-remover/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "apps/tool-watermark-remover/src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
+            ],
+            "styles": [
+              "apps/tool-watermark-remover/src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "lottie-web",
+              "jszip"
+            ]
+          },
+          "configurations": {
+            "production": {
               "budgets": [
                 {
                   "type": "initial",
