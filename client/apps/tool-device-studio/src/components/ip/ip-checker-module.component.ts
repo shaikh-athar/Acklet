@@ -588,6 +588,8 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
       font-size: 11px;
       font-weight: 700;
       color: var(--tool-accent, #3B82F6) !important;
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
     }
 
     :host-context([data-theme="light"]) .status-pill {

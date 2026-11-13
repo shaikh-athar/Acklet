@@ -14,6 +14,7 @@ import { Router } from '@angular/router';
 import { TsIconComponent } from '@acklet/tool-shell';
 import { SpeakerService } from '../../services/speaker.service';
 import { DeviceStudioStateService } from '../../services/device-studio-state.service';
+import { DiagnosticReportService } from '../../services/diagnostic-report.service';
 import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
 import { SpeakerConfirmationStatus } from '../../models/device.models';
 import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdown.component';
@@ -25,7 +26,7 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="speaker-module-root">
-      
+
       <!-- Top Module Header -->
       <app-device-module-header
         title="Speaker & Headphone Test"
@@ -45,36 +46,532 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
 
       <!-- Main Workspace Grid -->
       <div class="workspace-grid">
-        
+
         <!-- ========================================== -->
         <!-- LEFT COLUMN: Stereo Stage & Frequency Workbench -->
         <!-- ========================================== -->
         <div class="main-column">
-          
-          <!-- Mode Tabs: Free-Form Workbench vs Guided 5-Step Test -->
+
+          <!-- Mode Tabs: Step-by-Step Test (Default) vs Free-Form Workbench -->
           <div class="mode-tabs-bar">
-            <button 
-              type="button" 
-              class="mode-tab-btn" 
-              [class.active]="activeTab() === 'workbench'"
-              (click)="activeTab.set('workbench')"
-            >
-              Stereo & Sound Test
-            </button>
-            <button 
-              type="button" 
-              class="mode-tab-btn" 
+            <button
+              type="button"
+              class="mode-tab-btn"
               [class.active]="activeTab() === 'guided'"
               (click)="activeTab.set('guided')"
             >
               Step-by-Step Test
             </button>
+            <button
+              type="button"
+              class="mode-tab-btn"
+              [class.active]="activeTab() === 'workbench'"
+              (click)="activeTab.set('workbench')"
+            >
+              Stereo & Sound Test
+            </button>
           </div>
 
-          <!-- TAB 1: WORKBENCH -->
-          @if (activeTab() === 'workbench') {
-            
-            <!-- Card 1: Stereo Channel Isolation Stage -->
+          <!-- TAB 1: GUIDED 5-STEP TEST WIZARD (DEFAULT) -->
+          @if (activeTab() === 'guided') {
+
+            <div class="tool-card wizard-card">
+              <!-- Wizard Progress Header -->
+              <div class="wizard-header">
+                <div class="wizard-progress-pills" role="tablist" aria-label="Testing Steps">
+                  <button
+                    type="button"
+                    class="wiz-pill"
+                    [class.done]="wizardStep() > 1"
+                    [class.active]="wizardStep() === 1"
+                    (click)="setWizardStep(1)"
+                  >
+                    @if (wizardStep() > 1) { <ts-icon name="check" [size]="11" /> }
+                    <span>1. Output Device</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="wiz-pill"
+                    [class.done]="metrics().confirmations.leftConfirmed !== null && wizardStep() > 2"
+                    [class.active]="wizardStep() === 2"
+                    (click)="setWizardStep(2)"
+                  >
+                    @if (metrics().confirmations.leftConfirmed !== null && wizardStep() > 2) { <ts-icon name="check" [size]="11" /> }
+                    <span>2. Left Channel</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="wiz-pill"
+                    [class.done]="metrics().confirmations.rightConfirmed !== null && wizardStep() > 3"
+                    [class.active]="wizardStep() === 3"
+                    (click)="setWizardStep(3)"
+                  >
+                    @if (metrics().confirmations.rightConfirmed !== null && wizardStep() > 3) { <ts-icon name="check" [size]="11" /> }
+                    <span>3. Right Channel</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="wiz-pill"
+                    [class.done]="metrics().confirmations.stereoConfirmed !== null && wizardStep() > 4"
+                    [class.active]="wizardStep() === 4"
+                    (click)="setWizardStep(4)"
+                  >
+                    @if (metrics().confirmations.stereoConfirmed !== null && wizardStep() > 4) { <ts-icon name="check" [size]="11" /> }
+                    <span>4. Stereo Output</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="wiz-pill"
+                    [class.done]="metrics().confirmations.frequenciesConfirmed !== null && wizardStep() > 5"
+                    [class.active]="wizardStep() === 5"
+                    (click)="setWizardStep(5)"
+                  >
+                    @if (metrics().confirmations.frequenciesConfirmed !== null && wizardStep() > 5) { <ts-icon name="check" [size]="11" /> }
+                    <span>5. Frequency Test</span>
+                  </button>
+
+                  @if (wizardStep() === 6) {
+                    <button type="button" class="wiz-pill active results-pill" (click)="setWizardStep(6)">
+                      <ts-icon name="check-circle" [size]="11" />
+                      <span>Results</span>
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- Wizard Step Content (Steps 1 to 5) -->
+              @if (wizardStep() <= 5) {
+                <div class="wizard-step-content">
+                  @switch (wizardStep()) {
+
+                    <!-- STEP 1: Output Device Selection -->
+                    @case (1) {
+                      <div class="step-view">
+                        <div class="step-heading-group">
+                          <span class="step-num-badge">STEP 1 OF 5</span>
+                          <h4 class="step-title">Select Output Device</h4>
+                          <p class="step-desc">Verify your headphones or external speakers are connected and selected as the active playback device.</p>
+                        </div>
+
+                        <div class="step-interactive-area">
+                          <div class="active-dev-box">
+                            <div class="dev-box-icon">
+                              <ts-icon [name]="activeDeviceType() === 'headphones' ? 'headphones' : 'volume-2'" [size]="22" />
+                            </div>
+                            <div class="dev-box-info">
+                              <span class="dev-box-type">{{ activeDeviceType() === 'headphones' ? 'Connected Headphones' : 'Audio Output Device' }}</span>
+                              <strong class="dev-box-name" [title]="metrics().activeOutputDeviceLabel">{{ metrics().activeOutputDeviceLabel || 'Default Device' }}</strong>
+                            </div>
+                            <button type="button" class="btn-rescan-dev" (click)="detectHeadphones()" title="Scan for newly plugged-in headphones">
+                              <ts-icon name="refresh-cw" [size]="13" />
+                              <span>Rescan</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div class="step-footer-actions">
+                          <button type="button" class="btn-step-primary" (click)="startStepTest(2)">
+                            <span>Start Test &rarr;</span>
+                          </button>
+                        </div>
+                      </div>
+                    }
+
+                    <!-- STEP 2: Left Channel Test -->
+                    @case (2) {
+                      <div class="step-view">
+                        <div class="step-heading-group">
+                          <span class="step-num-badge">STEP 2 OF 5</span>
+                          <h4 class="step-title">Left Channel Test</h4>
+                          <p class="step-desc">Play the bell chime to verify that sound is heard exclusively in your left ear or left speaker.</p>
+                        </div>
+
+                        <div class="step-interactive-area">
+                          <div class="channel-visual-stage">
+                            <div class="speaker-cone-visual left" [class.active]="metrics().currentMode === 'left'">
+                              <div class="cone-symbol">
+                                <ts-icon name="volume-2" [size]="28" />
+                              </div>
+                              <span class="cone-label">LEFT EAR</span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            class="btn-step-play"
+                            [class.playing]="metrics().currentMode === 'left'"
+                            (click)="testChannel('left')"
+                          >
+                            <ts-icon [name]="metrics().currentMode === 'left' ? 'pause' : 'play'" [size]="16" />
+                            <span>{{ metrics().currentMode === 'left' ? 'Stop Left Chime' : 'Play Left Chime' }}</span>
+                          </button>
+
+                          <div class="confirm-box">
+                            <span class="confirm-prompt">Did you hear the bell chime clearly in your LEFT ear?</span>
+                            <div class="confirm-btns">
+                              <button
+                                type="button"
+                                class="btn-confirm yes"
+                                [class.selected]="metrics().confirmations.leftConfirmed === true"
+                                (click)="handleWizardConfirm('leftConfirmed', true, 3)"
+                              >
+                                <ts-icon name="check" [size]="14" />
+                                <span>Yes, Heard in Left</span>
+                              </button>
+                              <button
+                                type="button"
+                                class="btn-confirm no"
+                                [class.selected]="metrics().confirmations.leftConfirmed === false"
+                                (click)="handleWizardConfirm('leftConfirmed', false, 3)"
+                              >
+                                <ts-icon name="x" [size]="14" />
+                                <span>No, Not Heard / Wrong Ear</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="step-footer-actions">
+                          <button type="button" class="btn-step-secondary" (click)="setWizardStep(1)">
+                            <span>&larr; Previous</span>
+                          </button>
+                          @if (metrics().confirmations.leftConfirmed !== null) {
+                            <button type="button" class="btn-step-primary" (click)="setWizardStep(3)">
+                              <span>Next: Right Channel &rarr;</span>
+                            </button>
+                          }
+                        </div>
+                      </div>
+                    }
+
+                    <!-- STEP 3: Right Channel Test -->
+                    @case (3) {
+                      <div class="step-view">
+                        <div class="step-heading-group">
+                          <span class="step-num-badge">STEP 3 OF 5</span>
+                          <h4 class="step-title">Right Channel Test</h4>
+                          <p class="step-desc">Play the bell chime to verify that sound is heard exclusively in your right ear or right speaker.</p>
+                        </div>
+
+                        <div class="step-interactive-area">
+                          <div class="channel-visual-stage">
+                            <div class="speaker-cone-visual right" [class.active]="metrics().currentMode === 'right'">
+                              <div class="cone-symbol">
+                                <ts-icon name="volume-2" [size]="28" />
+                              </div>
+                              <span class="cone-label">RIGHT EAR</span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            class="btn-step-play"
+                            [class.playing]="metrics().currentMode === 'right'"
+                            (click)="testChannel('right')"
+                          >
+                            <ts-icon [name]="metrics().currentMode === 'right' ? 'pause' : 'play'" [size]="16" />
+                            <span>{{ metrics().currentMode === 'right' ? 'Stop Right Chime' : 'Play Right Chime' }}</span>
+                          </button>
+
+                          <div class="confirm-box">
+                            <span class="confirm-prompt">Did you hear the bell chime clearly in your RIGHT ear?</span>
+                            <div class="confirm-btns">
+                              <button
+                                type="button"
+                                class="btn-confirm yes"
+                                [class.selected]="metrics().confirmations.rightConfirmed === true"
+                                (click)="handleWizardConfirm('rightConfirmed', true, 4)"
+                              >
+                                <ts-icon name="check" [size]="14" />
+                                <span>Yes, Heard in Right</span>
+                              </button>
+                              <button
+                                type="button"
+                                class="btn-confirm no"
+                                [class.selected]="metrics().confirmations.rightConfirmed === false"
+                                (click)="handleWizardConfirm('rightConfirmed', false, 4)"
+                              >
+                                <ts-icon name="x" [size]="14" />
+                                <span>No, Not Heard / Wrong Ear</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="step-footer-actions">
+                          <button type="button" class="btn-step-secondary" (click)="setWizardStep(2)">
+                            <span>&larr; Previous</span>
+                          </button>
+                          @if (metrics().confirmations.rightConfirmed !== null) {
+                            <button type="button" class="btn-step-primary" (click)="setWizardStep(4)">
+                              <span>Next: Stereo Output &rarr;</span>
+                            </button>
+                          }
+                        </div>
+                      </div>
+                    }
+
+                    <!-- STEP 4: Stereo Output Test -->
+                    @case (4) {
+                      <div class="step-view">
+                        <div class="step-heading-group">
+                          <span class="step-num-badge">STEP 4 OF 5</span>
+                          <h4 class="step-title">Stereo Output Test</h4>
+                          <p class="step-desc">Both channels will sound simultaneously. Confirm that stereo playback is centered and balanced across both ears.</p>
+                        </div>
+
+                        <div class="step-interactive-area">
+                          <div class="channel-visual-stage stereo">
+                            <div class="speaker-cone-visual stereo" [class.active]="metrics().currentMode === 'stereo'">
+                              <div class="cone-symbol">
+                                <ts-icon name="headphones" [size]="32" />
+                              </div>
+                              <span class="cone-label">STEREO (BOTH CHANNELS)</span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            class="btn-step-play"
+                            [class.playing]="metrics().currentMode === 'stereo'"
+                            (click)="testChannel('stereo')"
+                          >
+                            <ts-icon [name]="metrics().currentMode === 'stereo' ? 'pause' : 'play'" [size]="16" />
+                            <span>{{ metrics().currentMode === 'stereo' ? 'Stop Stereo Chime' : 'Play Stereo Chime' }}</span>
+                          </button>
+
+                          <div class="confirm-box">
+                            <span class="confirm-prompt">Did you hear balanced audio in BOTH ears?</span>
+                            <div class="confirm-btns">
+                              <button
+                                type="button"
+                                class="btn-confirm yes"
+                                [class.selected]="metrics().confirmations.stereoConfirmed === true"
+                                (click)="handleWizardConfirm('stereoConfirmed', true, 5)"
+                              >
+                                <ts-icon name="check" [size]="14" />
+                                <span>Yes, Balanced Stereo</span>
+                              </button>
+                              <button
+                                type="button"
+                                class="btn-confirm no"
+                                [class.selected]="metrics().confirmations.stereoConfirmed === false"
+                                (click)="handleWizardConfirm('stereoConfirmed', false, 5)"
+                              >
+                                <ts-icon name="x" [size]="14" />
+                                <span>No, One Side Muted / Imbalanced</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="step-footer-actions">
+                          <button type="button" class="btn-step-secondary" (click)="setWizardStep(3)">
+                            <span>&larr; Previous</span>
+                          </button>
+                          @if (metrics().confirmations.stereoConfirmed !== null) {
+                            <button type="button" class="btn-step-primary" (click)="setWizardStep(5)">
+                              <span>Next: Frequency Test &rarr;</span>
+                            </button>
+                          }
+                        </div>
+                      </div>
+                    }
+
+                    <!-- STEP 5: Frequency Spectrum Test -->
+                    @case (5) {
+                      <div class="step-view">
+                        <div class="step-heading-group">
+                          <span class="step-num-badge">STEP 5 OF 5</span>
+                          <h4 class="step-title">Frequency Spectrum Test</h4>
+                          <p class="step-desc">Run a continuous 20 Hz to 20,000 Hz sweep to verify low bass, vocal midrange, and treble clarity.</p>
+                        </div>
+
+                        <div class="step-interactive-area">
+                          <div class="frequency-hud-box">
+                            <div class="sweep-hud-val">
+                              <span class="hud-num">{{ metrics().sweepRunning ? metrics().currentFrequency : '20 - 20,000' }}</span>
+                              <span class="hud-unit">Hz</span>
+                            </div>
+                            <div class="sweep-bar-track">
+                              <div class="sweep-bar-fill" [style.width.%]="metrics().sweepProgress"></div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            class="btn-step-play"
+                            [class.playing]="metrics().sweepRunning"
+                            (click)="toggleSweep()"
+                          >
+                            <ts-icon [name]="metrics().sweepRunning ? 'pause' : 'play'" [size]="16" />
+                            <span>{{ metrics().sweepRunning ? 'Stop Sweep' : 'Start Frequency Sweep' }}</span>
+                          </button>
+
+                          <div class="confirm-box">
+                            <span class="confirm-prompt">Did you hear the smooth progression from low bass to high treble?</span>
+                            <div class="confirm-btns">
+                              <button
+                                type="button"
+                                class="btn-confirm yes"
+                                [class.selected]="metrics().confirmations.frequenciesConfirmed === true"
+                                (click)="handleWizardConfirm('frequenciesConfirmed', true, 6)"
+                              >
+                                <ts-icon name="check" [size]="14" />
+                                <span>Yes, Full Range Audible</span>
+                              </button>
+                              <button
+                                type="button"
+                                class="btn-confirm no"
+                                [class.selected]="metrics().confirmations.frequenciesConfirmed === false"
+                                (click)="handleWizardConfirm('frequenciesConfirmed', false, 6)"
+                              >
+                                <ts-icon name="x" [size]="14" />
+                                <span>No, Frequencies Missing / Distorted</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="step-footer-actions">
+                          <button type="button" class="btn-step-secondary" (click)="setWizardStep(4)">
+                            <span>&larr; Previous</span>
+                          </button>
+                          @if (metrics().confirmations.frequenciesConfirmed !== null) {
+                            <button type="button" class="btn-step-primary" (click)="setWizardStep(6)">
+                              <span>View Final Results &rarr;</span>
+                            </button>
+                          }
+                        </div>
+                      </div>
+                    }
+                  }
+                </div>
+              } @else {
+
+                <!-- ========================================== -->
+                <!-- FINAL RESULTS — SAME COMPONENT (STEP 6)   -->
+                <!-- ========================================== -->
+                <div class="final-results-view">
+
+                  <!-- Results Header -->
+                  <div class="results-header-row">
+                    <div>
+                      <h4 class="results-title">Speaker & Headphone Test Results</h4>
+                      <p class="results-subtitle">Output: <strong>{{ metrics().activeOutputDeviceLabel }}</strong></p>
+                    </div>
+                    <div class="results-badge" [attr.data-status]="getOverallStatus()">
+                      <ts-icon [name]="getOverallStatus() === 'Passed' ? 'check-circle' : 'alert-triangle'" [size]="14" />
+                      <span>{{ getOverallStatus() }}</span>
+                    </div>
+                  </div>
+
+                  <!-- Verdict Banner with Score -->
+                  <div class="results-verdict-banner" [attr.data-status]="getOverallStatus()">
+                    <div class="verdict-score-ring">
+                      <span class="score-num">{{ metrics().diagnosticSummary.stereoSeparationScore }}%</span>
+                    </div>
+                    <div class="verdict-text-block">
+                      <h5 class="verdict-title">{{ metrics().diagnosticSummary.verdictTitle }}</h5>
+                      <p class="verdict-desc">{{ metrics().diagnosticSummary.verdictDescription }}</p>
+                    </div>
+                  </div>
+
+                  <!-- Results Grid (4 Channels) -->
+                  <div class="results-grid">
+                    <!-- 1. Left Channel -->
+                    <div class="result-tile">
+                      <div class="tile-header">
+                        <span class="tile-name">Left Channel</span>
+                        <span class="status-pill" [attr.data-status]="getStepStatus(metrics().confirmations.leftConfirmed)">
+                          {{ getStepStatus(metrics().confirmations.leftConfirmed) }}
+                        </span>
+                      </div>
+                      <p class="tile-desc">
+                        {{ metrics().confirmations.leftConfirmed === true ? 'Verified in left ear with zero bleed.' : metrics().confirmations.leftConfirmed === false ? 'Channel audio was not heard or wrong side.' : 'Test not completed.' }}
+                      </p>
+                    </div>
+
+                    <!-- 2. Right Channel -->
+                    <div class="result-tile">
+                      <div class="tile-header">
+                        <span class="tile-name">Right Channel</span>
+                        <span class="status-pill" [attr.data-status]="getStepStatus(metrics().confirmations.rightConfirmed)">
+                          {{ getStepStatus(metrics().confirmations.rightConfirmed) }}
+                        </span>
+                      </div>
+                      <p class="tile-desc">
+                        {{ metrics().confirmations.rightConfirmed === true ? 'Verified in right ear with zero bleed.' : metrics().confirmations.rightConfirmed === false ? 'Channel audio was not heard or wrong side.' : 'Test not completed.' }}
+                      </p>
+                    </div>
+
+                    <!-- 3. Stereo Output -->
+                    <div class="result-tile">
+                      <div class="tile-header">
+                        <span class="tile-name">Stereo Output</span>
+                        <span class="status-pill" [attr.data-status]="getStepStatus(metrics().confirmations.stereoConfirmed)">
+                          {{ getStepStatus(metrics().confirmations.stereoConfirmed) }}
+                        </span>
+                      </div>
+                      <p class="tile-desc">
+                        {{ metrics().confirmations.stereoConfirmed === true ? 'Both channels balanced across ears.' : metrics().confirmations.stereoConfirmed === false ? 'Stereo imbalance or one side muted.' : 'Test not completed.' }}
+                      </p>
+                    </div>
+
+                    <!-- 4. Frequency Test -->
+                    <div class="result-tile">
+                      <div class="tile-header">
+                        <span class="tile-name">Frequency Test</span>
+                        <span class="status-pill" [attr.data-status]="getStepStatus(metrics().confirmations.frequenciesConfirmed)">
+                          {{ getStepStatus(metrics().confirmations.frequenciesConfirmed) }}
+                        </span>
+                      </div>
+                      <p class="tile-desc">
+                        {{ metrics().confirmations.frequenciesConfirmed === true ? 'Full 20 Hz – 20,000 Hz spectrum audible.' : metrics().confirmations.frequenciesConfirmed === false ? 'Certain frequency ranges missing or distorted.' : 'Test not completed.' }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Identified Issues / Health Note -->
+                  <div class="issues-summary-card" [class.has-issues]="identifiedIssues().length > 0">
+                    <div class="issues-title-row">
+                      <ts-icon [name]="identifiedIssues().length > 0 ? 'alert-circle' : 'check-circle'" [size]="15" />
+                      <span class="issues-title">{{ identifiedIssues().length > 0 ? 'Identified Issues' : 'Audit Summary' }}</span>
+                    </div>
+                    @if (identifiedIssues().length > 0) {
+                      <ul class="issues-list">
+                        @for (issue of identifiedIssues(); track issue) {
+                          <li>{{ issue }}</li>
+                        }
+                      </ul>
+                    } @else {
+                      <p class="no-issues-text">All stereo separation and frequency tests passed cleanly. Your device is ready for video conferences and media.</p>
+                    }
+                  </div>
+
+                  <!-- Primary Actions After Completion -->
+                  <div class="results-actions-bar">
+                    <button type="button" class="btn-save-report" (click)="saveReport()" title="Download a clean PDF report of your test results">
+                      <ts-icon name="download" [size]="15" />
+                      <span>Save Report</span>
+                    </button>
+                    <button type="button" class="btn-start-again" (click)="startAgain()" title="Clear results and start the test again from Step 1">
+                      <ts-icon name="rotate-ccw" [size]="15" />
+                      <span>Start Again</span>
+                    </button>
+                  </div>
+
+                </div>
+              }
+            </div>
+
+          } @else {
+
+            <!-- TAB 2: MANUAL STEREO & SOUND WORKBENCH (OPTIONAL) -->
             <div class="tool-card">
               <div class="card-title-row">
                 <div class="icon-chip">
@@ -88,10 +585,10 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
 
               <!-- Interactive Speakers Visual Stage -->
               <div class="speakers-stage">
-                
+
                 <!-- Left Speaker Box -->
-                <div 
-                  class="speaker-box" 
+                <div
+                  class="speaker-box"
                   [class.active]="isLeftActive()"
                 >
                   <div class="speaker-cone">
@@ -100,10 +597,10 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                     <div class="wave-ring ring-2"></div>
                   </div>
                   <span class="speaker-name">LEFT CHANNEL</span>
-                  <span class="speaker-freq">440 Hz (Standard A4)</span>
-                  
-                  <button 
-                    type="button" 
+                  <span class="speaker-freq">Left Ear Bell Chime</span>
+
+                  <button
+                    type="button"
                     class="speaker-action-btn"
                     [class.playing]="metrics().currentMode === 'left'"
                     (click)="testChannel('left')"
@@ -114,18 +611,18 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
 
                   <!-- Confirmation Pill -->
                   <div class="channel-feedback">
-                    <button 
-                      type="button" 
-                      class="confirm-pill yes" 
+                    <button
+                      type="button"
+                      class="confirm-pill yes"
                       [class.selected]="metrics().confirmations.leftConfirmed === true"
                       (click)="confirmChannel('leftConfirmed', true)"
                     >
                       <ts-icon name="check" [size]="12" />
                       <span>Heard Left</span>
                     </button>
-                    <button 
-                      type="button" 
-                      class="confirm-pill no" 
+                    <button
+                      type="button"
+                      class="confirm-pill no"
                       [class.selected]="metrics().confirmations.leftConfirmed === false"
                       (click)="confirmChannel('leftConfirmed', false)"
                     >
@@ -136,19 +633,19 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
 
                 <!-- Center Bridge: Stereo & Alternate -->
                 <div class="stereo-bridge">
-                  <button 
-                    type="button" 
-                    class="btn-stereo" 
+                  <button
+                    type="button"
+                    class="btn-stereo"
                     [class.playing]="metrics().currentMode === 'stereo'"
                     (click)="testChannel('stereo')"
                   >
                     <ts-icon [name]="metrics().currentMode === 'stereo' ? 'pause' : 'play'" [size]="14" />
-                    <span>Both Channels (Stereo Harmony)</span>
+                    <span>Both Channels (Stereo Bell Chime)</span>
                   </button>
 
-                  <button 
-                    type="button" 
-                    class="btn-alternate" 
+                  <button
+                    type="button"
+                    class="btn-alternate"
                     [class.playing]="metrics().currentMode === 'alternate'"
                     (click)="testAlternating()"
                     title="Alternates sound between left and right automatically"
@@ -165,10 +662,10 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                       <span class="bal-lbl">Pan Balance:</span>
                       <span class="bal-val">{{ formatPan(metrics().panValue) }}</span>
                     </div>
-                    <input 
-                      type="range" 
-                      min="-100" 
-                      max="100" 
+                    <input
+                      type="range"
+                      min="-100"
+                      max="100"
                       [value]="metrics().panValue * 100"
                       (input)="onPanChange($event)"
                       class="pan-slider"
@@ -183,8 +680,8 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                 </div>
 
                 <!-- Right Speaker Box -->
-                <div 
-                  class="speaker-box" 
+                <div
+                  class="speaker-box"
                   [class.active]="isRightActive()"
                 >
                   <div class="speaker-cone">
@@ -193,10 +690,10 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                     <div class="wave-ring ring-2"></div>
                   </div>
                   <span class="speaker-name">RIGHT CHANNEL</span>
-                  <span class="speaker-freq">880 Hz (High A5)</span>
+                  <span class="speaker-freq">Right Ear Bell Chime</span>
 
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     class="speaker-action-btn"
                     [class.playing]="metrics().currentMode === 'right'"
                     (click)="testChannel('right')"
@@ -207,18 +704,18 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
 
                   <!-- Confirmation Pill -->
                   <div class="channel-feedback">
-                    <button 
-                      type="button" 
-                      class="confirm-pill yes" 
+                    <button
+                      type="button"
+                      class="confirm-pill yes"
                       [class.selected]="metrics().confirmations.rightConfirmed === true"
                       (click)="confirmChannel('rightConfirmed', true)"
                     >
                       <ts-icon name="check" [size]="12" />
                       <span>Heard Right</span>
                     </button>
-                    <button 
-                      type="button" 
-                      class="confirm-pill no" 
+                    <button
+                      type="button"
+                      class="confirm-pill no"
                       [class.selected]="metrics().confirmations.rightConfirmed === false"
                       (click)="confirmChannel('rightConfirmed', false)"
                     >
@@ -271,9 +768,9 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                 </div>
 
                 <div class="sweep-ctrl-row">
-                  <button 
-                    type="button" 
-                    class="btn-sweep" 
+                  <button
+                    type="button"
+                    class="btn-sweep"
                     [class.playing]="metrics().sweepRunning"
                     (click)="toggleSweep()"
                   >
@@ -339,9 +836,9 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                     <span class="noise-name">Pink Noise</span>
                     <span class="noise-desc">Equal energy per octave. Industry standard for neutral speaker calibration.</span>
                   </div>
-                  <button 
-                    type="button" 
-                    class="btn-noise" 
+                  <button
+                    type="button"
+                    class="btn-noise"
                     [class.playing]="metrics().currentMode === 'pink-noise'"
                     (click)="testNoise('pink')"
                   >
@@ -355,9 +852,9 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                     <span class="noise-name">White Noise</span>
                     <span class="noise-desc">Equal energy per frequency. Helpful for detecting driver rattle and hiss.</span>
                   </div>
-                  <button 
-                    type="button" 
-                    class="btn-noise" 
+                  <button
+                    type="button"
+                    class="btn-noise"
                     [class.playing]="metrics().currentMode === 'white-noise'"
                     (click)="testNoise('white')"
                   >
@@ -371,9 +868,9 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                     <span class="noise-name">Brown Noise</span>
                     <span class="noise-desc">Deep low-frequency rumble. Ideal for sub-bass resonance checks.</span>
                   </div>
-                  <button 
-                    type="button" 
-                    class="btn-noise" 
+                  <button
+                    type="button"
+                    class="btn-noise"
                     [class.playing]="metrics().currentMode === 'brown-noise'"
                     (click)="testNoise('brown')"
                   >
@@ -386,139 +883,12 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
           </div>
         </details>
 
-          } @else {
-            
-            <!-- TAB 2: GUIDED 5-STEP TEST WIZARD -->
-            <div class="tool-card wizard-card">
-              <div class="wizard-header">
-                <div class="wizard-progress-pills">
-                  <span class="wiz-pill" [class.done]="wizardStep() > 1" [class.active]="wizardStep() === 1">1. Output Device</span>
-                  <span class="wiz-pill" [class.done]="wizardStep() > 2" [class.active]="wizardStep() === 2">2. Left Ear</span>
-                  <span class="wiz-pill" [class.done]="wizardStep() > 3" [class.active]="wizardStep() === 3">3. Right Ear</span>
-                  <span class="wiz-pill" [class.done]="wizardStep() > 4" [class.active]="wizardStep() === 4">4. Stereo Output</span>
-                  <span class="wiz-pill" [class.done]="wizardStep() === 5" [class.active]="wizardStep() === 5">5. Frequencies</span>
-                </div>
-              </div>
-
-              <!-- Wizard Step Content -->
-              <div class="wizard-step-content">
-                @switch (wizardStep()) {
-                  @case (1) {
-                    <div class="step-view">
-                      <h4 class="step-title">Step 1: Verify Audio Output Device</h4>
-                      <p class="step-desc">Ensure your headphones or external speakers are connected and selected as the default playback device.</p>
-                      <div class="active-dev-box">
-                        <ts-icon name="headphones" [size]="20" />
-                        <span>Active Output: <strong>{{ metrics().activeOutputDeviceLabel }}</strong></span>
-                      </div>
-                      <div class="step-nav">
-                        <button type="button" class="btn-step-next" (click)="wizardStep.set(2)">
-                          <span>Next: Test Left Channel &rarr;</span>
-                        </button>
-                      </div>
-                    </div>
-                  }
-                  @case (2) {
-                    <div class="step-view">
-                      <h4 class="step-title">Step 2: Test Left Audio Channel</h4>
-                      <p class="step-desc">Click Play Left Tone. You should hear a 440 Hz sound strictly in your left ear / left speaker.</p>
-                      
-                      <button type="button" class="btn-step-play" (click)="testChannel('left')">
-                        <ts-icon [name]="metrics().currentMode === 'left' ? 'pause' : 'play'" [size]="16" />
-                        <span>{{ metrics().currentMode === 'left' ? 'Stop Left Tone' : 'Play Left Tone' }}</span>
-                      </button>
-
-                      <div class="confirm-box">
-                        <span class="confirm-prompt">Did you hear the sound clearly in your LEFT ear?</span>
-                        <div class="confirm-btns">
-                          <button type="button" class="btn-confirm yes" (click)="handleWizardConfirm('leftConfirmed', true, 3)">
-                            <ts-icon name="check" [size]="14" />
-                            <span>Yes, Heard in Left</span>
-                          </button>
-                          <button type="button" class="btn-confirm no" (click)="handleWizardConfirm('leftConfirmed', false, 3)">
-                            <span>No, Nothing / Wrong Side</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  }
-                  @case (3) {
-                    <div class="step-view">
-                      <h4 class="step-title">Step 3: Test Right Audio Channel</h4>
-                      <p class="step-desc">Click Play Right Tone. You should hear an 880 Hz tone strictly in your right ear / right speaker.</p>
-
-                      <button type="button" class="btn-step-play" (click)="testChannel('right')">
-                        <ts-icon [name]="metrics().currentMode === 'right' ? 'pause' : 'play'" [size]="16" />
-                        <span>{{ metrics().currentMode === 'right' ? 'Stop Right Tone' : 'Play Right Tone' }}</span>
-                      </button>
-
-                      <div class="confirm-box">
-                        <span class="confirm-prompt">Did you hear the sound clearly in your RIGHT ear?</span>
-                        <div class="confirm-btns">
-                          <button type="button" class="btn-confirm yes" (click)="handleWizardConfirm('rightConfirmed', true, 4)">
-                            <ts-icon name="check" [size]="14" />
-                            <span>Yes, Heard in Right</span>
-                          </button>
-                          <button type="button" class="btn-confirm no" (click)="handleWizardConfirm('rightConfirmed', false, 4)">
-                            <span>No, Nothing / Wrong Side</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  }
-                  @case (4) {
-                    <div class="step-view">
-                      <h4 class="step-title">Step 4: Test Stereo Harmony</h4>
-                      <p class="step-desc">Both channels will sound together. You should perceive a balanced, harmonious two-tone chime.</p>
-
-                      <button type="button" class="btn-step-play" (click)="testChannel('stereo')">
-                        <ts-icon [name]="metrics().currentMode === 'stereo' ? 'pause' : 'play'" [size]="16" />
-                        <span>{{ metrics().currentMode === 'stereo' ? 'Stop Stereo Sound' : 'Play Stereo Sound' }}</span>
-                      </button>
-
-                      <div class="confirm-box">
-                        <span class="confirm-prompt">Did you hear stereo sound balanced across BOTH ears?</span>
-                        <div class="confirm-btns">
-                          <button type="button" class="btn-confirm yes" (click)="handleWizardConfirm('stereoConfirmed', true, 5)">
-                            <ts-icon name="check" [size]="14" />
-                            <span>Yes, Balanced Stereo</span>
-                          </button>
-                          <button type="button" class="btn-confirm no" (click)="handleWizardConfirm('stereoConfirmed', false, 5)">
-                            <span>No, One Side Muted</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  }
-                  @case (5) {
-                    <div class="step-view">
-                      <h4 class="step-title">Step 5: Test Frequency Spectrum</h4>
-                      <p class="step-desc">Run a 20Hz – 20,000Hz sweep to ensure your speakers can reproduce deep bass and clear treble.</p>
-
-                      <button type="button" class="btn-step-play" (click)="toggleSweep()">
-                        <ts-icon [name]="metrics().sweepRunning ? 'pause' : 'play'" [size]="16" />
-                        <span>{{ metrics().sweepRunning ? 'Stop Sweep' : 'Start Frequency Sweep' }}</span>
-                      </button>
-
-                      <div class="confirm-box">
-                        <span class="confirm-prompt">Did you hear the smooth progression from low bass to high treble?</span>
-                        <div class="confirm-btns">
-                          <button type="button" class="btn-confirm yes" (click)="handleWizardConfirm('frequenciesConfirmed', true, 5)">
-                            <ts-icon name="check" [size]="14" />
-                            <span>Yes, Full Range Audible</span>
-                          </button>
-                          <button type="button" class="btn-confirm no" (click)="handleWizardConfirm('frequenciesConfirmed', false, 5)">
-                            <span>No, Frequencies Missing</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  }
-                }
-              </div>
-            </div>
-
           }
+
+        </div>
+
+        <!-- ========================================== -->
+        <!-- RIGHT COLUMN: Output Device          }
 
         </div>
 
@@ -526,21 +896,51 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
         <!-- RIGHT COLUMN: Output Device, Volume, Status -->
         <!-- ========================================== -->
         <div class="side-column">
-          
+
           <!-- Card 1: Output Device & Volume -->
           <div class="side-card">
-            <h3 class="card-heading">Audio Output & Volume</h3>
-            
+            <div class="side-card-header">
+              <h3 class="card-heading">Audio Output & Volume</h3>
+              <button type="button" class="btn-text-detect" (click)="detectHeadphones()" title="Scan for newly connected headphones or audio devices">
+                <ts-icon name="refresh-cw" [size]="12" />
+                <span>Detect</span>
+              </button>
+            </div>
+
             <div class="device-select-wrap">
               <app-acklet-dropdown
                 [options]="outputDeviceOptions()"
                 [value]="metrics().activeOutputDeviceId || ''"
                 (valueChange)="onOutputDeviceChange($event)"
                 placeholder="Select speaker/output..."
-                icon="headphones"
+                [icon]="activeDeviceType() === 'headphones' ? 'headphones' : 'volume-2'"
                 emptyText="No output devices detected"
               />
             </div>
+
+            <!-- Connected / Detected Output Devices List -->
+            @if (devices().length > 0) {
+              <div class="detected-devices-section">
+                <span class="detected-section-lbl">Connected Devices ({{ devices().length }})</span>
+                <div class="detected-devices-list">
+                  @for (dev of devices(); track dev.deviceId) {
+                    <button
+                      type="button"
+                      class="device-chip-btn"
+                      [class.active]="(metrics().activeOutputDeviceId || 'default') === dev.deviceId || (!metrics().activeOutputDeviceId && dev.deviceId === 'default')"
+                      (click)="onOutputDeviceChange(dev.deviceId)"
+                      [title]="dev.label"
+                    >
+                      <ts-icon [name]="getDevIcon(dev.label)" [size]="13" />
+                      <span class="dev-chip-label">{{ dev.label }}</span>
+                      @if ((metrics().activeOutputDeviceId || 'default') === dev.deviceId || (!metrics().activeOutputDeviceId && dev.deviceId === 'default')) {
+                        <span class="active-pill">Active</span>
+                      }
+                    </button>
+                  }
+                </div>
+              </div>
+            }
 
             <div class="volume-slider-wrap" style="margin-top: 14px;">
               <div class="vol-header">
@@ -549,9 +949,9 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
               </div>
 
               <div class="slider-row">
-                <button 
-                  type="button" 
-                  class="mute-icon-btn" 
+                <button
+                  type="button"
+                  class="mute-icon-btn"
                   [class.muted]="metrics().isMuted"
                   (click)="speaker.toggleMute()"
                   [title]="metrics().isMuted ? 'Unmute' : 'Mute'"
@@ -559,10 +959,10 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                   <ts-icon [name]="metrics().isMuted ? 'volume-x' : 'volume-2'" [size]="18" />
                 </button>
 
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="100" 
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
                   [value]="metrics().masterVolume"
                   (input)="onVolumeChange($event)"
                   class="vol-slider"
@@ -581,6 +981,11 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
               <div class="verdict-tag" [attr.data-verdict]="metrics().diagnosticSummary.verdict">
                 <span>{{ metrics().diagnosticSummary.stereoSeparationScore }}%</span>
               </div>
+            </div>
+
+            <div class="current-test-status-row">
+              <span class="status-indicator-dot" [class.active]="metrics().isPlaying"></span>
+              <span class="status-summary-text">{{ getTestingStatusText() }}</span>
             </div>
 
             <h4 class="diag-title">{{ metrics().diagnosticSummary.verdictTitle }}</h4>
@@ -614,49 +1019,6 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
             </div>
           </div>
 
-          <!-- Progressive Disclosure: Technical Details -->
-          <details class="technical-details">
-            <summary class="details-summary">
-              <div class="summary-left">
-                <ts-icon name="sliders" [size]="15" />
-                <span>Technical Details</span>
-              </div>
-              <ts-icon name="chevron-down" [size]="14" class="summary-chevron" />
-            </summary>
-
-            <div class="details-content">
-              <div class="specs-list">
-                <div class="spec-row">
-                  <span class="spec-k">Output Device</span>
-                  <span class="spec-v device-name-val" [title]="metrics().activeOutputDeviceLabel">
-                    {{ metrics().activeOutputDeviceLabel || 'Default Device' }}
-                  </span>
-                </div>
-                <div class="spec-row">
-                  <span class="spec-k">Sample Rate</span>
-                  <span class="spec-v">{{ metrics().diagnosticSummary.sampleRate }} Hz</span>
-                </div>
-                <div class="spec-row">
-                  <span class="spec-k">Latency</span>
-                  <span class="spec-v">{{ metrics().diagnosticSummary.latencyMs || 12 }} ms</span>
-                </div>
-                <div class="spec-row">
-                  <span class="spec-k">Routing Mode</span>
-                  <span class="spec-v">{{ metrics().diagnosticSummary.outputSinkSupported ? 'Direct Sink' : 'Browser Managed' }}</span>
-                </div>
-              </div>
-
-              <!-- Setup & Hearing Tips -->
-              <div class="troubleshoot-sub">
-                <span class="cap-title">Setup & Hearing Tips:</span>
-                <ul class="tip-list-simple">
-                  <li><strong>Headphone Orientation:</strong> If the left tone plays in your right ear, your headphones are reversed.</li>
-                  <li><strong>Frequency Limits:</strong> Frequencies above 14,000 Hz naturally attenuate with age and room acoustics.</li>
-                  <li><strong>Sub-Bass Response:</strong> 60 Hz tones require larger speaker drivers or headphones to be audible.</li>
-                </ul>
-              </div>
-            </div>
-          </details>
 
         </div>
 
@@ -777,6 +1139,134 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
     :host-context([data-theme="light"]) .tool-card {
       background: #FFFFFF;
       border-color: #E2E8F0;
+    }
+
+    /* Connected Headphone / Output Device Bar */
+    .connected-device-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: var(--ds-card-bg-elevated, #27272A);
+      border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.08));
+      margin-bottom: 16px;
+    }
+
+    :host-context([data-theme="light"]) .connected-device-bar {
+      background: #F8FAFC;
+      border-color: #E2E8F0;
+    }
+
+    .connected-dev-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .dev-badge-pulse {
+      position: relative;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--ds-accent-soft, rgba(59, 130, 246, 0.12));
+      color: var(--ds-accent, #3B82F6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    :host-context([data-theme="light"]) .dev-badge-pulse {
+      background: #EFF6FF;
+      color: #2563EB;
+    }
+
+    .pulse-dot {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10B981;
+      box-shadow: 0 0 6px rgba(16, 185, 129, 0.7);
+    }
+
+    .dev-text-meta {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .dev-status-tag {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #10B981;
+      line-height: 1.2;
+    }
+
+    .dev-current-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text, #F4F4F5);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 260px;
+    }
+
+    :host-context([data-theme="light"]) .dev-current-name {
+      color: #0F172A;
+    }
+
+    .connected-dev-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .quick-dev-select {
+      min-width: 170px;
+      max-width: 220px;
+    }
+
+    .btn-detect-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      border-radius: 8px;
+      background: var(--ds-card-bg, #18181B);
+      border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.12));
+      color: var(--text, #F4F4F5);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    :host-context([data-theme="light"]) .btn-detect-action {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+      color: #0F172A;
+    }
+
+    .btn-detect-action:hover {
+      border-color: var(--ds-accent, #3B82F6);
+      color: var(--ds-accent, #3B82F6);
+    }
+
+    :host-context([data-theme="light"]) .btn-detect-action:hover {
+      border-color: #2563EB;
+      color: #2563EB;
     }
 
     .card-title-row {
@@ -1369,28 +1859,64 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
       border-color: #2563EB;
     }
 
-    /* Wizard Card */
+    /* Wizard Container & Header */
+    .wizard-card {
+      min-height: 480px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .wizard-header {
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.08));
+    }
+
+    :host-context([data-theme="light"]) .wizard-header {
+      border-color: #E2E8F0;
+    }
+
     .wizard-progress-pills {
       display: flex;
-      gap: 6px;
+      gap: 8px;
       flex-wrap: wrap;
-      margin-bottom: 16px;
     }
 
     .wiz-pill {
-      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
       font-weight: 600;
-      padding: 4px 10px;
+      padding: 6px 12px;
       border-radius: 9999px;
       background: var(--ds-card-bg-elevated, #27272A);
       color: var(--text-2, #A1A1AA);
       border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.08));
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    :host-context([data-theme="light"]) .wiz-pill {
+      background: #F1F5F9;
+      color: #64748B;
+      border-color: #E2E8F0;
+    }
+
+    .wiz-pill:hover {
+      border-color: var(--ds-accent, #3B82F6);
+      color: var(--text, #F4F4F5);
+    }
+
+    :host-context([data-theme="light"]) .wiz-pill:hover {
+      border-color: #2563EB;
+      color: #0F172A;
     }
 
     .wiz-pill.active {
       background: var(--ds-accent-soft, rgba(59, 130, 246, 0.15));
       color: var(--ds-accent, #3B82F6);
-      border-color: var(--ds-accent-border, rgba(59, 130, 246, 0.3));
+      border-color: var(--ds-accent-border, rgba(59, 130, 246, 0.4));
     }
 
     :host-context([data-theme="light"]) .wiz-pill.active {
@@ -1400,20 +1926,50 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
     }
 
     .wiz-pill.done {
-      background: var(--ds-pass-soft, rgba(52, 211, 153, 0.15));
+      background: var(--ds-pass-soft, rgba(52, 211, 153, 0.12));
       color: var(--ds-pass, #34D399);
       border-color: var(--ds-pass-border, rgba(52, 211, 153, 0.3));
     }
 
+    :host-context([data-theme="light"]) .wiz-pill.done {
+      background: #ECFDF5;
+      color: #059669;
+      border-color: #A7F3D0;
+    }
+
+    .results-pill.active {
+      background: var(--ds-accent-soft, rgba(59, 130, 246, 0.2));
+      color: var(--ds-accent, #3B82F6);
+      border-color: var(--ds-accent, #3B82F6);
+    }
+
+    /* Step View */
     .step-view {
       display: flex;
       flex-direction: column;
-      gap: 14px;
-      padding: 10px 0;
+      gap: 18px;
+    }
+
+    .step-heading-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .step-num-badge {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--ds-accent, #3B82F6);
+    }
+
+    :host-context([data-theme="light"]) .step-num-badge {
+      color: #2563EB;
     }
 
     .step-title {
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 700;
       color: var(--text, #F4F4F5);
       margin: 0;
@@ -1424,44 +1980,279 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
     }
 
     .step-desc {
-      font-size: 13px;
+      font-size: 13.5px;
       color: var(--text-2, #A1A1AA);
       margin: 0;
       line-height: 1.5;
     }
 
+    :host-context([data-theme="light"]) .step-desc {
+      color: #64748B;
+    }
+
+    .step-interactive-area {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 16px;
+      border-radius: 12px;
+      background: var(--ds-card-bg-elevated, #27272A);
+      border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.08));
+    }
+
+    :host-context([data-theme="light"]) .step-interactive-area {
+      background: #F8FAFC;
+      border-color: #E2E8F0;
+    }
+
     .active-dev-box {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       padding: 12px 16px;
-      border-radius: 8px;
-      background: var(--ds-card-bg-elevated, #27272A);
+      border-radius: 10px;
+      background: var(--ds-card-bg, #18181B);
       border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.08));
-      color: var(--text, #F4F4F5);
-      font-size: 13px;
     }
 
-    .btn-step-next,
-    .btn-step-play {
+    :host-context([data-theme="light"]) .active-dev-box {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+    }
+
+    .dev-box-icon {
+      color: var(--ds-accent, #3B82F6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    :host-context([data-theme="light"]) .dev-box-icon {
+      color: #2563EB;
+    }
+
+    .dev-box-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .dev-box-type {
+      font-size: 11px;
+      font-weight: 600;
+      color: #10B981;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .dev-box-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text, #F4F4F5);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    :host-context([data-theme="light"]) .dev-box-name {
+      color: #0F172A;
+    }
+
+    .btn-rescan-dev {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 10px 20px;
-      border-radius: 8px;
-      background: var(--tool-accent, #3B82F6);
-      color: #FFFFFF;
-      font-size: 13.5px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: var(--ds-card-bg-elevated, #27272A);
+      border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.12));
+      color: var(--text, #F4F4F5);
+      font-size: 12px;
       font-weight: 600;
-      border: none;
       cursor: pointer;
-      width: fit-content;
+      transition: all 0.15s ease;
     }
 
-    :host-context([data-theme="light"]) .btn-step-next,
+    :host-context([data-theme="light"]) .btn-rescan-dev {
+      background: #F1F5F9;
+      border-color: #CBD5E1;
+      color: #0F172A;
+    }
+
+    .btn-rescan-dev:hover {
+      border-color: var(--ds-accent, #3B82F6);
+      color: var(--ds-accent, #3B82F6);
+    }
+
+    :host-context([data-theme="light"]) .btn-rescan-dev:hover {
+      border-color: #2563EB;
+      color: #2563EB;
+    }
+
+    /* Channel Visual Stage */
+    .channel-visual-stage {
+      display: flex;
+      justify-content: center;
+      padding: 16px 0;
+    }
+
+    .speaker-cone-visual {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 28px;
+      border-radius: 12px;
+      background: var(--ds-card-bg, #18181B);
+      border: 2px solid var(--ds-card-border, rgba(255, 255, 255, 0.1));
+      transition: all 0.2s ease;
+    }
+
+    :host-context([data-theme="light"]) .speaker-cone-visual {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+    }
+
+    .speaker-cone-visual.active {
+      border-color: var(--ds-accent, #3B82F6);
+      background: var(--ds-accent-soft, rgba(59, 130, 246, 0.1));
+      box-shadow: 0 0 16px rgba(59, 130, 246, 0.25);
+    }
+
+    :host-context([data-theme="light"]) .speaker-cone-visual.active {
+      border-color: #2563EB;
+      background: #EFF6FF;
+      box-shadow: 0 0 16px rgba(37, 99, 235, 0.18);
+    }
+
+    .cone-symbol {
+      color: var(--ds-accent, #3B82F6);
+    }
+
+    :host-context([data-theme="light"]) .cone-symbol {
+      color: #2563EB;
+    }
+
+    .cone-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--text, #F4F4F5);
+    }
+
+    :host-context([data-theme="light"]) .cone-label {
+      color: #0F172A;
+    }
+
+    /* Frequency HUD */
+    .frequency-hud-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 16px;
+      border-radius: 10px;
+      background: var(--ds-card-bg, #18181B);
+      border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.08));
+    }
+
+    :host-context([data-theme="light"]) .frequency-hud-box {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+    }
+
+    .sweep-hud-val {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .hud-num {
+      font-size: 24px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--ds-accent, #3B82F6);
+    }
+
+    :host-context([data-theme="light"]) .hud-num {
+      color: #2563EB;
+    }
+
+    .hud-unit {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-2, #A1A1AA);
+    }
+
+    .sweep-bar-track {
+      width: 100%;
+      height: 8px;
+      background: var(--ds-card-bg-elevated, #27272A);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    :host-context([data-theme="light"]) .sweep-bar-track {
+      background: #E2E8F0;
+    }
+
+    .sweep-bar-fill {
+      height: 100%;
+      background: var(--ds-accent, #3B82F6);
+      transition: width 0.1s linear;
+    }
+
+    :host-context([data-theme="light"]) .sweep-bar-fill {
+      background: #2563EB;
+    }
+
+    .btn-step-play {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border-radius: 8px;
+      background: var(--ds-card-bg, #18181B);
+      border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.15));
+      color: var(--text, #F4F4F5);
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      width: fit-content;
+      margin: 0 auto;
+    }
+
     :host-context([data-theme="light"]) .btn-step-play {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+      color: #0F172A;
+    }
+
+    .btn-step-play:hover {
+      border-color: var(--ds-accent, #3B82F6);
+      color: var(--ds-accent, #3B82F6);
+    }
+
+    :host-context([data-theme="light"]) .btn-step-play:hover {
+      border-color: #2563EB;
+      color: #2563EB;
+    }
+
+    .btn-step-play.playing {
+      background: var(--tool-accent, #3B82F6);
+      color: #FFFFFF;
+      border-color: var(--tool-accent, #3B82F6);
+    }
+
+    :host-context([data-theme="light"]) .btn-step-play.playing {
       background: #2563EB;
       color: #FFFFFF;
+      border-color: #2563EB;
     }
 
     .confirm-box {
@@ -1470,13 +2261,14 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
       gap: 10px;
       padding: 14px 16px;
       border-radius: 8px;
-      background: var(--ds-card-bg-elevated, #27272A);
+      background: var(--ds-card-bg, #18181B);
       border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.08));
-      margin-top: 10px;
+      margin-top: 4px;
     }
 
     :host-context([data-theme="light"]) .confirm-box {
-      background: #F8FAFC;
+      background: #FFFFFF;
+      border-color: #E2E8F0;
     }
 
     .confirm-prompt {
@@ -1492,6 +2284,7 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
     .confirm-btns {
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
     }
 
     .btn-confirm {
@@ -1504,18 +2297,528 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
       font-weight: 600;
       cursor: pointer;
       border: 1px solid transparent;
+      transition: all 0.15s ease;
     }
 
     .btn-confirm.yes {
-      background: var(--ds-pass-soft, rgba(52, 211, 153, 0.15));
+      background: var(--ds-pass-soft, rgba(52, 211, 153, 0.12));
       color: var(--ds-pass, #34D399);
       border-color: var(--ds-pass-border, rgba(52, 211, 153, 0.3));
     }
 
+    :host-context([data-theme="light"]) .btn-confirm.yes {
+      background: #ECFDF5;
+      color: #059669;
+      border-color: #A7F3D0;
+    }
+
+    .btn-confirm.yes.selected {
+      background: #10B981;
+      color: #FFFFFF;
+      border-color: #10B981;
+    }
+
     .btn-confirm.no {
-      background: var(--ds-fail-soft, rgba(248, 113, 113, 0.15));
+      background: var(--ds-fail-soft, rgba(248, 113, 113, 0.12));
       color: var(--ds-fail, #F87171);
       border-color: var(--ds-fail-border, rgba(248, 113, 113, 0.3));
+    }
+
+    :host-context([data-theme="light"]) .btn-confirm.no {
+      background: #FEF2F2;
+      color: #DC2626;
+      border-color: #FECACA;
+    }
+
+    .btn-confirm.no.selected {
+      background: #EF4444;
+      color: #FFFFFF;
+      border-color: #EF4444;
+    }
+
+    /* Step Footer Actions */
+    .step-footer-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    .btn-step-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 22px;
+      border-radius: 8px;
+      background: var(--tool-accent, #3B82F6);
+      color: #FFFFFF;
+      font-size: 13.5px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      margin-left: auto;
+    }
+
+    :host-context([data-theme="light"]) .btn-step-primary {
+      background: #2563EB;
+    }
+
+    .btn-step-primary:hover {
+      filter: brightness(1.1);
+    }
+
+    .btn-step-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      background: var(--ds-card-bg-elevated, #27272A);
+      border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.12));
+      color: var(--text, #F4F4F5);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    :host-context([data-theme="light"]) .btn-step-secondary {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+      color: #0F172A;
+    }
+
+    .btn-step-secondary:hover {
+      border-color: var(--ds-accent, #3B82F6);
+    }
+
+    /* Final Results View Styles */
+    .final-results-view {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .results-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.08));
+    }
+
+    :host-context([data-theme="light"]) .results-header-row {
+      border-color: #E2E8F0;
+    }
+
+    .results-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text, #F4F4F5);
+      margin: 0 0 2px;
+    }
+
+    :host-context([data-theme="light"]) .results-title {
+      color: #0F172A;
+    }
+
+    .results-subtitle {
+      font-size: 12.5px;
+      color: var(--text-2, #A1A1AA);
+      margin: 0;
+    }
+
+    :host-context([data-theme="light"]) .results-subtitle {
+      color: #64748B;
+    }
+
+    .results-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .results-badge[data-status="Passed"] {
+      background: var(--ds-pass-soft, rgba(52, 211, 153, 0.15));
+      color: var(--ds-pass, #34D399);
+      border: 1px solid var(--ds-pass-border, rgba(52, 211, 153, 0.3));
+    }
+
+    :host-context([data-theme="light"]) .results-badge[data-status="Passed"] {
+      background: #ECFDF5;
+      color: #059669;
+      border-color: #A7F3D0;
+    }
+
+    .results-badge[data-status="Needs Attention"] {
+      background: rgba(245, 158, 11, 0.15);
+      color: #F59E0B;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    :host-context([data-theme="light"]) .results-badge[data-status="Needs Attention"] {
+      background: #FFFBEB;
+      color: #D97706;
+      border-color: #FDE68A;
+    }
+
+    .results-badge[data-status="Not Completed"] {
+      background: rgba(156, 163, 175, 0.12);
+      color: #9CA3AF;
+      border: 1px solid rgba(156, 163, 175, 0.25);
+    }
+
+    :host-context([data-theme="light"]) .results-badge[data-status="Not Completed"] {
+      background: #F3F4F6;
+      color: #6B7280;
+      border-color: #E5E7EB;
+    }
+
+    /* Verdict Banner */
+    .results-verdict-banner {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 20px;
+      border-radius: 12px;
+      background: var(--ds-card-bg-elevated, #27272A);
+      border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.08));
+    }
+
+    :host-context([data-theme="light"]) .results-verdict-banner {
+      background: #F8FAFC;
+      border-color: #E2E8F0;
+    }
+
+    .verdict-score-ring {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: var(--ds-accent-soft, rgba(59, 130, 246, 0.15));
+      border: 2px solid var(--ds-accent, #3B82F6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    :host-context([data-theme="light"]) .verdict-score-ring {
+      background: #EFF6FF;
+      border-color: #2563EB;
+    }
+
+    .score-num {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--ds-accent, #3B82F6);
+    }
+
+    :host-context([data-theme="light"]) .score-num {
+      color: #2563EB;
+    }
+
+    .verdict-text-block {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .verdict-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text, #F4F4F5);
+      margin: 0 0 3px;
+    }
+
+    :host-context([data-theme="light"]) .verdict-title {
+      color: #0F172A;
+    }
+
+    .verdict-desc {
+      font-size: 12.5px;
+      color: var(--text-2, #A1A1AA);
+      margin: 0;
+      line-height: 1.45;
+    }
+
+    :host-context([data-theme="light"]) .verdict-desc {
+      color: #64748B;
+    }
+
+    /* Results Grid */
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 600px) {
+      .results-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .result-tile {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: var(--ds-card-bg-elevated, #27272A);
+      border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.08));
+    }
+
+    :host-context([data-theme="light"]) .result-tile {
+      background: #F8FAFC;
+      border-color: #E2E8F0;
+    }
+
+    .tile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .tile-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text, #F4F4F5);
+    }
+
+    :host-context([data-theme="light"]) .tile-name {
+      color: #0F172A;
+    }
+
+    .status-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .status-pill[data-status="Passed"] {
+      background: var(--ds-pass-soft, rgba(52, 211, 153, 0.15));
+      color: var(--ds-pass, #34D399);
+      border: 1px solid var(--ds-pass-border, rgba(52, 211, 153, 0.3));
+    }
+
+    :host-context([data-theme="light"]) .status-pill[data-status="Passed"] {
+      background: #ECFDF5;
+      color: #059669;
+      border-color: #A7F3D0;
+    }
+
+    .status-pill[data-status="Needs Attention"] {
+      background: rgba(245, 158, 11, 0.15);
+      color: #F59E0B;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    :host-context([data-theme="light"]) .status-pill[data-status="Needs Attention"] {
+      background: #FFFBEB;
+      color: #D97706;
+      border-color: #FDE68A;
+    }
+
+    .status-pill[data-status="Not Completed"] {
+      background: rgba(156, 163, 175, 0.12);
+      color: #9CA3AF;
+      border: 1px solid rgba(156, 163, 175, 0.25);
+    }
+
+    :host-context([data-theme="light"]) .status-pill[data-status="Not Completed"] {
+      background: #F3F4F6;
+      color: #6B7280;
+      border-color: #E5E7EB;
+    }
+
+    .tile-desc {
+      font-size: 12px;
+      color: var(--text-2, #A1A1AA);
+      margin: 0;
+      line-height: 1.45;
+    }
+
+    :host-context([data-theme="light"]) .tile-desc {
+      color: #64748B;
+    }
+
+    /* Issues Box */
+    .issues-summary-card {
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: var(--ds-card-bg-elevated, #27272A);
+      border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.08));
+    }
+
+    :host-context([data-theme="light"]) .issues-summary-card {
+      background: #F8FAFC;
+      border-color: #E2E8F0;
+    }
+
+    .issues-summary-card.has-issues {
+      border-color: rgba(245, 158, 11, 0.3);
+      background: rgba(245, 158, 11, 0.06);
+    }
+
+    :host-context([data-theme="light"]) .issues-summary-card.has-issues {
+      background: #FFFBEB;
+      border-color: #FDE68A;
+    }
+
+    .issues-title-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      color: var(--text, #F4F4F5);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    :host-context([data-theme="light"]) .issues-title-row {
+      color: #0F172A;
+    }
+
+    .issues-summary-card.has-issues .issues-title-row {
+      color: #F59E0B;
+    }
+
+    :host-context([data-theme="light"]) .issues-summary-card.has-issues .issues-title-row {
+      color: #D97706;
+    }
+
+    .issues-list {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 12px;
+      color: var(--text-2, #A1A1AA);
+      line-height: 1.6;
+    }
+
+    :host-context([data-theme="light"]) .issues-list {
+      color: #475569;
+    }
+
+    .no-issues-text {
+      margin: 0;
+      font-size: 12.5px;
+      color: var(--text-2, #A1A1AA);
+    }
+
+    :host-context([data-theme="light"]) .no-issues-text {
+      color: #64748B;
+    }
+
+    /* Actions After Completion */
+    .results-actions-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-top: 10px;
+    }
+
+    .btn-save-report {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border-radius: 8px;
+      background: var(--tool-accent, #3B82F6);
+      color: #FFFFFF;
+      font-size: 13.5px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    :host-context([data-theme="light"]) .btn-save-report {
+      background: #2563EB;
+    }
+
+    .btn-save-report:hover {
+      filter: brightness(1.1);
+    }
+
+    .btn-start-again {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      background: var(--ds-card-bg-elevated, #27272A);
+      border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.12));
+      color: var(--text, #F4F4F5);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    :host-context([data-theme="light"]) .btn-start-again {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+      color: #0F172A;
+    }
+
+    .btn-start-again:hover {
+      border-color: var(--ds-accent, #3B82F6);
+      color: var(--ds-accent, #3B82F6);
+    }
+
+    :host-context([data-theme="light"]) .btn-start-again:hover {
+      border-color: #2563EB;
+      color: #2563EB;
+    }
+
+    /* Current test status row in side card */
+    .current-test-status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      background: var(--ds-card-bg-elevated, #27272A);
+      border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.06));
+      margin-bottom: 12px;
+    }
+
+    :host-context([data-theme="light"]) .current-test-status-row {
+      background: #F8FAFC;
+      border-color: #E2E8F0;
+    }
+
+    .status-indicator-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10B981;
+    }
+
+    .status-indicator-dot.active {
+      box-shadow: 0 0 6px #10B981;
+    }
+
+    .status-summary-text {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-2, #A1A1AA);
+    }
+
+    :host-context([data-theme="light"]) .status-summary-text {
+      color: #475569;
     }
 
     /* Side Cards */
@@ -1542,11 +2845,129 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
       font-size: 14px;
       font-weight: 700;
       color: var(--text, #F4F4F5);
-      margin: 0 0 12px;
+      margin: 0;
     }
 
     :host-context([data-theme="light"]) .card-heading {
       color: #0F172A;
+    }
+
+    .side-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .btn-text-detect {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: none;
+      border: none;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ds-accent, #3B82F6);
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: background 0.15s ease;
+    }
+
+    :host-context([data-theme="light"]) .btn-text-detect {
+      color: #2563EB;
+    }
+
+    .btn-text-detect:hover {
+      background: var(--ds-accent-soft, rgba(59, 130, 246, 0.1));
+    }
+
+    .detected-devices-section {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .detected-section-lbl {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-2, #A1A1AA);
+    }
+
+    :host-context([data-theme="light"]) .detected-section-lbl {
+      color: #64748B;
+    }
+
+    .detected-devices-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .device-chip-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: var(--ds-card-bg-elevated, #27272A);
+      border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.08));
+      color: var(--text, #F4F4F5);
+      font-size: 12px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      width: 100%;
+    }
+
+    :host-context([data-theme="light"]) .device-chip-btn {
+      background: #F8FAFC;
+      border-color: #E2E8F0;
+      color: #1E293B;
+    }
+
+    .device-chip-btn:hover {
+      border-color: var(--ds-accent, #3B82F6);
+    }
+
+    .device-chip-btn.active {
+      background: var(--ds-accent-soft, rgba(59, 130, 246, 0.1));
+      border-color: var(--ds-accent, #3B82F6);
+      color: var(--ds-accent, #3B82F6);
+      font-weight: 600;
+    }
+
+    :host-context([data-theme="light"]) .device-chip-btn.active {
+      background: #EFF6FF;
+      border-color: #2563EB;
+      color: #2563EB;
+    }
+
+    .dev-chip-label {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+
+    .active-pill {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--ds-accent, #3B82F6);
+      color: #FFFFFF;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    :host-context([data-theme="light"]) .active-pill {
+      background: #2563EB;
+      color: #FFFFFF;
     }
 
     .device-select {
@@ -1965,6 +3386,7 @@ export class SpeakerModuleComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   public speaker = inject(SpeakerService);
   private state = inject(DeviceStudioStateService);
+  public reportService = inject(DiagnosticReportService);
 
   public readonly metrics = this.speaker.metrics;
   public readonly devices = this.speaker.availableDevices;
@@ -1977,12 +3399,47 @@ export class SpeakerModuleComponent implements OnInit, OnDestroy {
     return devs.map(d => ({
       value: d.deviceId,
       label: d.label || 'Audio Output',
-      icon: 'headphones'
+      icon: (d.label || '').toLowerCase().includes('headphone') || (d.label || '').toLowerCase().includes('airpod') ? 'headphones' : 'volume-2'
     }));
   });
 
-  public readonly activeTab = signal<'workbench' | 'guided'>('workbench');
+  public readonly activeDeviceType = computed<'headphones' | 'speaker'>(() => {
+    const label = (this.metrics().activeOutputDeviceLabel || '').toLowerCase();
+    return label.includes('headphone') || label.includes('airpod') || label.includes('ear') || label.includes('buds') || label.includes('headset')
+      ? 'headphones'
+      : 'speaker';
+  });
+
+  public readonly deviceStatusDescription = computed<string>(() => {
+    const isHeadphone = this.activeDeviceType() === 'headphones';
+    return isHeadphone
+      ? 'Connected Headphones • Stereo separation ready'
+      : 'Connected Audio Output • Ready for channel check';
+  });
+
+  public readonly activeTab = signal<'guided' | 'workbench'>('guided');
   public readonly wizardStep = signal<number>(1);
+
+  public readonly identifiedIssues = computed<string[]>(() => {
+    const c = this.metrics().confirmations;
+    const issues: string[] = [];
+    if (c.leftConfirmed === false) {
+      issues.push('Left channel tone was not heard. Check headphone orientation, balance slider, or cable connection.');
+    }
+    if (c.rightConfirmed === false) {
+      issues.push('Right channel tone was not heard. Check headphone orientation, balance slider, or cable connection.');
+    }
+    if (c.stereoConfirmed === false) {
+      issues.push('Stereo output was imbalanced or audio was muted on one channel.');
+    }
+    if (c.frequenciesConfirmed === false) {
+      issues.push('Certain audio frequencies were not reproduced cleanly. Check driver capabilities or volume.');
+    }
+    if (c.leftConfirmed === null || c.rightConfirmed === null || c.stereoConfirmed === null || c.frequenciesConfirmed === null) {
+      issues.push('One or more test steps were skipped or not completed.');
+    }
+    return issues;
+  });
 
   public readonly isLeftActive = computed(() => {
     const m = this.metrics();
@@ -2014,6 +3471,7 @@ export class SpeakerModuleComponent implements OnInit, OnDestroy {
   public async ngOnInit(): Promise<void> {
     this.state.setActiveTab('speaker');
     await this.speaker.loadDevices();
+    await this.speaker.preloadHeadphoneSound();
   }
 
   public ngOnDestroy(): void {
@@ -2026,7 +3484,7 @@ export class SpeakerModuleComponent implements OnInit, OnDestroy {
     } else {
       this.speaker.playChannelTone(channel);
       this.state.markModuleTested('speaker');
-      this.state.showToast(`Playing ${channel} channel tone.`);
+      this.state.showToast(`Playing ${channel} channel bell chime.`);
     }
   }
 
@@ -2036,7 +3494,7 @@ export class SpeakerModuleComponent implements OnInit, OnDestroy {
     } else {
       this.speaker.playAlternatingChannels(6);
       this.state.markModuleTested('speaker');
-      this.state.showToast('Alternating sound between left and right channels.');
+      this.state.showToast('Alternating bell chime between left and right channels.');
     }
   }
 
@@ -2103,12 +3561,65 @@ export class SpeakerModuleComponent implements OnInit, OnDestroy {
     this.state.showToast(isSuccess ? 'Channel verified.' : 'Channel flagged as issue.');
   }
 
+  public setWizardStep(step: number): void {
+    this.speaker.stop();
+    this.wizardStep.set(step);
+  }
+
+  public startStepTest(step: number): void {
+    this.speaker.stop();
+    this.wizardStep.set(step);
+    this.state.markModuleTested('speaker');
+  }
+
   public handleWizardConfirm(key: keyof SpeakerConfirmationStatus, isSuccess: boolean, nextStep: number): void {
     this.confirmChannel(key, isSuccess);
     this.speaker.stop();
-    if (this.wizardStep() < 5) {
-      this.wizardStep.set(nextStep);
+    this.wizardStep.set(nextStep);
+  }
+
+  public startAgain(): void {
+    this.speaker.stop();
+    this.speaker.resetConfirmations();
+    this.wizardStep.set(1);
+    this.state.showToast('Test session reset. Starting from Step 1.');
+  }
+
+  public saveReport(): void {
+    this.reportService.downloadReportPdf({ includeModules: ['speaker'], template: 'audio' });
+  }
+
+  public getStepStatus(val: boolean | null | undefined): 'Passed' | 'Needs Attention' | 'Not Completed' {
+    if (val === true) return 'Passed';
+    if (val === false) return 'Needs Attention';
+    return 'Not Completed';
+  }
+
+  public getOverallStatus(): 'Passed' | 'Needs Attention' | 'Not Completed' {
+    const c = this.metrics().confirmations;
+    if (c.leftConfirmed === null && c.rightConfirmed === null && c.stereoConfirmed === null && c.frequenciesConfirmed === null) {
+      return 'Not Completed';
     }
+    if (c.leftConfirmed === false || c.rightConfirmed === false || c.stereoConfirmed === false || c.frequenciesConfirmed === false) {
+      return 'Needs Attention';
+    }
+    if (c.leftConfirmed === true && c.rightConfirmed === true && c.stereoConfirmed === true && c.frequenciesConfirmed === true) {
+      return 'Passed';
+    }
+    return 'Needs Attention';
+  }
+
+  public getTestingStatusText(): string {
+    const step = this.wizardStep();
+    if (this.activeTab() === 'workbench') {
+      return this.metrics().isPlaying ? 'Playing Sound' : 'Workbench Ready';
+    }
+    if (step === 1) return 'Step 1 of 5: Device Ready';
+    if (step === 2) return 'Step 2 of 5: Left Channel';
+    if (step === 3) return 'Step 3 of 5: Right Channel';
+    if (step === 4) return 'Step 4 of 5: Stereo Output';
+    if (step === 5) return 'Step 5 of 5: Frequency Sweep';
+    return 'Testing Complete: Results Ready';
   }
 
   public resetConfirmations(): void {
@@ -2123,9 +3634,22 @@ export class SpeakerModuleComponent implements OnInit, OnDestroy {
   }
 
   public formatConfirmState(val: boolean | null): string {
-    if (val === true) return 'Verified (Heard)';
-    if (val === false) return 'Issue (Not Heard)';
-    return 'Unverified';
+    if (val === true) return 'Passed';
+    if (val === false) return 'Needs Attention';
+    return 'Not Completed';
+  }
+
+  public getDevIcon(label: string): string {
+    const l = (label || '').toLowerCase();
+    return l.includes('headphone') || l.includes('airpod') || l.includes('ear') || l.includes('buds') || l.includes('headset')
+      ? 'headphones'
+      : 'volume-2';
+  }
+
+  public async detectHeadphones(): Promise<void> {
+    const devs = await this.speaker.detectAudioDevices();
+    const count = devs.length;
+    this.state.showToast(`Found ${count} audio output device${count === 1 ? '' : 's'}.`);
   }
 
   public goBackToStudio(): void {

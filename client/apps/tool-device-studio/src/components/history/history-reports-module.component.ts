@@ -821,6 +821,8 @@ type DashboardTab = 'history' | 'compare' | 'reports';
       font-weight: 700;
       padding: 2px 6px;
       border-radius: 4px;
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
     }
 
     .status-pill[data-status="pass"] {

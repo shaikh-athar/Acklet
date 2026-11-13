@@ -52,6 +52,10 @@ export class SpeakerService {
   private activeOscillator: OscillatorNode | null = null;
   private activeSecondaryOsc: OscillatorNode | null = null;
   private activeNoiseNode: AudioBufferSourceNode | null = null;
+  private activeBellSource: AudioBufferSourceNode | null = null;
+  private cachedBellBuffer: AudioBuffer | null = null;
+  private isBellLoading = false;
+  private stopTimeout: ReturnType<typeof setTimeout> | null = null;
   private sweepTimer: ReturnType<typeof setInterval> | null = null;
   private alternatingTimer: ReturnType<typeof setInterval> | null = null;
   private deviceChangeListenerBound: (() => void) | null = null;
@@ -75,14 +79,35 @@ export class SpeakerService {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) return [];
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const outputDevices: MediaDeviceItem[] = devices
+      let outputDevices: MediaDeviceItem[] = devices
         .filter(d => d.kind === 'audiooutput')
-        .map((d, index) => ({
-          deviceId: d.deviceId,
-          label: d.label || `Speaker / Headphone ${index + 1}`,
-          kind: 'audiooutput',
-          groupId: d.groupId
-        }));
+        .map((d, index) => {
+          let label = d.label;
+          if (!label || label.trim() === '') {
+            if (d.deviceId === 'default') {
+              label = 'System Default (Headphones / Speakers)';
+            } else if (d.deviceId === 'communications') {
+              label = 'Communications Audio Device';
+            } else {
+              label = `Audio Output Device ${index + 1}`;
+            }
+          }
+          return {
+            deviceId: d.deviceId,
+            label,
+            kind: 'audiooutput',
+            groupId: d.groupId
+          };
+        });
+
+      if (outputDevices.length === 0) {
+        outputDevices = [{
+          deviceId: 'default',
+          label: 'Default Audio Output (Headphones / Speakers)',
+          kind: 'audiooutput'
+        }];
+      }
+
       this.availableDevices.set(outputDevices);
 
       // Resolve active label if matching device exists
@@ -93,13 +118,44 @@ export class SpeakerService {
           this.metrics.update(m => ({ ...m, activeOutputDeviceLabel: found.label }));
         }
       } else if (outputDevices.length > 0 && outputDevices[0].label) {
-        this.metrics.update(m => ({ ...m, activeOutputDeviceLabel: outputDevices[0].label }));
+        this.metrics.update(m => ({
+          ...m,
+          activeOutputDeviceId: outputDevices[0].deviceId,
+          activeOutputDeviceLabel: outputDevices[0].label
+        }));
       }
 
       return outputDevices;
     } catch {
       return [];
     }
+  }
+
+  public async detectAudioDevices(): Promise<MediaDeviceItem[]> {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) return this.availableDevices();
+    try {
+      // 1. If Chrome supports selectAudioOutput, try to trigger output device picker
+      if ('selectAudioOutput' in navigator.mediaDevices) {
+        try {
+          const device = await (navigator.mediaDevices as unknown as { selectAudioOutput: () => Promise<MediaDeviceInfo> }).selectAudioOutput();
+          if (device) {
+            await this.loadDevices();
+            await this.setOutputDevice(device.deviceId);
+            return this.availableDevices();
+          }
+        } catch {
+          // Dialog skipped or dismissed by user
+        }
+      }
+
+      // 2. Query temporary audio stream to unmask device labels if still hidden
+      if (navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(t => t.stop());
+      }
+    } catch {}
+
+    return await this.loadDevices();
   }
 
   public async setOutputDevice(deviceId: string): Promise<boolean> {
@@ -173,34 +229,162 @@ export class SpeakerService {
   }
 
   // ==========================================
-  // Stereo Channel Testing
+  // Headphone Bell Notification Sound Loading
+  // ==========================================
+
+  public async preloadHeadphoneSound(): Promise<void> {
+    try {
+      const ctx = await this.ensureAudioContext();
+      await this.loadBellAudioBuffer(ctx);
+    } catch {}
+  }
+
+  private async loadBellAudioBuffer(ctx: AudioContext): Promise<AudioBuffer | null> {
+    if (this.cachedBellBuffer) {
+      return this.cachedBellBuffer;
+    }
+    if (this.isBellLoading) {
+      let retries = 0;
+      while (this.isBellLoading && retries < 20) {
+        await new Promise(r => setTimeout(r, 50));
+        retries++;
+      }
+      if (this.cachedBellBuffer) return this.cachedBellBuffer;
+    }
+
+    this.isBellLoading = true;
+    try {
+      const candidatePaths = [
+        '/assets/sounds/mixkit-bell-notification-933.wav',
+        '/assets/sounds/headphone-bell.wav'
+      ];
+
+      for (const soundPath of candidatePaths) {
+        try {
+          const resp = await fetch(soundPath);
+          if (resp.ok) {
+            const arrayBuf = await resp.arrayBuffer();
+            const decoded = await new Promise<AudioBuffer>((resolve, reject) => {
+              const res = ctx.decodeAudioData(arrayBuf, resolve, reject);
+              if (res && typeof (res as Promise<AudioBuffer>).then === 'function') {
+                (res as Promise<AudioBuffer>).then(resolve).catch(reject);
+              }
+            });
+            this.cachedBellBuffer = decoded;
+            return decoded;
+          }
+        } catch {
+          // Continue to next candidate path
+        }
+      }
+    } catch {
+      // In isolated environments or offline tests where fetch is unavailable
+    } finally {
+      this.isBellLoading = false;
+    }
+
+    return null;
+  }
+
+  // ==========================================
+  // Stereo Channel Testing (Headphone Bell Check)
   // ==========================================
 
   public async playChannelTone(channel: 'left' | 'right' | 'stereo'): Promise<void> {
     await this.stop();
+    if (this.stopTimeout) {
+      clearTimeout(this.stopTimeout);
+      this.stopTimeout = null;
+    }
     const ctx = await this.ensureAudioContext();
 
-    const osc = ctx.createOscillator();
-    osc.type = 'sine';
-
-    let freq = 440; // A4
     let pan = 0;
     let mode: SpeakerTestMode = 'stereo';
 
     if (channel === 'left') {
-      freq = 440; // A4 Left
       pan = -1.0;
       mode = 'left';
     } else if (channel === 'right') {
-      freq = 880; // A5 Right
       pan = 1.0;
       mode = 'right';
     } else {
-      // Stereo harmony: 440 Hz (A4) + 554.37 Hz (C#5 major third)
-      freq = 440;
       pan = 0;
       mode = 'stereo';
+    }
 
+    if (this.pannerNode) {
+      try {
+        this.pannerNode.pan.cancelScheduledValues(ctx.currentTime);
+        this.pannerNode.pan.setValueAtTime(pan, ctx.currentTime);
+      } catch {}
+    }
+
+    // Reset voice gain to full volume immediately, cancelling any previous decay
+    if (this.voiceGain) {
+      try {
+        this.voiceGain.gain.cancelScheduledValues(ctx.currentTime);
+        this.voiceGain.gain.setValueAtTime(1.0, ctx.currentTime);
+      } catch {}
+    }
+
+    // Reset master gain to comfortable level
+    if (this.masterGain) {
+      try {
+        this.masterGain.gain.cancelScheduledValues(ctx.currentTime);
+        this.masterGain.gain.setValueAtTime(this.getEffectiveGain(), ctx.currentTime);
+      } catch {}
+    }
+
+    // Try playing the user-provided bell notification sound
+    const bellBuffer = await this.loadBellAudioBuffer(ctx);
+    if (bellBuffer) {
+      const source = ctx.createBufferSource();
+      source.buffer = bellBuffer;
+
+      // Connect source to audio graph: source -> voiceGain -> pannerNode -> masterGain -> destination
+      if (this.voiceGain) {
+        source.connect(this.voiceGain);
+      } else if (this.pannerNode) {
+        source.connect(this.pannerNode);
+      } else if (this.masterGain) {
+        source.connect(this.masterGain);
+      } else {
+        source.connect(ctx.destination);
+      }
+
+      source.onended = () => {
+        if (this.activeBellSource === source) {
+          this.activeBellSource = null;
+          this.metrics.update(m => ({
+            ...m,
+            isPlaying: false,
+            currentMode: 'none',
+            alternatingChannel: undefined
+          }));
+        }
+      };
+
+      source.start(0);
+      this.activeBellSource = source;
+
+      this.metrics.update(m => ({
+        ...m,
+        isPlaying: true,
+        currentMode: mode,
+        currentFrequency: channel === 'left' ? 440 : channel === 'right' ? 880 : 554,
+        panValue: pan,
+        alternatingChannel: undefined
+      }));
+      return;
+    }
+
+    // Fallback synthesizer tone if audio asset cannot be fetched
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    const freq = channel === 'left' ? 440 : channel === 'right' ? 880 : 440;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+    if (channel === 'stereo') {
       const secOsc = ctx.createOscillator();
       secOsc.type = 'sine';
       secOsc.frequency.setValueAtTime(554.37, ctx.currentTime);
@@ -211,22 +395,11 @@ export class SpeakerService {
       this.activeSecondaryOsc = secOsc;
     }
 
-    osc.frequency.setValueAtTime(freq, ctx.currentTime);
-
-    if (this.pannerNode) {
-      this.pannerNode.pan.setValueAtTime(pan, ctx.currentTime);
-    }
     if (this.voiceGain) {
       osc.connect(this.voiceGain);
     }
 
-    // Smooth envelope attack to prevent loud speaker pop
-    if (this.voiceGain) {
-      this.voiceGain.gain.setValueAtTime(0.001, ctx.currentTime);
-      this.voiceGain.gain.linearRampToValueAtTime(1.0, ctx.currentTime + 0.04);
-    }
-
-    osc.start();
+    osc.start(0);
     this.activeOscillator = osc;
 
     this.metrics.update(m => ({
@@ -243,9 +416,85 @@ export class SpeakerService {
     await this.stop();
     const ctx = await this.ensureAudioContext();
 
+    const bellBuffer = await this.loadBellAudioBuffer(ctx);
     let isLeft = true;
     let cyclesDone = 0;
 
+    if (bellBuffer) {
+      const playBellStep = () => {
+        if (!this.metrics().isPlaying && cyclesDone > 0) return;
+        const targetPan = isLeft ? -1.0 : 1.0;
+        const activeSide: 'left' | 'right' = isLeft ? 'left' : 'right';
+
+        if (this.pannerNode) {
+          try {
+            this.pannerNode.pan.cancelScheduledValues(ctx.currentTime);
+            this.pannerNode.pan.setValueAtTime(targetPan, ctx.currentTime);
+          } catch {}
+        }
+
+        if (this.voiceGain) {
+          try {
+            this.voiceGain.gain.cancelScheduledValues(ctx.currentTime);
+            this.voiceGain.gain.setValueAtTime(1.0, ctx.currentTime);
+          } catch {}
+        }
+
+        if (this.activeBellSource) {
+          try {
+            this.activeBellSource.onended = null;
+            this.activeBellSource.stop();
+            this.activeBellSource.disconnect();
+          } catch {}
+          this.activeBellSource = null;
+        }
+
+        const source = ctx.createBufferSource();
+        source.buffer = bellBuffer;
+
+        if (this.voiceGain) {
+          source.connect(this.voiceGain);
+        } else if (this.pannerNode) {
+          source.connect(this.pannerNode);
+        } else {
+          source.connect(ctx.destination);
+        }
+
+        source.start(0);
+        this.activeBellSource = source;
+
+        this.metrics.update(m => ({
+          ...m,
+          isPlaying: true,
+          currentMode: 'alternate',
+          alternatingChannel: activeSide,
+          panValue: targetPan
+        }));
+
+        isLeft = !isLeft;
+        cyclesDone++;
+        if (cyclesDone >= totalCycles * 2) {
+          if (this.alternatingTimer) {
+            clearInterval(this.alternatingTimer);
+            this.alternatingTimer = null;
+          }
+        }
+      };
+
+      this.metrics.update(m => ({
+        ...m,
+        isPlaying: true,
+        currentMode: 'alternate',
+        alternatingChannel: 'left',
+        panValue: -1.0
+      }));
+
+      playBellStep();
+      this.alternatingTimer = setInterval(playBellStep, 3500);
+      return;
+    }
+
+    // Fallback synthesizer alternating
     const runStep = () => {
       if (!this.activeOscillator || !this.pannerNode) return;
       const targetPan = isLeft ? -1.0 : 1.0;
@@ -280,7 +529,7 @@ export class SpeakerService {
       osc.connect(this.voiceGain);
     }
 
-    osc.start();
+    osc.start(0);
     this.activeOscillator = osc;
 
     this.metrics.update(m => ({
@@ -458,40 +707,55 @@ export class SpeakerService {
       clearInterval(this.alternatingTimer);
       this.alternatingTimer = null;
     }
+    if (this.stopTimeout) {
+      clearTimeout(this.stopTimeout);
+      this.stopTimeout = null;
+    }
 
-    // Smooth envelope decay before disconnect to avoid click
-    if (this.voiceGain && this.audioContext && this.audioContext.state === 'running') {
+    // Immediately capture and terminate any playing bell sound so it does not linger or get killed by delay
+    const bellToStop = this.activeBellSource;
+    this.activeBellSource = null;
+    if (bellToStop) {
       try {
-        this.voiceGain.gain.setValueAtTime(this.voiceGain.gain.value, this.audioContext.currentTime);
-        this.voiceGain.gain.linearRampToValueAtTime(0.001, this.audioContext.currentTime + 0.03);
+        bellToStop.onended = null;
+        bellToStop.stop();
+        bellToStop.disconnect();
       } catch {}
     }
 
-    setTimeout(() => {
-      if (this.activeOscillator) {
-        try {
-          this.activeOscillator.stop();
-          this.activeOscillator.disconnect();
-        } catch {}
-        this.activeOscillator = null;
-      }
+    // Capture synthesizer nodes to stop
+    const oscToStop = this.activeOscillator;
+    this.activeOscillator = null;
+    const secToStop = this.activeSecondaryOsc;
+    this.activeSecondaryOsc = null;
+    const noiseToStop = this.activeNoiseNode;
+    this.activeNoiseNode = null;
 
-      if (this.activeSecondaryOsc) {
-        try {
-          this.activeSecondaryOsc.stop();
-          this.activeSecondaryOsc.disconnect();
-        } catch {}
-        this.activeSecondaryOsc = null;
-      }
+    // Smooth envelope decay before disconnect to avoid click on continuous tones
+    if (this.voiceGain && this.audioContext && this.audioContext.state === 'running') {
+      try {
+        this.voiceGain.gain.setValueAtTime(this.voiceGain.gain.value, this.audioContext.currentTime);
+        this.voiceGain.gain.linearRampToValueAtTime(0.001, this.audioContext.currentTime + 0.02);
+      } catch {}
+    }
 
-      if (this.activeNoiseNode) {
+    if (oscToStop || secToStop || noiseToStop) {
+      this.stopTimeout = setTimeout(() => {
         try {
-          this.activeNoiseNode.stop();
-          this.activeNoiseNode.disconnect();
+          oscToStop?.stop();
+          oscToStop?.disconnect();
         } catch {}
-        this.activeNoiseNode = null;
-      }
-    }, 35);
+        try {
+          secToStop?.stop();
+          secToStop?.disconnect();
+        } catch {}
+        try {
+          noiseToStop?.stop();
+          noiseToStop?.disconnect();
+        } catch {}
+        this.stopTimeout = null;
+      }, 25);
+    }
 
     this.metrics.update(m => ({
       ...m,
@@ -526,8 +790,8 @@ export class SpeakerService {
   private getEffectiveGain(): number {
     const { isMuted, masterVolume } = this.metrics();
     if (isMuted) return 0;
-    // Logarithmic taper: conservative maximum output to protect hearing
-    return (masterVolume / 100) * 0.30;
+    // Scale gain for crystal clear, audible output through headphones and speakers without distortion
+    return Math.max(0, Math.min(1.0, (masterVolume / 100) * 0.85));
   }
 
   // ==========================================
