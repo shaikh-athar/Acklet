@@ -20,6 +20,8 @@ const isColorStudioPath = pathname === '/colorstudio' || pathname === '/color-st
 const DEVICE_STUDIO_MODULE_PATHS = ['/webcam', '/webcam-test', '/microphone', '/mic-test', '/microphone-test', '/speaker', '/speaker-test', '/audio-test', '/speed', '/speed-test', '/ip', '/ip-lookup', '/ip-checker', '/screen', '/screen-test', '/screenshare-test'];
 const isDeviceStudioPath = pathname === '/devicestudio' || pathname === '/device-studio' || pathname.startsWith('/devicestudio/') || pathname.startsWith('/device-studio/') || pathname.startsWith('/tools/devicestudio') || pathname.startsWith('/tools/device-studio') || DEVICE_STUDIO_MODULE_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
 const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short', 'temp-email', 'temp-mail', 'tempmail', 'file-converter', 'converter', 'image-converter', 'img-converter', 'colorstudio', 'color-studio', 'devicestudio', 'device-studio'];
+const isWatermarkPath = pathname === '/watermark-remover' || pathname === '/watermark' || pathname.startsWith('/tools/watermark-remover') || pathname.startsWith('/tools/watermark');
+const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short', 'temp-email', 'temp-mail', 'tempmail', 'file-converter', 'converter', 'image-converter', 'img-converter', 'colorstudio', 'color-studio', 'watermark-remover', 'watermark'];
 const toolSlug = extractToolSlugFromHostname(hostname) || (queryTool && validQueryTools.includes(queryTool) ? queryTool : null);
 
 if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools') {
@@ -158,6 +160,18 @@ if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools'
       });
     })
     .catch((err) => console.error('[Tool Device Studio Bootstrap Error]', err));
+} else if (toolSlug === 'watermark-remover' || toolSlug === 'watermark' || isWatermarkPath) {
+  // Bootstrap Watermark Remover tool (apps/tool-watermark-remover)
+  Promise.all([
+    import('../apps/tool-watermark-remover/src/app/app.component'),
+    import('@angular/common/http')
+  ])
+    .then(([{ AppComponent }, { provideHttpClient, withFetch }]) => {
+      return bootstrapApplication(AppComponent, {
+        providers: [provideHttpClient(withFetch())]
+      });
+    })
+    .catch((err) => console.error('[Tool Watermark Remover Bootstrap Error]', err));
 } else {
   // Bootstrap Acklet Portal (default)
   Promise.all([

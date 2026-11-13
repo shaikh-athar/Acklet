@@ -189,6 +189,13 @@ import {
   LucideScreenShare,
   LucideMonitor,
   LucideRadio
+  LucideEraser,
+  LucideBrush,
+  LucidePaintbrush,
+  LucideUndo,
+  LucideRedo,
+  LucideHand,
+  LucideMove
 } from '@lucide/angular';
 
 import {
@@ -1135,5 +1142,40 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   radio: {
     lucide: LucideRadio,
     notes: 'Audio broadcast / sweep'
+  eraser: {
+    lucide: LucideEraser,
+    notes: 'Eraser tool for masks'
+  },
+  brush: {
+    lucide: LucideBrush,
+    notes: 'Brush tool for painting masks'
+  },
+  paintbrush: {
+    lucide: LucidePaintbrush,
+    notes: 'Paintbrush'
+  },
+  undo: {
+    lucide: LucideUndo,
+    notes: 'Undo action'
+  },
+  redo: {
+    lucide: LucideRedo,
+    notes: 'Redo action'
+  },
+  'watermark-remover': {
+    lucide: LucideWand2,
+    notes: 'Watermark Remover tool'
+  },
+  watermark: {
+    lucide: LucideWand2,
+    notes: 'Watermark Remover tool alias'
+  },
+  hand: {
+    lucide: LucideHand,
+    notes: 'Hand/Pan tool'
+  },
+  move: {
+    lucide: LucideMove,
+    notes: 'Move/Pan tool'
   }
 };
