@@ -111,6 +111,15 @@ export const routes: Routes = [
   { path: 'img-converter', redirectTo: 'tools/image-converter', pathMatch: 'full' },
   { path: 'tools/img-converter', redirectTo: 'tools/image-converter', pathMatch: 'full' },
   {
+    path: 'tools/image-compressor',
+    loadComponent: () => import('../../apps/tool-image-compressor/src/app/app.component').then(m => m.AppComponent),
+    title: 'Image Compressor | Acklet'
+  },
+  { path: 'image-compressor', redirectTo: 'tools/image-compressor', pathMatch: 'full' },
+  { path: 'img-compressor', redirectTo: 'tools/image-compressor', pathMatch: 'full' },
+  { path: 'imagecompressor', redirectTo: 'tools/image-compressor', pathMatch: 'full' },
+  { path: 'tools/img-compressor', redirectTo: 'tools/image-compressor', pathMatch: 'full' },
+  { path: 'tools/imagecompressor', redirectTo: 'tools/image-compressor', pathMatch: 'full' },
     path: 'colorstudio',
     loadComponent: () => import('../../apps/tool-color-studio/src/app/app.component').then(m => m.AppComponent),
     title: 'Color Studio — Professional Color Tools | Acklet',

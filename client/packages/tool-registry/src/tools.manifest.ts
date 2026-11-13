@@ -6,6 +6,8 @@ import { DATALENS_MANIFEST } from './manifests/datalens.manifest';
 import { BARCODE_MANIFEST } from './manifests/barcode.manifest';
 import { TEMP_EMAIL_MANIFEST } from './manifests/temp-email.manifest';
 import { IMAGE_CONVERTER_MANIFEST, FILE_CONVERTER_MANIFEST } from './manifests/file-converter.manifest';
+import { IMAGE_COMPRESSOR_MANIFEST } from './manifests/image-compressor.manifest';
+import { AMBER_ACCENT, BLUE_ACCENT, ROSE_ACCENT, VIOLET_ACCENT, EMERALD_ACCENT, INDIGO_ACCENT } from './accent-presets';
 import { CONVERTER_MANIFEST } from './manifests/converter.manifest';
 import { COLOR_STUDIO_MANIFEST } from './manifests/color-studio.manifest';
 import { DEVICE_STUDIO_MANIFEST } from './manifests/device-studio.manifest';
@@ -19,6 +21,7 @@ export { DATALENS_MANIFEST } from './manifests/datalens.manifest';
 export { BARCODE_MANIFEST } from './manifests/barcode.manifest';
 export { TEMP_EMAIL_MANIFEST } from './manifests/temp-email.manifest';
 export { IMAGE_CONVERTER_MANIFEST, FILE_CONVERTER_MANIFEST } from './manifests/file-converter.manifest';
+export { IMAGE_COMPRESSOR_MANIFEST } from './manifests/image-compressor.manifest';
 export { CONVERTER_MANIFEST } from './manifests/converter.manifest';
 export { COLOR_STUDIO_MANIFEST } from './manifests/color-studio.manifest';
 export { DEVICE_STUDIO_MANIFEST } from './manifests/device-studio.manifest';
@@ -50,6 +53,13 @@ export const TOOL_REGISTRY: Record<string, ToolRegistryItem> = {
   'json-formatter': DATALENS_MANIFEST,
   'temp-email': TEMP_EMAIL_MANIFEST,
   'temp-mail': TEMP_EMAIL_MANIFEST,
+  'file-converter': FILE_CONVERTER_MANIFEST,
+  'converter': FILE_CONVERTER_MANIFEST,
+  'image-converter': IMAGE_CONVERTER_MANIFEST,
+  'img-converter': IMAGE_CONVERTER_MANIFEST,
+  'image-compressor': IMAGE_COMPRESSOR_MANIFEST,
+  'imagecompressor': IMAGE_COMPRESSOR_MANIFEST,
+  'img-compressor': IMAGE_COMPRESSOR_MANIFEST,
   'urlshortener': {
     id: 'urlshortener',
     name: 'URL Shortener',

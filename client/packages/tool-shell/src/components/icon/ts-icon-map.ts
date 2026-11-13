@@ -299,6 +299,9 @@ export const LUCIDE_MOTION_MAP: Record<string, string> = {
   'temp-mail': 'motion-scale-up',
   'image-converter': 'motion-scale-up',
   'img-converter': 'motion-scale-up',
+  'image-compressor': 'motion-scale-up',
+  'img-compressor': 'motion-scale-up',
+  'imagecompressor': 'motion-scale-up',
   'file-converter': 'motion-rotate-15',
   converter: 'motion-rotate-15',
   loader: 'motion-rotate-45',
@@ -836,6 +839,18 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
     lucide: LucideImages,
     notes: 'Used in Image Converter tool identity'
   },
+  'image-compressor': {
+    lucide: LucideMinimize2,
+    notes: 'Used in Image Compressor tool identity'
+  },
+  'img-compressor': {
+    lucide: LucideMinimize2,
+    notes: 'Used in Image Compressor tool identity'
+  },
+  'imagecompressor': {
+    lucide: LucideMinimize2,
+    notes: 'Used in Image Compressor tool identity'
+  },
   'file-converter': {
     lucide: LucideArrowLeftRight,
     notes: 'Used in Universal File Converter tool identity'
@@ -972,6 +987,12 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
     lucide: LucideChevronsUpDown
   },
   columns: {
+    lucide: LucideColumns
+  },
+  'columns-2': {
+    lucide: LucideColumns
+  },
+  split: {
     lucide: LucideColumns
   },
   'corner-up-left': {

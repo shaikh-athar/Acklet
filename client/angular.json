@@ -561,6 +561,61 @@
           "defaultConfiguration": "production"
         }
       }
+    },
+    "tool-image-compressor": {
+      "projectType": "application",
+      "schematics": {},
+      "root": "apps/tool-image-compressor",
+      "sourceRoot": "apps/tool-image-compressor/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "apps/tool-image-compressor/src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
+            ],
+            "styles": [
+              "apps/tool-image-compressor/src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "jszip",
+              "lottie-web"
+            ]
+          },
+          "configurations": {
+            "production": {
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": true
+                },
+                "fonts": false
+              },
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "1.5MB",
+                  "maximumError": "2.5MB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        }
+      }
     }
   }
 }

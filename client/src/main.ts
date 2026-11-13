@@ -15,6 +15,8 @@ const isShortenerPath = pathname === '/urlshortener' || pathname === '/short';
 const isTempEmailPath = pathname === '/temp-email' || pathname === '/temp-mail' || pathname === '/mail' || pathname.startsWith('/tools/temp-email') || pathname.startsWith('/tools/temp-mail');
 const isFileConverterPath = pathname === '/file-converter' || pathname === '/converter' || pathname.startsWith('/tools/file-converter') || pathname.startsWith('/tools/converter') || pathname.startsWith('/convert');
 const isImageConverterPath = pathname === '/image-converter' || pathname === '/img-converter' || pathname.startsWith('/tools/image-converter') || pathname.startsWith('/tools/img-converter');
+const isImageCompressorPath = pathname === '/image-compressor' || pathname === '/img-compressor' || pathname === '/imagecompressor' || pathname.startsWith('/tools/image-compressor') || pathname.startsWith('/tools/img-compressor') || pathname.startsWith('/tools/imagecompressor');
+const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short', 'temp-email', 'temp-mail', 'tempmail', 'file-converter', 'converter', 'image-converter', 'img-converter', 'image-compressor', 'img-compressor', 'imagecompressor'];
 const COLOR_STUDIO_MODULE_PATHS = ['/color-picker', '/image-extractor', '/gradient-generator', '/contrast-checker', '/palette-generator', '/vision-simulator', '/picker', '/extractor', '/gradient', '/contrast', '/palette', '/simulator'];
 const isColorStudioPath = pathname === '/colorstudio' || pathname === '/color-studio' || pathname.startsWith('/colorstudio/') || pathname.startsWith('/color-studio/') || pathname.startsWith('/tools/colorstudio') || pathname.startsWith('/tools/color-studio') || COLOR_STUDIO_MODULE_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
 const DEVICE_STUDIO_MODULE_PATHS = ['/webcam', '/webcam-test', '/microphone', '/mic-test', '/microphone-test', '/speaker', '/speaker-test', '/audio-test', '/speed', '/speed-test', '/ip', '/ip-lookup', '/ip-checker', '/screen', '/screen-test', '/screenshare-test'];
@@ -126,6 +128,10 @@ if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools'
       });
     })
     .catch((err) => console.error('[Tool Image Converter Bootstrap Error]', err));
+} else if (toolSlug === 'image-compressor' || toolSlug === 'img-compressor' || toolSlug === 'imagecompressor' || isImageCompressorPath) {
+  // Dedicated Image Compressor route/host mapping
+  Promise.all([
+    import('../apps/tool-image-compressor/src/app/app.component'),
 } else if (toolSlug === 'colorstudio' || toolSlug === 'color-studio' || isColorStudioPath) {
   // Bootstrap Color Studio tool (apps/tool-color-studio)
   Promise.all([
@@ -171,6 +177,7 @@ if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools'
         providers: [provideHttpClient(withFetch())]
       });
     })
+    .catch((err) => console.error('[Tool Image Compressor Bootstrap Error]', err));
     .catch((err) => console.error('[Tool Watermark Remover Bootstrap Error]', err));
 } else {
   // Bootstrap Acklet Portal (default)
