@@ -1,7 +1,8 @@
 // apps/tool-image-compressor/src/components/processing-summary/processing-summary.component.ts
-import { Component, ChangeDetectionStrategy, input, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TsIconComponent } from '@acklet/tool-shell';
+import { SmartPreset } from '../../models/compressor.models';
 
 @Component({
   selector: 'app-processing-summary',
@@ -9,67 +10,86 @@ import { TsIconComponent } from '@acklet/tool-shell';
   imports: [CommonModule, TsIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="summary-card">
-      <div class="summary-header">
-        <div class="title-with-badge">
-          <h4 class="summary-title">Compression Summary</h4>
-          <span class="phase-badge">Phase 1 Foundation</span>
-        </div>
+    <div class="summary-card" [class.is-completed]="hasCompletedImages()">
+      <!-- Stats Area -->
+      <div class="summary-info">
+        @if (hasCompletedImages()) {
+          <div class="stats-headline">
+            <span class="total-saved-pill font-mono">
+              @if (totalSavedPercentage() > 0) {
+                {{ totalSavedPercentage() }}% smaller
+              } @else {
+                Done
+              }
+            </span>
+            <span class="size-comparison font-mono">
+              {{ formattedOriginalSize() }} → {{ formattedCompressedSize() }}
+              @if (totalSavedBytes() > 0) {
+                (saved {{ formattedSavedBytes() }})
+              }
+            </span>
+          </div>
+        } @else {
+          <div class="stats-headline">
+            <span class="image-count-tag font-mono">
+              {{ totalCount() }} {{ totalCount() === 1 ? 'image' : 'images' }}
+            </span>
+            <span class="size-comparison font-mono">
+              Total size: {{ formattedOriginalSize() }}
+            </span>
+          </div>
+        }
       </div>
 
-      <!-- Informative Empty State as specified by Phase 1 guidelines -->
-      <div class="summary-placeholder-state">
-        <div class="placeholder-icon-wrap">
-          <ts-icon name="sparkles" [size]="24" class="sparkle-icon" />
-        </div>
-        <p class="placeholder-primary-text">Your optimized images will appear here.</p>
-        <p class="placeholder-subtext">
-          Upload and configure your images above. Compression execution and savings calculations will be processed in Phase 2.
-        </p>
-      </div>
-
-      <!-- Prepared UI Structure for Future Real Results -->
-      <div class="metrics-grid">
-        <div class="metric-item">
-          <span class="metric-label">Original Total</span>
-          <span class="metric-value font-mono">{{ formattedOriginalSize() }}</span>
-        </div>
-        <div class="metric-item">
-          <span class="metric-label">Compressed Size</span>
-          <span class="metric-value font-mono placeholder-dash">—</span>
-        </div>
-        <div class="metric-item">
-          <span class="metric-label">Space Saved</span>
-          <span class="metric-value font-mono placeholder-dash">—</span>
-        </div>
-        <div class="metric-item">
-          <span class="metric-label">Reduction</span>
-          <span class="metric-value font-mono placeholder-dash">—</span>
-        </div>
-      </div>
-
-      <!-- Action Buttons -->
+      <!-- Action Area: Exactly ONE filled primary button -->
       <div class="summary-actions">
-        <button
-          type="button"
-          class="compress-all-btn"
-          disabled
-          title="Actual compression execution will be enabled in Phase 2"
-        >
-          <ts-icon name="minimize-2" [size]="16" />
-          <span>Compress Images (Phase 2)</span>
-        </button>
+        @if (isCompressing()) {
+          <button
+            type="button"
+            class="secondary-action-btn cancel-btn"
+            (click)="cancelAllRequested.emit()"
+          >
+            <ts-icon name="x" [size]="16" />
+            <span>Cancel</span>
+          </button>
+        } @else if (hasCompletedImages()) {
+          <!-- Single filled primary action -->
+          <button
+            type="button"
+            class="primary-action-btn download-all-btn"
+            (click)="downloadAllRequested.emit()"
+            [disabled]="isPackagingZip()"
+          >
+            <ts-icon [name]="isPackagingZip() ? 'refresh-cw' : 'download'" [size]="16" [class.spin-icon]="isPackagingZip()" />
+            <span>{{ isPackagingZip() ? 'Packaging...' : (totalCount() > 1 ? 'Download all (ZIP)' : 'Download image') }}</span>
+          </button>
 
-        <button
-          type="button"
-          class="download-btn"
-          disabled
-          title="Download will be active after images are compressed"
-        >
-          <ts-icon name="download" [size]="16" />
-          <span>Download All</span>
-        </button>
+          <!-- Secondary recompress outline action -->
+          <button
+            type="button"
+            class="secondary-action-btn recompress-btn"
+            (click)="compressAllRequested.emit()"
+            title="Recompress with current settings"
+          >
+            <ts-icon name="rotate-ccw" [size]="14" />
+            <span>Recompress</span>
+          </button>
+        } @else {
+          <!-- Single filled primary action -->
+          <button
+            type="button"
+            class="primary-action-btn compress-all-btn"
+            (click)="compressAllRequested.emit()"
+            [disabled]="totalCount() === 0"
+          >
+            <ts-icon name="minimize-2" [size]="16" />
+            <span>Compress all</span>
+          </button>
+        }
       </div>
+
+      <!-- Privacy Helper Line -->
+      <p class="privacy-helper-line">Your images stay on your device.</p>
     </div>
   `,
   styles: [`
@@ -81,166 +101,276 @@ import { TsIconComponent } from '@acklet/tool-shell';
     .summary-card {
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      padding: 16px;
-      background: var(--ts-surface-card, #1A1C23);
-      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-      border-radius: var(--ts-radius-inner, 16px);
-    }
-
-    .summary-header {
-      display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 20px;
+      background: var(--ts-surface-card, #FFFFFF);
+      border: 1px solid var(--border-subtle, rgba(15, 23, 42, 0.08));
+      border-radius: 12px;
+      box-shadow: var(--shadow-sm, 0 1px 3px rgba(15, 23, 42, 0.05));
     }
 
-    .title-with-badge {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    :host-context([data-theme="light"]) .summary-card,
+    [data-theme="light"] .summary-card {
+      background: #FFFFFF;
+      border-color: rgba(15, 23, 42, 0.08);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
     }
 
-    .summary-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--text, #F9FAFB);
-      margin: 0;
+    :host-context([data-theme="dark"]) .summary-card,
+    [data-theme="dark"] .summary-card {
+      background: #1C2029;
+      border-color: #303744;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
     }
 
-    .phase-badge {
-      font-size: 10px;
-      font-weight: 600;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: rgba(59, 130, 246, 0.12);
-      color: var(--accent, #60A5FA);
-      border: 1px solid rgba(59, 130, 246, 0.2);
+    .summary-card.is-completed {
+      border-color: rgba(16, 185, 129, 0.35);
     }
 
-    .summary-placeholder-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    .summary-info {
       text-align: center;
-      padding: 18px 12px;
-      background: var(--ts-surface-base, #111318);
-      border-radius: var(--ts-radius-md, 12px);
-      border: 1px dashed var(--border-subtle, rgba(255, 255, 255, 0.1));
     }
 
-    .placeholder-icon-wrap {
+    .stats-headline {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      background: rgba(59, 130, 246, 0.08);
-      color: var(--accent, #60A5FA);
-      margin-bottom: 8px;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
-    .placeholder-primary-text {
+    .total-saved-pill {
       font-size: 13px;
       font-weight: 600;
-      color: var(--text, #F9FAFB);
-      margin: 0 0 4px 0;
+      color: var(--success, #10B981);
+      background: rgba(16, 185, 129, 0.12);
+      padding: 3px 10px;
+      border-radius: 9999px;
     }
 
-    .placeholder-subtext {
-      font-size: 11px;
-      color: var(--text-3, #9CA3AF);
-      max-width: 380px;
-      margin: 0;
-      line-height: 1.4;
-    }
-
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-    }
-
-    @media (min-width: 480px) {
-      .metrics-grid {
-        grid-template-columns: repeat(4, 1fr);
-      }
-    }
-
-    .metric-item {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      padding: 10px 12px;
-      background: var(--ts-surface-base, #111318);
-      border-radius: var(--ts-radius-sm, 8px);
-      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
-    }
-
-    .metric-label {
-      font-size: 10px;
+    .image-count-tag {
+      font-size: 13px;
       font-weight: 600;
-      color: var(--text-3, #9CA3AF);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      color: var(--text-primary, #09090B);
+      background: var(--bg-subtle, #F1F5F9);
+      padding: 3px 10px;
+      border-radius: 9999px;
     }
 
-    .metric-value {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--text, #F9FAFB);
+    :host-context([data-theme="light"]) .image-count-tag,
+    [data-theme="light"] .image-count-tag {
+      background: #F1F5F9;
+      color: #09090B;
     }
 
-    .placeholder-dash {
-      color: var(--text-3, #6B7280);
+    :host-context([data-theme="dark"]) .image-count-tag,
+    [data-theme="dark"] .image-count-tag {
+      background: rgba(255, 255, 255, 0.06);
+      color: #F3F4F6;
+    }
+
+    .size-comparison {
+      font-size: 13px;
+      color: var(--text-secondary, #52525B);
+    }
+
+    :host-context([data-theme="light"]) .size-comparison,
+    [data-theme="light"] .size-comparison {
+      color: #52525B;
+    }
+
+    :host-context([data-theme="dark"]) .size-comparison,
+    [data-theme="dark"] .size-comparison {
+      color: #A1A8B5;
     }
 
     .summary-actions {
       display: flex;
-      gap: 8px;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      justify-content: center;
     }
 
-    .compress-all-btn,
-    .download-btn {
+    .primary-action-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      height: 38px;
-      padding: 0 16px;
-      border-radius: var(--ts-radius-md, 12px);
-      font-size: 13px;
-      font-weight: 600;
-      border: none;
-      cursor: not-allowed;
-      opacity: 0.55;
-      transition: all var(--ts-dur-fast, 150ms) var(--ts-ease);
-    }
-
-    .compress-all-btn {
-      flex: 2;
       background: var(--accent, #2563EB);
       color: #FFFFFF;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 24px;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+      transition: background-color 0.15s ease, transform 0.15s ease;
     }
 
-    .download-btn {
-      flex: 1;
-      background: var(--ts-surface-base, #111318);
-      border: 1px solid var(--border-default, #374151);
-      color: var(--text-2, #9CA3AF);
+    .primary-action-btn:hover:not(:disabled) {
+      background: var(--accent-hover, #1D4ED8);
+      transform: translateY(-1px);
+    }
+
+    .primary-action-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .primary-action-btn:focus-visible {
+      outline: 2px solid var(--accent, #3B82F6);
+      outline-offset: 2px;
+    }
+
+    .secondary-action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: transparent;
+      border: 1px solid var(--border-subtle, rgba(15, 23, 42, 0.15));
+      color: var(--text-secondary, #52525B);
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 10px;
+      padding: 9px 16px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    :host-context([data-theme="light"]) .secondary-action-btn,
+    [data-theme="light"] .secondary-action-btn {
+      border-color: rgba(15, 23, 42, 0.15);
+      color: #52525B;
+    }
+
+    :host-context([data-theme="light"]) .secondary-action-btn:hover,
+    [data-theme="light"] .secondary-action-btn:hover {
+      border-color: rgba(15, 23, 42, 0.28);
+      color: #09090B;
+      background: rgba(15, 23, 42, 0.04);
+    }
+
+    :host-context([data-theme="dark"]) .secondary-action-btn,
+    [data-theme="dark"] .secondary-action-btn {
+      border-color: #303744;
+      color: #A1A8B5;
+    }
+
+    :host-context([data-theme="dark"]) .secondary-action-btn:hover,
+    [data-theme="dark"] .secondary-action-btn:hover {
+      border-color: #3F4756;
+      color: #FFFFFF;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .secondary-action-btn:focus-visible {
+      outline: 2px solid var(--accent, #3B82F6);
+      outline-offset: 2px;
+    }
+
+    .privacy-helper-line {
+      font-size: 12px;
+      color: var(--text-muted, #6B7280);
+      margin: 0;
+    }
+
+    :host-context([data-theme="light"]) .privacy-helper-line,
+    [data-theme="light"] .privacy-helper-line {
+      color: #6B7280;
+    }
+
+    :host-context([data-theme="dark"]) .privacy-helper-line,
+    [data-theme="dark"] .privacy-helper-line {
+      color: #7D8796;
+    }
+
+    .spin-icon {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      .summary-card {
+        padding: 14px 16px;
+        position: sticky;
+        bottom: 0;
+        z-index: 100;
+        background: var(--ts-surface-card, #FFFFFF);
+        border-top: 1px solid var(--border-subtle, rgba(15, 23, 42, 0.12));
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+      }
+
+      :host-context([data-theme="light"]) .summary-card,
+      [data-theme="light"] .summary-card {
+        background: #FFFFFF;
+        border-top-color: rgba(15, 23, 42, 0.1);
+        box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+      }
+
+      :host-context([data-theme="dark"]) .summary-card,
+      [data-theme="dark"] .summary-card {
+        background: #1C2029;
+        border-top-color: #303744;
+        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
+      }
+
+      .summary-actions {
+        flex-direction: column;
+        width: 100%;
+      }
+
+      .primary-action-btn {
+        width: 100%;
+      }
+
+      .secondary-action-btn {
+        width: 100%;
+      }
     }
   `]
 })
 export class ProcessingSummaryComponent {
-  readonly totalOriginalSize = input<number>(0);
+  readonly totalOriginalSize = input.required<number>();
+  readonly totalCompressedSize = input.required<number>();
+  readonly totalSavedBytes = input.required<number>();
+  readonly totalSavedPercentage = input.required<number>();
+  readonly completedCount = input.required<number>();
+  readonly totalCount = input.required<number>();
+  readonly isCompressing = input.required<boolean>();
+  readonly hasCompletedImages = input.required<boolean>();
+  readonly preset = input<SmartPreset>();
+  readonly targetsMetCount = input<number>(0);
+  readonly targetsUnreachableCount = input<number>(0);
+  readonly averageSsim = input<number | null>(null);
+  readonly totalVariantsCount = input<number>(0);
+  readonly hasFailedTasks = input<boolean>(false);
+  readonly isPackagingZip = input<boolean>(false);
 
-  readonly formattedOriginalSize = computed(() => {
-    const bytes = this.totalOriginalSize();
+  readonly compressAllRequested = output<void>();
+  readonly cancelAllRequested = output<void>();
+  readonly downloadAllRequested = output<void>();
+  readonly openReportRequested = output<void>();
+
+  readonly Math = Math;
+
+  readonly formattedOriginalSize = computed(() => this.formatBytes(this.totalOriginalSize()));
+  readonly formattedCompressedSize = computed(() => this.formatBytes(this.totalCompressedSize()));
+  readonly formattedSavedBytes = computed(() => this.formatBytes(this.totalSavedBytes()));
+
+  formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return `${(bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 1)} ${sizes[i]}`;
-  });
+  }
 }
-

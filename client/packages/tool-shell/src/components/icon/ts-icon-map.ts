@@ -921,6 +921,12 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   columns: {
     lucide: LucideColumns
   },
+  'columns-2': {
+    lucide: LucideColumns
+  },
+  split: {
+    lucide: LucideColumns
+  },
   'corner-up-left': {
     lucide: LucideCornerUpLeft
   },

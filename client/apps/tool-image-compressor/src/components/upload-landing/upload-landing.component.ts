@@ -1,15 +1,24 @@
 // apps/tool-image-compressor/src/components/upload-landing/upload-landing.component.ts
-import { Component, ChangeDetectionStrategy, output, signal, ElementRef, viewChild } from '@angular/core';
+import { Component, ChangeDetectionStrategy, output, ElementRef, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TsIconComponent } from '@acklet/tool-shell';
+import { RotatingHeadingComponent } from '../rotating-heading/rotating-heading.component';
+import { DeveloperPresetKey } from '../../models/compressor.models';
+import { COMPRESSOR_CONFIG } from '../../config/compressor.config';
+import { HERO_LINES } from '../../config/hero-lines.config';
+
+export interface PopularPresetChip {
+  key: DeveloperPresetKey;
+  label: string;
+}
 
 @Component({
   selector: 'app-upload-landing',
   standalone: true,
-  imports: [CommonModule, TsIconComponent],
+  imports: [CommonModule, TsIconComponent, RotatingHeadingComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="landing-container">
+    <div class="landing-hero-area">
       <!-- Hidden File Input -->
       <input
         #fileInput
@@ -22,314 +31,270 @@ import { TsIconComponent } from '@acklet/tool-shell';
         tabindex="-1"
       />
 
-      <!-- Hero Header -->
-      <div class="landing-header">
-        <div class="badge-pill">
-          <ts-icon name="shield-check" [size]="14" class="badge-icon" />
-          <span>100% Client-Side • In-Browser Processing</span>
-        </div>
-        <h1 class="landing-title">Compress Images Online</h1>
-        <p class="landing-description">
-          Reduce image file sizes while maintaining excellent visual quality. Process multiple images directly in your browser.
-        </p>
+      <!-- 1. Single Rotating Hero Headline -->
+      <app-rotating-heading
+        [lines]="heroLines"
+        [interval]="5000"
+        class="hero-rotating-heading"
+      ></app-rotating-heading>
+
+      <!-- 2. Primary Choose Button & Tagline -->
+      <div class="hero-action-group">
+        <button
+          type="button"
+          class="hero-select-btn"
+          (click)="openFilePicker()"
+          aria-label="Choose images to compress"
+        >
+          <ts-icon name="plus" [size]="16" class="btn-icon" />
+          <span>Choose images</span>
+        </button>
+        <p class="hero-subtitle">Works with PNG, JPG, WebP, AVIF, HEIC and other.</p>
       </div>
 
-      <!-- Main Upload Dropzone -->
-      <div
-        class="dropzone-card"
-        [class.is-dragover]="isDragOver()"
-        (dragover)="onDragOver($event)"
-        (dragleave)="onDragLeave($event)"
-        (drop)="onDrop($event)"
-        (click)="openFilePicker()"
-        (keydown.enter)="openFilePicker()"
-        (keydown.space)="openFilePicker(); $event.preventDefault()"
-        tabindex="0"
-        role="button"
-        aria-label="Upload Images. Drag and drop images here or press enter to browse."
-      >
-        <div class="dropzone-glow-ring" aria-hidden="true"></div>
-
-        <div class="dropzone-content">
-          <div class="dropzone-icon-bubble">
-            <ts-icon [name]="isDragOver() ? 'upload' : 'upload-cloud'" [size]="32" class="bubble-icon" />
-          </div>
-
-          <div class="action-row">
+      <!-- 3. Simplified Popular Presets Section -->
+      <div class="popular-section" role="region" aria-label="Popular compressions">
+        <span class="popular-section-label">Popular compressions for </span>
+        <div class="popular-grid">
+          @for (chip of popularChips; track chip.key) {
             <button
               type="button"
-              class="primary-upload-btn"
-              (click)="openFilePicker(); $event.stopPropagation()"
-              aria-label="Select images from device"
+              class="popular-chip-btn"
+              (click)="onSelectChip(chip.key)"
+              [title]="'Apply ' + chip.label + ' preset and choose images'"
+              [attr.aria-label]="chip.label + ' compression preset'"
             >
-              <ts-icon name="plus" [size]="16" class="btn-icon" />
-              <span>Upload Images</span>
+              <span class="popular-chip-name">{{ chip.label }}</span>
             </button>
-            <span class="drop-text">or drop files here</span>
-          </div>
-
-          <div class="formats-pill">
-            <span class="formats-label">Supported:</span>
-            <span class="formats-list">JPG, PNG, WebP, GIF, AVIF, SVG, BMP, HEIC</span>
-          </div>
-
-          <div class="limits-row">
-            <span class="limit-item">
-              <ts-icon name="layers" [size]="12" />
-              Up to 50 images at once
-            </span>
-            <span class="limit-dot">•</span>
-            <span class="limit-item">
-              <ts-icon name="hard-drive" [size]="12" />
-              Max 50 MB per file
-            </span>
-            <span class="limit-dot">•</span>
-            <span class="limit-item">
-              <ts-icon name="lock" [size]="12" />
-              Zero server uploads
-            </span>
-          </div>
+          }
         </div>
       </div>
     </div>
   `,
   styles: [`
     :host {
+      display: block;
+      width: 100%;
+    }
+
+    .landing-hero-area {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       width: 100%;
-      min-height: 100%;
-      padding: var(--ts-space-24, 24px) var(--ts-space-16, 16px);
-      box-sizing: border-box;
-    }
-
-    .landing-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      max-width: 680px;
-      width: 100%;
+      min-height: calc(100vh - 180px);
       text-align: center;
-      animation: fadeIn 300ms var(--ts-ease-out, ease-out);
+      box-sizing: border-box;
+      padding: 32px 16px 48px;
     }
 
     .hidden-file-input {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
+      display: none;
     }
 
-    .landing-header {
+    /* 1. Hero Headline */
+    .hero-rotating-heading {
+      margin-bottom: 24px;
+    }
+
+    /* 2. Primary Select Button & Tagline */
+    .hero-action-group {
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-bottom: var(--ts-space-24, 24px);
-    }
-
-    .badge-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 12px;
-      border-radius: var(--ts-radius-full, 9999px);
-      background: var(--ts-surface-subtle, rgba(255, 255, 255, 0.05));
-      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
-      color: var(--accent, #3B82F6);
-      font-size: var(--ts-type-caption-size, 12px);
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      margin-bottom: var(--ts-space-12, 12px);
-    }
-
-    .badge-icon {
-      color: var(--accent, #3B82F6);
-    }
-
-    .landing-title {
-      font-size: clamp(26px, 4vw, 36px);
-      font-weight: 700;
-      line-height: 1.2;
-      color: var(--text, #F9FAFB);
-      letter-spacing: -0.02em;
-      margin: 0 0 var(--ts-space-8, 8px) 0;
-      font-family: var(--ts-font-heading, inherit);
-    }
-
-    .landing-description {
-      font-size: var(--ts-type-description-size, 15px);
-      line-height: var(--ts-type-description-lh, 24px);
-      color: var(--text-2, #9CA3AF);
-      max-width: 540px;
-      margin: 0;
-    }
-
-    .dropzone-card {
-      position: relative;
+      gap: 12px;
       width: 100%;
-      border-radius: var(--ts-radius-card, 20px);
-      background: var(--ts-surface-card, #1E2028);
-      border: 2px dashed var(--border-default, #2E3342);
-      padding: 48px 24px;
-      cursor: pointer;
-      box-sizing: border-box;
-      transition: all var(--ts-dur-base, 220ms) var(--ts-ease-out, ease-out);
-      outline: none;
+      margin-bottom: 32px;
     }
 
-    .dropzone-card:hover,
-    .dropzone-card:focus-visible {
-      border-color: var(--accent, #3B82F6);
-      background: var(--ts-surface-hover, rgba(59, 130, 246, 0.04));
-      transform: translateY(-2px);
-      box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.3);
-    }
-
-    .dropzone-card:focus-visible {
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
-    }
-
-    .dropzone-card.is-dragover {
-      border-color: var(--accent, #3B82F6);
-      border-style: solid;
-      background: rgba(59, 130, 246, 0.08);
-      transform: scale(1.01);
-      box-shadow: 0 16px 40px -8px rgba(59, 130, 246, 0.25);
-    }
-
-    .dropzone-content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .dropzone-icon-bubble {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      background: rgba(59, 130, 246, 0.1);
-      color: var(--accent, #3B82F6);
-      border: 1px solid rgba(59, 130, 246, 0.2);
-      transition: transform var(--ts-dur-base, 200ms) var(--ts-ease);
-    }
-
-    .dropzone-card:hover .dropzone-icon-bubble {
-      transform: scale(1.08);
-      background: rgba(59, 130, 246, 0.16);
-    }
-
-    .action-row {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-    }
-
-    @media (min-width: 480px) {
-      .action-row {
-        flex-direction: row;
-        gap: 12px;
-      }
-    }
-
-    .primary-upload-btn {
+    .hero-select-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      height: var(--ts-control-height-lg, 48px);
+      height: 46px;
       padding: 0 28px;
-      border-radius: var(--ts-radius-control, 12px);
+      border-radius: 9999px;
       background: var(--accent, #2563EB);
       color: #FFFFFF;
       font-size: 15px;
-      font-weight: 600;
+      font-weight: 700;
       border: none;
       cursor: pointer;
       box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
-      transition: all var(--ts-dur-fast, 150ms) var(--ts-ease-out, ease-out);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .primary-upload-btn:hover {
-      background: var(--accent-hover, #1D4ED8);
+    .hero-select-btn:hover {
+      background: #1D4ED8;
       transform: translateY(-1px);
       box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
     }
 
-    .primary-upload-btn:active {
+    .hero-select-btn:active {
       transform: translateY(0);
     }
 
-    .drop-text {
-      font-size: var(--ts-type-body-size, 14px);
-      color: var(--text-2, #9CA3AF);
+    .hero-select-btn:focus-visible {
+      outline: 2px solid var(--accent, #2563EB);
+      outline-offset: 3px;
     }
 
-    .formats-pill {
+    .btn-icon {
+      flex-shrink: 0;
+    }
+
+    .hero-subtitle {
+      font-size: 13.5px;
+      color: #64748B;
+      margin: 0;
+      letter-spacing: -0.01em;
+      max-width: 600px;
+      line-height: 1.4;
+    }
+
+    :host-context([data-theme="dark"]) .hero-subtitle,
+    [data-theme="dark"] :host .hero-subtitle,
+    [data-theme="dark"] .hero-subtitle {
+      color: #94A3B8;
+    }
+
+    /* 3. Simplified Popular Presets Section */
+    .popular-section {
+      width: 100%;
+      max-width: 580px;
+      margin: 0 auto;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 6px;
-      padding: 6px 14px;
-      background: var(--ts-surface-subtle, rgba(255, 255, 255, 0.04));
-      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-      border-radius: var(--ts-radius-md, 12px);
-      font-size: 13px;
+      gap: 12px;
     }
 
-    .formats-label {
-      font-weight: 600;
-      color: var(--text, #F9FAFB);
+    .popular-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748B;
+      user-select: none;
     }
 
-    .formats-list {
-      color: var(--text-2, #9CA3AF);
-      font-family: var(--ts-font-mono, monospace);
-      font-size: 12px;
+    :host-context([data-theme="dark"]) .popular-section-label,
+    [data-theme="dark"] :host .popular-section-label,
+    [data-theme="dark"] .popular-section-label {
+      color: #A1A1AA;
     }
 
-    .limits-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--text-3, #6B7280);
-      margin-top: 4px;
+    .popular-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      width: 100%;
+      padding: 4px;
+      box-sizing: border-box;
     }
 
-    .limit-item {
+    .popular-chip-btn {
+      height: 42px;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      justify-content: center;
+      padding: 0 16px;
+      border-radius: 9999px;
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      color: #1E293B;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      text-align: center;
+      user-select: none;
+      box-sizing: border-box;
     }
 
-    .limit-dot {
-      opacity: 0.5;
+    :host-context([data-theme="dark"]) .popular-chip-btn,
+    [data-theme="dark"] :host .popular-chip-btn,
+    [data-theme="dark"] .popular-chip-btn {
+      background: var(--ts-surface-raised, #18181B);
+      border-color: var(--border-subtle, rgba(255, 255, 255, 0.12));
+      color: #F8FAFC;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+    .popular-chip-btn:hover {
+      border-color: var(--accent, #2563EB);
+      color: var(--accent, #2563EB);
+      background: rgba(37, 99, 235, 0.04);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+    }
+
+    :host-context([data-theme="dark"]) .popular-chip-btn:hover,
+    [data-theme="dark"] .popular-chip-btn:hover {
+      border-color: var(--accent, #3B82F6);
+      color: var(--accent, #3B82F6);
+      background: rgba(59, 130, 246, 0.12);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    }
+
+    .popular-chip-btn:focus-visible {
+      outline: 2px solid var(--accent, #2563EB);
+      outline-offset: 2px;
+    }
+
+    :host-context([data-theme="dark"]) .popular-chip-btn:focus-visible,
+    [data-theme="dark"] .popular-chip-btn:focus-visible {
+      outline-color: var(--accent, #3B82F6);
+    }
+
+    .popular-chip-name {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: inherit;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 640px) {
+      .landing-hero-area {
+        padding: 24px 12px 36px;
+      }
+      .popular-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+      .popular-chip-btn {
+        height: 38px;
+        padding: 0 12px;
+      }
+      .popular-chip-name {
+        font-size: 12px;
+      }
+      .hero-select-btn {
+        width: 100%;
+        max-width: 280px;
+      }
     }
   `]
 })
 export class UploadLandingComponent {
-  readonly filesSelected = output<FileList | File[]>();
+  readonly config = COMPRESSOR_CONFIG;
   readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
 
-  readonly isDragOver = signal<boolean>(false);
+  readonly filesSelected = output<FileList | File[]>();
+  readonly examplePresetSelected = output<DeveloperPresetKey>();
+
+  readonly heroLines = HERO_LINES;
+
+  readonly popularChips: PopularPresetChip[] = [
+    { key: 'website', label: 'Website' },
+    { key: 'blog', label: 'Blog post' },
+    { key: 'ecommerce', label: 'Online store' },
+    { key: 'social', label: 'Social post' },
+    { key: 'thumbnails', label: 'Thumbnail' },
+    { key: 'retina', label: 'Retina display' }
+  ];
 
   openFilePicker(): void {
     const input = this.fileInput()?.nativeElement;
@@ -346,30 +311,8 @@ export class UploadLandingComponent {
     }
   }
 
-  onDragOver(event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    if (event.dataTransfer?.types.includes('Files')) {
-      this.isDragOver.set(true);
-      if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = 'copy';
-      }
-    }
-  }
-
-  onDragLeave(event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isDragOver.set(false);
-  }
-
-  onDrop(event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isDragOver.set(false);
-    if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
-      this.filesSelected.emit(event.dataTransfer.files);
-    }
+  onSelectChip(presetKey: DeveloperPresetKey): void {
+    this.examplePresetSelected.emit(presetKey);
+    this.openFilePicker();
   }
 }
-

@@ -3,6 +3,71 @@
 @import "../../../packages/tool-shell/src/styles/tokens.css";
 @import "../../../packages/tool-shell/src/styles/base.css";
 
+/* ══════════════════════════════════════════════════════════════════════
+   DUAL-THEME HIGH-CONTRAST TOKEN SYSTEM FOR IMAGE COMPRESSOR
+   Ensures WCAG AA compliance (contrast >= 4.5:1) in both Light and Dark themes.
+   ══════════════════════════════════════════════════════════════════════ */
+
+:root,
+[data-theme="light"],
+html[data-theme="light"],
+.ts-root[data-theme="light"],
+:root[data-theme="light"] {
+  --ts-surface-card: #FFFFFF;
+  --ts-surface-subtle: #F8FAFC;
+  --ts-surface-base: #F1F5F9;
+  --ts-surface-inset: #F8FAFC;
+  --text-primary: #09090B;
+  --text-secondary: #52525B;
+  --text-muted: #6B7280;
+  --bg-subtle: rgba(15, 23, 42, 0.04);
+  --bg-hover: rgba(15, 23, 42, 0.06);
+  --border-subtle: rgba(15, 23, 42, 0.1);
+  --border-default: rgba(15, 23, 42, 0.18);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --input-bg: #FFFFFF;
+  --input-text: #09090B;
+  --input-border: rgba(15, 23, 42, 0.18);
+  --slider-track: #E2E8F0;
+  --drawer-bg: #F8FAFC;
+  --chip-bg: #F1F5F9;
+  --chip-border: rgba(15, 23, 42, 0.1);
+  --chip-text: #52525B;
+  --modal-bg: #FFFFFF;
+  --modal-border: rgba(15, 23, 42, 0.12);
+  --modal-backdrop: rgba(15, 23, 42, 0.45);
+}
+
+html[data-theme="dark"],
+.ts-root[data-theme="dark"],
+:root[data-theme="dark"] {
+  --ts-surface-card: #18181B;
+  --ts-surface-subtle: #141416;
+  --ts-surface-base: #111318;
+  --ts-surface-inset: #202530;
+  --text-primary: #F3F4F6;
+  --text-secondary: #A1A8B5;
+  --text-muted: #7D8796;
+  --bg-subtle: rgba(255, 255, 255, 0.06);
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-default: rgba(255, 255, 255, 0.18);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --input-bg: #18181B;
+  --input-text: #F3F4F6;
+  --input-border: rgba(255, 255, 255, 0.15);
+  --slider-track: #242936;
+  --drawer-bg: #14171F;
+  --chip-bg: rgba(255, 255, 255, 0.06);
+  --chip-border: rgba(255, 255, 255, 0.1);
+  --chip-text: #A1A8B5;
+  --modal-bg: #18181B;
+  --modal-border: rgba(255, 255, 255, 0.12);
+  --modal-backdrop: rgba(0, 0, 0, 0.72);
+}
+
 html, body {
   margin: 0;
   padding: 0;

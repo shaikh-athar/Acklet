@@ -1,6 +1,6 @@
 <div class="compressor-page-wrapper" [class.is-active-workspace]="state.hasImages()">
 
-  <!-- Toast Notification Pill -->
+  <!-- Compact Toast Notification -->
   @if (state.toast(); as t) {
     <div
       class="acklet-toast"
@@ -27,7 +27,7 @@
       <div class="drag-outline-box">
         <ts-icon name="upload-cloud" [size]="48" class="drag-cloud-icon" />
         <span class="drag-prompt-title">{{ state.hasImages() ? 'Drop to Add Images' : 'Drop Images to Compress' }}</span>
-        <span class="drag-prompt-sub">Up to 50 images • Max 50 MB each</span>
+        <span class="drag-prompt-sub">Up to {{ state.config.limits.maxFiles }} images • Max {{ state.config.limits.maxFileSizeMB }} MB each</span>
       </div>
     </div>
   }
@@ -47,7 +47,10 @@
   <!-- STATE 1: UPLOAD LANDING PAGE (When no images uploaded) -->
   @if (!state.hasImages()) {
     <div class="landing-stage animate-fade-in">
-      <app-upload-landing (filesSelected)="onFilesSelected($event)" />
+      <app-upload-landing
+        (filesSelected)="onFilesSelected($event)"
+        (examplePresetSelected)="onExamplePresetSelected($event)"
+      />
     </div>
   }
 
@@ -55,147 +58,262 @@
   @if (state.hasImages()) {
     <div class="workspace-layout animate-fade-slide-up">
 
-      <!-- LEFT COLUMN: Image Gallery & Processing Summary Stage -->
-      <main class="workspace-stage" aria-label="Uploaded images list">
+      <!-- LEFT COLUMN: Main Gallery Stage -->
+      <main class="workspace-stage" aria-label="Images to compress">
 
-        <!-- Top Header Bar -->
+        <!-- Stage Header Bar (Clean, single row matching Image Converter) -->
         <div class="stage-header-bar">
           <div class="stage-title-group">
-            <h2 class="stage-heading">Image Compressor</h2>
-            <div class="stage-stats-pill font-mono">
-              <span class="stats-count">{{ state.totalCount() }} {{ state.totalCount() === 1 ? 'image' : 'images' }}</span>
-              <span class="stats-dot">•</span>
-              <span class="stats-size">{{ formatBytes(state.totalOriginalSize()) }}</span>
-            </div>
+            <h2 class="stage-title">Images to Compress</h2>
+            <span class="stage-count-badge font-mono">{{ state.totalCount() }} / {{ state.config.limits.maxFiles }}</span>
           </div>
 
           <div class="stage-actions-group">
             <button
               type="button"
-              class="header-action-btn primary-add-btn"
+              class="add-more-header-btn"
               (click)="openWorkspaceFilePicker()"
-              [disabled]="state.totalCount() >= 50"
-              title="Add more images to this session"
-              aria-label="Add Images"
+              [disabled]="state.totalCount() >= state.config.limits.maxFiles || state.isCompressingAny()"
+              title="Add more images"
+              aria-label="Add images"
             >
               <ts-icon name="plus" [size]="14" />
-              <span>Add Images</span>
+              <span class="btn-text">Add Images</span>
             </button>
 
+            <!-- More Actions Dropdown -->
+            <div class="more-menu-wrapper">
+              <button
+                type="button"
+                class="more-header-btn"
+                (click)="toggleMoreMenu($event)"
+                [attr.aria-expanded]="isMoreMenuOpen()"
+                title="More options"
+                aria-label="More options"
+              >
+                <span>More</span>
+                <ts-icon [name]="isMoreMenuOpen() ? 'chevron-up' : 'chevron-down'" [size]="12" />
+              </button>
+
+              @if (isMoreMenuOpen()) {
+                <div class="more-dropdown-panel animate-scale-up" (click)="$event.stopPropagation()">
+                  <button
+                    type="button"
+                    class="more-menu-item"
+                    (click)="state.openProfileModal(); closeMoreMenu()"
+                  >
+                    <ts-icon name="bookmark" [size]="14" />
+                    <span>Optimization profiles</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="more-menu-item"
+                    (click)="state.openReportModal(); closeMoreMenu()"
+                    [disabled]="!state.hasCompletedImages()"
+                  >
+                    <ts-icon name="file-text" [size]="14" />
+                    <span>Audit report</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="more-menu-item"
+                    (click)="state.openFeedbackModal(); closeMoreMenu()"
+                  >
+                    <ts-icon name="message-square" [size]="14" />
+                    <span>Send feedback</span>
+                  </button>
+
+                  <div class="more-menu-divider"></div>
+
+                  <button
+                    type="button"
+                    class="more-menu-item item-danger"
+                    (click)="state.requestNewSession(); closeMoreMenu()"
+                  >
+                    <ts-icon name="rotate-ccw" [size]="14" />
+                    <span>New session</span>
+                  </button>
+                </div>
+              }
+            </div>
+
+            <!-- Clear All Button -->
             <button
               type="button"
-              class="header-action-btn remove-all-btn"
-              (click)="state.removeAll()"
-              title="Remove all uploaded images"
-              aria-label="Remove All Images"
+              class="clear-all-header-btn"
+              (click)="state.requestRemoveAll()"
+              [disabled]="state.isCompressingAny()"
+              title="Clear all images"
+              aria-label="Clear all images"
             >
-              <ts-icon name="trash-2" [size]="14" />
-              <span>Remove All</span>
+              <ts-icon name="trash-2" [size]="13" />
+              <span class="btn-text">Clear</span>
             </button>
           </div>
         </div>
 
-        <!-- Bulk Action Controls Bar -->
-        <div class="bulk-toolbar">
-          <div class="bulk-select-wrap">
-            <label class="bulk-checkbox-label">
-              <input
-                type="checkbox"
-                [checked]="state.allSelected()"
-                (change)="state.allSelected() ? state.deselectAll() : state.selectAll()"
-                class="bulk-native-checkbox"
-                aria-label="Select all images"
-              />
-              <span class="bulk-custom-checkbox">
-                @if (state.allSelected()) {
-                  <ts-icon name="check" [size]="12" />
-                }
-              </span>
-              <span class="bulk-label-text">
-                {{ state.allSelected() ? 'Deselect All' : 'Select All' }}
-              </span>
-            </label>
-
-            @if (state.selectedCount() > 0) {
-              <span class="selected-counter-badge font-mono">
-                {{ state.selectedCount() }} of {{ state.totalCount() }} selected
-              </span>
-            }
-          </div>
-
-          @if (state.selectedCount() > 0) {
-            <div class="bulk-actions-group">
-              <button
-                type="button"
-                class="bulk-btn apply-global-btn"
-                (click)="state.applyGlobalSettingsToSelected()"
-                title="Reset overrides on selected images to match global settings"
-              >
-                <ts-icon name="rotate-ccw" [size]="13" />
-                <span>Apply Global Settings</span>
-              </button>
-
-              <button
-                type="button"
-                class="bulk-btn delete-selected-btn"
-                (click)="state.removeSelected()"
-                title="Remove selected images from batch"
-              >
-                <ts-icon name="trash-2" [size]="13" />
-                <span>Remove Selected ({{ state.selectedCount() }})</span>
-              </button>
-            </div>
-          }
-        </div>
-
-        <!-- Uploaded Images List -->
-        <div class="images-list-container">
-          @for (img of state.images(); track img.id) {
+        <!-- Gallery Grid of Image Cards -->
+        <div class="image-gallery-grid" role="list">
+          @for (img of state.filteredImages(); track img.id) {
             <app-image-card
               [item]="img"
-              (selectToggled)="state.toggleSelect($event)"
               (previewRequested)="state.openPreview($event)"
               (settingsRequested)="state.openItemSettings($event)"
               (removeRequested)="state.removeImage($event)"
+              (compressRequested)="state.compressItem($event)"
+              (cancelRequested)="state.cancelItem($event)"
+              (downloadRequested)="state.downloadItemResult($event)"
+              (retryRequested)="state.retryItem($event)"
             />
           }
 
-          <!-- Add More Card at end of list -->
-          @if (state.totalCount() < 50) {
+          <!-- Dashed Add More Card inside Gallery Grid (Matches Image Converter) -->
+          @if (state.totalCount() < state.config.limits.maxFiles && !state.isCompressingAny()) {
             <button
               type="button"
-              class="add-more-row-card"
+              class="add-tile-card"
               (click)="openWorkspaceFilePicker()"
               title="Add more images"
             >
-              <div class="add-icon-circle">
-                <ts-icon name="plus" [size]="18" />
+              <div class="add-circle-icon">
+                <ts-icon name="plus" [size]="24" />
               </div>
-              <span class="add-more-text">Add More Images ({{ 50 - state.totalCount() }} slots available)</span>
+              <span class="add-tile-text">Add More</span>
+              <span class="add-tile-sub">({{ state.config.limits.maxFiles - state.totalCount() }} slots available)</span>
             </button>
           }
-        </div>
-
-        <!-- Processing Summary Placeholder at bottom of stage -->
-        <div class="summary-wrapper">
-          <app-processing-summary [totalOriginalSize]="state.totalOriginalSize()" />
         </div>
 
       </main>
 
-      <!-- RIGHT COLUMN: Global & Individual Compression Settings Sidebar -->
-      <div class="workspace-sidebar" aria-label="Compression settings">
+      <!-- RIGHT COLUMN: Compression Settings Sidebar -->
+      <aside class="workspace-sidebar" aria-label="Compression settings">
         <app-settings-panel
           [globalSettings]="state.globalSettings()"
           [editingItem]="state.activeSettingsItem()"
+          [totalCount]="state.totalCount()"
+          [readyCount]="readyCount()"
+          [completedCount]="state.completedCount()"
+          [isCompressing]="state.isCompressingAny()"
+          [totalSavedBytes]="state.totalSavedBytes()"
+          [totalSavedPercentage]="state.totalSavedPercentage()"
           (globalSettingsChanged)="onGlobalSettingsChanged($event)"
           (individualSettingsChanged)="onIndividualSettingsChanged($event)"
           (resetIndividualSettings)="onResetIndividualSettings($event)"
           (closeIndividualSettings)="onCloseIndividualSettings()"
+          (compressAllRequested)="state.compressAll()"
+          (downloadAllRequested)="state.downloadAllCompletedZip()"
+          (compressMoreRequested)="openWorkspaceFilePicker()"
+          (applyRecommendation)="state.applyRecommendation($event)"
+          (profileSelected)="state.applyProfileToAll($event)"
+          (openProfileManager)="state.openProfileModal()"
         />
-      </div>
+      </aside>
 
     </div>
+
+    <!-- Mobile Fixed Bottom Action Bar (< 1024px) -->
+    <div class="mobile-bottom-bar" role="toolbar" aria-label="Compression actions">
+      <button
+        type="button"
+        class="mobile-settings-btn"
+        (click)="openMobileSettingsSheet()"
+        aria-label="Open compression settings"
+      >
+        <ts-icon name="sliders" [size]="16" />
+        <span class="mobile-settings-label">Settings</span>
+        <span class="mobile-format-pill font-mono">{{ (state.globalSettings().outputFormat || 'original') | uppercase }}</span>
+      </button>
+
+      <div class="mobile-primary-action-wrap">
+        @if (state.completedCount() > 0 && !state.isCompressingAny()) {
+          @if (state.completedCount() > 1) {
+            <button
+              type="button"
+              class="mobile-primary-cta is-download"
+              (click)="state.downloadAllCompletedZip()"
+            >
+              <ts-icon name="download" [size]="16" />
+              <span>Save All (ZIP)</span>
+            </button>
+          } @else {
+            <button
+              type="button"
+              class="mobile-primary-cta"
+              (click)="openWorkspaceFilePicker()"
+            >
+              <ts-icon name="plus" [size]="15" />
+              <span>Add More</span>
+            </button>
+          }
+        } @else if (state.isCompressingAny()) {
+          <button type="button" class="mobile-primary-cta is-converting" disabled>
+            <span class="spinner-circle-sm"></span>
+            <span>Compressing...</span>
+          </button>
+        } @else if (readyCount() > 0) {
+          <button
+            type="button"
+            class="mobile-primary-cta"
+            (click)="state.compressAll()"
+          >
+            <span>Compress {{ readyCount() }} {{ readyCount() === 1 ? 'Image' : 'Images' }}</span>
+            <ts-icon name="arrow-right" [size]="16" />
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Mobile Settings Bottom Sheet (< 1024px) -->
+    @if (isMobileSettingsSheetOpen()) {
+      <div
+        class="mobile-sheet-backdrop animate-fade-in"
+        (click)="closeMobileSettingsSheet()"
+        aria-hidden="true"
+      ></div>
+      <div
+        class="mobile-settings-sheet animate-slide-up"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Compression settings"
+      >
+        <div class="mobile-sheet-header">
+          <h3 class="mobile-sheet-title">Compression settings</h3>
+          <button
+            type="button"
+            class="mobile-sheet-close-btn"
+            (click)="closeMobileSettingsSheet()"
+            aria-label="Close settings"
+          >
+            <ts-icon name="x" [size]="18" />
+          </button>
+        </div>
+        <div class="mobile-sheet-body">
+          <app-settings-panel
+            [globalSettings]="state.globalSettings()"
+            [editingItem]="state.activeSettingsItem()"
+            [totalCount]="state.totalCount()"
+            [readyCount]="readyCount()"
+            [completedCount]="state.completedCount()"
+            [isCompressing]="state.isCompressingAny()"
+            [totalSavedBytes]="state.totalSavedBytes()"
+            [totalSavedPercentage]="state.totalSavedPercentage()"
+            (globalSettingsChanged)="onGlobalSettingsChanged($event)"
+            (individualSettingsChanged)="onIndividualSettingsChanged($event)"
+            (resetIndividualSettings)="onResetIndividualSettings($event)"
+            (closeIndividualSettings)="onCloseIndividualSettings()"
+            (compressAllRequested)="state.compressAll(); closeMobileSettingsSheet()"
+            (downloadAllRequested)="state.downloadAllCompletedZip(); closeMobileSettingsSheet()"
+            (compressMoreRequested)="openWorkspaceFilePicker(); closeMobileSettingsSheet()"
+            (applyRecommendation)="state.applyRecommendation($event)"
+            (profileSelected)="state.applyProfileToAll($event)"
+            (openProfileManager)="state.openProfileModal()"
+          />
+        </div>
+      </div>
+    }
   }
 
   <!-- Image Preview Modal -->
@@ -207,8 +325,58 @@
       (close)="state.closePreview()"
       (next)="state.nextPreview()"
       (prev)="state.prevPreview()"
+      (compressRequested)="state.compressItem($event)"
+      (downloadRequested)="state.downloadItemResult($event)"
+      (keepOriginalRequested)="state.keepOriginal($event)"
+    />
+  }
+
+  <!-- Metadata Inspection & Privacy Modal -->
+  @if (state.metadataModalItem(); as metaItem) {
+    <app-metadata-modal
+      [item]="metaItem"
+      (close)="state.closeMetadataModal()"
+    />
+  }
+
+  <!-- Optimization Audit Report Modal -->
+  @if (state.reportModalOpen()) {
+    <app-report-modal
+      [report]="state.getOptimizationReport()"
+      (close)="state.closeReportModal()"
+      (exportCsv)="state.exportReportCsv()"
+      (exportJson)="state.exportReportJson()"
+    />
+  }
+
+  <!-- Destructive Action Confirmation Modal -->
+  @if (state.confirmModalData(); as confirmData) {
+    <app-confirm-modal
+      [title]="confirmData.title"
+      [message]="confirmData.message"
+      [isDanger]="confirmData.isDanger"
+      (confirmed)="state.confirmModalAction()"
+      (cancelled)="state.cancelConfirmModal()"
+    />
+  }
+
+  <!-- User Feedback & Telemetry Modal -->
+  @if (state.feedbackModalOpen()) {
+    <app-feedback-modal
+      (submitted)="state.submitFeedback($event)"
+      (cancelled)="state.closeFeedbackModal()"
+    />
+  }
+
+  <!-- Optimization Profiles Manager Modal -->
+  @if (state.profileModalOpen()) {
+    <app-profile-modal
+      [currentSettings]="state.globalSettings()"
+      [selectedCount]="state.selectedCount()"
+      (close)="state.closeProfileModal()"
+      (applyAll)="state.applyProfileToAll($event)"
+      (applySelected)="state.applyProfileToSelected($event)"
     />
   }
 
 </div>
-

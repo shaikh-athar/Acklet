@@ -6,11 +6,12 @@ import {
   SupportedImageFormat,
   CompressionSettings
 } from '../models/compressor.models';
+import { COMPRESSOR_CONFIG } from '../config/compressor.config';
 
-export const MAX_SESSION_FILES = 50;
-export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
-export const MAX_DIMENSION = 16384; // 16K pixels max per edge
-export const MAX_PIXELS = 100000000; // 100 MP decompression bomb safety limit
+export const MAX_SESSION_FILES = COMPRESSOR_CONFIG.limits.maxFiles;
+export const MAX_FILE_SIZE = COMPRESSOR_CONFIG.limits.maxFileSizeBytes;
+export const MAX_DIMENSION = COMPRESSOR_CONFIG.limits.maxDimensionEdge;
+export const MAX_PIXELS = COMPRESSOR_CONFIG.limits.maxPixels;
 
 export const FORMAT_CAPABILITIES: Record<string, FormatCapabilities> = {
   jpg: {

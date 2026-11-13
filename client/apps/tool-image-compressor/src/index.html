@@ -2,14 +2,104 @@
 <html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8" />
-    <title>Image Compressor — Free Fast In-Browser Image Compression | Acklet</title>
-    <meta name="description" content="Free, private, in-browser image compressor. Reduce JPG, PNG, WebP, AVIF, and GIF image sizes with zero server uploads and high visual quality." />
+    <title>Image Compressor: Make images smaller online, free and private | Acklet</title>
+    <meta
+      name="description"
+      content="Make your images smaller without losing quality. Compress PNG, JPG, WebP, AVIF, and HEIC images online directly in your browser with zero server uploads."
+    />
+    <meta
+      name="keywords"
+      content="image compressor, make images smaller, compress images online, reduce image file size, free image compressor, private image compressor, batch image compression"
+    />
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <link rel="canonical" href="https://imagecompressor.acklet.com/" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
+    <!-- Open Graph Metadata -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Image Compressor: Make images smaller online, free and private | Acklet" />
+    <meta
+      property="og:description"
+      content="Make your images smaller without losing quality. Compress PNG, JPG, WebP, AVIF, and HEIC images online directly in your browser with zero server uploads."
+    />
+    <meta property="og:url" content="https://imagecompressor.acklet.com/" />
+    <meta property="og:site_name" content="Acklet" />
+    <meta property="og:image" content="https://acklet.com/assets/og-image-compressor.png" />
+
+    <!-- Twitter Card Metadata -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Image Compressor: Make images smaller online, free and private | Acklet" />
+    <meta
+      name="twitter:description"
+      content="Make your images smaller without losing quality. Compress PNG, JPG, WebP, AVIF, and HEIC images online directly in your browser with zero server uploads."
+    />
+    <meta name="twitter:image" content="https://acklet.com/assets/og-image-compressor.png" />
+
+    <!-- Preconnect & Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Scoutie+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet" />
+
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Acklet Image Compressor",
+        "url": "https://imagecompressor.acklet.com/",
+        "description": "Private, in-browser image compressor and optimizer supporting JPG, PNG, WebP, and AVIF with zero server uploads.",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires HTML5 Canvas and modern browser with WebP/AVIF support.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "featureList": [
+          "100% In-Browser Client-Side Processing (0 Server Uploads)",
+          "Target File Size Bounded Optimization",
+          "Perceptual SSIM & PSNR Quality Metrics",
+          "Multi-Variant Responsive Breakpoint Generation",
+          "EXIF & GPS Location Metadata Stripping",
+          "Bulk Batch Processing up to 50 Images",
+          "ZIP Archive One-Click Download"
+        ]
+      }
+    </script>
+
+    <!-- Acklet Capsule Support -->
+    <script>
+      (function() {
+        try {
+          var hash = window.location.hash || '';
+          if (hash.startsWith('#acklet-cap=')) {
+            var raw = hash.slice('#acklet-cap='.length);
+            var parts = raw.split(',');
+            if (parts.length === 5) {
+              var nums = parts.map(function(n) { return parseInt(n, 10); });
+              if (!nums.some(isNaN) && nums[2] > 0 && nums[3] > 0) {
+                var vw = window.innerWidth || 1920;
+                var vh = window.innerHeight || 1080;
+                window.__acklet_capsule = {
+                  x: Math.max(-vw, Math.min(vw * 2, nums[0])),
+                  y: Math.max(-vh, Math.min(vh * 2, nums[1])),
+                  w: Math.min(vw * 2, nums[2]),
+                  h: Math.min(vh * 2, nums[3]),
+                  r: Math.min(100, Math.max(0, nums[4]))
+                };
+              }
+            }
+            var cleanUrl = window.location.pathname + window.location.search;
+            window.history.replaceState(null, '', cleanUrl);
+          }
+          if (window.__acklet_capsule) {
+            document.documentElement.style.backgroundColor = document.documentElement.getAttribute('data-theme') === 'dark' ? '#141414' : '#FFFFFF';
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <app-root></app-root>

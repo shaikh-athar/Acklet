@@ -67,40 +67,45 @@ export const IMAGE_COMPRESSOR_MANIFEST: ToolRegistryItem = {
     'Dual-theme high-contrast UI compliant with WCAG AA accessibility standards'
   ],
   howTo: [
-    'Drag and drop your images or select "Upload Images" to choose files.',
-    'Review uploaded images in the workspace gallery.',
-    'Adjust global compression settings (quality, format, resize) or customize individual images.',
-    'Click on any image thumbnail to inspect high-resolution previews.',
-    'Save settings and prepare batches for instant processing.'
+    'Drag and drop your images or click "Choose images" to select files.',
+    'Choose a compression preset or adjust quality, format, and dimension settings.',
+    'Review uploaded images in the gallery and customize individual images if needed.',
+    'Click "Compress all" to make your images smaller with zero server uploads.',
+    'Download your optimized images individually or download all as a single ZIP archive.'
   ],
   faqs: [
     {
       id: 'privacy',
       question: 'Are my images uploaded to any server?',
-      answer: 'No. All image validation, inspection, and processing happens 100% locally in your browser memory via Web APIs. Your images never touch a remote server.'
+      answer: 'No. All image validation, inspection, and compression happens 100% locally in your browser memory. Your images never touch an external server.'
+    },
+    {
+      id: 'quality',
+      question: 'How does Image Compressor make images smaller without losing quality?',
+      answer: 'It removes redundant metadata, applies advanced perceptual compression, and optimizes image encoding to dramatically reduce file size while keeping visual clarity sharp.'
     },
     {
       id: 'limits',
       question: 'What are the batch and file size limits?',
-      answer: 'You can upload up to 50 images in a single session, with a maximum file size of 50 MB per file.'
+      answer: 'You can compress up to 50 images in a single session, with a maximum file size of 50 MB per file.'
     },
     {
       id: 'formats',
       question: 'Which formats are supported?',
-      answer: 'Image Compressor accepts JPG, JPEG, PNG, WebP, GIF, BMP, AVIF, SVG, and HEIC (where browser decoder is present).'
+      answer: 'Image Compressor supports PNG, JPG, JPEG, WebP, AVIF, HEIC, GIF, and BMP directly in your browser.'
     },
     {
       id: 'overrides',
-      question: 'Can I set different quality or size for individual images?',
-      answer: 'Yes. Each image card has its own settings button allowing you to override global quality, output format, and dimensions.'
+      question: 'Can I set different compression settings for individual images?',
+      answer: 'Yes. Each image card lets you override global quality, target format, and dimensions independently.'
     }
   ],
   related: ['image-converter', 'file-converter', 'qr', 'datalens'],
   suggestedTools: ['image-converter', 'file-converter', 'qr', 'datalens'],
   seo: {
-    title: 'Image Compressor | Acklet',
-    description: 'Compress images online in your browser. Reduce JPG, PNG, WebP, and AVIF image sizes while maintaining high visual quality with zero uploads.',
-    keywords: ['image compressor', 'compress images', 'reduce image size', 'jpg compressor', 'png compressor', 'webp compressor', 'in-browser image compression']
+    title: 'Image Compressor: Make images smaller online, free and private | Acklet',
+    description: 'Make your images smaller without losing quality. Compress PNG, JPG, WebP, AVIF, and HEIC images online directly in your browser. 100% private and free with zero server uploads.',
+    keywords: ['image compressor', 'make images smaller', 'compress images online', 'reduce image file size', 'free image compressor', 'private image compressor', 'batch image compression']
   }
 };
 
