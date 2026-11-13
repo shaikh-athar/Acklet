@@ -1,0 +1,85 @@
+/* apps/tool-device-studio/src/styles/device-studio-tokens.css */
+
+:root,
+[data-theme="dark"],
+.device-studio-root {
+  --ds-accent: #3B82F6;
+  --ds-accent-hover: #60A5FA;
+  --ds-accent-rgb: 59, 130, 246;
+  --ds-accent-soft: rgba(59, 130, 246, 0.12);
+  --ds-accent-border: rgba(59, 130, 246, 0.25);
+  --ds-accent-glow: rgba(59, 130, 246, 0.20);
+  --tool-accent: #3B82F6;
+
+  /* Semantic Diagnostic States */
+  --ds-pass: #34D399;
+  --ds-pass-soft: rgba(52, 211, 153, 0.12);
+  --ds-pass-border: rgba(52, 211, 153, 0.28);
+
+  --ds-warn: #FBBF24;
+  --ds-warn-soft: rgba(251, 191, 36, 0.12);
+  --ds-warn-border: rgba(251, 191, 36, 0.28);
+
+  --ds-fail: #F87171;
+  --ds-fail-soft: rgba(248, 113, 113, 0.12);
+  --ds-fail-border: rgba(248, 113, 113, 0.28);
+
+  /* Surface & Metric HUD Tokens */
+  --ds-card-bg: var(--bg-1, #18181B);
+  --ds-card-bg-elevated: var(--bg-2, #27272A);
+  --ds-card-border: var(--border, rgba(255, 255, 255, 0.1));
+  --ds-card-border-hover: rgba(59, 130, 246, 0.35);
+  
+  --ds-hud-bg: rgba(9, 9, 11, 0.75);
+  --ds-hud-border: rgba(255, 255, 255, 0.12);
+  --ds-hud-text: #F4F4F5;
+  --ds-hud-muted: #A1A1AA;
+
+  /* Metric Meters & Graphs */
+  --ds-meter-bg: #27272A;
+  --ds-meter-active: #3B82F6;
+  --ds-meter-high: #FBBF24;
+  --ds-meter-clip: #F87171;
+}
+
+[data-theme="light"],
+:host-context([data-theme="light"]) .device-studio-root {
+  --ds-accent: #2563EB;
+  --ds-accent-hover: #1D4ED8;
+  --ds-accent-rgb: 37, 99, 235;
+  --ds-accent-soft: rgba(37, 99, 235, 0.08);
+  --ds-accent-border: rgba(37, 99, 235, 0.20);
+  --ds-accent-glow: rgba(37, 99, 235, 0.15);
+  --tool-accent: #2563EB;
+
+  /* Semantic Diagnostic States */
+  --ds-pass: #059669;
+  --ds-pass-soft: rgba(5, 150, 105, 0.08);
+  --ds-pass-border: rgba(5, 150, 105, 0.24);
+
+  --ds-warn: #D97706;
+  --ds-warn-soft: rgba(217, 119, 6, 0.08);
+  --ds-warn-border: rgba(217, 119, 6, 0.24);
+
+  --ds-fail: #DC2626;
+  --ds-fail-soft: rgba(220, 38, 38, 0.08);
+  --ds-fail-border: rgba(220, 38, 38, 0.24);
+
+  /* Surface & Metric HUD Tokens */
+  --ds-card-bg: #FFFFFF;
+  --ds-card-bg-elevated: #F8FAFC;
+  --ds-card-border: #E2E8F0;
+  --ds-card-border-hover: rgba(37, 99, 235, 0.35);
+
+  --ds-hud-bg: rgba(255, 255, 255, 0.90);
+  --ds-hud-border: rgba(0, 0, 0, 0.08);
+  --ds-hud-text: #0F172A;
+  --ds-hud-muted: #64748B;
+
+  /* Metric Meters & Graphs */
+  --ds-meter-bg: #E2E8F0;
+  --ds-meter-active: #2563EB;
+  --ds-meter-high: #D97706;
+  --ds-meter-clip: #DC2626;
+}
+

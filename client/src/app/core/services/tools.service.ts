@@ -7,6 +7,7 @@ import { catchError, map, tap } from 'rxjs/operators';
 import { Tool } from '../models/tool.model';
 import { Category } from '../models/category.model';
 import { MOCK_TOOLS } from '../mock-data/tools.data';
+import { MOCK_CATEGORIES } from '../mock-data/categories.data';
 import { environment } from '../../../environments/environment';
 
 export interface ApiResponse<T> {
@@ -28,8 +29,8 @@ export class ToolsService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = environment.apiBaseUrl;
 
-  private readonly _tools = signal<Tool[]>([]);
-  private readonly _categories = signal<Category[]>([]);
+  private readonly _tools = signal<Tool[]>(MOCK_TOOLS);
+  private readonly _categories = signal<Category[]>(MOCK_CATEGORIES);
   private readonly _loading = signal<boolean>(false);
   private readonly _error = signal<string | null>(null);
 
@@ -54,8 +55,12 @@ export class ToolsService {
       map(res => res.data || []),
       tap(cats => {
         if (cats.length > 0) this._categories.set(cats);
+        else this._categories.set(MOCK_CATEGORIES);
       }),
-      catchError(() => of([]))
+      catchError(() => {
+        this._categories.set(MOCK_CATEGORIES);
+        return of(MOCK_CATEGORIES);
+      })
     ).subscribe();
   }
 
@@ -66,11 +71,14 @@ export class ToolsService {
       tap(tools => {
         if (tools.length > 0) {
           this.mergeTools(tools);
+        } else {
+          this.mergeTools(MOCK_TOOLS);
         }
         this._loading.set(false);
       }),
       catchError(() => {
         this._loading.set(false);
+        this.mergeTools(MOCK_TOOLS);
         return of(MOCK_TOOLS);
       })
     ).subscribe();
@@ -167,8 +175,9 @@ export class ToolsService {
 
   searchTools(query: string): Tool[] {
     const q = query.toLowerCase().trim();
-    if (!q) return this._tools();
-    return this._tools().filter(t =>
+    const source = this._tools().length > 0 ? this._tools() : MOCK_TOOLS;
+    if (!q) return source;
+    return source.filter(t =>
       t.name.toLowerCase().includes(q) ||
       (t.shortDescription && t.shortDescription.toLowerCase().includes(q)) ||
       (t.description && t.description.toLowerCase().includes(q)) ||
@@ -186,7 +195,7 @@ export class ToolsService {
   }
 
   private filterToolsLocally(categoryId?: string, query?: string): Tool[] {
-    let result = this._tools();
+    let result = this._tools().length > 0 ? this._tools() : MOCK_TOOLS;
     if (categoryId) {
       const cat = this.getCategoryById(categoryId) || this.getCategoryBySlug(categoryId);
       const targetId = cat ? cat.id : categoryId;

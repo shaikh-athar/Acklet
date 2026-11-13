@@ -136,6 +136,37 @@ export const routes: Routes = [
     ]
   },
   { path: 'tools/color-studio', redirectTo: 'tools/colorstudio', pathMatch: 'full' },
+  {
+    path: 'devicestudio',
+    loadComponent: () => import('../../apps/tool-device-studio/src/app/app.component').then(m => m.AppComponent),
+    title: 'Device Studio — Hardware & Network Diagnostics | Acklet',
+    children: [
+      { path: '', loadComponent: () => import('../../apps/tool-device-studio/src/components/landing/device-studio-landing.component').then(m => m.DeviceStudioLandingComponent) },
+      { path: ':module', loadComponent: () => import('../../apps/tool-device-studio/src/app/app.component').then(m => m.AppComponent) }
+    ]
+  },
+  { path: 'device-studio', redirectTo: 'devicestudio', pathMatch: 'full' },
+  { path: 'webcam-test', redirectTo: 'devicestudio/webcam', pathMatch: 'full' },
+  { path: 'webcam', redirectTo: 'devicestudio/webcam', pathMatch: 'full' },
+  { path: 'mic-test', redirectTo: 'devicestudio/microphone', pathMatch: 'full' },
+  { path: 'microphone-test', redirectTo: 'devicestudio/microphone', pathMatch: 'full' },
+  { path: 'speaker-test', redirectTo: 'devicestudio/speaker', pathMatch: 'full' },
+  { path: 'audio-test', redirectTo: 'devicestudio/speaker', pathMatch: 'full' },
+  { path: 'speed-test', redirectTo: 'devicestudio/speed', pathMatch: 'full' },
+  { path: 'ip-checker', redirectTo: 'devicestudio/ip', pathMatch: 'full' },
+  { path: 'ip-lookup', redirectTo: 'devicestudio/ip', pathMatch: 'full' },
+  { path: 'screen-test', redirectTo: 'devicestudio/screen', pathMatch: 'full' },
+  { path: 'screenshare-test', redirectTo: 'devicestudio/screen', pathMatch: 'full' },
+  {
+    path: 'tools/devicestudio',
+    loadComponent: () => import('../../apps/tool-device-studio/src/app/app.component').then(m => m.AppComponent),
+    title: 'Device Studio — Hardware & Network Diagnostics | Acklet',
+    children: [
+      { path: '', loadComponent: () => import('../../apps/tool-device-studio/src/components/landing/device-studio-landing.component').then(m => m.DeviceStudioLandingComponent) },
+      { path: ':module', loadComponent: () => import('../../apps/tool-device-studio/src/app/app.component').then(m => m.AppComponent) }
+    ]
+  },
+  { path: 'tools/device-studio', redirectTo: 'tools/devicestudio', pathMatch: 'full' },
 
   // --- Public Pages under main header/navbar layout ---
   {

@@ -179,7 +179,16 @@ import {
   LucidePrinter,
   LucideFlipHorizontal,
   LucideFlipVertical,
-  LucideCrop
+  LucideCrop,
+  LucideCamera,
+  LucideCameraOff,
+  LucideMic,
+  LucideMicOff,
+  LucideHeadphones,
+  LucideGauge,
+  LucideScreenShare,
+  LucideMonitor,
+  LucideRadio
 } from '@lucide/angular';
 
 import {
@@ -836,6 +845,14 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
     lucide: LucidePalette,
     notes: 'Used in Color Studio tool identity'
   },
+  devicestudio: {
+    lucide: LucideActivity,
+    notes: 'Used in Device Studio tool identity'
+  },
+  'device-studio': {
+    lucide: LucideActivity,
+    notes: 'Used in Device Studio tool identity'
+  },
   pipette: {
     lucide: LucidePipette,
     notes: 'Eyedropper / Color Picker'
@@ -1054,5 +1071,69 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   },
   qr: {
     lucide: LucideQrCode
+  },
+  camera: {
+    lucide: LucideCamera,
+    notes: 'Webcam and camera test'
+  },
+  webcam: {
+    lucide: LucideCamera,
+    notes: 'Webcam test'
+  },
+  'camera-off': {
+    lucide: LucideCameraOff,
+    notes: 'Camera turned off'
+  },
+  mic: {
+    lucide: LucideMic,
+    notes: 'Microphone test'
+  },
+  microphone: {
+    lucide: LucideMic,
+    notes: 'Microphone test'
+  },
+  'mic-off': {
+    lucide: LucideMicOff,
+    notes: 'Microphone muted'
+  },
+  headphones: {
+    lucide: LucideHeadphones,
+    notes: 'Speaker and headphone test'
+  },
+  headphone: {
+    lucide: LucideHeadphones,
+    notes: 'Headphone test'
+  },
+  speaker: {
+    lucide: LucideVolume2,
+    notes: 'Speaker test'
+  },
+  volume: {
+    lucide: LucideVolume2,
+    notes: 'Audio volume'
+  },
+  speed: {
+    lucide: LucideGauge,
+    notes: 'Internet speed test'
+  },
+  gauge: {
+    lucide: LucideGauge,
+    notes: 'Speedometer gauge'
+  },
+  screen: {
+    lucide: LucideScreenShare,
+    notes: 'Screen sharing test'
+  },
+  'screen-share': {
+    lucide: LucideScreenShare,
+    notes: 'Screen share'
+  },
+  monitor: {
+    lucide: LucideMonitor,
+    notes: 'Display monitor'
+  },
+  radio: {
+    lucide: LucideRadio,
+    notes: 'Audio broadcast / sweep'
   }
 };
