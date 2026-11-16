@@ -27,6 +27,8 @@
    - [ADR-014: System Information — Consolidated 1-Line Spec Bar](#adr-014-system-information--consolidated-1-line-spec-bar)
    - [ADR-015: 100% Client-Side Zero-Storage Privacy Guarantee](#adr-015-100-client-side-zero-storage-privacy-guarantee)
    - [ADR-016: Zero-Dependency Printable PDF Reporting](#adr-016-zero-dependency-printable-pdf-reporting)
+   - [ADR-017: Responsive Breakpoints & Mobile Header Collapse Architecture](#adr-017-responsive-breakpoints--mobile-header-collapse-architecture)
+   - [ADR-018: Diagnostic Logic, 3-State Connection Stability & Health Score Governance](#adr-018-diagnostic-logic-3-state-connection-stability--health-score-governance)
 4. [Module-by-Module Technical Deep Dive](#4-module-by-module-technical-deep-dive)
    - [4.1 Webcam Test](#41-webcam-test-webcam-webcam-test-camera)
    - [4.2 Microphone Test](#42-microphone-test-microphone-mic-test-mic)
@@ -306,6 +308,65 @@ This section records every critical architectural and UX decision made during th
 
 ---
 
+### ADR-017: Responsive Breakpoints & Mobile Header Collapse Architecture
+
+- **Status**: Decided & Implemented
+- **Context**: On viewports under 640px and specifically at 360px width, text wrapping on button labels, conflicting multiple start buttons, and wide tables caused page overflow, clipped elements, and cluttered action rows.
+- **Decision Taken**:
+  - **Standardized Breakpoints**: Mobile (`< 640px`), Tablet (`640px - 1023px`), Desktop (`>= 1024px`).
+  - **Single-Line Button Enforcement**: All action buttons and labels enforce `white-space: nowrap !important;`. Under 640px, secondary/standard header action buttons collapse to icon-only with `title` and `aria-label` attributes.
+  - **Single "Start Microphone" Control Rule**: Exactly one start control is visible per state: in the header on mobile (< 1024px), inside the canvas preview box on desktop (>= 1024px). Never both at once.
+  - **Segmented Voice Duration Selector**: Replaced loose duration pills with a fixed-width (`160px`), equal-width 3-segment control ("5s", "10s", "15s") styled with canonical Acklet Blue and disabled when the microphone is inactive.
+  - **Speed Test Mobile Header Grid**: Under 640px, Row 1 contains icon + title + status badge (badge guaranteed on same line as title); Row 2 contains "All Tools" on the left and "Run Again" on the right.
+  - **Zero Horizontal Page Scroll at 360px**: Speed test history table is wrapped in a dedicated `overflow-x: auto; -webkit-overflow-scrolling: touch;` container with `white-space: nowrap !important;` across all table cells and rating badges, preserving all 6 columns without horizontal page-level overflow.
+  - **Screen Share Mobile Actions**: Under 640px, "All Tools" collapses to icon-only with a tooltip; Snapshot and Fullscreen buttons collapse to icon-only with tooltips; "Stop Sharing" remains full-width (`width: 100%`).
+- **Consequences**: Flawless responsive layout down to 360px width with zero horizontal page scroll, predictable user flows, and WCAG touch target compliance.
+
+---
+
+### ADR-018: Diagnostic Logic, 3-State Connection Stability & Health Score Governance
+
+- **Status**: Decided & Implemented
+- **Context**: Connection stability previously relied on a single ping reading and binary pass/fail logic. Hardware presence was incorrectly conflated with live test execution, leading to premature "Passed" badges before tests were run. Health scores could display 100 even when components warned or failed.
+- **Decision Taken**:
+  - **3-State Connection Stability**:
+    - **PASS**: latency $< 100\text{ ms}$, packet loss $0\%$, jitter $< 30\text{ ms}$.
+    - **WARNING**: latency $100\text{--}200\text{ ms}$, or jitter $30\text{--}80\text{ ms}$ (Display: *"Connection is slower than ideal"*).
+    - **FAIL**: latency $> 200\text{ ms}$, or packet loss $> 2\%$ (Display: *"Connection needs attention"*).
+    - **Sample Robustness**: Calculated using the median of at least 5 sequential RTT fetches against Cloudflare edge endpoints with jitter and packet loss calculation. If offline or 0 samples return, status displays *"Not tested"* rather than false FAIL.
+  - **Hardware Presence vs. Live Test Verification**:
+    - Camera & Microphone display *"Detected"* when hardware devices are enumerated.
+    - Status transitions to *"Passed"* ONLY after the live video/audio stream test has actually been executed.
+    - If unverified, status shows *"Not tested"*.
+  - **Overall Status State Machine**:
+    - If ANY component is FAIL $\rightarrow$ *"Needs attention"*.
+    - If any component is WARNING and none FAIL $\rightarrow$ *"Some issues"*.
+    - All evaluated components PASS $\rightarrow$ *"All clear"*.
+  - **Device Health Score Formula**:
+    - Computed strictly from component states: $\text{PASS} = 100\text{ pts}$, $\text{WARNING} = 50\text{ pts}$, $\text{FAIL} = 0\text{ pts}$. Untested / pending / detected are excluded from the denominator.
+    - **Strict Cap**: Score is NEVER 100 if any component has a WARNING or FAIL status (capped at 90 max).
+  - **Speed Test Mutual Exclusion**:
+    - ULTRA and UNSTABLE ratings must never appear together. If jitter $> 30\text{ ms}$, `classifyQuality()` returns `'unstable'` and suppresses `'ultra'`.
+- **Consequences**: Accurate, dependable diagnostic metrics with zero misleading 100% scores; clear plain-language failure messaging.
+
+---
+
+### ADR-019: Mobile Layout Boundaries, Content Wrapping & Technical Details 500ms Animation
+
+- **Status**: Decided & Implemented
+- **Context**: Blanket enforcement of `white-space: nowrap` previously caused text labels and values to clip horizontally on small screens (< 640px and 360px). Fixed element widths and rigid 16:9 aspect ratios caused button cutoffs in the webcam preview box and collapsed layouts. The expandable Technical Details sections jumped abruptly without a smooth height transition. Proxy configuration intercepting `/s` also accidentally caught `/speed-test`, `/screenshare-test`, and `/speaker-test`.
+- **Decision Taken**:
+  - **Fluid Content Wrapping**: Prohibited indiscriminate `white-space: nowrap`. Content containers use `max-width: 100%`, `min-width: 0`, and CSS grids with `minmax(0, 1fr)`. Long alphanumeric values (IPs) use `overflow-wrap: anywhere; word-break: break-all;`. Button labels are permitted to wrap cleanly to two lines (`line-height: 1.25`) without truncation.
+  - **Header Stacking Rule**: Under 640px, Row 1 contains icon + title + status badge (badge wraps to next line if necessary without clipping). Row 2 contains "All Tools" (icon + label) on the left and primary action button on the right. In Screen Sharing, visible labels are retained at 360px.
+  - **Webcam Preview Containment**: Idle preview box utilizes `min-height: 280px` with 20px 16px padding so the "Start Camera Test" button, icon, and reassurance text fit comfortably without clipping against dashed borders. Header button maintains persistent text ("Start Camera" / "Stop Camera").
+  - **Speed Test Responsiveness**: Gauge SVG uses `width: 100%; max-width: 300px; height: auto;` within a `max-width: 320px` wrapper. Circular "GO" button scales within card bounds. The 4 scorecard metrics use `grid-template-columns: repeat(2, minmax(0, 1fr))` under 640px, stacking to 1 column under 360px. Test history table is enclosed in an explicit `overflow-x: auto; -webkit-overflow-scrolling: touch;` viewport.
+  - **Public IP Checker Mobile Layout**: "Copy IP" button moves below the IP value as a full-width block button. ISP / Location / AS / Privacy stack into a single column with label above value. IPv4 & IPv6 cards stack status badges below headers with full-width copy action buttons below addresses.
+  - **Technical Details 500ms Grid Animation**: Centralized in [TechnicalDetailsComponent](file:///Users/ayaz/Acklet-file-Converter/client/apps/tool-device-studio/src/components/shared/technical-details.component.ts). Smooth open and close height transition using CSS `grid-template-rows: 0fr` to `1fr` over `500ms ease-in-out` on a wrapper with inner `overflow: hidden`. Chevron rotates `180deg` over 500ms. Immediate 0s toggle when `prefers-reduced-motion: reduce` is detected.
+  - **Vite Proxy Prefix Scoping**: Replaced generic `"/s"` with trailing-slash `"/s/"` in `proxy.conf.json` so diagnostic module routes starting with `s` are properly handled by Angular routing rather than proxying to non-existent backend ports.
+- **Consequences**: Flawless legibility, zero clipping down to 360px, smooth 60 FPS 500ms animations without layout shift, and robust development server routing.
+
+---
+
 ## 4. Module-by-Module Technical Deep Dive
 
 ### 4.1 Webcam Test (`/webcam`, `/webcam-test`, `/camera`)
@@ -392,6 +453,34 @@ This section records every critical architectural and UX decision made during th
   - Multi-session comparative audit with directional delta badges (improved vs regressed).
   - Multi-format exports: Printable HTML (`window.print()`), Markdown summary, Plain Text `.txt`, Structured JSON `.json`.
   - Privacy protections: Automatic public IP address masking (`27.56.xxx.xxx`) and location suppression.
+
+### ADR-020: Automatic Viewport Scroll-To-Top on Route Navigation & Mobile Header Action Button Labels
+- **Context**: When navigating from the studio landing page or directly entering a module URL (e.g. `/devicestudio/microphone`), the view frequently loaded scrolled into the middle of the module (~350px-400px offset). Because `.ts-main-scroll-container` on `ts-shell` maintains its scroll state across router outlet component swaps and browser `history.scrollRestoration` defaulted to `'auto'`, the module was not presented from the start. Additionally, on mobile (< 640px), action button text labels (`.btn-text`) were hidden via `display: none`, leaving only the microphone icon without descriptive text, and the Speaker module lacked an idle test action button in the header.
+- **Decision**:
+  1. **Instant Multi-Frame Scroll Reset (`resetDeviceStudioScroll`)**: Set `history.scrollRestoration = 'manual'`. Instantaneously reset `scrollTop` on `.ts-main-scroll-container`, `window`, and `document.scrollingElement` across multiple ticks (`0ms`, `requestAnimationFrame`, `25ms`, `80ms`, `200ms`, `400ms`), temporarily setting `scroll-behavior: auto !important` to override smooth-scroll stalling.
+  2. **Comprehensive Routing Hookup**: Trigger `resetDeviceStudioScroll()` in `AppComponent` (`ngOnInit`, `onTabChange`, `onToolTabChange`), `DeviceStudioComponent` (`router-outlet (activate)` and reactive tab effect), `DeviceStudioLandingComponent` (`navigateToModule`, `navigateToHistory`, `ngOnInit`), and in the `ngOnInit()` lifecycle of all 6 diagnostic modules.
+  3. **Preserve Visible Text After Icons**:
+     - **Microphone**: Display `<span class="btn-text">Start Mic</span>` (or `Try Again` / `Stop Mic`) alongside the microphone icon across all breakpoints (< 640px, tablet, desktop).
+     - **Speaker**: Add header action button `<button class="btn-start-audio">` when idle with volume icon + `<span class="btn-text">Test Sound</span>`, switching to `<button class="btn-stop-audio">` with volume-x icon + `<span class="btn-text">Stop Sound</span>` when active.
+
+### ADR-021: History & Reports Page Responsive Overhaul & Architectural Separation
+- **Context**: The `/devicestudio/history` page had mobile horizontal overflow at 360px due to packing "All Tools", "Generate Report", and "Clear All" into a single header action row. The tab bar conflated interactive views (History, Performance Comparison) with one-way report exporting ("Generate"), and delete confirmation was handled through browser native alerts without dual-theme styling.
+- **Decision**:
+  1. **Header Layout**: Split header into Row 1 (Icon + Title, removing duplicate count badge), Row 2 (Fixed action row with `All Tools` on left and `Clear All` outlined red on right), and Row 3 (Dedicated `Logging: On / Off` labeled switch toggle with fixed width to eliminate layout shift).
+  2. **Reports Section Separation**: Removed "Generate" from the segmented tab row. Implemented a dedicated "Reports" section card with its own icon, explanation, and primary `Generate Report` button that activates the multi-format report generator.
+  3. **Segmented Tabs**: Streamlined tabs to `Test History` and `Compare` on mobile / `Performance Comparison` on desktop with equal columns.
+  4. **Filter Bar**: 40px full-width search input with clear button, 2-column mobile grid for Module and Status dropdowns, and Sort dropdown spanning full width below (single 3-column row on desktop).
+  5. **History Cards**: Structured into Row 1 (40px icon + 2-line title + badge), Row 2 (small metadata text), Row 3 (metrics chips), and Row 4 (equal-width Details and Compare buttons + 40px Delete touch target on mobile; right column on desktop).
+  6. **Accessible Modals**: Custom dual-theme confirmation modals with high contrast for both single test delete and Clear All.
+  7. **Zero 360px Overflow**: Verified `containerScrollWidth <= 352px` on 360px viewport with no cutoffs.
+
+### ADR-022: NavigationEnd Reactive Scroll Normalization & Focus Blur Prevention
+- **Context**: When navigating between tools via router links, meeting readiness fix buttons, or browser history, the page could still appear in the middle if focus remained on the triggering element or if router transitions completed after synchronous scroll resets.
+- **Decision**:
+  1. **NavigationEnd Subscription**: In `AppComponent.ngOnInit`, subscribe to `router.events` filtering for `NavigationEnd` to guarantee `resetDeviceStudioScroll()` executes after every router transition finishes.
+  2. **Focus Blur**: In `resetDeviceStudioScroll()`, blur `document.activeElement` if it is outside the body to prevent the browser from anchoring the scroll position to the previously focused link or button.
+  3. **Promise-Chained Navigation**: In `navigateToModule`, `navigateToHistory`, and `openModule`, chain `.then(() => resetDeviceStudioScroll())` to ensure immediate viewport alignment from the top.
+  4. **Mobile Button Typography**: Ensure `.btn-text` in header action buttons across Microphone, Speaker, Webcam, and Screen Share always has `display: inline !important` with `min-height: 40px`, ensuring clear text accompanies the icon across all viewport widths.
 
 ---
 

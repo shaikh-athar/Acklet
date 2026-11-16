@@ -4,17 +4,18 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { TsIconComponent } from '@acklet/tool-shell';
 import { SpeedTestService } from '../../services/speed-test.service';
-import { DeviceStudioStateService } from '../../services/device-studio-state.service';
+import { DeviceStudioStateService, resetDeviceStudioScroll } from '../../services/device-studio-state.service';
 import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
+import { TechnicalDetailsComponent } from '../shared/technical-details.component';
 
 @Component({
   selector: 'app-speed-test-module',
   standalone: true,
-  imports: [CommonModule, TsIconComponent, DeviceModuleHeaderComponent],
+  imports: [CommonModule, TsIconComponent, DeviceModuleHeaderComponent, TechnicalDetailsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="speed-module-root">
-      
+
       <!-- Module Header -->
       <app-device-module-header
         title="Internet Speed Test"
@@ -39,13 +40,13 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
 
       <!-- Main Layout Grid -->
       <div class="workspace-grid">
-        
+
         <!-- Left / Primary Column -->
         <div class="main-column">
-          
+
           <!-- Speedometer Gauge Card -->
           <div class="gauge-card">
-            
+
             @if (metrics().status === 'idle') {
               <!-- Initial GO Action State (Ookla Style with Acklet Blue Accent) -->
               <div class="go-wrapper">
@@ -123,7 +124,7 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
 
             <!-- Scorecard Grid (Download, Upload, Ping, Jitter) -->
             <div class="scorecard-grid">
-              
+
               <!-- Download -->
               <div class="score-box" [class.highlight]="metrics().status === 'download'">
                 <div class="score-icon-title">
@@ -263,7 +264,7 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
 
         <!-- Right / Secondary Column -->
         <div class="side-column">
-          
+
           <!-- Outcome Card: Connection Status -->
           <div class="side-card">
             <div class="card-header-row">
@@ -315,16 +316,7 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
           </div>
 
           <!-- Progressive Disclosure: App Suitability & Telemetry -->
-          <details class="technical-details">
-            <summary class="details-summary">
-              <div class="summary-left">
-                <ts-icon name="sliders" [size]="15" />
-                <span>Technical Details & Apps</span>
-              </div>
-              <ts-icon name="chevron-down" [size]="14" class="summary-chevron" />
-            </summary>
-
-            <div class="details-content">
+          <app-technical-details title="Technical Details & Apps" icon="sliders">
               <!-- Application Suitability Checkpoints -->
               <span class="cap-title">App Suitability:</span>
               <div class="suitability-list" style="margin-top: 8px;">
@@ -403,8 +395,7 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
                   </div>
                 </div>
               </div>
-            </div>
-          </details>
+          </app-technical-details>
 
         </div>
 
@@ -466,13 +457,18 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
       background: rgba(239, 68, 68, 0.25);
     }
 
+    .btn-start,
+    .btn-cancel {
+      white-space: nowrap !important;
+    }
+
     .workspace-grid {
       display: grid;
       grid-template-columns: minmax(0, 1.8fr) minmax(320px, 1fr);
       gap: 24px;
     }
 
-    @media (max-width: 960px) {
+    @media (max-width: 1023px) {
       .workspace-grid {
         grid-template-columns: 1fr;
       }
@@ -519,6 +515,9 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
       position: relative;
       width: 168px;
       height: 168px;
+      max-width: calc(100% - 24px);
+      max-height: 168px;
+      aspect-ratio: 1 / 1;
       border-radius: 50%;
       border: 3px solid var(--tool-accent, #3B82F6);
       background: rgba(59, 130, 246, 0.04);
@@ -621,7 +620,7 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
     .gauge-wrapper {
       position: relative;
       width: 100%;
-      max-width: 360px;
+      max-width: 320px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -630,8 +629,10 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
 
     .speedometer-svg {
       width: 100%;
+      max-width: 300px;
       height: auto;
       overflow: visible;
+      display: block;
     }
 
     .gauge-bg-arc {
@@ -790,18 +791,26 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
     /* Scorecard Grid */
     .scorecard-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
       width: 100%;
     }
 
     @media (max-width: 640px) {
       .scorecard-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+    }
+
+    @media (max-width: 359px) {
+      .scorecard-grid {
+        grid-template-columns: minmax(0, 1fr);
       }
     }
 
     .score-box {
+      min-width: 0;
       padding: 14px 12px;
       border-radius: 12px;
       background: var(--surface-secondary, var(--bg-2, #27272A));
@@ -876,6 +885,15 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
       border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
       border-radius: 16px;
       padding: 20px;
+      max-width: 100%;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    @media (max-width: 640px) {
+      .history-card {
+        padding: 16px;
+      }
     }
 
     :host-context([data-theme="light"]) .history-card {
@@ -932,11 +950,14 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
     }
 
     .history-table-wrap {
+      width: 100%;
       overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     .history-table {
       width: 100%;
+      min-width: 480px;
       border-collapse: collapse;
       font-size: 12px;
       text-align: left;
@@ -948,6 +969,7 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
       color: var(--text-muted, #71717A);
       font-weight: 600;
       font-size: 11px;
+      white-space: nowrap !important;
     }
 
     :host-context([data-theme="light"]) .history-table th {
@@ -959,6 +981,7 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
       padding: 10px;
       border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.04));
       color: var(--text-2, #A1A1AA);
+      white-space: nowrap !important;
     }
 
     :host-context([data-theme="light"]) .history-table td {
@@ -986,12 +1009,24 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
       border-radius: 4px;
       background: var(--surface-secondary, #27272A);
       color: var(--text-muted, #71717A);
+      white-space: nowrap !important;
+      display: inline-block;
     }
 
     .history-rating-pill[data-rating="gigabit"],
     .history-rating-pill[data-rating="ultra"] {
       background: var(--ds-accent-soft, rgba(37, 99, 235, 0.12));
       color: var(--tool-accent, #2563EB);
+    }
+
+    .history-rating-pill[data-rating="unstable"] {
+      background: rgba(239, 68, 68, 0.12);
+      color: #EF4444;
+    }
+
+    :host-context([data-theme="light"]) .history-rating-pill[data-rating="unstable"] {
+      background: rgba(220, 38, 38, 0.1);
+      color: #DC2626;
     }
 
     .history-empty {
@@ -1108,6 +1143,19 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
       background: var(--ds-accent-soft, rgba(59, 130, 246, 0.15));
       color: var(--tool-accent, #3B82F6);
       border: 1px solid var(--ds-accent-border, rgba(59, 130, 246, 0.3));
+      white-space: nowrap !important;
+    }
+
+    .rating-pill[data-rating="unstable"] {
+      background: rgba(239, 68, 68, 0.15);
+      color: #EF4444;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    :host-context([data-theme="light"]) .rating-pill[data-rating="unstable"] {
+      background: rgba(220, 38, 38, 0.1);
+      color: #DC2626;
+      border-color: rgba(220, 38, 38, 0.25);
     }
 
     .stability-pill {
@@ -1527,7 +1575,9 @@ export class SpeedTestModuleComponent implements OnInit, OnDestroy {
   }
 
   public ngOnInit(): void {
+    resetDeviceStudioScroll();
     this.state.setActiveTab('speed');
+    resetDeviceStudioScroll();
   }
 
   public ngOnDestroy(): void {

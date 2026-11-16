@@ -188,7 +188,7 @@ import {
   LucideGauge,
   LucideScreenShare,
   LucideMonitor,
-  LucideRadio
+  LucideRadio,
   LucideEraser,
   LucideBrush,
   LucidePaintbrush,
@@ -1142,6 +1142,7 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   radio: {
     lucide: LucideRadio,
     notes: 'Audio broadcast / sweep'
+  },
   eraser: {
     lucide: LucideEraser,
     notes: 'Eraser tool for masks'

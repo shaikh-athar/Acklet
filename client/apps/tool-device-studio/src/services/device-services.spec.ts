@@ -220,6 +220,7 @@ describe('Device Studio Hardware & Network Services', () => {
       const service = new SpeedTestService();
       expect(service.classifyQuality(500, 15)).toBe('gigabit');
       expect(service.classifyQuality(150, 20)).toBe('ultra');
+      expect(service.classifyQuality(150, 20, 35)).toBe('unstable');
       expect(service.classifyQuality(60, 30)).toBe('fast');
       expect(service.classifyQuality(30, 50)).toBe('good');
       expect(service.classifyQuality(12, 100)).toBe('moderate');

@@ -2,7 +2,7 @@
 import { Component, inject, input, output, effect, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
-import { DeviceStudioStateService } from '../services/device-studio-state.service';
+import { DeviceStudioStateService, resetDeviceStudioScroll } from '../services/device-studio-state.service';
 import { DeviceStudioTab } from '../models/device.models';
 import { DeviceStudioLandingComponent } from './landing/device-studio-landing.component';
 import { DeviceTopBannerAdComponent, DeviceBottomBannerAdComponent, AdConfigService } from './ads';
@@ -42,7 +42,7 @@ import { TsIconComponent } from '@acklet/tool-shell';
 
       <!-- Main Workspace Container -->
       <main class="centralized-workspace-container" role="main">
-        <router-outlet #outlet="outlet" />
+        <router-outlet #outlet="outlet" (activate)="onRouteActivate()" />
 
         <!-- Non-routed fallback for unit tests and direct embeds -->
         @if (!outlet.isActivated) {
@@ -184,6 +184,10 @@ export class DeviceStudioComponent {
   public readonly externalActiveTab = input<string>();
   public readonly activeTabChange = output<string>();
 
+  public onRouteActivate(): void {
+    resetDeviceStudioScroll();
+  }
+
   constructor() {
     effect(() => {
       const ext = this.externalActiveTab();
@@ -195,6 +199,7 @@ export class DeviceStudioComponent {
     effect(() => {
       const current = this.state.activeTab();
       this.activeTabChange.emit(current);
+      resetDeviceStudioScroll();
     });
   }
 }

@@ -123,6 +123,7 @@ import { CommonModule } from '@angular/common';
 })
 export class HealthScoreBadgeComponent {
   public readonly score = input.required<number>();
+  public readonly overallStatus = input<string>();
 
   public readonly scoreTier = computed(() => {
     const s = this.score();
@@ -132,10 +133,12 @@ export class HealthScoreBadgeComponent {
   });
 
   public readonly ratingText = computed(() => {
+    if (this.overallStatus()) {
+      return this.overallStatus()!;
+    }
     const s = this.score();
-    if (s >= 90) return 'Optimal (100%)';
-    if (s >= 75) return 'Meeting Ready';
-    if (s >= 50) return 'Functional';
-    return 'Auditing...';
+    if (s >= 90) return 'All clear';
+    if (s >= 50) return 'Some issues';
+    return 'Needs attention';
   });
 }

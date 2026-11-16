@@ -15,18 +15,19 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { TsIconComponent } from '@acklet/tool-shell';
 import { WebcamService } from '../../services/webcam.service';
-import { DeviceStudioStateService } from '../../services/device-studio-state.service';
+import { DeviceStudioStateService, resetDeviceStudioScroll } from '../../services/device-studio-state.service';
 import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
 import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdown.component';
+import { TechnicalDetailsComponent } from '../shared/technical-details.component';
 
 @Component({
   selector: 'app-webcam-module',
   standalone: true,
-  imports: [CommonModule, TsIconComponent, DeviceModuleHeaderComponent, AckletDropdownComponent],
+  imports: [CommonModule, TsIconComponent, DeviceModuleHeaderComponent, AckletDropdownComponent, TechnicalDetailsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="webcam-module-root">
-      
+
       <!-- Top Module Header -->
       <app-device-module-header
         title="Webcam Test"
@@ -37,30 +38,30 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
         (backClicked)="goBackToStudio()"
       >
         @if (metrics().isStreaming) {
-          <button type="button" class="btn-snapshot" (click)="takeSnapshot()" title="Capture photo">
+          <button type="button" class="btn-snapshot" (click)="takeSnapshot()" title="Take Photo" aria-label="Take Photo">
             <ts-icon name="camera" [size]="15" />
-            <span>Take Photo</span>
+            <span class="btn-text">Take Photo</span>
           </button>
-          <button type="button" class="btn-stop-header" (click)="stopCamera()" title="Stop camera">
+          <button type="button" class="btn-stop-header" (click)="stopCamera()" title="Stop Camera" aria-label="Stop Camera">
             <ts-icon name="power-off" [size]="14" />
-            <span>Stop Camera</span>
+            <span class="btn-text">Stop Camera</span>
           </button>
         } @else {
-          <button type="button" class="btn-start-header" (click)="startCamera()" title="Start camera">
+          <button type="button" class="btn-start-header" (click)="startCamera()" title="Start Camera" aria-label="Start Camera">
             <ts-icon name="camera" [size]="15" />
-            <span>Start Camera</span>
+            <span class="btn-text">Start Camera</span>
           </button>
         }
       </app-device-module-header>
 
       <!-- Main Workspace Grid: Viewport on Left, Hardware Telemetry on Right -->
       <div class="workspace-grid">
-        
+
         <!-- ========================================== -->
         <!-- LEFT COLUMN: Live Camera Viewport & Toolbar -->
         <!-- ========================================== -->
         <div class="viewport-card">
-          
+
           <!-- Viewport Toolbar -->
           <div class="viewport-toolbar">
             <div class="device-select-wrap">
@@ -78,9 +79,9 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
               <div class="toolbar-actions">
                 <!-- Switch Front / Rear Camera if available -->
                 @if (devices().length > 1) {
-                  <button 
-                    type="button" 
-                    class="tool-btn" 
+                  <button
+                    type="button"
+                    class="tool-btn"
                     (click)="toggleFacingMode()"
                     title="Switch front/rear camera"
                     aria-label="Switch camera"
@@ -91,9 +92,9 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                 }
 
                 <!-- Mirror Preview Toggle -->
-                <button 
-                  type="button" 
-                  class="tool-btn" 
+                <button
+                  type="button"
+                  class="tool-btn"
                   [class.active]="metrics().isMirrored"
                   (click)="webcam.toggleMirror()"
                   title="Flip preview horizontally"
@@ -104,9 +105,9 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                 </button>
 
                 <!-- Fullscreen Toggle -->
-                <button 
-                  type="button" 
-                  class="tool-btn" 
+                <button
+                  type="button"
+                  class="tool-btn"
                   (click)="toggleFullscreen()"
                   title="Toggle fullscreen video"
                   aria-label="Fullscreen mode"
@@ -135,11 +136,11 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                   <span class="hud-dot"></span>
                   <span>{{ metrics().resolution.label }}</span>
                 </div>
-                
+
                 <div class="hud-tag fps-tag">
                   <span>{{ metrics().frameRate }} FPS</span>
                 </div>
-                
+
                 <div class="hud-tag" [attr.data-exposure]="metrics().exposureRating">
                   <ts-icon name="sun" [size]="12" />
                   <span>{{ metrics().brightness }}% ({{ metrics().exposureRating }})</span>
@@ -165,8 +166,8 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                 </div>
                 <h3 class="idle-title">{{ metrics().permissionStatus === 'denied' ? 'Camera Permission Blocked' : 'Camera Ready to Test' }}</h3>
                 <p class="idle-desc">
-                  {{ metrics().permissionStatus === 'denied' 
-                    ? 'Camera access was blocked by your browser. Please allow camera permissions in your address bar to continue.' 
+                  {{ metrics().permissionStatus === 'denied'
+                    ? 'Camera access was blocked by your browser. Please allow camera permissions in your address bar to continue.'
                     : 'Click start to preview your video feed locally and inspect resolution, frame rate, and lighting.' }}
                 </p>
 
@@ -203,7 +204,7 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                 <span class="pulse-indicator"></span>
                 <span>Live Feed • {{ metrics().resolution.width }}×{{ metrics().resolution.height }} • {{ metrics().frameRate }} FPS</span>
               </div>
-              
+
               <div class="action-row">
                 <button type="button" class="btn-action-snap" (click)="takeSnapshot()" title="Take snapshot photo">
                   <ts-icon name="camera" [size]="15" />
@@ -222,7 +223,7 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
         <!-- RIGHT COLUMN: Status, Photos & Details -->
         <!-- ========================================== -->
         <div class="side-column">
-          
+
           <!-- Outcome Card: Camera Status -->
           <div class="spec-card">
             <h3 class="card-heading">Camera Status</h3>
@@ -294,18 +295,11 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
               </div>
             </div>
           }
+        </div>
+      </div>
 
-          <!-- Progressive Disclosure: Technical Details -->
-          <details class="technical-details">
-            <summary class="details-summary">
-              <div class="summary-left">
-                <ts-icon name="sliders" [size]="15" />
-                <span>Technical Details</span>
-              </div>
-              <ts-icon name="chevron-down" [size]="14" class="summary-chevron" />
-            </summary>
-
-            <div class="details-content">
+      <!-- Progressive Disclosure: Technical Details (Full Width below camera area) -->
+      <app-technical-details title="Technical Details" icon="sliders">
               <div class="specs-list">
                 <div class="spec-row">
                   <span class="spec-k">Camera Name</span>
@@ -381,8 +375,8 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                 <span class="cap-title">Resolution Standards:</span>
                 <div class="resolution-ladder">
                   @for (tier of metrics().resolutionLadder; track tier.id) {
-                    <div 
-                      class="ladder-row" 
+                    <div
+                      class="ladder-row"
                       [class.current]="tier.isCurrent"
                       [class.achieved]="tier.isAchieved"
                     >
@@ -411,12 +405,7 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                   <li>Click the lock icon in your browser address bar to ensure camera access is allowed.</li>
                 </ul>
               </div>
-            </div>
-          </details>
-
-        </div>
-
-      </div>
+      </app-technical-details>
 
       <!-- ========================================== -->
       <!-- LIGHTBOX MODAL: Inspect Captured Snapshot -->
@@ -424,7 +413,7 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
       @if (activeLightboxIndex() !== null && selectedSnapshotUrl()) {
         <div class="lightbox-backdrop" (click)="closeLightbox()" role="dialog" aria-modal="true" aria-label="Inspect Photo">
           <div class="lightbox-modal" (click)="$event.stopPropagation()">
-            
+
             <div class="lightbox-header">
               <div class="lightbox-title-wrap">
                 <h3 class="lightbox-title">Photo Preview #{{ (activeLightboxIndex() || 0) + 1 }}</h3>
@@ -451,7 +440,7 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                   <span>Download PNG</span>
                 </a>
               </div>
-              
+
               <div class="lightbox-actions-right">
                 <button type="button" class="btn-modal-delete" (click)="deleteCurrentLightboxPhoto()">
                   <ts-icon name="trash-2" [size]="14" />
@@ -535,12 +524,65 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
       border: 1px solid var(--ds-fail-border, rgba(248, 113, 113, 0.28));
     }
 
+    .btn-snapshot,
+    .btn-start-header,
+    .btn-stop-header {
+      white-space: nowrap !important;
+    }
+
+    @media (max-width: 639px) {
+      .btn-snapshot .btn-text {
+        display: none;
+      }
+      .btn-snapshot {
+        padding: 8px 10px;
+      }
+      .btn-stop-header,
+      .btn-start-header {
+        padding: 8px 12px;
+      }
+      .btn-stop-header .btn-text,
+      .btn-start-header .btn-text {
+        display: inline;
+      }
+      .workspace-grid {
+        gap: 16px;
+        margin-top: 16px;
+      }
+      .viewport-card,
+      .spec-card {
+        padding: 16px;
+      }
+      .idle-placeholder {
+        padding: 18px 12px;
+      }
+      .idle-icon-wrap {
+        width: 56px;
+        height: 56px;
+        min-width: 56px;
+        min-height: 56px;
+        margin-bottom: 12px;
+      }
+      .idle-title {
+        font-size: 17px;
+        margin-bottom: 6px;
+      }
+      .idle-desc {
+        font-size: 13px;
+        margin-bottom: 16px;
+      }
+      .video-container {
+        padding: 16px 12px;
+      }
+    }
+
     /* Workspace Grid */
     .workspace-grid {
       display: grid;
       grid-template-columns: minmax(0, 1.4fr) minmax(360px, 1fr);
       gap: 20px;
       margin-top: 18px;
+      align-items: start;
     }
 
     @media (max-width: 980px) {
@@ -558,6 +600,8 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
       display: flex;
       flex-direction: column;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      align-self: start;
+      height: fit-content;
     }
 
     .viewport-toolbar {
@@ -651,7 +695,7 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
     .video-container {
       position: relative;
       width: 100%;
-      aspect-ratio: 16 / 9;
+      min-height: 280px;
       background: var(--surface-secondary, #18181B);
       border: 1px dashed var(--border, rgba(255, 255, 255, 0.12));
       border-radius: 12px;
@@ -659,12 +703,17 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
       align-items: center;
       justify-content: center;
       overflow: hidden;
+      padding: 20px 16px;
+      box-sizing: border-box;
       transition: background 0.2s ease, border-color 0.2s ease;
     }
 
     .video-container.streaming {
+      aspect-ratio: 16 / 9;
+      min-height: 240px;
       background: #000000;
       border-style: solid;
+      padding: 0;
     }
 
     :host-context([data-theme="light"]) .video-container:not(.streaming) {
@@ -1640,9 +1689,11 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
       color: #FFFFFF;
     }
 
-    /* Technical Details Expandable */
+    /* Technical Details Expandable (Full Width below workspace) */
     .technical-details {
-      margin-top: 16px;
+      margin-top: 20px;
+      width: 100%;
+      box-sizing: border-box;
       background: var(--ds-card-bg, #18181B);
       border: 1px solid var(--ds-card-border, rgba(255, 255, 255, 0.1));
       border-radius: 12px;
@@ -1948,8 +1999,10 @@ export class WebcamModuleComponent implements OnInit, OnDestroy {
   }
 
   public async ngOnInit(): Promise<void> {
+    resetDeviceStudioScroll();
     this.state.setActiveTab('webcam');
     await this.webcam.loadDevices();
+    resetDeviceStudioScroll();
   }
 
   public ngOnDestroy(): void {
