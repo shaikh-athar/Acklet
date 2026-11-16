@@ -11,9 +11,7 @@ import { AMBER_ACCENT, BLUE_ACCENT, ROSE_ACCENT, VIOLET_ACCENT, EMERALD_ACCENT, 
 import { CONVERTER_MANIFEST } from './manifests/converter.manifest';
 import { COLOR_STUDIO_MANIFEST } from './manifests/color-studio.manifest';
 import { DEVICE_STUDIO_MANIFEST } from './manifests/device-studio.manifest';
-import { AMBER_ACCENT, BLUE_ACCENT, ROSE_ACCENT, VIOLET_ACCENT, EMERALD_ACCENT, INDIGO_ACCENT, ORANGE_ACCENT, STEEL_BLUE_ACCENT, OLIVE_ACCENT, TEAL_ACCENT } from './accent-presets';
 import { WATERMARK_REMOVER_MANIFEST } from './manifests/watermark-remover.manifest';
-import { AMBER_ACCENT, BLUE_ACCENT, ROSE_ACCENT, VIOLET_ACCENT, EMERALD_ACCENT, INDIGO_ACCENT, ORANGE_ACCENT, STEEL_BLUE_ACCENT, OLIVE_ACCENT } from './accent-presets';
 
 export { CLIPBOARD_MANIFEST } from './manifests/clipboard.manifest';
 export { QR_MANIFEST } from './manifests/qr.manifest';
@@ -25,9 +23,7 @@ export { IMAGE_COMPRESSOR_MANIFEST } from './manifests/image-compressor.manifest
 export { CONVERTER_MANIFEST } from './manifests/converter.manifest';
 export { COLOR_STUDIO_MANIFEST } from './manifests/color-studio.manifest';
 export { DEVICE_STUDIO_MANIFEST } from './manifests/device-studio.manifest';
-export { ORANGE_ACCENT, STEEL_BLUE_ACCENT, OLIVE_ACCENT, TEAL_ACCENT } from './accent-presets';
 export { WATERMARK_REMOVER_MANIFEST } from './manifests/watermark-remover.manifest';
-export { ORANGE_ACCENT, STEEL_BLUE_ACCENT, OLIVE_ACCENT } from './accent-presets';
 
 /**
  * Single Source of Truth for all tools in Acklet.

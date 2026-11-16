@@ -2,7 +2,7 @@
 import { Component, inject, ChangeDetectionStrategy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { DeviceStudioStateService } from '../../services/device-studio-state.service';
+import { DeviceStudioStateService, resetDeviceStudioScroll } from '../../services/device-studio-state.service';
 import { DiagnosticReportService } from '../../services/diagnostic-report.service';
 import { SystemInfoService, SystemCapabilities } from '../../services/system-info.service';
 import { DeviceStudioTab } from '../../models/device.models';
@@ -41,7 +41,7 @@ interface DiagnosticModuleCard {
         </div>
 
         <div class="header-aside">
-          <app-health-score-badge [score]="state.deviceHealthScore()" />
+          <app-health-score-badge [score]="state.deviceHealthScore()" [overallStatus]="state.overallStatus()" />
           
           <div class="report-actions">
             <button 
@@ -651,6 +651,7 @@ export class DeviceStudioLandingComponent implements OnInit {
   ];
 
   public ngOnInit(): void {
+    resetDeviceStudioScroll();
     this.sysInfo = this.systemInfo.getCapabilities();
   }
 
@@ -667,25 +668,37 @@ export class DeviceStudioLandingComponent implements OnInit {
   }
 
   public navigateToHistory(): void {
+    resetDeviceStudioScroll();
     this.state.setActiveModule('history');
     let target = '/devicestudio/history';
     if (this.router.url.includes('/tools/devicestudio') || this.router.url.includes('/tools/device-studio')) {
       target = '/tools/devicestudio/history';
     }
-    this.router.navigateByUrl(target).catch(() => {
-      this.router.navigate(['/devicestudio/history']);
+    this.router.navigateByUrl(target).then(() => {
+      resetDeviceStudioScroll();
+    }).catch(() => {
+      this.router.navigate(['/devicestudio/history']).then(() => {
+        resetDeviceStudioScroll();
+      });
     });
+    resetDeviceStudioScroll();
   }
 
   public navigateToModule(id: DeviceStudioTab, route: string): void {
+    resetDeviceStudioScroll();
     this.state.setActiveModule(id);
     let target = `/devicestudio/${route}`;
     if (this.router.url.includes('/tools/devicestudio') || this.router.url.includes('/tools/device-studio')) {
       target = `/tools/devicestudio/${route}`;
     }
-    this.router.navigateByUrl(target).catch(() => {
-      this.router.navigate([route]);
+    this.router.navigateByUrl(target).then(() => {
+      resetDeviceStudioScroll();
+    }).catch(() => {
+      this.router.navigate([route]).then(() => {
+        resetDeviceStudioScroll();
+      });
     });
+    resetDeviceStudioScroll();
   }
 }
 

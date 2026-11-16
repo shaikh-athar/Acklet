@@ -1,9 +1,11 @@
 // apps/tool-device-studio/src/app/app.component.ts
-import { Component, ChangeDetectionStrategy, signal, computed, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { ToolLayoutComponent, ToolShellConfig } from '@acklet/tool-shell';
 import { TOOL_REGISTRY, ToolRegistryItem } from '@acklet/tool-registry';
-import { DeviceStudioStateService, routeToModule } from '../services/device-studio-state.service';
+import { DeviceStudioStateService, routeToModule, resetDeviceStudioScroll } from '../services/device-studio-state.service';
 import { DeviceStudioTab } from '../models/device.models';
 import { DeviceStudioComponent } from '../components/device-studio.component';
 
@@ -28,7 +30,15 @@ import { DeviceStudioComponent } from '../components/device-studio.component';
     </ts-shell>
   `
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
+  private router: Router | null = (() => {
+    try {
+      return inject(Router);
+    } catch {
+      return null;
+    }
+  })();
+
   private state: DeviceStudioStateService | null = (() => {
     try {
       return inject(DeviceStudioStateService);
@@ -64,11 +74,31 @@ export class AppComponent {
     }
   });
 
+  public ngOnInit(): void {
+    if (typeof history !== 'undefined' && 'scrollRestoration' in history) {
+      try {
+        history.scrollRestoration = 'manual';
+      } catch {
+        // ignore
+      }
+    }
+    resetDeviceStudioScroll();
+
+    if (this.router) {
+      this.router.events.pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd)
+      ).subscribe(() => {
+        resetDeviceStudioScroll();
+      });
+    }
+  }
+
   public onTabChange(tabId: string): void {
     this.localTab.set(tabId);
     if (this.state && this.isKnownTab(tabId)) {
       this.state.setActiveTab(tabId as DeviceStudioTab);
     }
+    resetDeviceStudioScroll();
   }
 
   public onToolTabChange(tabId: string): void {
@@ -76,6 +106,7 @@ export class AppComponent {
     if (this.state && this.isKnownTab(tabId)) {
       this.state.setActiveTab(tabId as DeviceStudioTab);
     }
+    resetDeviceStudioScroll();
   }
 
   private isKnownTab(tab: string): boolean {

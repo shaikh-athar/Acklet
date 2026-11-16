@@ -176,6 +176,7 @@ export const routes: Routes = [
     ]
   },
   { path: 'tools/device-studio', redirectTo: 'tools/devicestudio', pathMatch: 'full' },
+  {
     path: 'watermark-remover',
     loadComponent: () => import('../../apps/tool-watermark-remover/src/app/app.component').then(m => m.AppComponent),
     title: 'Watermark Remover — AI Image Cleaner | Acklet'

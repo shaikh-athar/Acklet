@@ -4,13 +4,14 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { TsIconComponent } from '@acklet/tool-shell';
 import { IpCheckerService } from '../../services/ip-checker.service';
-import { DeviceStudioStateService } from '../../services/device-studio-state.service';
+import { DeviceStudioStateService, resetDeviceStudioScroll } from '../../services/device-studio-state.service';
 import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
+import { TechnicalDetailsComponent } from '../shared/technical-details.component';
 
 @Component({
   selector: 'app-ip-checker-module',
   standalone: true,
-  imports: [CommonModule, TsIconComponent, DeviceModuleHeaderComponent],
+  imports: [CommonModule, TsIconComponent, DeviceModuleHeaderComponent, TechnicalDetailsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="ip-module-root">
@@ -112,6 +113,7 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
                 @if (metrics().ipv4) {
                   <button type="button" class="btn-protocol-copy" (click)="copyIp(metrics().ipv4!)" title="Copy IPv4">
                     <ts-icon name="copy" [size]="13" />
+                    <span class="copy-text">Copy IPv4</span>
                   </button>
                 }
               </div>
@@ -136,6 +138,7 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
                 @if (metrics().ipv6) {
                   <button type="button" class="btn-protocol-copy" (click)="copyIp(metrics().ipv6!)" title="Copy IPv6">
                     <ts-icon name="copy" [size]="13" />
+                    <span class="copy-text">Copy IPv6</span>
                   </button>
                 }
               </div>
@@ -144,16 +147,7 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
           </div>
 
           <!-- Progressive Disclosure: Technical Details & Audit -->
-          <details class="technical-details">
-            <summary class="details-summary">
-              <div class="summary-left">
-                <ts-icon name="sliders" [size]="15" />
-                <span>Technical Details & WebRTC Audit</span>
-              </div>
-              <ts-icon name="chevron-down" [size]="14" class="summary-chevron" />
-            </summary>
-
-            <div class="details-content">
+          <app-technical-details title="Technical Details & WebRTC Audit" icon="sliders">
               <!-- Geolocation Info -->
               <span class="cap-title">Network Routing Location:</span>
               <div class="geo-grid" style="margin-top: 8px;">
@@ -255,8 +249,7 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
                   </button>
                 </div>
               </div>
-            </div>
-          </details>
+          </app-technical-details>
 
         </div>
 
@@ -414,6 +407,8 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
       align-items: center;
       justify-content: space-between;
       margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     .ip-hero-label-wrap {
@@ -443,6 +438,7 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
       display: flex;
       align-items: center;
       gap: 6px;
+      flex-wrap: wrap;
     }
 
     .version-tag {
@@ -496,18 +492,33 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
       border-bottom-color: #F1F5F9;
     }
 
+    @media (max-width: 639px) {
+      .ip-address-display {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 14px;
+      }
+
+      .btn-copy-ip {
+        width: 100%;
+        justify-content: center;
+        padding: 10px 16px;
+      }
+    }
+
     .ip-mono {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 36px;
       font-weight: 800;
       color: var(--text, #F4F4F5);
       letter-spacing: -0.02em;
+      overflow-wrap: anywhere;
       word-break: break-all;
     }
 
     @media (max-width: 600px) {
       .ip-mono {
-        font-size: 26px;
+        font-size: 24px;
       }
     }
 
@@ -545,13 +556,19 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
 
     .ip-summary-row {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 16px;
     }
 
     @media (max-width: 640px) {
       .ip-summary-row {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: minmax(0, 1fr);
+        gap: 14px;
+      }
+
+      .summary-item .v {
+        white-space: normal;
+        word-break: break-word;
       }
     }
 
@@ -699,6 +716,61 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
       cursor: pointer;
       flex-shrink: 0;
       transition: color 0.15s, border-color 0.15s;
+    }
+
+    .btn-protocol-copy .copy-text {
+      display: none;
+    }
+
+    @media (max-width: 640px) {
+      .ip-hero-card {
+        padding: 18px 16px;
+      }
+
+      .protocol-card {
+        padding: 16px 14px;
+      }
+
+      .protocol-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+
+      .protocol-badge {
+        align-self: flex-start;
+      }
+
+      .protocol-body {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        margin-top: 8px;
+      }
+
+      .protocol-ip-mono {
+        overflow-wrap: anywhere;
+        word-break: break-all;
+      }
+
+      .btn-protocol-copy {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 12px;
+      }
+
+      .btn-protocol-copy .copy-text {
+        display: inline;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .side-card {
+        padding: 16px 14px;
+      }
     }
 
     .btn-protocol-copy:hover {
@@ -1286,10 +1358,12 @@ export class IpCheckerModuleComponent implements OnInit {
   });
 
   public ngOnInit(): void {
+    resetDeviceStudioScroll();
     this.state.setActiveTab('ip');
     if (!this.metrics().ip) {
       this.refreshIp();
     }
+    resetDeviceStudioScroll();
   }
 
   public async refreshIp(): Promise<void> {
