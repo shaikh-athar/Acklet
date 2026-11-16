@@ -6,6 +6,9 @@ export interface TargetFormatOption {
   description: string;
   icon?: string;
   applicableSourceCategories?: string[]; // 'DOCUMENT', 'SPREADSHEET', 'PRESENTATION'
+  isBeta?: boolean;
+  limitDescription?: string;
+  recommendationScore?: number;
 }
 
 export const TARGET_FORMAT_METADATA: Record<string, { label: string; description: string; icon: string }> = {
@@ -162,28 +165,178 @@ export const FALLBACK_TESTED_TARGETS: Record<string, string[]> = {
   vcf: ['csv']
 };
 
-export function getTargetFormatMeta(ext: string): TargetFormatOption {
+export function formatDisplayLabel(fmt: string): string {
+  const lower = fmt.toLowerCase();
+  switch (lower) {
+    case 'pdf': return 'PDF';
+    case 'docx':
+    case 'doc': return 'Word';
+    case 'xlsx':
+    case 'xls':
+    case 'ods': return 'Excel';
+    case 'pptx':
+    case 'ppt':
+    case 'odp': return 'PowerPoint';
+    case 'csv': return 'CSV';
+    case 'tsv': return 'TSV';
+    case 'txt': return 'Text';
+    case 'md': return 'Markdown';
+    case 'json': return 'JSON';
+    case 'yaml':
+    case 'yml': return 'YAML';
+    case 'xml': return 'XML';
+    case 'srt': return 'SRT';
+    case 'vtt': return 'VTT';
+    case 'vcf': return 'VCF';
+    case 'jpg':
+    case 'jpeg': return 'JPG';
+    case 'png': return 'PNG';
+    case 'webp': return 'WebP';
+    case 'svg': return 'SVG';
+    case 'html': return 'HTML';
+    default: return lower.toUpperCase();
+  }
+}
+
+export function getTargetFormatMeta(
+  ext: string,
+  capabilities: Array<{ inputType: string; outputType: string; tier?: string; limitDescription?: string; recommendationScore?: number }> = []
+): TargetFormatOption {
   const lower = ext.toLowerCase();
   const meta = TARGET_FORMAT_METADATA[lower];
+  const cap = capabilities.find(c => c.outputType.toLowerCase() === lower);
+  const isBeta = cap?.tier === 'beta';
+  const limitDescription = cap?.limitDescription;
+  const recommendationScore = cap?.recommendationScore;
+
   if (meta) {
     return {
       format: lower,
       label: meta.label,
       description: meta.description,
-      icon: meta.icon
+      icon: meta.icon,
+      isBeta,
+      limitDescription,
+      recommendationScore
     };
   }
   return {
     format: lower,
     label: `${lower.toUpperCase()} (.${lower})`,
     description: `Convert to ${lower.toUpperCase()} format`,
-    icon: 'file'
+    icon: 'file',
+    isBeta,
+    limitDescription,
+    recommendationScore
   };
+}
+
+export interface PopularConversionItem {
+  inputCategories?: string[];
+  inputFormats: string[];
+  target: string;
+  label: string;
+  usage?: number;
+  isBeta?: boolean;
+  limitDescription?: string;
+}
+
+export const POPULAR_CONVERSIONS_LIST: PopularConversionItem[] = [
+  { inputFormats: ['pdf'], target: 'docx', label: 'PDF → Word', usage: 100, isBeta: true, limitDescription: 'Formatting and complex tables may require manual adjustment.' },
+  { inputFormats: ['docx', 'doc', 'odt', 'rtf'], target: 'pdf', label: 'Word → PDF', usage: 99 },
+  { inputFormats: ['pdf'], target: 'jpg', label: 'PDF → JPG', usage: 98 },
+  { inputFormats: ['xlsx', 'xls', 'ods', 'csv'], target: 'csv', label: 'Excel → CSV', usage: 97 },
+  { inputFormats: ['pptx', 'ppt', 'odp'], target: 'pdf', label: 'PowerPoint → PDF', usage: 96 },
+  { inputFormats: ['md'], target: 'pdf', label: 'Markdown → PDF', usage: 95 },
+  { inputFormats: ['json'], target: 'csv', label: 'JSON → CSV', usage: 94 },
+  { inputFormats: ['srt'], target: 'vtt', label: 'SRT → VTT', usage: 93 },
+  { inputFormats: ['xlsx', 'xls', 'ods', 'csv'], target: 'pdf', label: 'Excel → PDF', usage: 92 },
+  { inputFormats: ['csv'], target: 'xlsx', label: 'CSV → Excel', usage: 91 },
+  { inputFormats: ['vcf'], target: 'csv', label: 'VCF → CSV', usage: 90 },
+  { inputFormats: ['jpg', 'jpeg'], target: 'png', label: 'JPG → PNG', usage: 89 },
+  { inputFormats: ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif', 'tiff'], target: 'pdf', label: 'Image → PDF', usage: 86 }
+];
+
+const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif', 'tiff', 'svg', 'avif', 'heic']);
+const DOC_EXTS = new Set(['docx', 'doc', 'odt', 'rtf', 'txt', 'html', 'md', 'epub']);
+const SHEET_EXTS = new Set(['xlsx', 'xls', 'ods', 'csv', 'tsv']);
+const PRESENTATION_EXTS = new Set(['pptx', 'ppt', 'odp']);
+
+export function computeRecommendedTarget(
+  inputFormats: string[],
+  availableTargets: string[],
+  capabilities: Array<{ inputType: string; outputType: string; status: string; recommendationScore?: number }> = []
+): string | null {
+  if (availableTargets.length === 0) return null;
+  const exts = inputFormats.map(e => e.toLowerCase());
+
+  // Pick highest recommendationScore from capabilities for current inputs
+  if (capabilities && capabilities.length > 0) {
+    let best = availableTargets[0];
+    let maxScore = -1;
+    for (const tgt of availableTargets) {
+      const matches = capabilities.filter(c =>
+        exts.includes(c.inputType.toLowerCase()) &&
+        c.outputType.toLowerCase() === tgt &&
+        c.status === 'tested'
+      );
+      if (matches.length > 0) {
+        const score = matches.reduce((acc, m) => acc + (m.recommendationScore ?? 0), 0) / matches.length;
+        if (score > maxScore) {
+          maxScore = score;
+          best = tgt;
+        }
+      }
+    }
+    if (maxScore > 0) return best;
+  }
+
+  // Category-based fallback
+  const allImages = exts.length > 0 && exts.every(e => IMAGE_EXTS.has(e));
+  if (allImages) {
+    if (availableTargets.includes('webp')) return 'webp';
+    if (availableTargets.includes('png')) return 'png';
+    if (availableTargets.includes('jpg')) return 'jpg';
+    return availableTargets[0];
+  }
+
+  const allPdfs = exts.length > 0 && exts.every(e => e === 'pdf');
+  if (allPdfs) {
+    if (availableTargets.includes('docx')) return 'docx';
+    if (availableTargets.includes('txt')) return 'txt';
+    if (availableTargets.includes('xlsx')) return 'xlsx';
+    if (availableTargets.includes('jpg')) return 'jpg';
+    return availableTargets[0];
+  }
+
+  const allDocs = exts.length > 0 && exts.every(e => DOC_EXTS.has(e));
+  if (allDocs) {
+    if (availableTargets.includes('pdf')) return 'pdf';
+    if (availableTargets.includes('docx')) return 'docx';
+    return availableTargets[0];
+  }
+
+  const allSheets = exts.length > 0 && exts.every(e => SHEET_EXTS.has(e));
+  if (allSheets) {
+    if (availableTargets.includes('pdf')) return 'pdf';
+    if (availableTargets.includes('xlsx')) return 'xlsx';
+    if (availableTargets.includes('csv')) return 'csv';
+    return availableTargets[0];
+  }
+
+  const allPresentations = exts.length > 0 && exts.every(e => PRESENTATION_EXTS.has(e));
+  if (allPresentations) {
+    if (availableTargets.includes('pdf')) return 'pdf';
+    return availableTargets[0];
+  }
+
+  if (availableTargets.includes('pdf')) return 'pdf';
+  return availableTargets[0];
 }
 
 export function computeCommonTestedTargets(
   inputFormats: string[],
-  capabilities: Array<{ inputType: string; outputType: string; status: string }> = []
+  capabilities: Array<{ inputType: string; outputType: string; status: string; tier?: string }> = []
 ): string[] {
   if (inputFormats.length === 0) return [];
 
@@ -191,7 +344,12 @@ export function computeCommonTestedTargets(
     const src = rawExt.toLowerCase();
     if (capabilities && capabilities.length > 0) {
       const tested = capabilities
-        .filter(c => c.inputType.toLowerCase() === src && c.status === 'tested' && c.outputType.toLowerCase() !== src)
+        .filter(c =>
+          c.inputType.toLowerCase() === src &&
+          (c.status === 'tested' || c.status === 'stable') &&
+          c.tier !== 'not_offered' &&
+          c.outputType.toLowerCase() !== src
+        )
         .map(c => c.outputType.toLowerCase());
       return new Set(tested);
     }

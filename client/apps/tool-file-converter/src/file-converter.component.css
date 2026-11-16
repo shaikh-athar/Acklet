@@ -201,7 +201,12 @@
   box-sizing: border-box;
 }
 
-/* 1. Hero Headline with Rotating Word */
+/* 1. Hero Headline with Rotating Heading */
+.hero-rotating-heading {
+  margin-bottom: 24px;
+  width: 100%;
+}
+
 .hero-headline {
   font-size: 38px;
   font-weight: 800;
@@ -274,14 +279,16 @@
 
 .hero-subtitle {
   font-size: 13.5px;
-  color: #64748B;
+  color: var(--text-secondary, #64748B);
   margin: 0;
   letter-spacing: -0.01em;
 }
 
+:host-context(.dark) .hero-subtitle,
 :host-context([data-theme="dark"]) .hero-subtitle,
-[data-theme="dark"] .hero-subtitle {
-  color: #94A3B8;
+[data-theme="dark"] .hero-subtitle,
+.dark .hero-subtitle {
+  color: var(--text-secondary, #94A3B8);
 }
 
 /* 3. Popular Conversions Crossfade Stage */
@@ -292,6 +299,22 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 12px;
+}
+
+.popular-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748B;
+  user-select: none;
+}
+
+:host-context([data-theme="dark"]) .popular-section-label,
+[data-theme="dark"] :host .popular-section-label,
+[data-theme="dark"] .popular-section-label {
+  color: #A1A1AA;
 }
 
 .popular-crossfade-stage {
@@ -701,7 +724,7 @@
     padding: 8px 0;
     margin: 0 0 14px 0;
     gap: 8px;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     width: 100%;
     box-sizing: border-box;
   }
@@ -714,14 +737,14 @@
     align-items: center;
     gap: 6px;
     min-width: 0;
-    flex-shrink: 1;
+    flex: 1 1 auto;
   }
   .stage-title {
     font-size: 15px;
     font-weight: 700;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.25;
   }
   .stage-count-badge {
     font-size: 11px;

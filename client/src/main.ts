@@ -16,14 +16,12 @@ const isTempEmailPath = pathname === '/temp-email' || pathname === '/temp-mail' 
 const isFileConverterPath = pathname === '/file-converter' || pathname === '/converter' || pathname.startsWith('/tools/file-converter') || pathname.startsWith('/tools/converter') || pathname.startsWith('/convert');
 const isImageConverterPath = pathname === '/image-converter' || pathname === '/img-converter' || pathname.startsWith('/tools/image-converter') || pathname.startsWith('/tools/img-converter');
 const isImageCompressorPath = pathname === '/image-compressor' || pathname === '/img-compressor' || pathname === '/imagecompressor' || pathname.startsWith('/tools/image-compressor') || pathname.startsWith('/tools/img-compressor') || pathname.startsWith('/tools/imagecompressor');
-const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short', 'temp-email', 'temp-mail', 'tempmail', 'file-converter', 'converter', 'image-converter', 'img-converter', 'image-compressor', 'img-compressor', 'imagecompressor'];
 const COLOR_STUDIO_MODULE_PATHS = ['/color-picker', '/image-extractor', '/gradient-generator', '/contrast-checker', '/palette-generator', '/vision-simulator', '/picker', '/extractor', '/gradient', '/contrast', '/palette', '/simulator'];
-const isColorStudioPath = pathname === '/colorstudio' || pathname === '/color-studio' || pathname.startsWith('/colorstudio/') || pathname.startsWith('/color-studio/') || pathname.startsWith('/tools/colorstudio') || pathname.startsWith('/tools/color-studio') || COLOR_STUDIO_MODULE_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
+const isColorStudioPath = pathname === '/colorstudio' || pathname === '/color-studio' || pathname.startsWith('/colorstudio/') || pathname.startsWith('/color-studio/') || pathname.startsWith('/tools/colorstudio') || pathname.startsWith('/tools/color-studio') || COLOR_STUDIO_MODULE_PATHS.some((p: string) => pathname === p || pathname.startsWith(p + '/'));
 const DEVICE_STUDIO_MODULE_PATHS = ['/webcam', '/webcam-test', '/microphone', '/mic-test', '/microphone-test', '/speaker', '/speaker-test', '/audio-test', '/speed', '/speed-test', '/ip', '/ip-lookup', '/ip-checker', '/screen', '/screen-test', '/screenshare-test'];
 const isDeviceStudioPath = pathname === '/devicestudio' || pathname === '/device-studio' || pathname.startsWith('/devicestudio/') || pathname.startsWith('/device-studio/') || pathname.startsWith('/tools/devicestudio') || pathname.startsWith('/tools/device-studio') || DEVICE_STUDIO_MODULE_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
-const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short', 'temp-email', 'temp-mail', 'tempmail', 'file-converter', 'converter', 'image-converter', 'img-converter', 'colorstudio', 'color-studio', 'devicestudio', 'device-studio'];
 const isWatermarkPath = pathname === '/watermark-remover' || pathname === '/watermark' || pathname.startsWith('/tools/watermark-remover') || pathname.startsWith('/tools/watermark');
-const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short', 'temp-email', 'temp-mail', 'tempmail', 'file-converter', 'converter', 'image-converter', 'img-converter', 'colorstudio', 'color-studio', 'watermark-remover', 'watermark'];
+const validQueryTools = ['clipboard', 'qr', 'qr-generator', 'barcode', 'barcode-generator', 'datalens', 'data-lens', 'json-formatter', 'urlshortener', 'short', 'temp-email', 'temp-mail', 'tempmail', 'file-converter', 'converter', 'image-converter', 'img-converter', 'image-compressor', 'img-compressor', 'imagecompressor', 'colorstudio', 'color-studio', 'devicestudio', 'device-studio', 'watermark-remover', 'watermark'];
 const toolSlug = extractToolSlugFromHostname(hostname) || (queryTool && validQueryTools.includes(queryTool) ? queryTool : null);
 
 if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools') {
@@ -132,6 +130,14 @@ if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools'
   // Dedicated Image Compressor route/host mapping
   Promise.all([
     import('../apps/tool-image-compressor/src/app/app.component'),
+    import('@angular/common/http')
+  ])
+    .then(([{ AppComponent }, { provideHttpClient, withFetch }]) => {
+      return bootstrapApplication(AppComponent, {
+        providers: [provideHttpClient(withFetch())]
+      });
+    })
+    .catch((err) => console.error('[Tool Image Compressor Bootstrap Error]', err));
 } else if (toolSlug === 'colorstudio' || toolSlug === 'color-studio' || isColorStudioPath) {
   // Bootstrap Color Studio tool (apps/tool-color-studio)
   Promise.all([
@@ -177,7 +183,6 @@ if (isToolsHubHostname(hostname) || queryTool === 'hub' || queryTool === 'tools'
         providers: [provideHttpClient(withFetch())]
       });
     })
-    .catch((err) => console.error('[Tool Image Compressor Bootstrap Error]', err));
     .catch((err) => console.error('[Tool Watermark Remover Bootstrap Error]', err));
 } else {
   // Bootstrap Acklet Portal (default)

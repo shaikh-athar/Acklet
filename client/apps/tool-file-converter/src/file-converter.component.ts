@@ -6,7 +6,8 @@ import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
 import { ConversionEngineService, MAX_FILES_PER_BATCH } from './services/conversion-engine.service';
 import { ConversionItemComponent } from './components/conversion-item/conversion-item.component';
 import { PreviewModalComponent } from './components/preview-modal/preview-modal.component';
-import { RotatingWordComponent } from './components/rotating-word/rotating-word.component';
+import { RotatingHeadingComponent } from './components/rotating-heading/rotating-heading.component';
+import { IMAGE_CONVERTER_HERO_LINES } from './config/converter-hero-lines.config';
 import { ConversionJob, FormatDescriptor, ConversionPresetName } from './models/converter.models';
 import { ImageCapabilityRegistry, DeduplicatedTargetFormat } from './services/image-capability.registry';
 import { FormatComparisonService, FormatTileResult } from './services/format-comparison.service';
@@ -48,7 +49,7 @@ interface ResizeOption {
     TsIconComponent,
     ConversionItemComponent,
     PreviewModalComponent,
-    RotatingWordComponent
+    RotatingHeadingComponent
   ],
   templateUrl: './file-converter.component.html',
   styleUrls: ['./file-converter.component.css'],
@@ -751,9 +752,11 @@ export class FileConverterComponent implements OnInit, OnDestroy {
 
   readonly landingSubtitle = computed(() => {
     return this.isImageConverterMode()
-      ? 'Convert your images to the format you need.'
-      : 'Convert your files to the format you need.';
+      ? 'Convert images to the format you need.'
+      : 'Convert files to the format you need.';
   });
+
+  readonly heroLines = IMAGE_CONVERTER_HERO_LINES;
 
   readonly rotatingWords = ['JPG', 'WEBP', 'PNG', 'AVIF', 'HEIC'];
 
@@ -852,6 +855,18 @@ export class FileConverterComponent implements OnInit, OnDestroy {
 
   readonly fileCategoryLabel = computed(() => {
     return this.hasImageJobs() ? 'Images' : 'Files';
+  });
+
+  readonly dynamicHeading = computed<string>(() => {
+    const jobs = this.engine.jobs();
+    if (jobs.length === 0) return '';
+    const rawTarget = this.engine.batchTargetFormat();
+    if (!rawTarget || rawTarget.toLowerCase() === 'custom' || this.engine.conversionMode() === 'CUSTOM') {
+      return 'Images to Convert';
+    }
+    const cap = this.capabilityRegistry.getFormatCapability(rawTarget);
+    const label = cap?.label || (rawTarget.toLowerCase() === 'jpg' ? 'JPG' : rawTarget.toUpperCase());
+    return `Images to ${label}`;
   });
 
   readonly acceptTypes = computed(() => {

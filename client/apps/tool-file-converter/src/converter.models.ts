@@ -26,7 +26,7 @@ export interface StructureReport {
   columnsCount: number;
   imagesCount: number;
   hasLowConfidence: boolean;
-  chips: StructureChip[];
+  chips?: StructureChip[];
   summary: string;
   fidelityLevel?: 'high' | 'medium' | 'low';
   fidelityReasons?: string[];
@@ -55,6 +55,14 @@ export interface FileJobItem {
   tier?: 'stable' | 'beta';
   queue?: string;
   queueMessage?: string;
+  customOptions?: Partial<ConversionOptions>;
+  dimensions?: { width: number; height: number };
+  pageCount?: number;
+}
+
+export interface ConversionTransforms {
+  rotateAngle: number; // 0, 90, 180, 270
+  flipH: boolean;
 }
 
 export interface ConversionOptions {
@@ -64,6 +72,12 @@ export interface ConversionOptions {
   keepImages: boolean;
   pageRange: string;
   dpi?: number;
+  quality?: number;
+  resizeMode?: 'none' | 'maxWidth' | 'maxHeight' | 'custom';
+  resizeDimension?: number;
+  resizeWidth?: number;
+  resizeHeight?: number;
+  transforms?: ConversionTransforms;
   deliveryMode: 'individual' | 'zip';
 }
 
@@ -140,10 +154,12 @@ export interface ConversionCapability {
   phase: number;
   status: string;
   runtime?: 'server' | 'browser';
-  tier?: 'stable' | 'beta';
+  tier?: 'stable' | 'beta' | 'not_offered';
   queue?: string | null;
   timeoutSec?: number;
   maxSizeMb: number;
   recommendationScore: number;
+  usage?: number;
+  limitDescription?: string;
   flags: ConversionCapabilityFlags;
 }

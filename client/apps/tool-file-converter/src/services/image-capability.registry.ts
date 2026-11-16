@@ -1151,6 +1151,14 @@ export class ImageCapabilityRegistry {
   }
 
   /**
+   * Returns the format capability descriptor for a given format string or alias.
+   */
+  getFormatCapability(formatStr: string): FormatCapability | undefined {
+    const canonical = this.resolveCanonicalFormat(formatStr);
+    return this.capabilitiesByFormat.get(canonical);
+  }
+
+  /**
    * Returns all format capabilities registered in the application.
    */
   getAllCapabilities(): FormatCapability[] {

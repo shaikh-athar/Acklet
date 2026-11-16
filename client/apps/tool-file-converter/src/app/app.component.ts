@@ -1,6 +1,7 @@
 // apps/tool-file-converter/src/app/app.component.ts
-import { Component, ChangeDetectionStrategy, viewChild } from '@angular/core';
+import { Component, ChangeDetectionStrategy, viewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Title } from '@angular/platform-browser';
 import { ToolLayoutComponent, ToolShellConfig } from '@acklet/tool-shell';
 import { TOOL_REGISTRY, ToolRegistryItem } from '@acklet/tool-registry';
 import { FileConverterComponent as ImageConverterToolComponent } from '../file-converter.component';
@@ -27,6 +28,8 @@ import { FileConverterComponent as DocumentConverterToolComponent } from '../con
   `
 })
 export class AppComponent {
+  private readonly titleService = inject(Title);
+
   get isImageConverter(): boolean {
     if (typeof window === 'undefined') return false;
     const hostname = window.location.hostname.toLowerCase();
@@ -54,6 +57,11 @@ export class AppComponent {
   };
 
   readonly converterComp = viewChild<ImageConverterToolComponent>('converterComp');
+
+  constructor() {
+    const title = this.isImageConverter ? 'Image Converter | Acklet' : 'File Converter | Acklet';
+    this.titleService.setTitle(title);
+  }
 }
 
 export const ImageConverterAppComponent = AppComponent;

@@ -163,6 +163,26 @@ export class DropHighlightComponent {
     e.stopPropagation();
     this.isDragActive.set(false);
     this.dragOverChange.emit(false);
+
+    if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
+      const files: File[] = [];
+      for (let i = 0; i < e.dataTransfer.items.length; i++) {
+        const item = e.dataTransfer.items[i];
+        const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+        const file = item.getAsFile();
+        if (file) {
+          if (entry?.isDirectory) {
+            (file as any).isDirectory = true;
+          }
+          files.push(file);
+        }
+      }
+      if (files.length > 0) {
+        this.filesDropped.emit(files);
+        return;
+      }
+    }
+
     if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
       const files = Array.from(e.dataTransfer.files);
       this.filesDropped.emit(files);

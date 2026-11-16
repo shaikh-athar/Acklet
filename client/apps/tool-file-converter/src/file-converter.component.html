@@ -34,22 +34,13 @@
   <!-- STATE 1: MINIMAL HERO DROPZONE (When idle / !engine.hasJobs()) -->
   @if (!engine.hasJobs()) {
     <div class="hero-dropzone-area">
-      <!-- 1. Hero Headline with Rotating Word -->
-      <h1
-        class="hero-headline"
-        (mouseenter)="isHeadlineHovered.set(true)"
-        (mouseleave)="isHeadlineHovered.set(false)"
-        (focusin)="isHeadlineHovered.set(true)"
-        (focusout)="isHeadlineHovered.set(false)"
-      >
-        <span class="headline-static">Convert your images to</span>
-        <app-rotating-word
-          [words]="rotatingWords"
-          [interval]="3000"
-          [paused]="isHeadlineHovered()"
-          class="headline-rotating"
-        ></app-rotating-word>
-      </h1>
+      <!-- 1. Single Rotating Hero Headline -->
+      <app-rotating-heading
+        [headingId]="'image-converter-hero-heading'"
+        [lines]="heroLines"
+        [interval]="3000"
+        class="hero-rotating-heading"
+      ></app-rotating-heading>
 
       <!-- 2. Primary Select Button & Tagline -->
       <div class="hero-action-group">
@@ -73,6 +64,7 @@
         (focusin)="onPopularFocusIn()"
         (focusout)="onPopularFocusOut()"
       >
+        <span class="popular-section-label">POPULAR CONVERSIONS</span>
         <div class="popular-crossfade-stage" role="region" aria-label="Popular image conversions">
           <!-- Previous Group (Fading & Drifting Out during transition) -->
           @if (previousGroupIndex() !== null && !isReducedMotion()) {
@@ -124,7 +116,7 @@
         <!-- Stage Header Bar: Transparent when idle, blur glass when scrolled -->
         <div class="stage-header-bar" [class.is-scrolled]="isHeaderScrolled()">
           <div class="stage-title-group">
-            <h2 class="stage-title">{{ fileCategoryLabel() }} to Convert</h2>
+            <h2 class="stage-title" id="image-converter-stage-heading">{{ dynamicHeading() }}</h2>
             <span class="stage-count-badge font-mono">{{ engine.jobs().length }} / {{ maxFiles }}</span>
           </div>
 

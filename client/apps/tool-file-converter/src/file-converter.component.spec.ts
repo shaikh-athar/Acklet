@@ -7,6 +7,7 @@ import { FileConverterComponent } from './file-converter.component';
 import { ConversionEngineService } from './services/conversion-engine.service';
 import { FileSignatureService } from './services/file-signature.service';
 import { AdapterRegistryService } from './services/adapter-registry.service';
+import { ImageCapabilityRegistry } from './services/image-capability.registry';
 import { FileTransferService } from '@acklet/tool-shell';
 
 describe('FileConverterComponent Unit Tests', () => {
@@ -16,6 +17,7 @@ describe('FileConverterComponent Unit Tests', () => {
   function createComponent(): FileConverterComponent {
     const signatureService = new FileSignatureService();
     const adapterRegistry = new AdapterRegistryService();
+    const capabilityRegistry = new ImageCapabilityRegistry();
     engine = new ConversionEngineService(signatureService, adapterRegistry);
     fileTransfer = new FileTransferService();
 
@@ -23,7 +25,8 @@ describe('FileConverterComponent Unit Tests', () => {
       [ConversionEngineService, engine],
       [FileTransferService, fileTransfer],
       [FileSignatureService, signatureService],
-      [AdapterRegistryService, adapterRegistry]
+      [AdapterRegistryService, adapterRegistry],
+      [ImageCapabilityRegistry, capabilityRegistry]
     ]);
 
     const rootInjector = {
@@ -131,5 +134,74 @@ describe('FileConverterComponent Unit Tests', () => {
 
     component.onRenameJob('job-123', 'banner-final');
     expect(renameSpy).toHaveBeenCalledWith('job-123', 'banner-final');
+  });
+
+  describe('Dynamic Heading Requirements (Part B)', () => {
+    it('returns empty string when there are 0 files', () => {
+      const component = createComponent();
+      engine.jobs.set([]);
+      expect(component.dynamicHeading()).toBe('');
+    });
+
+    it('returns "Images to Convert" when images exist but target is custom or unchosen', () => {
+      const component = createComponent();
+      engine.jobs.set([{ id: '1', fileName: 'sample.png', detectedFormat: { category: 'image', format: 'png' } } as any]);
+      engine.setBatchTargetFormat('custom');
+      expect(component.dynamicHeading()).toBe('Images to Convert');
+    });
+
+    it('returns "Images to WebP" when target format is webp', () => {
+      const component = createComponent();
+      engine.jobs.set([{
+        id: '1',
+        fileName: 'sample.png',
+        detectedFormat: { category: 'image', format: 'png' },
+        availableOutputs: [{ format: 'webp' }, { format: 'png' }, { format: 'jpg' }]
+      } as any]);
+      engine.setBatchTargetFormat('webp');
+      expect(component.dynamicHeading()).toBe('Images to WebP');
+    });
+
+    it('returns "Images to PNG", "Images to JPG", "Images to PDF", "Images to BMP" respectively', () => {
+      const component = createComponent();
+      engine.jobs.set([
+        {
+          id: '1',
+          fileName: 'test1.jpg',
+          detectedFormat: { category: 'image', format: 'jpg' },
+          availableOutputs: [{ format: 'png' }, { format: 'jpg' }, { format: 'pdf' }, { format: 'bmp' }]
+        } as any
+      ]);
+
+      engine.setBatchTargetFormat('png');
+      expect(component.dynamicHeading()).toBe('Images to PNG');
+
+      engine.setBatchTargetFormat('jpg');
+      expect(component.dynamicHeading()).toBe('Images to JPG');
+
+      engine.setBatchTargetFormat('pdf');
+      expect(component.dynamicHeading()).toBe('Images to PDF');
+
+      engine.setBatchTargetFormat('bmp');
+      expect(component.dynamicHeading()).toBe('Images to BMP');
+    });
+
+    it('always uses plural "Images to ...", never singular "Image to ..."', () => {
+      const component = createComponent();
+      engine.jobs.set([{
+        id: '1',
+        fileName: 'single.png',
+        detectedFormat: { category: 'image', format: 'png' },
+        availableOutputs: [{ format: 'png' }]
+      } as any]);
+      engine.setBatchTargetFormat('png');
+      expect(component.dynamicHeading()).toBe('Images to PNG');
+      expect(component.dynamicHeading()).not.toContain('Image to');
+    });
+
+    it('uses "Convert images to" without the word "your"', () => {
+      const component = createComponent();
+      expect(component.landingSubtitle()).not.toContain('your');
+    });
   });
 });

@@ -10,7 +10,58 @@
 - **Conversion-Specific Routes**: `/convert/:pair` (e.g., `/convert/png-to-webp`, `/convert/srt-to-vtt`, `/convert/vcf-to-csv`, etc.)
 - **Status**: Production Live
 - **Requires Backend**: `false` (100% Client-Side)
-- **Accent Color**: `indigo` (`#6366F1` dark / `#4F46E5` light, hue: 242)
+- **Accent Color**: `blue` (`#2563EB` light / `#3B82F6` dark, hue: 221)
+
+## UI Alignment with Image Compressor & Image Converter Standard
+The File Converter UI is fully unified with Acklet's studio standard (Image Compressor and Image Converter layout reference):
+1. **Accent Rules**:
+   - The File Converter accent is unified to Acklet Blue via `--tool-accent` (`#2563EB` in light mode, `#3B82F6` in dark mode, hue 221).
+   - The accent is strictly restricted to: the primary CTA button (`Convert N Files →`), the selected option (radio card or segment), the progress bar, and focus rings (`:focus-visible`).
+   - Secondary buttons (`Add Files`), dropdowns, badges, and header actions use neutral surface and border tokens with no accent fill.
+   - Empty state uses a neutral card surface behind the dotted border; accent tint is applied only to the icon tile and the "Select Files" button (olive/green background tint completely removed).
+   - Document-only data (such as structure lines and Review pills) is strictly suppressed when the file input is an image.
+2. **Header & Dynamic Heading**:
+   - Header contains `Acklet / File Converter` breadcrumb, Tool / About / How to use / FAQ / Related tabs, Share, Save, and theme toggle.
+   - Dynamic list heading with `n / 20` stage count pill:
+     - 0 files: empty state is shown (no list heading).
+     - Uniform type: plural action form (`PDFs to Convert`, `Documents to Convert`, `Spreadsheets to Convert`, `Presentations to Convert`, `Images to Convert`, `Subtitles to Convert`, `Contacts to Convert`).
+     - Mixed types: `Files to Convert`.
+     - Heading has unique accessible id `file-converter-stage-heading` with `aria-live="polite"`.
+   - Instruction line under heading (when files exist): "Choose a format on the right, then convert. Your files are deleted after 1 hour." (14px, muted color). Hidden when empty.
+   - Right-aligned actions in strict order: primary `Add Files` (neutral, outlined, plus icon), `More` dropdown (Select all, Remove failed, Download all ZIP), `Clear` (ghost, trash icon).
+3. **File Card & Simplified Actions**:
+   - Top-left format badge and top-right round remove button (24px).
+   - 4:3 thumbnail/document preview frame with lazy image loading and format badges.
+   - Footer: single-line truncated filename, formatted size · dimensions (images) or pages (documents), and status dot.
+   - Per-card action bar: direct "Convert" button. The previous per-card "Customize" button and settings icon have been removed in favor of a unified single settings panel.
+   - Structure line (`X headings · Y tables`) with `Review` pill only for document inputs where data exists (never for image inputs).
+   - "Add More" dashed card in grid displaying `(n slots available)`.
+4. **Settings Panel & Popular Conversions**:
+   - Title: "Conversion Settings". Subtitle: "Applies to all files" (applies globally to all queued files).
+   - Section 1 "CONVERT TO": top tested targets segmented chips with "RECOMMENDED" badge and "More" dropdown for overflow formats.
+   - Section 2 "POPULAR CONVERSIONS": small chips ("PDF → Word", "Word → PDF", "PDF → JPG", "Excel → PDF", "PowerPoint → PDF", "JPG → PNG", "Image → PDF"). Only pairs with status `tested` in the registry and valid for EVERY selected input file are displayed; clicking a chip sets the target format with accent outline; hidden when no pair is valid.
+   - Section 3 "QUALITY": slider + presets (Balanced 85%, Best Quality 95%, Smallest Size 65%) for lossy image outputs.
+   - Section 4 "RESIZE": dropdown ("Original (no resize)", "Max width", "Max height", "Custom" with W/H inputs) for image outputs.
+   - Section 5 "DPI": chips (150, 200, 300) for PDF/presentation to image outputs.
+   - Section 6 "LAYOUT FIDELITY": segmented control (Editable text, Balanced, Exact layout) for DOCX/DOC/PPTX.
+   - Section 7 "OPTIONS": checkboxes for "Keep embedded images", "OCR for scanned pages", and validated "Page range" input.
+   - Section 8 "TRANSFORMS": "90° Left", "90° Right", "Flip H" buttons for image-to-image conversions.
+   - Section 9 "DELIVERY": dropdown ("Download each file" or "Download as ZIP") when file count > 1.
+   - Primary CTA: full-width "Convert 1 File →" / "Convert N Files →" with trust notice "Files are deleted automatically after 1 hour." (12px, muted).
+5. **Minimal Hero Dropzone & Rotating Headline**:
+   - Seamless landing canvas floating against the ambient background (matching Image Compressor reference):
+     - **Rotating Headline**: Dynamically rotates conversational phrases (e.g. "Hi there, what do you want to **convert today?**", "Your files, **converted in seconds.**", "Convert PDFs to **Word** with clean layout.", "Convert Word to **PDF** in one click.", "Convert Excel spreadsheets to clean **CSV.**") using `RotatingHeadingComponent` on a 3-second interval with an under-200ms fade transition.
+     - **Primary Action**: Pill-shaped `+ Select Files` button with soft accent drop shadow, followed by subtitle "PDF, Word, Excel, PowerPoint, Images, and other supported formats".
+     - **Popular Conversions Stage**: Section label `POPULAR CONVERSIONS` followed by a 6-pill crossfading grid cycling between tested conversion groups ranked by usage (e.g. `PDF → Word`, `Word → PDF`, `Excel → CSV`, `PowerPoint → PDF`, `PDF → JPG`, `Image → PDF`). Pauses on hover and keyboard focus.
+   - **Page Drag-and-Drop**: Dragging files anywhere over the page activates a subtle accent border on `.converter-page-wrapper.is-drag-over` without jarring modal overlays.
+   - **Capabilities Integration**: Queries `/api/file-converter/capabilities` to determine tested targets dynamically, filtering out `not_offered` formats and displaying beta warnings with limit text for beta pairs.
+   - **Multi-file handling**: Validates each file against registry capabilities; unsupported files show card-level errors while valid files proceed.
+   - **Folders**: Detected and flagged with card-level message: *"Folders are not supported yet. Add the files inside."*
+6. **Related Documentation**:
+   - [docs/image-converter.md](image-converter.md): Companion image conversion tool specification and architecture.
+   - [docs/api/file-converter-api.md](api/file-converter-api.md): File Converter REST API and engine capabilities.
+7. **Visual Consistency Artifacts**:
+   - Full side-by-side screenshot comparisons are cataloged in `tests/visual/` across 1440px and 390px viewports in both light and dark themes.
 
 ## Tool Separation & Isolation
 - **Independent Identity**: Completely separated from `Image Converter`.

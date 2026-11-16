@@ -1,10 +1,12 @@
 // packages/tool-registry/src/manifests/converter.manifest.ts
 import type { ToolRegistryItem } from '../models';
-import { OLIVE_ACCENT } from '../accent-presets';
+import { BLUE_ACCENT } from '../accent-presets';
 
 export const CONVERTER_MANIFEST: ToolRegistryItem = {
   id: 'file-converter',
   name: 'File Converter',
+  sidebarLabel: 'File Converter',
+  breadcrumbLabel: 'File Converter',
   slug: 'file-converter',
   category: 'Converters',
   categorySlug: 'converters',
@@ -22,11 +24,11 @@ export const CONVERTER_MANIFEST: ToolRegistryItem = {
   layout: 'fullBleed',
   addedAt: '2026-11-06',
   updatedAt: '2026-11-06',
-  accent: 'olive',
-  accentHue: 80,
+  accent: 'blue',
+  accentHue: 221,
   supports: ['shield-check', 'zap', 'download'],
   theme: {
-    accent: OLIVE_ACCENT,
+    accent: BLUE_ACCENT,
     font: {
       family: 'Scoutie Sans',
       fontFamily: "'Scoutie Sans', system-ui, -apple-system, sans-serif",

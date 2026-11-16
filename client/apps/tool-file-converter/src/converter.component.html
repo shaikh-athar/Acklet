@@ -1,54 +1,129 @@
 <div
   class="converter-page-wrapper"
-  role="region"
-  aria-label="File Converter workspace"
-  (dragover)="onPageDragOver($event)"
-  (dragleave)="onPageDragLeave($event)"
-  (drop)="onPageDrop($event)"
+  [class.is-active-workspace]="files().length > 0"
+  [class.is-drag-over]="isDragOver()"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave($event)"
+  (drop)="onDrop($event)"
 >
-  <!-- Full-Page Drag Overlay (shown only during page dragover) -->
-  @if (isPageDragOver()) {
-    <div class="fullpage-drag-overlay" aria-hidden="true">
-      <ts-icon name="upload-cloud" [size]="32" class="alert-icon" />
-      <span class="drag-overlay-text">Drop to add files</span>
+
+  <!-- Lightweight Bottom-Center Toast Notification (Compact Pill Style matching Image Converter) -->
+  @if (toast(); as t) {
+    <div
+      class="acklet-toast"
+      [class.toast-success]="t.type === 'success'"
+      [class.toast-error]="t.type === 'error'"
+      [class.toast-warning]="t.type === 'warning'"
+      [class.toast-info]="t.type === 'info'"
+      [class.is-leaving]="t.isLeaving"
+      role="status"
+      aria-live="polite"
+    >
+      <ts-icon
+        [name]="t.type === 'success' ? 'check-circle' : (t.type === 'error' ? 'alert-circle' : (t.type === 'warning' ? 'alert-triangle' : 'info'))"
+        [size]="15"
+        class="toast-icon"
+      />
+      <span class="toast-message">{{ t.message }}</span>
     </div>
   }
 
-  <!-- Calm Alert Notification (Validation / Error messages) -->
-  @if (notification(); as note) {
-    <div class="calm-alert-banner" role="alert" aria-live="polite">
-      <ts-icon name="info" [size]="16" class="alert-icon" />
-      <span class="alert-text">{{ note }}</span>
-      <button
-        type="button"
-        class="alert-dismiss-btn"
-        (click)="notification.set(null)"
-        aria-label="Dismiss notification"
-      >
-        <ts-icon name="x" [size]="16" />
-      </button>
-    </div>
-  }
-
-  <!-- Screen State Switching -->
+  <!-- STATE 1: MINIMAL HERO LANDING DROPZONE (When idle / files().length === 0) -->
   @if (files().length === 0) {
-    <!-- IDLE STATE -->
-    <app-file-drop-zone (filesDropped)="onFilesDropped($event)" />
+    <div class="landing-hero-area" role="region" aria-label="File Converter landing">
+      <!-- 1. Single Rotating Hero Headline -->
+      <app-rotating-heading
+        [headingId]="'file-converter-hero-heading'"
+        [lines]="heroLines"
+        [interval]="3000"
+        class="hero-rotating-heading"
+      ></app-rotating-heading>
+
+      <!-- 2. Primary Select Button & Tagline -->
+      <div class="hero-action-group">
+        <button
+          type="button"
+          class="hero-select-btn"
+          (click)="openFilePicker()"
+          aria-label="Select files to convert"
+        >
+          <ts-icon name="plus" [size]="16" class="btn-icon" />
+          <span>Select Files</span>
+        </button>
+        <p class="hero-subtitle">PDF, Word, Excel, PowerPoint, Images, and other supported formats</p>
+      </div>
+
+      <!-- 3. Popular Conversions Crossfade Stage (Synchronized Cycling Groups) -->
+      <div
+        class="popular-conversions-wrapper"
+        (mouseenter)="onPopularMouseEnter()"
+        (mouseleave)="onPopularMouseLeave()"
+        (focusin)="onPopularFocusIn()"
+        (focusout)="onPopularFocusOut()"
+      >
+        <span class="popular-section-label">POPULAR CONVERSIONS</span>
+        <div class="popular-crossfade-stage" role="region" aria-label="Popular file conversions">
+          <!-- Previous Group (Fading & Drifting Out during transition) -->
+          @if (previousGroupIndex() !== null && !isReducedMotion()) {
+            <div class="popular-grid-group is-exiting" aria-hidden="true">
+              @for (pair of popularGroups()[previousGroupIndex()!]; track pair.source + '-' + pair.target) {
+                <button
+                  type="button"
+                  tabindex="-1"
+                  class="popular-pair-pill"
+                >
+                  <span class="pair-source font-mono">{{ pair.source | uppercase }}</span>
+                  <span class="pair-arrow">&rarr;</span>
+                  <span class="pair-target font-mono">{{ pair.target | uppercase }}</span>
+                </button>
+              }
+            </div>
+          }
+
+          <!-- Current Active Group (Fading & Coming in) -->
+          <div
+            class="popular-grid-group"
+            [class.is-entering]="previousGroupIndex() !== null && !isReducedMotion()"
+          >
+            @for (pair of popularGroups()[currentGroupIndex()]; track pair.source + '-' + pair.target) {
+              <button
+                type="button"
+                class="popular-pair-pill"
+                (click)="onSelectPopularPair(pair)"
+                [title]="'Convert ' + (pair.source | uppercase) + ' to ' + (pair.target | uppercase)"
+              >
+                <span class="pair-source font-mono">{{ pair.source | uppercase }}</span>
+                <span class="pair-arrow">&rarr;</span>
+                <span class="pair-target font-mono">{{ pair.target | uppercase }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
   } @else {
-    <!-- ACTIVE STATE: 2-Column Workspace -->
-    <div class="active-workspace">
-      <div class="workspace-left">
+    <!-- STATE 2: ACTIVE 2-Column Responsive Workspace Layout -->
+    <div class="workspace-layout animate-fade-slide-up">
+
+      <!-- LEFT COLUMN: Main Gallery Stage -->
+      <main class="workspace-stage-col" aria-label="File gallery and queue">
         <app-file-list
           [files]="files()"
+          [isConverting]="isConverting()"
           (addFiles)="onFilesDropped($event)"
           (remove)="removeFile($event)"
           (retry)="retryFile($event)"
           (changeFormat)="onChangeFormat($event)"
+          (convertSingle)="convertSingle($event)"
+          (selectAll)="selectAll()"
+          (removeFailed)="removeFailed()"
+          (downloadAllZip)="downloadAllZip()"
           (clear)="clearAll()"
         />
-      </div>
+      </main>
 
-      <div class="workspace-right">
+      <!-- RIGHT COLUMN: Conversion Options Sidebar -->
+      <aside class="workspace-sidebar" aria-label="Conversion options">
         <app-conversion-settings
           [files]="files()"
           [options]="options()"
@@ -59,12 +134,59 @@
           (optionsChange)="onOptionsChange($event)"
           (convert)="startBatchConversion()"
         />
-      </div>
+      </aside>
+
     </div>
   }
 
-  <!-- Screen reader status announcements -->
+  <!-- Hidden File Input for Picker -->
+  <input
+    #emptyFilePicker
+    type="file"
+    multiple
+    [accept]="activePickerAccept() || allSupportedAcceptTypes()"
+    class="hidden-file-input"
+    (change)="onEmptyPickerChange($event)"
+    aria-hidden="true"
+    tabindex="-1"
+  />
+
+  <!-- Screen reader live region announcements -->
   <div class="sr-only" aria-live="polite" aria-atomic="true">
     {{ screenReaderStatus() }}
   </div>
+
 </div>
+
+<!-- MOBILE FIXED BOTTOM ACTION BAR (Shown when files exist on narrow screens < 600px) -->
+@if (files().length > 0) {
+  <div class="mobile-bottom-bar" role="toolbar" aria-label="Conversion actions">
+    <button
+      type="button"
+      class="mobile-settings-btn"
+      (click)="onChangeFormat()"
+      aria-label="Format options"
+    >
+      <ts-icon name="sliders" [size]="16" />
+      <span class="mobile-settings-label font-mono">{{ options().targetFormat | uppercase }}</span>
+    </button>
+
+    <div class="mobile-primary-action-wrap">
+      @if (files().length > 0 && !isConverting()) {
+        <button
+          type="button"
+          class="mobile-primary-cta"
+          (click)="startBatchConversion()"
+        >
+          <span class="cta-label">Convert {{ files().length }} {{ files().length === 1 ? 'File' : 'Files' }}</span>
+          <ts-icon name="arrow-right" [size]="16" class="cta-arrow" />
+        </button>
+      } @else if (isConverting()) {
+        <button type="button" class="mobile-primary-cta is-converting" disabled>
+          <span class="spinner-circle-sm"></span>
+          <span class="cta-label">Converting...</span>
+        </button>
+      }
+    </div>
+  </div>
+}

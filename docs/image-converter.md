@@ -830,3 +830,33 @@ When files are selected or dropped, the application transitions into the respons
 - **Reactive Re-Conversion**: Modifying settings on completed items automatically triggers live re-conversion with 250ms debounce.
 - **161 Passing Vitest Unit Tests**: Complete test coverage across codecs, privacy audit, auto-quality search, smart format analysis, format comparison, and UI components (expanded from 141 baseline).
 - **Production Build Verified**: Passes Level A verification (`node scripts/verify.mjs -A`) and Angular CLI production compilation (`ng build tool-file-converter`).
+
+## 20. Dynamic Stage Heading (Standard Tool Heading Pattern)
+- **Zero Files**: No list heading; the minimal hero dropzone landing area is shown.
+- **Queue Populated, Target Not Yet Chosen / Custom**: Displays `"Images to Convert"`.
+- **Target Chosen**: Dynamically displays `"Images to WebP"`, `"Images to PNG"`, `"Images to JPG"`, `"Images to PDF"`, `"Images to BMP"`, etc., resolving the canonical label directly from `ImageCapabilityRegistry`.
+- **Plurality Rule**: Always uses plural (`"Images to ..."`, never `"Image to ..."`), regardless of whether 1 file or multiple files are queued.
+- **Stage Count Pill**: `n / 50` count badge remains anchored beside the heading.
+- **Instant Reactive Update**: Heading updates immediately without flicker or layout jump when the target format changes in the settings panel.
+- **Accessibility**: Rendered as `h2` with unique id `image-converter-stage-heading` and high contrast tokens.
+- **Copy Polish**: Eliminated all occurrences of `"Convert your images to"`, standardizing on neutral `"Convert images to"`.
+- **Related Documentation**: See companion [docs/file-converter.md](file-converter.md) for document and multi-type file conversion architecture.
+
+## 21. Hero Rotating Headline Pattern
+- **Dynamic Rotating Headline**: Standardized across Image Compressor and Image Converter:
+  - Full conversational hero headlines (`IMAGE_CONVERTER_HERO_LINES`) using `RotatingHeadingComponent`:
+    - *"Hi there, what do you want to convert today?"*
+    - *"Your images, converted in seconds."*
+    - *"Any format. Same crystal clarity."*
+    - *"Ready to switch your image format?"*
+    - *"Convert PNG, JPG, WebP in one click."*
+    - *"Faster pages start with modern formats."*
+    - *"Convert it. Keep it sharp. Share it."*
+  - Synchronized smooth crossfade animation (180ms ease curve, 3s cycle).
+  - High-contrast highlight span styled with Acklet Blue (`--tool-accent`).
+  - Automatic pause on mouse hover, touch, and keyboard `:focus-visible`.
+  - Accessible `aria-live="off"` with sizer layer eliminating layout shift.
+  - Full respect for `prefers-reduced-motion`.
+- **Related Documentation**:
+  - [docs/file-converter.md](file-converter.md): Document and multi-type file conversion specification.
+  - [docs/image-compressor.md](image-compressor.md): Image compression tool documentation.

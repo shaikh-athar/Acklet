@@ -95,19 +95,19 @@ import { ConversionSettingsComponent } from './conversion-settings.component';
     :host {
       display: block;
       width: 100%;
-      --tool-accent: #5B7A1E;
-      --tool-accent-soft: #F3F7E8;
+      --tool-accent: #2563EB;
+      --tool-accent-soft: #EFF6FF;
       --tool-accent-contrast: #FFFFFF;
-      --tool-accent-border: rgba(91, 122, 30, 0.22);
+      --tool-accent-border: rgba(37, 99, 235, 0.22);
     }
 
     :host-context([data-theme="dark"]),
     :host-context(.dark),
     [data-theme="dark"] :host {
-      --tool-accent: #A3C75A;
-      --tool-accent-soft: #1F2A10;
-      --tool-accent-contrast: #0F1608;
-      --tool-accent-border: rgba(163, 199, 90, 0.28);
+      --tool-accent: #3B82F6;
+      --tool-accent-soft: rgba(59, 130, 246, 0.14);
+      --tool-accent-contrast: #FFFFFF;
+      --tool-accent-border: rgba(59, 130, 246, 0.28);
     }
 
     .converter-page-wrapper {
