@@ -14,7 +14,16 @@ export type SupportedImageFormat =
   | 'tiff'
   | 'jxl';
 
-export type OutputFormatOption = 'original' | 'jpeg' | 'png' | 'webp' | 'avif';
+export type OutputFormatOption =
+  | 'original'
+  | 'jpeg'
+  | 'png'
+  | 'webp'
+  | 'avif'
+  | 'bmp'
+  | 'tiff'
+  | 'tga'
+  | 'ico';
 
 export type CompressionMode = 'smart' | 'custom';
 
@@ -30,7 +39,19 @@ export type DeveloperPresetKey =
   | 'ecommerce'
   | 'social'
   | 'thumbnails'
-  | 'retina';
+  | 'retina'
+  | 'webp-lossy'
+  | 'avif-photo'
+  | 'jpeg-standard'
+  | 'png-lossless'
+  | 'email'
+  | 'mobile'
+  | 'reduce-50'
+  | 'reduce-70'
+  | 'under-100kb'
+  | 'hero'
+  | 'portfolio'
+  | 'avatar';
 
 export type ImageCategory =
   | 'photo'
@@ -119,6 +140,7 @@ export interface AdvancedOptimizationSettings {
   optimizePalette?: boolean;
   compressionEffort?: number; // 1 (fastest) to 6 (maximum effort)
   chromaSubsampling?: 'auto' | '4:2:0' | '4:4:4'; // 4:4:4 preserves text clarity without color bleeding
+  aggressive?: boolean; // Enables deep quantization and extended lower quality bounds
 }
 
 export interface OptimizationProfile {
@@ -218,10 +240,12 @@ export interface ResizeSettings {
 
 export interface TargetFileSizeSettings {
   enabled: boolean;
-  targetBytes: number; // Raw bytes, e.g. 204800 (200 KB)
-  targetValue: number; // User entered value, e.g. 200
-  targetUnit: 'KB' | 'MB'; // 'KB' | 'MB'
+  targetBytes: number; // Raw bytes, e.g. 22938
+  targetValue: number; // User entered or calculated value, e.g. 22.4
+  targetUnit: 'B' | 'KB' | 'MB'; // 'B' | 'KB' | 'MB'
   minQuality: number; // Minimum acceptable quality threshold, default: 25
+  isDynamicDefault?: boolean; // True when target is automatically calculated (30% reduction goal)
+  userDefined?: boolean; // True when user explicitly enters a value or chooses a preset
 }
 
 export interface CompressionSettings {
@@ -235,6 +259,7 @@ export interface CompressionSettings {
   multiVariant?: MultiVariantSettings;
   metadataPolicy: MetadataPolicy; // default: 'remove'
   advancedOptimization?: AdvancedOptimizationSettings;
+  transforms?: TransformOp[];
 }
 
 export interface IndividualCompressionOverrides {
@@ -303,8 +328,14 @@ export interface CompressionResult {
   processingTimeMs: number;
   status: 'completed' | 'failed' | 'cancelled';
   error?: string;
+  warning?: string;
   isLargerThanOriginal?: boolean;
   isLossless?: boolean;
+  // Intelligent Dual-Mode Engine:
+  compressionMode?: 'default' | 'custom-target';
+  closestAchievableSize?: number;
+  closestAchievableBlob?: Blob;
+  closestAchievableUrl?: string;
   // Phase 3 additions:
   targetAchieved?: boolean;
   targetUnreachable?: boolean;
@@ -316,6 +347,19 @@ export interface CompressionResult {
   variants?: ImageVariantResult[];
   metadataReport?: ExifMetadataReport;
   alreadyOptimized?: boolean;
+  honestStatus?: 'saved' | 'already-optimized' | 'kept-original';
+  honestLabel?: string;
+  honestExplanation?: string;
+  // 30% reduction cascade additions:
+  convertedToFormat?: string;
+  formatNote?: string;
+  resizedToPercent?: number;
+  resizedNote?: string;
+  // Step 2 & 3 method, result, reason tracking:
+  compressionMethod?: 'lossless' | 'palette' | 'target' | 'quality' | 'format' | 'resize' | 'none';
+  reductionResult?: 'reduced' | 'not reduced';
+  reductionReason?: string;
+  failedSteps?: ('lossless' | 'palette' | 'target' | 'resize')[];
 }
 
 export interface ImageItem {
@@ -351,6 +395,30 @@ export interface ImageItem {
   // Phase 8+ Task 2 additions:
   transforms?: TransformOp[];
   transformedPreviewUrl?: string;
+  formatConversionWarning?: string;
+  // Repeated Customization additions:
+  originalUploadedFile?: File;
+  originalUploadedSize?: number;
+  originalUploadedWidth?: number;
+  originalUploadedHeight?: number;
+  originalUploadedFormat?: string;
+  originalUploadedExtension?: string;
+  originalUploadedMimeType?: string;
+  originalUploadedPreviewUrl?: string;
+  currentWorkingSource?: WorkingImageSource;
+}
+
+export interface WorkingImageSource {
+  file: File;
+  blob: Blob;
+  size: number;
+  width: number;
+  height: number;
+  format: string;
+  mimeType: string;
+  extension: string;
+  previewUrl: string;
+  iteration: number;
 }
 
 export type RotateAngle = 90 | -90 | 180;

@@ -5,6 +5,66 @@
 html[data-theme="dark"],
 .ts-root,
 .ts-root[data-theme="dark"] {
+  /* ══ UNIFIED TOOL SUITE DESIGN TOKENS (Tool Standard) ══════════════ */
+  --tool-font-family: 'Scoutie Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --tool-font-mono: 'Geist Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Type Scale */
+  --tool-type-display-size: 48px;
+  --tool-type-display-lh: 56px;
+  --tool-type-display-weight: 700;
+  --tool-type-display-tracking: -0.02em;
+  --tool-type-display-mobile-size: 32px;
+  --tool-type-display-mobile-lh: 40px;
+
+  --tool-type-h2-size: 24px;
+  --tool-type-h2-lh: 32px;
+  --tool-type-h2-weight: 600;
+  --tool-type-h2-tracking: -0.015em;
+
+  --tool-type-body-size: 15px;
+  --tool-type-body-lh: 24px;
+  --tool-type-body-weight: 400;
+
+  --tool-type-label-size: 12px;
+  --tool-type-label-lh: 16px;
+  --tool-type-label-weight: 600;
+  --tool-type-label-tracking: 0.06em;
+
+  --tool-type-caption-size: 13px;
+  --tool-type-caption-lh: 18px;
+  --tool-type-caption-weight: 400;
+
+  /* Space Scale (strictly 4, 8, 12, 16, 24, 32, 48) */
+  --tool-space-4: 4px;
+  --tool-space-8: 8px;
+  --tool-space-12: 12px;
+  --tool-space-16: 16px;
+  --tool-space-24: 24px;
+  --tool-space-32: 32px;
+  --tool-space-48: 48px;
+
+  /* Radii */
+  --tool-radius-control: 12px;
+  --tool-radius-card: 16px;
+  --tool-radius-panel: 20px;
+  --tool-radius-pill: 999px;
+
+  /* Sizes */
+  --tool-header-height: 56px;
+  --tool-control-height: 40px;
+  --tool-cta-height: 48px;
+  --tool-chip-height: 36px;
+  --tool-count-pill-height: 24px;
+  --tool-panel-width: 360px;
+  --tool-thumb-height: 180px;
+  --tool-grid-gap: 16px;
+
+  /* Layout */
+  --tool-page-max-width: 1280px;
+  --tool-content-padding: 24px;
+  --tool-content-padding-mobile: 16px;
+
   /* Motion Scaling & Tokens */
   --ts-motion-scale: 1;
   --ts-dur-press: 150ms;

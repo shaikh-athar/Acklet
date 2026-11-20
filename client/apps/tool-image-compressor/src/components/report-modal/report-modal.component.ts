@@ -1,5 +1,5 @@
 // apps/tool-image-compressor/src/components/report-modal/report-modal.component.ts
-import { Component, ChangeDetectionStrategy, input, output, computed, HostListener } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, computed, signal, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TsIconComponent } from '@acklet/tool-shell';
 import { OptimizationReport } from '../../models/compressor.models';
@@ -59,9 +59,6 @@ import { OptimizationReport } from '../../models/compressor.models';
                 <span class="stat-value font-mono accent-val">
                   {{ rep.totalVariantsGenerated }} variant{{ rep.totalVariantsGenerated === 1 ? '' : 's' }}
                 </span>
-                <span class="stat-sub font-mono">
-                  {{ rep.averageSsim !== null ? 'Avg SSIM: ' + rep.averageSsim : 'No SSIM computed' }}
-                </span>
               </div>
 
               <div class="summary-stat-box">
@@ -96,7 +93,13 @@ import { OptimizationReport } from '../../models/compressor.models';
                         {{ item.detectedFormat }} → {{ item.outputFormat }}
                       </td>
                       <td class="col-dim font-mono">
-                        {{ item.outputWidth > 0 ? item.outputWidth + '×' + item.outputHeight : '—' }}
+                        @if (item.outputWidth > 0 && (item.outputWidth !== item.originalWidth || item.outputHeight !== item.originalHeight)) {
+                          <span class="report-resized-note" [title]="'Resized: ' + item.originalWidth + ' × ' + item.originalHeight + ' to ' + item.outputWidth + ' × ' + item.outputHeight">
+                            Resized: {{ item.originalWidth }} × {{ item.originalHeight }} to {{ item.outputWidth }} × {{ item.outputHeight }}
+                          </span>
+                        } @else {
+                          {{ item.outputWidth > 0 ? item.outputWidth + '×' + item.outputHeight : '—' }}
+                        }
                       </td>
                       <td class="col-size font-mono">{{ formatBytes(item.originalSize) }}</td>
                       <td class="col-size font-mono">{{ formatBytes(item.compressedSize) }}</td>
@@ -120,25 +123,43 @@ import { OptimizationReport } from '../../models/compressor.models';
         <!-- Footer Actions -->
         <div class="modal-footer">
           <div class="footer-export-actions">
-            <button
-              type="button"
-              class="export-btn"
-              (click)="exportCsv.emit()"
-              title="Download RFC 4180 compliant CSV spreadsheet"
-            >
-              <ts-icon name="download" [size]="14" />
-              <span>Export CSV</span>
-            </button>
+            <div class="export-dropdown-wrapper">
+              <button
+                type="button"
+                class="export-btn export-trigger-btn"
+                (click)="toggleExportMenu()"
+                title="Export report data"
+                aria-haspopup="true"
+                [attr.aria-expanded]="isExportOpen()"
+              >
+                <ts-icon name="download" [size]="14" />
+                <span>Export</span>
+                <ts-icon [name]="isExportOpen() ? 'chevron-up' : 'chevron-down'" [size]="12" />
+              </button>
 
-            <button
-              type="button"
-              class="export-btn"
-              (click)="exportJson.emit()"
-              title="Download structured JSON report"
-            >
-              <ts-icon name="code" [size]="14" />
-              <span>Export JSON</span>
-            </button>
+              @if (isExportOpen()) {
+                <div class="export-dropdown-menu" role="menu">
+                  <button
+                    type="button"
+                    class="export-dropdown-item"
+                    role="menuitem"
+                    (click)="onExportCsv()"
+                  >
+                    <ts-icon name="file-text" [size]="13" />
+                    <span>Export CSV (.csv)</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="export-dropdown-item"
+                    role="menuitem"
+                    (click)="onExportJson()"
+                  >
+                    <ts-icon name="code" [size]="13" />
+                    <span>Export JSON (.json)</span>
+                  </button>
+                </div>
+              }
+            </div>
           </div>
 
           <button
@@ -156,7 +177,7 @@ import { OptimizationReport } from '../../models/compressor.models';
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      z-index: 1000;
+      z-index: 1200;
       background: rgba(0, 0, 0, 0.85);
       backdrop-filter: blur(8px);
       display: flex;
@@ -284,12 +305,15 @@ import { OptimizationReport } from '../../models/compressor.models';
     .table-container {
       flex: 1 1 0%;
       overflow-y: auto;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
       border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
       border-radius: 10px;
       background: var(--ts-surface-base, #111318);
     }
 
     .report-table {
+      min-width: 620px;
       width: 100%;
       border-collapse: collapse;
       font-size: 11.5px;
@@ -306,12 +330,14 @@ import { OptimizationReport } from '../../models/compressor.models';
       color: var(--text-3, #9CA3AF);
       border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
       z-index: 1;
+      white-space: nowrap;
     }
 
     .report-table td {
       padding: 8px 12px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.04);
       color: var(--text-2, #D1D5DB);
+      white-space: nowrap;
     }
 
     .report-table tr:hover td {
@@ -460,9 +486,93 @@ import { OptimizationReport } from '../../models/compressor.models';
       border-color: #94A3B8;
     }
 
+    .export-dropdown-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    .export-dropdown-menu {
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 0;
+      min-width: 175px;
+      background: var(--ts-surface-card, #1A1C23);
+      border: 1px solid var(--border-default, #374151);
+      border-radius: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      padding: 4px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .export-dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      color: var(--text-2, #D1D5DB);
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s ease;
+    }
+
+    .export-dropdown-item:hover {
+      background: var(--accent, #2563EB);
+      color: #FFFFFF;
+    }
+
+    :host-context([data-theme="light"]) .export-dropdown-menu,
+    [data-theme="light"] .export-dropdown-menu {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15);
+    }
+
+    :host-context([data-theme="light"]) .export-dropdown-item,
+    [data-theme="light"] .export-dropdown-item {
+      color: #334155;
+    }
+
+    :host-context([data-theme="light"]) .export-dropdown-item:hover,
+    [data-theme="light"] .export-dropdown-item:hover {
+      background: #EFF6FF;
+      color: #2563EB;
+    }
+
     @media (max-width: 640px) {
       .report-summary-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+    }
+
+    @media (max-width: 479px) {
+      .modal-backdrop {
+        padding: 8px !important;
+      }
+      .modal-dialog {
+        max-height: calc(100% - 16px) !important;
+        max-height: calc(100dvh - 16px) !important;
+        height: auto !important;
+      }
+      .report-summary-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+      }
+      .modal-footer {
+        padding: 10px 14px !important;
+      }
+      .export-trigger-btn,
+      .close-action-btn {
+        min-height: 44px !important;
+        height: 44px !important;
       }
     }
   `]
@@ -473,8 +583,32 @@ export class ReportModalComponent {
   readonly exportCsv = output<void>();
   readonly exportJson = output<void>();
 
+  readonly isExportOpen = signal<boolean>(false);
+
+  toggleExportMenu(): void {
+    this.isExportOpen.update(v => !v);
+  }
+
+  closeExportMenu(): void {
+    this.isExportOpen.set(false);
+  }
+
+  onExportCsv(): void {
+    this.exportCsv.emit();
+    this.closeExportMenu();
+  }
+
+  onExportJson(): void {
+    this.exportJson.emit();
+    this.closeExportMenu();
+  }
+
   @HostListener('window:keydown.escape')
   onEscape(): void {
+    if (this.isExportOpen()) {
+      this.closeExportMenu();
+      return;
+    }
     this.close.emit();
   }
 

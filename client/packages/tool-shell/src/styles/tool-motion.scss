@@ -1,0 +1,145 @@
+// shared/design/motion.scss
+// Unified Motion & Animation System for Acklet Tool Suite
+// Strict compliance: No bounce, no scale spring, standard cubic-bezier curves, WCAG reduced-motion.
+
+$ease-tool-springless: cubic-bezier(0.2, 0.6, 0.2, 1);
+$ease-control-hover: cubic-bezier(0.16, 1, 0.3, 1);
+
+:root {
+  --tool-motion-ease: #{$ease-tool-springless};
+  --tool-control-ease: #{$ease-control-hover};
+  --tool-headline-dwell: 4500ms;
+  --tool-headline-duration: 700ms;
+  --tool-chip-duration: 500ms;
+  --tool-card-duration: 300ms;
+  --tool-control-hover-duration: 150ms;
+}
+
+/* 1. Hero Headline Stacked Grid Rotation */
+.tool-headline-stacked-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  align-items: center;
+  justify-items: center;
+  position: relative;
+  width: 100%;
+}
+
+.tool-headline-line {
+  grid-area: 1 / 1 / 2 / 2;
+  width: 100%;
+  opacity: 0;
+  visibility: hidden;
+  filter: blur(6px);
+  transform: translateY(6px);
+  transition: opacity 700ms var(--tool-motion-ease),
+              filter 700ms var(--tool-motion-ease),
+              transform 700ms var(--tool-motion-ease),
+              visibility 700ms var(--tool-motion-ease);
+  pointer-events: none;
+  text-align: center;
+}
+
+.tool-headline-line.is-active {
+  opacity: 1;
+  visibility: visible;
+  filter: blur(0);
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.tool-headline-line.is-exiting {
+  opacity: 0;
+  visibility: hidden;
+  filter: blur(6px);
+  transform: translateY(-6px);
+  pointer-events: none;
+}
+
+/* 2. Popular Chips Stagger Fade-in */
+.tool-chips-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.tool-chip-item {
+  opacity: 0;
+  animation: toolChipEnter 500ms var(--tool-motion-ease) forwards;
+  animation-delay: calc(var(--chip-index, 0) * 40ms);
+}
+
+@keyframes toolChipEnter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 3. Grid Cards Entrance (Fade in 300ms, no bounce, no scale spring) */
+.tool-grid-card-enter {
+  animation: toolCardFadeIn 300ms var(--tool-motion-ease) forwards;
+}
+
+@keyframes toolCardFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 4. Controls Hover (150ms background or border change only) */
+.tool-control-interactive {
+  transition: background-color 150ms var(--tool-control-ease),
+              border-color 150ms var(--tool-control-ease),
+              color 150ms var(--tool-control-ease),
+              box-shadow 150ms var(--tool-control-ease);
+}
+
+/* 5. Reduced Motion Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --tool-headline-duration: 0ms;
+    --tool-chip-duration: 0ms;
+    --tool-card-duration: 0ms;
+    --tool-control-hover-duration: 0ms;
+  }
+
+  .tool-headline-line {
+    transition: none !important;
+    filter: none !important;
+    transform: none !important;
+  }
+
+  .tool-headline-line:not(:first-child) {
+    display: none !important;
+  }
+
+  .tool-headline-line:first-child {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .tool-chip-item {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  .tool-grid-card-enter {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  .tool-control-interactive {
+    transition: none !important;
+  }
+}

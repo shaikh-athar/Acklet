@@ -28,15 +28,14 @@ export function downloadBlob(blob: Blob, filename: string): void {
 }
 
 /**
- * Packages multiple blobs into a ZIP file with filename collision handling, then downloads it.
+ * Creates an in-memory ZIP Blob from multiple download items with filename collision handling.
  */
-export async function downloadZip(
-  items: DownloadItem[],
-  zipFilename = 'acklet-compressed-images.zip'
-): Promise<void> {
+export async function createZipBlob(
+  items: DownloadItem[]
+): Promise<Blob | null> {
   const validItems = items.filter(it => it && it.blob && it.blob.size > 0);
   if (validItems.length === 0) {
-    return;
+    return null;
   }
 
   const zip = new JSZip();
@@ -65,12 +64,23 @@ export async function downloadZip(
     zip.file(path, item.blob);
   }
 
-  const zipBlob = await zip.generateAsync({
+  return await zip.generateAsync({
     type: 'blob',
     compression: 'DEFLATE',
     compressionOptions: { level: 6 }
   });
+}
 
-  downloadBlob(zipBlob, zipFilename);
+/**
+ * Packages multiple blobs into a ZIP file with filename collision handling, then downloads it.
+ */
+export async function downloadZip(
+  items: DownloadItem[],
+  zipFilename = 'acklet-compressed-images.zip'
+): Promise<void> {
+  const zipBlob = await createZipBlob(items);
+  if (zipBlob) {
+    downloadBlob(zipBlob, zipFilename);
+  }
 }
 

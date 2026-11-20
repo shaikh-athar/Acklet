@@ -57,12 +57,12 @@
           type="button"
           class="hero-select-btn"
           (click)="openFilePicker()"
-          aria-label="Select images to convert"
+          aria-label="Select files to convert"
         >
           <ts-icon name="plus" [size]="16" class="btn-icon" />
-          <span>Select Images</span>
+          <span>Select files</span>
         </button>
-        <p class="hero-subtitle">PNG, JPG, WebP, AVIF and other supported formats</p>
+        <p class="hero-subtitle">Works with PNG, JPG, WebP, AVIF, HEIC and other formats.</p>
       </div>
 
       <!-- 3. Popular Conversions Crossfade Stage (Synchronized 3-Second Cycle) -->
@@ -73,6 +73,7 @@
         (focusin)="onPopularFocusIn()"
         (focusout)="onPopularFocusOut()"
       >
+        <span class="popular-section-label">POPULAR CONVERSIONS</span>
         <div class="popular-crossfade-stage" role="region" aria-label="Popular image conversions">
           <!-- Previous Group (Fading & Drifting Out during transition) -->
           @if (previousGroupIndex() !== null && !isReducedMotion()) {
@@ -83,9 +84,9 @@
                   tabindex="-1"
                   class="popular-pair-pill"
                 >
-                  <span class="pair-source font-mono">{{ pair.source | uppercase }}</span>
+                  <span class="pair-source">{{ pair.source | uppercase }}</span>
                   <span class="pair-arrow">&rarr;</span>
-                  <span class="pair-target font-mono">{{ pair.target | uppercase }}</span>
+                  <span class="pair-target">{{ pair.target | uppercase }}</span>
                 </button>
               }
             </div>
@@ -103,9 +104,9 @@
                 (click)="onSelectPopularPair(pair)"
                 [title]="'Convert ' + (pair.source | uppercase) + ' to ' + (pair.target | uppercase)"
               >
-                <span class="pair-source font-mono">{{ pair.source | uppercase }}</span>
+                <span class="pair-source">{{ pair.source | uppercase }}</span>
                 <span class="pair-arrow">&rarr;</span>
-                <span class="pair-target font-mono">{{ pair.target | uppercase }}</span>
+                <span class="pair-target">{{ pair.target | uppercase }}</span>
               </button>
             }
           </div>
@@ -125,7 +126,7 @@
         <div class="stage-header-bar" [class.is-scrolled]="isHeaderScrolled()">
           <div class="stage-title-group">
             <h2 class="stage-title">{{ fileCategoryLabel() }} to Convert</h2>
-            <span class="stage-count-badge font-mono">{{ engine.jobs().length }} / {{ maxFiles }}</span>
+            <span class="stage-count-badge">{{ engine.jobs().length }} / {{ maxFiles }}</span>
           </div>
 
           <div class="stage-actions-group">
@@ -134,12 +135,12 @@
               class="add-more-header-btn"
               (click)="openFilePicker()"
               [disabled]="engine.isConvertingAny() || engine.jobs().length >= maxFiles"
-              [title]="'Add more ' + fileCategoryLabel().toLowerCase() + ' to this batch'"
+              [title]="'Add more files to this batch'"
               aria-label="Add Files"
             >
               <ts-icon name="plus" [size]="14" />
               <span class="btn-text">
-                <span class="text-desktop">Add {{ fileCategoryLabel() }}</span>
+                <span class="text-desktop">Add Images</span>
                 <span class="text-mobile">Add</span>
               </span>
             </button>
@@ -215,7 +216,7 @@
                 (click)="onConvertAll()"
                 [disabled]="engine.isConvertingAny()"
               >
-                <span>Convert {{ engine.readyJobsCount() }} {{ engine.readyJobsCount() === 1 ? 'File' : 'Files' }}</span>
+                <span>Convert {{ engine.readyJobsCount() }} {{ engine.readyJobsCount() === 1 ? (isImageConverterMode() ? 'image' : 'file') : (isImageConverterMode() ? 'images' : 'files') }}</span>
                 <ts-icon name="arrow-right" [size]="18" />
               </button>
             } @else if (engine.isConvertingAny()) {
@@ -288,7 +289,7 @@
           (click)="onConvertAll()"
           [disabled]="engine.isConvertingAny()"
         >
-          <span class="cta-label">Convert {{ engine.readyJobsCount() }} {{ engine.readyJobsCount() === 1 ? 'File' : 'Files' }}</span>
+          <span class="cta-label">Convert {{ engine.readyJobsCount() }} {{ engine.readyJobsCount() === 1 ? (isImageConverterMode() ? 'image' : 'file') : (isImageConverterMode() ? 'images' : 'files') }}</span>
           <ts-icon name="arrow-right" [size]="16" class="cta-arrow" />
         </button>
       } @else if (engine.isConvertingAny()) {

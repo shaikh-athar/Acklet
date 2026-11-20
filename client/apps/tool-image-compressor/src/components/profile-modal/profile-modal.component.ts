@@ -214,13 +214,15 @@ import { OptimizationProfile, CompressionSettings } from '../../models/compresso
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      z-index: 1050;
+      z-index: 1200;
       background: rgba(0, 0, 0, 0.72);
       backdrop-filter: blur(4px);
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 16px;
+      overflow: hidden;
+      box-sizing: border-box;
     }
 
     .modal-dialog {
@@ -229,11 +231,13 @@ import { OptimizationProfile, CompressionSettings } from '../../models/compresso
       border-radius: var(--ts-radius-inner, 16px);
       width: 100%;
       max-width: 640px;
-      max-height: 88vh;
+      height: min(680px, 100%);
+      max-height: 100%;
       display: flex;
       flex-direction: column;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
       overflow: hidden;
+      box-sizing: border-box;
     }
 
     .modal-header {
@@ -242,6 +246,8 @@ import { OptimizationProfile, CompressionSettings } from '../../models/compresso
       gap: 12px;
       padding: 16px 20px;
       border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+      flex-shrink: 0;
+      box-sizing: border-box;
     }
 
     .header-icon-wrap {
@@ -279,26 +285,31 @@ import { OptimizationProfile, CompressionSettings } from '../../models/compresso
       justify-content: center;
       width: 30px;
       height: 30px;
+      min-height: 0 !important;
+      min-width: 0 !important;
       border-radius: var(--ts-radius-sm, 8px);
       background: transparent;
       border: none;
       color: var(--text-2, #9CA3AF);
       cursor: pointer;
       transition: all 150ms ease;
+      flex-shrink: 0;
     }
 
     .close-btn:hover {
       background: rgba(255, 255, 255, 0.08);
-      color: #FFFFFF;
     }
 
     .modal-body {
       padding: 16px 20px;
       overflow-y: auto;
-      flex: 1;
+      -webkit-overflow-scrolling: touch;
+      flex: 1 1 0px;
+      min-height: 0;
       display: flex;
       flex-direction: column;
       gap: 14px;
+      box-sizing: border-box;
     }
 
     .modal-top-bar {
@@ -581,7 +592,6 @@ import { OptimizationProfile, CompressionSettings } from '../../models/compresso
 
     .btn-icon-action:hover {
       background: rgba(255, 255, 255, 0.08);
-      color: #FFFFFF;
       border-color: rgba(255, 255, 255, 0.12);
     }
 
@@ -692,6 +702,81 @@ import { OptimizationProfile, CompressionSettings } from '../../models/compresso
     :host-context([data-theme="light"]) .btn-done:hover,
     [data-theme="light"] .btn-done:hover {
       background: #F1F5F9;
+    }
+
+    @media (max-width: 479px) {
+      .modal-backdrop {
+        padding: 8px !important;
+        align-items: center !important;
+        justify-content: center !important;
+        overflow: hidden !important;
+      }
+      .modal-dialog {
+        height: 100% !important;
+        max-height: 100% !important;
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+      }
+      .modal-header {
+        padding: 12px 14px !important;
+        flex-shrink: 0 !important;
+      }
+      .modal-footer {
+        flex-shrink: 0 !important;
+      }
+      .modal-body {
+        padding: 12px 14px !important;
+        flex: 1 1 0px !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+      .modal-top-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+      .profile-count-pill {
+        text-align: center;
+      }
+      .btn-add-profile {
+        width: 100%;
+        min-height: 40px;
+        justify-content: center;
+        font-size: 13px;
+      }
+      .profile-card {
+        padding: 12px;
+      }
+      .profile-actions-bar {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .primary-apply-actions {
+        width: 100%;
+      }
+      .btn-apply-all, .btn-apply-selected {
+        flex: 1;
+        min-height: 38px;
+        justify-content: center;
+        font-size: 12px;
+      }
+      .modal-footer {
+        padding: 10px 14px !important;
+        flex-shrink: 0 !important;
+      }
+      .modal-footer .btn-done {
+        width: 100% !important;
+        min-height: 40px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 14px !important;
+      }
     }
   `]
 })

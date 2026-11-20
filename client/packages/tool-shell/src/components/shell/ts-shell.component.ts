@@ -396,6 +396,7 @@ import { FileTransferService } from '../../services/file-transfer.service';
       width: 100%;
       min-width: 0;
       height: var(--header-height, 64px);
+      box-sizing: border-box;
     }
 
     /* Bottom Row Grid: Sidebar (272px) + Main Content Card (minmax(0, 1fr)) */
@@ -633,6 +634,7 @@ import { FileTransferService } from '../../services/file-transfer.service';
       height: 100%;
       overflow-y: auto;
       overflow-x: hidden;
+      scrollbar-gutter: stable;
       scrollbar-width: thin;
       scrollbar-color: var(--ts-scrollbar-thumb) transparent;
       width: 100%;
@@ -657,6 +659,7 @@ import { FileTransferService } from '../../services/file-transfer.service';
       gap: 0 !important;
       overflow-y: auto !important;
       overflow-x: hidden !important;
+      scrollbar-gutter: stable;
       scroll-behavior: smooth !important;
       display: flex;
       flex-direction: column;
@@ -997,6 +1000,15 @@ import { FileTransferService } from '../../services/file-transfer.service';
         contain: none !important;
         container-type: normal !important;
       }
+      .ts-main-scroll-container {
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+      }
+      .ts-main-scroll-container::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
       .ts-main-scroll-container:not(.full-bleed) {
         padding: 16px;
         gap: 16px;
@@ -1079,15 +1091,17 @@ import { FileTransferService } from '../../services/file-transfer.service';
     .ts-drag-blur-backdrop {
       position: absolute;
       inset: 0;
-      background: rgba(255, 255, 255, 0.65);
-      backdrop-filter: blur(24px) saturate(180%);
-      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(36px) saturate(180%);
+      -webkit-backdrop-filter: blur(36px) saturate(180%);
       pointer-events: none;
     }
 
     :host-context([data-theme="dark"]) .ts-drag-blur-backdrop,
     .ts-root[data-theme="dark"] .ts-drag-blur-backdrop {
-      background: rgba(15, 17, 23, 0.68);
+      background: rgba(15, 17, 23, 0.85);
+      backdrop-filter: blur(36px) saturate(180%);
+      -webkit-backdrop-filter: blur(36px) saturate(180%);
     }
 
     .ts-drag-content-container {

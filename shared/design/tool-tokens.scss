@@ -1,0 +1,135 @@
+// shared/design/tool-tokens.scss
+// Unified Tool Design System Tokens for Acklet Platform
+// Canonical reference for Image Compressor, Image Converter, and File Converter.
+
+$font-family-ui: 'Scoutie Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+$font-family-mono: 'Geist Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+// Type scale
+$type-display-size: 48px;
+$type-display-lh: 56px;
+$type-display-weight: 700;
+$type-display-tracking: -0.02em;
+$type-display-mobile-size: 32px;
+$type-display-mobile-lh: 40px;
+
+$type-h2-size: 24px;
+$type-h2-lh: 32px;
+$type-h2-weight: 600;
+$type-h2-tracking: -0.015em;
+
+$type-body-size: 15px;
+$type-body-lh: 24px;
+$type-body-weight: 400;
+
+$type-label-size: 12px;
+$type-label-lh: 16px;
+$type-label-weight: 600;
+$type-label-tracking: 0.06em;
+
+$type-caption-size: 13px;
+$type-caption-lh: 18px;
+$type-caption-weight: 400;
+
+// Space scale (strictly 4, 8, 12, 16, 24, 32, 48)
+$space-4: 4px;
+$space-8: 8px;
+$space-12: 12px;
+$space-16: 16px;
+$space-24: 24px;
+$space-32: 32px;
+$space-48: 48px;
+
+// Radii
+$radius-control: 12px;
+$radius-card: 16px;
+$radius-panel: 20px;
+$radius-pill: 999px;
+
+// Sizes
+$header-height: 56px;
+$control-height: 40px;
+$cta-height: 48px;
+$chip-height: 36px;
+$count-pill-height: 24px;
+$panel-width: 360px;
+$thumb-height: 180px;
+$grid-gap: 16px;
+
+// Layout
+$page-max-width: 1280px;
+$content-padding-desktop: 24px;
+$content-padding-mobile: 16px;
+
+:root {
+  --tool-font-family: #{$font-family-ui};
+  --tool-font-mono: #{$font-family-mono};
+
+  /* Type Scale */
+  --tool-type-display-size: #{$type-display-size};
+  --tool-type-display-lh: #{$type-display-lh};
+  --tool-type-display-weight: #{$type-display-weight};
+  --tool-type-display-tracking: #{$type-display-tracking};
+  --tool-type-display-mobile-size: #{$type-display-mobile-size};
+  --tool-type-display-mobile-lh: #{$type-display-mobile-lh};
+
+  --tool-type-h2-size: #{$type-h2-size};
+  --tool-type-h2-lh: #{$type-h2-lh};
+  --tool-type-h2-weight: #{$type-h2-weight};
+  --tool-type-h2-tracking: #{$type-h2-tracking};
+
+  --tool-type-body-size: #{$type-body-size};
+  --tool-type-body-lh: #{$type-body-lh};
+  --tool-type-body-weight: #{$type-body-weight};
+
+  --tool-type-label-size: #{$type-label-size};
+  --tool-type-label-lh: #{$type-label-lh};
+  --tool-type-label-weight: #{$type-label-weight};
+  --tool-type-label-tracking: #{$type-label-tracking};
+
+  --tool-type-caption-size: #{$type-caption-size};
+  --tool-type-caption-lh: #{$type-caption-lh};
+  --tool-type-caption-weight: #{$type-caption-weight};
+
+  /* Space Scale */
+  --tool-space-4: #{$space-4};
+  --tool-space-8: #{$space-8};
+  --tool-space-12: #{$space-12};
+  --tool-space-16: #{$space-16};
+  --tool-space-24: #{$space-24};
+  --tool-space-32: #{$space-32};
+  --tool-space-48: #{$space-48};
+
+  /* Radii */
+  --tool-radius-control: #{$radius-control};
+  --tool-radius-card: #{$radius-card};
+  --tool-radius-panel: #{$radius-panel};
+  --tool-radius-pill: #{$radius-pill};
+
+  /* Sizes */
+  --tool-header-height: #{$header-height};
+  --tool-control-height: #{$control-height};
+  --tool-cta-height: #{$cta-height};
+  --tool-chip-height: #{$chip-height};
+  --tool-count-pill-height: #{$count-pill-height};
+  --tool-panel-width: #{$panel-width};
+  --tool-thumb-height: #{$thumb-height};
+  --tool-grid-gap: #{$grid-gap};
+
+  /* Layout */
+  --tool-page-max-width: #{$page-max-width};
+  --tool-content-padding: #{$content-padding-desktop};
+  --tool-content-padding-mobile: #{$content-padding-mobile};
+
+  /* Default Accent Fallback (Overridden dynamically per tool) */
+  --tool-accent: #2563EB;
+  --tool-accent-soft: rgba(37, 99, 235, 0.08);
+  --tool-accent-contrast: #FFFFFF;
+  --tool-bg-preset: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.04) 0%, transparent 70%);
+}
+
+@media (max-width: 639px) {
+  :root {
+    --tool-content-padding: #{$content-padding-mobile};
+  }
+}

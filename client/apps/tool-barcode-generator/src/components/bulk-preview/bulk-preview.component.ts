@@ -1370,12 +1370,12 @@ import { BulkGeneratorService } from '../../services/bulk-generator.service';
     }
 
     .zoom-btn:hover:not(.is-active) {
-      color: var(--text, #fcfcfc);
+      color: #fcfcfc;
       background: rgba(255, 255, 255, 0.06);
     }
 
     :host-context([data-theme="light"]) .zoom-btn:hover:not(.is-active) {
-      color: #0F172A;
+      color: #fcfcfc;
       background: rgba(0, 0, 0, 0.05);
     }
 

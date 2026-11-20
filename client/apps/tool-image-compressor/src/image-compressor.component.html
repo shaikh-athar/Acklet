@@ -1,4 +1,11 @@
-<div class="compressor-page-wrapper" [class.is-active-workspace]="state.hasImages()">
+<div class="compressor-page-wrapper" [class.is-active-workspace]="currentScreen() !== 'home'">
+
+  <!-- Screen Reader Live Status Region -->
+  <div class="sr-only" aria-live="polite" role="status">
+    @if (state.isCompressingAny()) {
+      <span>Compressing images...</span>
+    }
+  </div>
 
   <!-- Compact Toast Notification -->
   @if (state.toast(); as t) {
@@ -21,31 +28,20 @@
     </div>
   }
 
-  <!-- Global Drag-and-Drop Active Overlay -->
-  @if (isPageDragOver()) {
-    <div class="global-drag-overlay" aria-hidden="true">
-      <div class="drag-outline-box">
-        <ts-icon name="upload-cloud" [size]="48" class="drag-cloud-icon" />
-        <span class="drag-prompt-title">{{ state.hasImages() ? 'Drop to Add Images' : 'Drop Images to Compress' }}</span>
-        <span class="drag-prompt-sub">Up to {{ state.config.limits.maxFiles }} images • Max {{ state.config.limits.maxFileSizeMB }} MB each</span>
-      </div>
-    </div>
-  }
-
   <!-- Hidden File Input for Workspace Adding -->
   <input
     #workspaceFileInput
     type="file"
     multiple
-    accept="image/*,.jpg,.jpeg,.png,.webp,.gif,.bmp,.avif,.svg,.heic,.heif"
+    accept="image/*,.jpg,.jpeg,.png,.webp,.gif,.bmp,.avif,.svg,.svgz,.heic,.heif,.jxl,.tiff,.tif,.psd,.psb,.eps,.ps,.ai,.cdr,.cmx,.ico,.icns,.cur,.dng,.cr2,.cr3,.nef,.arw,.raf,.orf,.rw2,.pef,.tga,.dds,.pcx,.qoi,.ppm,.pgm,.pbm,.hdr,.exr,.fits,.fit,.xcf,.ora,.kra"
     class="hidden-file-input"
     (change)="onFilesSelected($event.target ? ($any($event.target).files || []) : [])"
     aria-hidden="true"
     tabindex="-1"
   />
 
-  <!-- STATE 1: UPLOAD LANDING PAGE (When no images uploaded) -->
-  @if (!state.hasImages()) {
+  <!-- SCREEN 1: HOME SCREEN (Landing) -->
+  @if (currentScreen() === 'home') {
     <div class="landing-stage animate-fade-in">
       <app-upload-landing
         (filesSelected)="onFilesSelected($event)"
@@ -54,96 +50,93 @@
     </div>
   }
 
-  <!-- STATE 2: UPLOADED IMAGE WORKSPACE (When images exist) -->
-  @if (state.hasImages()) {
+  <!-- SCREEN 2: WORKING SCREEN (Workspace with left cards and right settings panel) -->
+  @if (currentScreen() === 'working') {
     <div class="workspace-layout animate-fade-slide-up">
 
       <!-- LEFT COLUMN: Main Gallery Stage -->
       <main class="workspace-stage" aria-label="Images to compress">
 
         <!-- Stage Header Bar (Clean, single row matching Image Converter) -->
-        <div class="stage-header-bar">
+        <div class="stage-header-bar" [class.is-scrolled]="isHeaderScrolled()">
           <div class="stage-title-group">
-            <h2 class="stage-title">Images to Compress</h2>
-            <span class="stage-count-badge font-mono">{{ state.totalCount() }} / {{ state.config.limits.maxFiles }}</span>
+            <h2 tabindex="-1" class="stage-title">Images to Compress</h2>
+            <span class="stage-count-badge">{{ state.totalCount() }} / {{ state.config.limits.maxFiles }}</span>
           </div>
 
           <div class="stage-actions-group">
-            <button
-              type="button"
-              class="add-more-header-btn"
-              (click)="openWorkspaceFilePicker()"
-              [disabled]="state.totalCount() >= state.config.limits.maxFiles || state.isCompressingAny()"
-              title="Add more images"
-              aria-label="Add images"
-            >
-              <ts-icon name="plus" [size]="14" />
-              <span class="btn-text">Add Images</span>
-            </button>
-
-            <!-- More Actions Dropdown -->
-            <div class="more-menu-wrapper">
-              <button
-                type="button"
-                class="more-header-btn"
-                (click)="toggleMoreMenu($event)"
-                [attr.aria-expanded]="isMoreMenuOpen()"
-                title="More options"
-                aria-label="More options"
+            <!-- Add Files Split Button with Source Menu Dropdown -->
+            <div class="add-images-split-wrapper">
+              <div
+                class="add-files-btn-group"
+                [class.is-disabled]="state.totalCount() >= state.config.limits.maxFiles || state.isCompressingAny()"
               >
-                <span>More</span>
-                <ts-icon [name]="isMoreMenuOpen() ? 'chevron-up' : 'chevron-down'" [size]="12" />
-              </button>
+                <button
+                  type="button"
+                  class="add-files-label-btn"
+                  (click)="openWorkspaceFilePicker()"
+                  [disabled]="state.totalCount() >= state.config.limits.maxFiles || state.isCompressingAny()"
+                  title="Add files from this device"
+                  aria-label="Add files"
+                >
+                  <ts-icon name="plus" [size]="14" />
+                  <span class="btn-text">Add Images</span>
+                </button>
+                <button
+                  type="button"
+                  class="add-files-chevron-btn"
+                  (click)="toggleAddSourceMenu('header', $event)"
+                  [disabled]="state.totalCount() >= state.config.limits.maxFiles || state.isCompressingAny()"
+                  aria-haspopup="menu"
+                  [attr.aria-expanded]="activeAddSourceMenu() === 'header'"
+                  aria-controls="working-source-vertical-menu"
+                  aria-label="Choose image source"
+                  title="Choose image source"
+                >
+                  <ts-icon [name]="activeAddSourceMenu() === 'header' ? 'chevron-up' : 'chevron-down'" [size]="14" />
+                </button>
+              </div>
 
-              @if (isMoreMenuOpen()) {
-                <div class="more-dropdown-panel animate-scale-up" (click)="$event.stopPropagation()">
-                  <button
-                    type="button"
-                    class="more-menu-item"
-                    (click)="state.openProfileModal(); closeMoreMenu()"
-                  >
-                    <ts-icon name="bookmark" [size]="14" />
-                    <span>Optimization profiles</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    class="more-menu-item"
-                    (click)="state.openReportModal(); closeMoreMenu()"
-                    [disabled]="!state.hasCompletedImages()"
-                  >
-                    <ts-icon name="file-text" [size]="14" />
-                    <span>Audit report</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    class="more-menu-item"
-                    (click)="state.openFeedbackModal(); closeMoreMenu()"
-                  >
-                    <ts-icon name="message-square" [size]="14" />
-                    <span>Send feedback</span>
-                  </button>
-
-                  <div class="more-menu-divider"></div>
-
-                  <button
-                    type="button"
-                    class="more-menu-item item-danger"
-                    (click)="state.requestNewSession(); closeMoreMenu()"
-                  >
-                    <ts-icon name="rotate-ccw" [size]="14" />
-                    <span>New session</span>
-                  </button>
+              @if (activeAddSourceMenu() === 'header') {
+                <div
+                  id="working-source-vertical-menu"
+                  class="source-vertical-menu working-source-menu"
+                  role="menu"
+                  aria-label="Add image sources"
+                  (click)="$event.stopPropagation()"
+                >
+                  @for (src of workingSourceOptions; track src.id; let idx = $index) {
+                    <div class="menu-item-row" [style.--item-index]="idx">
+                      <button
+                        type="button"
+                        class="menu-item-btn"
+                        role="menuitem"
+                        [attr.aria-label]="src.ariaLabel"
+                        [title]="src.isConfigured ? src.tooltip : 'Not set up yet'"
+                        [class.is-unconfigured]="!src.isConfigured"
+                        (click)="onWorkingSourceClick(src, $event)"
+                      >
+                        <span class="item-icon-circle">
+                          @if (src.logo) {
+                            <img [src]="src.logo" [alt]="src.label + ' logo'" class="item-brand-logo" />
+                          } @else {
+                            <ts-icon [name]="src.icon" [size]="16" />
+                          }
+                        </span>
+                        <span class="item-label">{{ src.label }}</span>
+                      </button>
+                    </div>
+                  }
                 </div>
               }
             </div>
+
 
             <!-- Clear All Button -->
             <button
               type="button"
               class="clear-all-header-btn"
-              (click)="state.requestRemoveAll()"
+              (click)="requestStartOver()"
               [disabled]="state.isCompressingAny()"
               title="Clear all images"
               aria-label="Clear all images"
@@ -154,43 +147,82 @@
           </div>
         </div>
 
-        <!-- Gallery Grid of Image Cards -->
+        <!-- Gallery Grid of Image Cards (Working Screen: Customize only; NO Preview, NO per-card compress) -->
         <div class="image-gallery-grid" role="list">
           @for (img of state.filteredImages(); track img.id) {
             <app-image-card
               [item]="img"
-              (previewRequested)="state.openPreview($event)"
-              (settingsRequested)="state.openItemSettings($event)"
+              [isOutputScreen]="false"
+              (customizeRequested)="openCustomizationModal($event)"
+              (settingsRequested)="openCustomizationModal($event)"
               (removeRequested)="state.removeImage($event)"
-              (compressRequested)="state.compressItem($event)"
               (cancelRequested)="state.cancelItem($event)"
               (downloadRequested)="state.downloadItemResult($event)"
               (retryRequested)="state.retryItem($event)"
+              (renameRequested)="state.renameImage($event.id, $event.newBaseName)"
             />
           }
 
-          <!-- Dashed Add More Card inside Gallery Grid (Matches Image Converter) -->
+          <!-- Dashed Add More Card inside Gallery Grid with Source Menu Popup -->
           @if (state.totalCount() < state.config.limits.maxFiles && !state.isCompressingAny()) {
-            <button
-              type="button"
-              class="add-tile-card"
-              (click)="openWorkspaceFilePicker()"
-              title="Add more images"
-            >
-              <div class="add-circle-icon">
-                <ts-icon name="plus" [size]="24" />
-              </div>
-              <span class="add-tile-text">Add More</span>
-              <span class="add-tile-sub">({{ state.config.limits.maxFiles - state.totalCount() }} slots available)</span>
-            </button>
+            <div class="add-tile-card-wrapper">
+              <button
+                type="button"
+                class="add-tile-card"
+                [class.is-menu-open]="activeAddSourceMenu() === 'tile'"
+                (click)="toggleAddSourceMenu('tile', $event)"
+                title="Add more images"
+                aria-haspopup="menu"
+                [attr.aria-expanded]="activeAddSourceMenu() === 'tile'"
+              >
+                <div class="add-circle-icon">
+                  <ts-icon name="plus" [size]="24" />
+                </div>
+                <span class="add-tile-text">Add More</span>
+              </button>
+
+              @if (activeAddSourceMenu() === 'tile') {
+                <div
+                  id="tile-source-vertical-menu"
+                  class="source-vertical-menu tile-source-menu"
+                  role="menu"
+                  aria-label="Add image sources"
+                  (click)="$event.stopPropagation()"
+                >
+                  @for (src of workingSourceOptions; track src.id; let idx = $index) {
+                    <div class="menu-item-row" [style.--item-index]="idx">
+                      <button
+                        type="button"
+                        class="menu-item-btn"
+                        role="menuitem"
+                        [attr.aria-label]="src.ariaLabel"
+                        [title]="src.isConfigured ? src.tooltip : 'Not set up yet'"
+                        [class.is-unconfigured]="!src.isConfigured"
+                        (click)="onWorkingSourceClick(src, $event)"
+                      >
+                        <span class="item-icon-circle">
+                          @if (src.logo) {
+                            <img [src]="src.logo" [alt]="src.label + ' logo'" class="item-brand-logo" />
+                          } @else {
+                            <ts-icon [name]="src.icon" [size]="16" />
+                          }
+                        </span>
+                        <span class="item-label">{{ src.label }}</span>
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
           }
         </div>
 
       </main>
 
-      <!-- RIGHT COLUMN: Compression Settings Sidebar -->
+      <!-- RIGHT COLUMN: Compression Settings Sidebar (Applies to all images) -->
       <aside class="workspace-sidebar" aria-label="Compression settings">
         <app-settings-panel
+          [images]="state.images()"
           [globalSettings]="state.globalSettings()"
           [editingItem]="state.activeSettingsItem()"
           [totalCount]="state.totalCount()"
@@ -203,7 +235,7 @@
           (individualSettingsChanged)="onIndividualSettingsChanged($event)"
           (resetIndividualSettings)="onResetIndividualSettings($event)"
           (closeIndividualSettings)="onCloseIndividualSettings()"
-          (compressAllRequested)="state.compressAll()"
+          (compressAllRequested)="onCompressAll()"
           (downloadAllRequested)="state.downloadAllCompletedZip()"
           (compressMoreRequested)="openWorkspaceFilePicker()"
           (applyRecommendation)="state.applyRecommendation($event)"
@@ -228,38 +260,18 @@
       </button>
 
       <div class="mobile-primary-action-wrap">
-        @if (state.completedCount() > 0 && !state.isCompressingAny()) {
-          @if (state.completedCount() > 1) {
-            <button
-              type="button"
-              class="mobile-primary-cta is-download"
-              (click)="state.downloadAllCompletedZip()"
-            >
-              <ts-icon name="download" [size]="16" />
-              <span>Save All (ZIP)</span>
-            </button>
-          } @else {
-            <button
-              type="button"
-              class="mobile-primary-cta"
-              (click)="openWorkspaceFilePicker()"
-            >
-              <ts-icon name="plus" [size]="15" />
-              <span>Add More</span>
-            </button>
-          }
-        } @else if (state.isCompressingAny()) {
+        @if (state.isCompressingAny()) {
           <button type="button" class="mobile-primary-cta is-converting" disabled>
             <span class="spinner-circle-sm"></span>
             <span>Compressing...</span>
           </button>
-        } @else if (readyCount() > 0) {
+        } @else {
           <button
             type="button"
             class="mobile-primary-cta"
-            (click)="state.compressAll()"
+            (click)="onCompressAll()"
           >
-            <span>Compress {{ readyCount() }} {{ readyCount() === 1 ? 'Image' : 'Images' }}</span>
+            <span>Compress {{ state.totalCount() }} {{ state.totalCount() === 1 ? 'image' : 'images' }}</span>
             <ts-icon name="arrow-right" [size]="16" />
           </button>
         }
@@ -292,6 +304,8 @@
         </div>
         <div class="mobile-sheet-body">
           <app-settings-panel
+            [isMobileSheet]="true"
+            [images]="state.images()"
             [globalSettings]="state.globalSettings()"
             [editingItem]="state.activeSettingsItem()"
             [totalCount]="state.totalCount()"
@@ -304,7 +318,7 @@
             (individualSettingsChanged)="onIndividualSettingsChanged($event)"
             (resetIndividualSettings)="onResetIndividualSettings($event)"
             (closeIndividualSettings)="onCloseIndividualSettings()"
-            (compressAllRequested)="state.compressAll(); closeMobileSettingsSheet()"
+            (compressAllRequested)="onCompressAll(); closeMobileSettingsSheet()"
             (downloadAllRequested)="state.downloadAllCompletedZip(); closeMobileSettingsSheet()"
             (compressMoreRequested)="openWorkspaceFilePicker(); closeMobileSettingsSheet()"
             (applyRecommendation)="state.applyRecommendation($event)"
@@ -316,7 +330,194 @@
     }
   }
 
-  <!-- Image Preview Modal -->
+  <!-- SCREEN 3: OUTPUT SCREEN (Results cards, Preview, Save, Customize again, Download all; NO settings panel!) -->
+  @if (currentScreen() === 'output') {
+    <div class="output-screen-wrapper animate-fade-slide-up">
+      <!-- Output Header Bar -->
+      <header class="output-header-bar">
+        <div class="output-title-group">
+          <h1 #outputHeading tabindex="-1" class="output-title">
+            {{ outputHeadline() }}
+          </h1>
+          @if (outputSummaryLine()) {
+            <p class="output-summary-subtitle">{{ outputSummaryLine() }}</p>
+          }
+        </div>
+
+        <div class="output-actions-group">
+          <div class="output-primary-actions">
+            @if (state.completedCount() >= 1) {
+              <!-- Combined Download Control Group with Save-To Dropdown -->
+              <div class="output-download-anchor-wrapper">
+                <div class="output-download-control-group" [class.is-disabled]="state.isPackagingZip()">
+                  <button
+                    type="button"
+                    class="output-download-main-btn"
+                    (click)="downloadAllToDevice()"
+                    [disabled]="state.isPackagingZip()"
+                    aria-label="Download compressed images"
+                    title="Download to device"
+                  >
+                    <ts-icon name="download" [size]="16" class="btn-icon" />
+                    <span class="btn-label-text">{{ state.isPackagingZip() ? 'Packaging ZIP...' : (state.completedCount() === 1 ? 'Download' : 'Download all') }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="output-download-chevron-btn"
+                    (click)="toggleDownloadSaveDropdown($event)"
+                    (keydown)="onDownloadChevronKeydown($event)"
+                    [disabled]="state.isPackagingZip()"
+                    aria-haspopup="menu"
+                    [attr.aria-expanded]="isDownloadSaveDropdownOpen()"
+                    aria-controls="output-download-save-menu"
+                    aria-label="More save options"
+                    title="More save options"
+                  >
+                    <ts-icon [name]="isDownloadSaveDropdownOpen() ? 'chevron-up' : 'chevron-down'" [size]="14" />
+                  </button>
+                </div>
+
+                @if (isDownloadSaveDropdownOpen()) {
+                  <div
+                    id="output-download-save-menu"
+                    class="save-to-dropdown-panel animate-scale-up"
+                    role="menu"
+                    aria-label="Save destinations"
+                    (click)="$event.stopPropagation()"
+                    (keydown)="onDownloadDropdownKeydown($event)"
+                  >
+                    <!-- 1. Download to device -->
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="save-dropdown-item"
+                      tabindex="0"
+                      (click)="onDownloadSaveItemClick('device')"
+                    >
+                      <span class="item-icon-circle">
+                        <ts-icon name="monitor-smartphone" [size]="16" />
+                      </span>
+                      <span class="item-label">Download to device</span>
+                    </button>
+
+                    <!-- 2. Google Drive -->
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="save-dropdown-item"
+                      [class.is-disabled]="!isGoogleDriveConfigured"
+                      [title]="!isGoogleDriveConfigured ? 'Not set up yet' : 'Save to Google Drive'"
+                      [attr.aria-disabled]="!isGoogleDriveConfigured"
+                      tabindex="0"
+                      (click)="onDownloadSaveItemClick('drive')"
+                    >
+                      <span class="item-icon-circle">
+                        <img [src]="sourceIcons.googleDrive" alt="" aria-hidden="true" class="item-brand-logo" />
+                      </span>
+                      <span class="item-label">Google Drive</span>
+                      @if (!isGoogleDriveConfigured) {
+                        <span class="not-set-up-tag">Not set up yet</span>
+                      }
+                    </button>
+
+                    <!-- 3. Dropbox -->
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="save-dropdown-item"
+                      [class.is-disabled]="!isDropboxConfigured"
+                      [title]="!isDropboxConfigured ? 'Not set up yet' : 'Save to Dropbox'"
+                      [attr.aria-disabled]="!isDropboxConfigured"
+                      tabindex="0"
+                      (click)="onDownloadSaveItemClick('dropbox')"
+                    >
+                      <span class="item-icon-circle">
+                        <img [src]="sourceIcons.dropbox" alt="" aria-hidden="true" class="item-brand-logo" />
+                      </span>
+                      <span class="item-label">Dropbox</span>
+                      @if (!isDropboxConfigured) {
+                        <span class="not-set-up-tag">Not set up yet</span>
+                      }
+                    </button>
+
+                    <!-- 4. OneDrive -->
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="save-dropdown-item"
+                      [class.is-disabled]="!isOneDriveConfigured"
+                      [title]="!isOneDriveConfigured ? 'Not set up yet' : 'Save to OneDrive'"
+                      [attr.aria-disabled]="!isOneDriveConfigured"
+                      tabindex="0"
+                      (click)="onDownloadSaveItemClick('onedrive')"
+                    >
+                      <span class="item-icon-circle">
+                        <img [src]="sourceIcons.oneDrive" alt="" aria-hidden="true" class="item-brand-logo" />
+                      </span>
+                      <span class="item-label">OneDrive</span>
+                      @if (!isOneDriveConfigured) {
+                        <span class="not-set-up-tag">Not set up yet</span>
+                      }
+                    </button>
+
+                    <!-- 5. Copy to clipboard -->
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="save-dropdown-item"
+                      tabindex="0"
+                      (click)="onDownloadSaveItemClick('clipboard')"
+                    >
+                      <span class="item-icon-circle">
+                        <ts-icon [name]="isOutputCopiedToClipboard() ? 'check' : 'copy'" [size]="16" />
+                      </span>
+                      <span class="item-label">{{ isOutputCopiedToClipboard() ? 'Copied to clipboard' : 'Copy to clipboard' }}</span>
+                    </button>
+                  </div>
+                }
+
+                @if (clipboardAlertMessage()) {
+                  <div class="output-clipboard-alert font-mono" role="alert">
+                    {{ clipboardAlertMessage() }}
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <div class="output-nav-links">
+            <button
+              type="button"
+              class="nav-text-btn"
+              (click)="requestStartOver()"
+              title="Return to main landing page with new session"
+            >
+              <ts-icon name="arrow-left" [size]="13" />
+              <span>Back</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Output Gallery Grid of Image Cards (Same card style as Working, NO settings panel!) -->
+      <div class="image-gallery-grid output-cards-grid" role="list" aria-label="Compressed files list">
+        @for (img of outputGalleryImages(); track img.id) {
+          <app-image-card
+            [item]="img"
+            [isOutputScreen]="true"
+            (previewRequested)="state.openPreview($event)"
+            (downloadRequested)="state.downloadItemResult($event)"
+            (customizeRequested)="openCustomizationModal($event)"
+            (retryRequested)="state.retryItem($event)"
+            (removeRequested)="state.removeImage($event)"
+            (renameRequested)="state.renameImage($event.id, $event.newBaseName)"
+          />
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Image Preview Comparison Modal (Split, Side-by-Side, Flip, Diff Map; NO compression settings, NO customize button) -->
   @if (state.previewModalIndex() !== null) {
     <app-preview-modal
       [item]="state.previewImage()"
@@ -355,7 +556,7 @@
       [title]="confirmData.title"
       [message]="confirmData.message"
       [isDanger]="confirmData.isDanger"
-      (confirmed)="state.confirmModalAction()"
+      (confirmed)="confirmStartOver()"
       (cancelled)="state.cancelConfirmModal()"
     />
   }
@@ -376,6 +577,27 @@
       (close)="state.closeProfileModal()"
       (applyAll)="state.applyProfileToAll($event)"
       (applySelected)="state.applyProfileToSelected($event)"
+    />
+  }
+
+  <!-- Individual Customization Popup Modal -->
+  @if (customizingItem(); as item) {
+    <app-customization-modal
+      [item]="item"
+      [globalSettings]="state.globalSettings()"
+      (applyRequested)="onCustomizationApply(item.id, $event)"
+      (compressRequested)="onCustomizationCompress(item.id, $event)"
+      (resetToGlobal)="onResetCustomization(item.id)"
+      (close)="closeCustomizationModal()"
+    />
+  }
+
+  <!-- Before-You-Download Report Modal -->
+  @if (isDownloadReportOpen()) {
+    <app-download-report-modal
+      [items]="state.images()"
+      (downloadConfirmed)="confirmAndExecuteDownload()"
+      (backRequested)="isDownloadReportOpen.set(false)"
     />
   }
 

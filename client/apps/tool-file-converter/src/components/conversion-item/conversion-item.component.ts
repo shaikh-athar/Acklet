@@ -60,7 +60,7 @@ import { ConversionJob, FormatDescriptor } from '../../models/converter.models';
           <div class="card-dropdown-wrap">
             <button
               type="button"
-              class="card-dropdown-trigger font-mono"
+              class="card-dropdown-trigger"
               (click)="toggleDropdown($event)"
               [disabled]="job().status === 'converting'"
               [attr.aria-expanded]="isDropdownOpen()"
@@ -72,7 +72,7 @@ import { ConversionJob, FormatDescriptor } from '../../models/converter.models';
             </button>
 
             @if (isDropdownOpen()) {
-              <div class="card-dropdown-menu font-mono" role="listbox">
+              <div class="card-dropdown-menu" role="listbox">
                 @for (out of deduplicatedOutputs(); track out.format) {
                   <button
                     type="button"
@@ -135,7 +135,7 @@ import { ConversionJob, FormatDescriptor } from '../../models/converter.models';
             </div>
           } @else {
             <div class="filename-inline-edit" (click)="$event.stopPropagation()">
-              <div class="inline-edit-input-pill font-mono">
+              <div class="inline-edit-input-pill">
                 <input
                   [id]="'filename-input-' + job().id"
                   type="text"
@@ -190,7 +190,7 @@ import { ConversionJob, FormatDescriptor } from '../../models/converter.models';
                 title="Preview full image"
               >
                 <ts-icon name="eye" [size]="12" />
-                <span class="action-btn-text">View</span>
+                <span class="action-btn-text">Preview</span>
               </button>
             }
             <button
@@ -212,7 +212,7 @@ import { ConversionJob, FormatDescriptor } from '../../models/converter.models';
               (click)="convert.emit(job().id)"
               title="Retry conversion"
             >
-              <ts-icon name="refresh-cw" [size]="11" />
+              <ts-icon name="rotate-ccw" [size]="11" />
               <span>Retry</span>
             </button>
           </div>
@@ -237,7 +237,7 @@ import { ConversionJob, FormatDescriptor } from '../../models/converter.models';
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
       transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s;
       position: relative;
-      animation: cardEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: cardEnter 300ms cubic-bezier(0.2, 0.6, 0.2, 1) forwards;
     }
 
     .studio-image-card.is-dropdown-active {
@@ -256,11 +256,11 @@ import { ConversionJob, FormatDescriptor } from '../../models/converter.models';
     @keyframes cardEnter {
       from {
         opacity: 0;
-        transform: translateY(14px) scale(0.94);
+        transform: translateY(12px);
       }
       to {
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: translateY(0);
       }
     }
 
@@ -323,7 +323,7 @@ import { ConversionJob, FormatDescriptor } from '../../models/converter.models';
     .card-thumb-frame {
       position: relative;
       width: 100%;
-      aspect-ratio: 4 / 3;
+      height: var(--tool-thumb-height, 180px);
       background: var(--ts-surface-inset, rgba(255, 255, 255, 0.03));
       display: flex;
       align-items: center;
@@ -1177,8 +1177,7 @@ import { ConversionJob, FormatDescriptor } from '../../models/converter.models';
         height: auto;
       }
       .card-thumb-frame {
-        aspect-ratio: 4 / 3;
-        height: auto;
+        height: var(--tool-thumb-height, 180px);
         border-top-left-radius: 14px;
         border-top-right-radius: 14px;
       }

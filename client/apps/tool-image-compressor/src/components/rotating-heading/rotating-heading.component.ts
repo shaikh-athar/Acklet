@@ -28,7 +28,6 @@ export interface LineSegments {
   template: `
     <h1
       class="rotating-heading-root"
-      tabindex="0"
       aria-live="polite"
       [attr.aria-label]="currentLine().text"
     >
@@ -57,6 +56,17 @@ export interface LineSegments {
     :host {
       display: block;
       width: 100%;
+      outline: none !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    :host:focus,
+    :host:focus-visible,
+    :host:active {
+      outline: none !important;
+      border: none !important;
+      box-shadow: none !important;
     }
 
     .rotating-heading-root {
@@ -65,24 +75,29 @@ export interface LineSegments {
       align-items: center;
       justify-content: center;
       width: 100%;
-      max-width: 860px;
+      max-width: 900px;
       margin: 0 auto;
       text-align: center;
-      font-size: 38px;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      line-height: 1.2;
+      font-size: var(--tool-type-display-size, 48px);
+      font-weight: var(--tool-type-display-weight, 700);
+      letter-spacing: var(--tool-type-display-tracking, -0.02em);
+      line-height: var(--tool-type-display-lh, 56px);
       color: #0F172A;
-      min-height: 1.25em;
+      min-height: 1.3em;
       overflow: hidden;
       cursor: default;
-      outline: none;
+      outline: none !important;
+      border: none !important;
+      box-shadow: none !important;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .rotating-heading-root:focus-visible {
-      border-radius: 8px;
-      outline: 2px solid var(--accent, #2563EB);
-      outline-offset: 4px;
+    .rotating-heading-root:focus,
+    .rotating-heading-root:focus-visible,
+    .rotating-heading-root:active {
+      outline: none !important;
+      border: none !important;
+      box-shadow: none !important;
     }
 
     :host-context([data-theme="dark"]) .rotating-heading-root,
@@ -123,28 +138,28 @@ export interface LineSegments {
     }
 
     .heading-layer.is-entering {
-      animation: headingSoftSlideIn 950ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      animation: headingSoftSlideIn 700ms cubic-bezier(0.2, 0.6, 0.2, 1) forwards;
     }
 
     .heading-layer.is-exiting {
-      animation: headingSoftSlideOut 950ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      animation: headingSoftSlideOut 700ms cubic-bezier(0.2, 0.6, 0.2, 1) forwards;
     }
 
     .heading-accent {
-      color: var(--accent, #2563EB);
-      padding: 0 2px;
+      color: var(--tool-accent, var(--accent, #2563EB));
+      padding: 0 4px;
       display: inline;
     }
 
     :host-context([data-theme="dark"]) .heading-accent,
     [data-theme="dark"] .heading-accent {
-      color: var(--accent, #3B82F6);
+      color: var(--tool-accent, var(--accent, #3B82F6));
     }
 
     @keyframes headingSoftSlideIn {
       from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(6px);
         filter: blur(6px);
       }
       to {
@@ -162,7 +177,7 @@ export interface LineSegments {
       }
       to {
         opacity: 0;
-        transform: translateY(-10px);
+        transform: translateY(-6px);
         filter: blur(6px);
       }
     }
@@ -176,19 +191,33 @@ export interface LineSegments {
       }
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 479px) {
       .rotating-heading-root {
-        font-size: 26px;
+        font-size: clamp(19px, 5.8vw, 24px);
         line-height: 1.25;
-        min-height: 2.5em;
-        max-width: 320px;
+        min-height: 2.2em;
+        max-width: 100%;
+        width: 100%;
+        margin: 0 auto;
+        padding: 0 8px;
+        box-sizing: border-box;
+      }
+    }
+
+    @media (min-width: 480px) and (max-width: 767px) {
+      .rotating-heading-root {
+        font-size: clamp(30px, 6vw, 38px);
+        line-height: 1.25;
+        min-height: 2.2em;
+        max-width: 440px;
+        margin: 0 auto;
       }
     }
   `]
 })
 export class RotatingHeadingComponent implements OnInit, OnDestroy {
   readonly lines = input<HeroLine[]>(HERO_LINES);
-  readonly interval = input<number>(5000);
+  readonly interval = input<number>(4500);
   readonly paused = input<boolean>(false);
 
   readonly linesList = computed<HeroLine[]>(() => {
@@ -251,15 +280,8 @@ export class RotatingHeadingComponent implements OnInit, OnDestroy {
       return { before: line.text, after: '' };
     }
     const idx = line.text.indexOf(line.highlight);
-    let before = line.text.slice(0, idx);
-    let after = line.text.slice(idx + line.highlight.length);
-
-    if (before.endsWith(' ')) {
-      before = before.slice(0, -1) + '\u00A0';
-    }
-    if (after.startsWith(' ')) {
-      after = '\u00A0' + after.slice(1);
-    }
+    const before = line.text.slice(0, idx);
+    const after = line.text.slice(idx + line.highlight.length);
 
     return {
       before,
@@ -301,7 +323,7 @@ export class RotatingHeadingComponent implements OnInit, OnDestroy {
       if (this.animTimerId) clearTimeout(this.animTimerId);
       this.animTimerId = setTimeout(() => {
         this.previousIndex.set(null);
-      }, 980);
+      }, 750);
     }, intervalMs);
   }
 
