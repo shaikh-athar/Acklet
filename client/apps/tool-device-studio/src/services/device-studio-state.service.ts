@@ -5,10 +5,10 @@ import { DeviceStudioTab, MeetingReadinessResult } from '../models/device.models
 export function routeToModule(pathname: string): DeviceStudioTab {
   const clean = pathname.toLowerCase().replace(/^\/+|\/+$/g, '');
   if (
-    clean === 'devicestudio' || 
-    clean === 'device-studio' || 
-    clean === 'tools/devicestudio' || 
-    clean === 'tools/device-studio' || 
+    clean === 'devicestudio' ||
+    clean === 'device-studio' ||
+    clean === 'tools/devicestudio' ||
+    clean === 'tools/device-studio' ||
     clean === 'landing' ||
     clean === ''
   ) {
@@ -68,6 +68,80 @@ export function moduleToRoute(tab: DeviceStudioTab): string {
   }
 }
 
+export function resetDeviceStudioScroll(): void {
+  if (typeof window === 'undefined') return;
+
+  if (typeof history !== 'undefined' && 'scrollRestoration' in history) {
+    try {
+      history.scrollRestoration = 'manual';
+    } catch {
+      // ignore
+    }
+  }
+
+  // Blur any active element outside the body so focus retention doesn't pull scroll down
+  if (typeof document !== 'undefined' && document.activeElement && document.activeElement instanceof HTMLElement && document.activeElement !== document.body) {
+    try {
+      document.activeElement.blur();
+    } catch {
+      // ignore
+    }
+  }
+
+  const perform = () => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+
+    if (document.scrollingElement) {
+      document.scrollingElement.scrollTop = 0;
+      document.scrollingElement.scrollLeft = 0;
+    }
+    if (document.documentElement) {
+      document.documentElement.scrollTop = 0;
+    }
+    if (document.body) {
+      document.body.scrollTop = 0;
+    }
+
+    const containers = document.querySelectorAll<HTMLElement>(
+      '.ts-main-scroll-container, .centralized-workspace-container, .device-studio-root, #main-content, main.tool-center-column, .tool-viewport, [role="main"]'
+    );
+    containers.forEach(c => {
+      c.style.setProperty('scroll-behavior', 'auto', 'important');
+      c.scrollTop = 0;
+      c.scrollLeft = 0;
+      try {
+        c.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+      } catch {
+        // fallback
+      }
+    });
+  };
+
+  perform();
+  requestAnimationFrame(() => {
+    perform();
+    requestAnimationFrame(perform);
+  });
+  setTimeout(perform, 25);
+  setTimeout(perform, 80);
+  setTimeout(perform, 200);
+  setTimeout(perform, 400);
+
+  // Clean up inline scroll-behavior override after the entire reset cycle finishes
+  setTimeout(() => {
+    const containers = document.querySelectorAll<HTMLElement>(
+      '.ts-main-scroll-container, .centralized-workspace-container, .device-studio-root, #main-content, main.tool-center-column, .tool-viewport, [role="main"]'
+    );
+    containers.forEach(c => {
+      c.style.removeProperty('scroll-behavior');
+    });
+  }, 500);
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -86,13 +160,18 @@ export class DeviceStudioStateService {
 
   // Meeting Readiness State
   public readonly meetingReadiness = signal<MeetingReadinessResult>({
-    camera: 'pending',
-    mic: 'pending',
-    speaker: 'pending',
-    network: 'pending',
-    screenShare: 'pending',
+    camera: 'untested',
+    cameraDetail: 'Not tested',
+    mic: 'untested',
+    micDetail: 'Not tested',
+    speaker: 'untested',
+    speakerDetail: 'Not tested',
+    network: 'untested',
+    networkDetail: 'Not tested',
+    screenShare: 'untested',
+    screenShareDetail: 'Not tested',
     overallScore: 0,
-    summaryText: 'Click "Start Meeting Readiness Audit" to run a complete diagnostic.',
+    summaryText: 'Click "Run Quick Check" to run a complete diagnostic.',
     appsReadiness: {
       zoom: false,
       meet: false,
@@ -104,20 +183,59 @@ export class DeviceStudioStateService {
   public readonly activeTab = this._activeTab.asReadonly();
   public readonly toastMessage = this._toastMessage.asReadonly();
 
-  // Dynamic Device Health Score (0 - 100)
+  // Overall status based on component states
+  public readonly overallStatus = computed<string>(() => {
+    const mr = this.meetingReadiness();
+    const states = [mr.camera, mr.mic, mr.speaker, mr.network, mr.screenShare];
+    if (states.some(s => s === 'fail')) {
+      return 'Needs attention';
+    }
+    if (states.some(s => s === 'warn')) {
+      return 'Some issues';
+    }
+    return 'All clear';
+  });
+
+  // Dynamic Device Health Score (PASS = 100, WARNING = 50, FAIL = 0, untested excluded)
   public readonly deviceHealthScore = computed(() => {
-    let score = 20; // Base score for modern browser support
-    if (this.webcamTested()) score += 15;
-    if (this.micTested()) score += 15;
-    if (this.speakerTested()) score += 15;
-    if (this.speedTested()) score += 15;
-    if (this.ipTested()) score += 10;
-    if (this.screenTested()) score += 10;
-    return Math.min(100, score);
+    const mr = this.meetingReadiness();
+    const states = [mr.camera, mr.mic, mr.speaker, mr.network, mr.screenShare];
+
+    let total = 0;
+    let count = 0;
+    let hasWarn = false;
+    let hasFail = false;
+
+    for (const s of states) {
+      if (s === 'pass') {
+        total += 100;
+        count++;
+      } else if (s === 'warn') {
+        total += 50;
+        count++;
+        hasWarn = true;
+      } else if (s === 'fail') {
+        total += 0;
+        count++;
+        hasFail = true;
+      }
+      // 'untested', 'pending', 'detected' are excluded
+    }
+
+    if (count === 0) {
+      return 100;
+    }
+
+    let score = Math.round(total / count);
+    if ((hasWarn || hasFail) && score >= 100) {
+      score = 90;
+    }
+    return score;
   });
 
   public setActiveTab(tab: DeviceStudioTab): void {
     this._activeTab.set(tab);
+    resetDeviceStudioScroll();
   }
 
   public setActiveModule(tab: DeviceStudioTab): void {
@@ -137,12 +255,48 @@ export class DeviceStudioStateService {
 
   public markModuleTested(module: 'webcam' | 'microphone' | 'speaker' | 'speed' | 'ip' | 'screen'): void {
     switch (module) {
-      case 'webcam': this.webcamTested.set(true); break;
-      case 'microphone': this.micTested.set(true); break;
-      case 'speaker': this.speakerTested.set(true); break;
-      case 'speed': this.speedTested.set(true); break;
-      case 'ip': this.ipTested.set(true); break;
-      case 'screen': this.screenTested.set(true); break;
+      case 'webcam':
+        this.webcamTested.set(true);
+        this.meetingReadiness.update(mr => {
+          if (mr.camera !== 'fail' && mr.camera !== 'warn') {
+            return { ...mr, camera: 'pass', cameraDetail: 'Verified live stream' };
+          }
+          return mr;
+        });
+        break;
+      case 'microphone':
+        this.micTested.set(true);
+        this.meetingReadiness.update(mr => {
+          if (mr.mic !== 'fail' && mr.mic !== 'warn') {
+            return { ...mr, mic: 'pass', micDetail: 'Verified microphone input' };
+          }
+          return mr;
+        });
+        break;
+      case 'speaker':
+        this.speakerTested.set(true);
+        this.meetingReadiness.update(mr => {
+          if (mr.speaker !== 'fail' && mr.speaker !== 'warn') {
+            return { ...mr, speaker: 'pass', speakerDetail: 'Audio verified' };
+          }
+          return mr;
+        });
+        break;
+      case 'speed':
+        this.speedTested.set(true);
+        break;
+      case 'ip':
+        this.ipTested.set(true);
+        break;
+      case 'screen':
+        this.screenTested.set(true);
+        this.meetingReadiness.update(mr => {
+          if (mr.screenShare !== 'fail' && mr.screenShare !== 'warn') {
+            return { ...mr, screenShare: 'pass', screenShareDetail: 'Screen share verified' };
+          }
+          return mr;
+        });
+        break;
     }
   }
 }

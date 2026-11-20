@@ -185,7 +185,7 @@ export interface SpeakerMetrics {
 }
 
 export type SpeedTestPhase = 'idle' | 'ping' | 'download' | 'upload' | 'completed' | 'error';
-export type SpeedQualityRating = 'gigabit' | 'ultra' | 'fast' | 'good' | 'moderate' | 'slow' | 'none';
+export type SpeedQualityRating = 'gigabit' | 'ultra' | 'fast' | 'good' | 'moderate' | 'slow' | 'unstable' | 'none';
 
 export interface SpeedSuitabilityAssessment {
   conferencing: { status: 'pass' | 'check' | 'fail'; label: string; desc: string };
@@ -329,7 +329,7 @@ export interface ScreenShareMetrics {
   diagnosticSummary: ScreenDiagnosticSummary;
 }
 
-export type CheckStatus = 'pending' | 'testing' | 'pass' | 'warn' | 'fail';
+export type CheckStatus = 'pending' | 'testing' | 'pass' | 'warn' | 'fail' | 'detected' | 'untested';
 
 export interface MeetingReadinessResult {
   camera: CheckStatus;

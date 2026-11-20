@@ -172,7 +172,7 @@ export class SpeedTestService {
       if (signal.aborted) return this.metrics();
 
       // ── Phase 4: Analysis & Assessment ──────────────────────────────────
-      const qualityRating = this.classifyQuality(downloadMbps, avgPing);
+      const qualityRating = this.classifyQuality(downloadMbps, avgPing, jitter);
       const suitability = this.evaluateSuitability(downloadMbps, uploadMbps, avgPing, jitter);
 
       const historyItem: SpeedTestHistoryItem = {
@@ -411,7 +411,8 @@ export class SpeedTestService {
     return Math.max(1.0, finalUpload);
   }
 
-  public classifyQuality(downloadMbps: number, pingMs: number): SpeedQualityRating {
+  public classifyQuality(downloadMbps: number, pingMs: number, jitterMs = 0): SpeedQualityRating {
+    if (jitterMs > 30) return 'unstable';
     if (downloadMbps >= 450) return 'gigabit';
     if (downloadMbps >= 100) return 'ultra';
     if (downloadMbps >= 45 && pingMs <= 40) return 'fast';

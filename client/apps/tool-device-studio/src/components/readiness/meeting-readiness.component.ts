@@ -1,9 +1,9 @@
 // apps/tool-device-studio/src/components/readiness/meeting-readiness.component.ts
-import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, signal, computed, ChangeDetectionStrategy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { TsIconComponent } from '@acklet/tool-shell';
-import { DeviceStudioStateService } from '../../services/device-studio-state.service';
+import { DeviceStudioStateService, resetDeviceStudioScroll } from '../../services/device-studio-state.service';
 import { WebcamService } from '../../services/webcam.service';
 import { MicrophoneService } from '../../services/microphone.service';
 import { SpeakerService } from '../../services/speaker.service';
@@ -26,8 +26,8 @@ import { CheckStatus, DeviceStudioTab, MeetingReadinessResult } from '../../mode
           </p>
         </div>
 
-        <button 
-          type="button" 
+        <button
+          type="button"
           class="run-audit-btn"
           [disabled]="isRunning()"
           (click)="runReadinessAudit()"
@@ -462,6 +462,16 @@ import { CheckStatus, DeviceStudioTab, MeetingReadinessResult } from '../../mode
       color: #059669;
     }
 
+    .check-item[data-status="detected"] .status-pill {
+      background: var(--ds-accent-soft, rgba(59, 130, 246, 0.14));
+      color: var(--tool-accent, #3B82F6);
+    }
+
+    :host-context([data-theme="light"]) .check-item[data-status="detected"] .status-pill {
+      background: #EFF6FF;
+      color: #2563EB;
+    }
+
     .check-item[data-status="warn"] .status-pill {
       background: rgba(251, 191, 36, 0.15);
       color: #FBBF24;
@@ -832,7 +842,7 @@ import { CheckStatus, DeviceStudioTab, MeetingReadinessResult } from '../../mode
     }
   `]
 })
-export class MeetingReadinessComponent {
+export class MeetingReadinessComponent implements OnInit {
   private router = inject(Router);
   private state = inject(DeviceStudioStateService);
   private webcam = inject(WebcamService);
@@ -844,6 +854,59 @@ export class MeetingReadinessComponent {
   public readonly isRunning = signal<boolean>(false);
   public readonly currentStepText = signal<string>('');
   public readonly result = this.state.meetingReadiness;
+
+  public async ngOnInit(): Promise<void> {
+    resetDeviceStudioScroll();
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices?.enumerateDevices) {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const hasCam = devices.some(d => d.kind === 'videoinput');
+        const hasMic = devices.some(d => d.kind === 'audioinput');
+
+        this.state.meetingReadiness.update(mr => {
+          let camera = mr.camera;
+          let cameraDetail = mr.cameraDetail;
+          if (camera === 'pending' || camera === 'untested') {
+            if (this.state.webcamTested()) {
+              camera = 'pass';
+              cameraDetail = 'Verified live stream';
+            } else if (hasCam) {
+              camera = 'detected';
+              cameraDetail = 'Hardware detected (live test not run)';
+            } else {
+              camera = 'untested';
+              cameraDetail = 'Not tested';
+            }
+          }
+
+          let mic = mr.mic;
+          let micDetail = mr.micDetail;
+          if (mic === 'pending' || mic === 'untested') {
+            if (this.state.micTested()) {
+              mic = 'pass';
+              micDetail = 'Verified microphone input';
+            } else if (hasMic) {
+              mic = 'detected';
+              micDetail = 'Hardware detected (live test not run)';
+            } else {
+              mic = 'untested';
+              micDetail = 'Not tested';
+            }
+          }
+
+          return {
+            ...mr,
+            camera,
+            cameraDetail,
+            mic,
+            micDetail
+          };
+        });
+      } catch {
+        // ignore
+      }
+    }
+  }
 
   public readonly activeIssues = computed(() => {
     const res = this.result();
@@ -868,7 +931,7 @@ export class MeetingReadinessComponent {
         status: 'fail',
         tab: 'speed',
         route: '/devicestudio/speed',
-        reason: `${res.networkDetail || 'High latency detected'} (exceeds meeting standard). Latency above 120ms causes audio stutter, voice delay, and frozen video in calls.`,
+        reason: `${res.networkDetail || 'Connection needs attention'}. Latency above 200ms or packet loss causes audio stutter, voice delay, and frozen video in calls.`,
         recommendation: 'Switch to a 5GHz Wi-Fi band or plug in a wired Ethernet cable, move closer to your router, and pause heavy background downloads or streaming.',
         actionLabel: 'Test Speed'
       });
@@ -880,7 +943,7 @@ export class MeetingReadinessComponent {
         status: 'warn',
         tab: 'speed',
         route: '/devicestudio/speed',
-        reason: `${res.networkDetail || 'Moderate latency detected'}. May cause minor audio sync delays in multi-party meetings.`,
+        reason: `${res.networkDetail || 'Connection is slower than ideal'}. May cause minor audio sync delays in multi-party meetings.`,
         recommendation: 'Close bandwidth-heavy background applications or move closer to your Wi-Fi access point for lower latency.',
         actionLabel: 'Test Speed'
       });
@@ -974,17 +1037,24 @@ export class MeetingReadinessComponent {
   });
 
   public openModule(tab: DeviceStudioTab, route: string): void {
+    resetDeviceStudioScroll();
     this.state.setActiveTab(tab);
-    this.router.navigate([route]);
+    this.router.navigate([route]).then(() => {
+      resetDeviceStudioScroll();
+    });
+    resetDeviceStudioScroll();
   }
 
   public formatStatus(status: CheckStatus): string {
     switch (status) {
       case 'pass': return 'Passed';
+      case 'detected': return 'Detected';
       case 'warn': return 'Warning';
       case 'fail': return 'Failed';
       case 'testing': return 'Testing...';
-      default: return 'Ready';
+      case 'untested':
+      case 'pending':
+      default: return 'Not tested';
     }
   }
 
@@ -1021,8 +1091,13 @@ export class MeetingReadinessComponent {
       try {
         const camDevices = await this.webcam.loadDevices();
         if (camDevices.length > 0) {
-          res.camera = 'pass';
-          res.cameraDetail = `${camDevices.length} camera(s) detected`;
+          if (this.state.webcamTested()) {
+            res.camera = 'pass';
+            res.cameraDetail = 'Verified live stream';
+          } else {
+            res.camera = 'detected';
+            res.cameraDetail = `${camDevices.length} camera(s) detected (live test not run)`;
+          }
         } else {
           res.camera = 'warn';
           res.cameraDetail = 'No physical camera detected';
@@ -1031,15 +1106,19 @@ export class MeetingReadinessComponent {
         res.camera = 'fail';
         res.cameraDetail = 'Camera permission blocked or busy';
       }
-      this.state.markModuleTested('webcam');
 
       // 3. Microphone Check
       this.currentStepText.set('Microphone');
       try {
         const micDevices = await this.mic.loadDevices();
         if (micDevices.length > 0) {
-          res.mic = 'pass';
-          res.micDetail = `${micDevices.length} microphone(s) detected`;
+          if (this.state.micTested()) {
+            res.mic = 'pass';
+            res.micDetail = 'Verified microphone input';
+          } else {
+            res.mic = 'detected';
+            res.micDetail = `${micDevices.length} microphone(s) detected (live test not run)`;
+          }
         } else {
           res.mic = 'warn';
           res.micDetail = 'No physical microphone detected';
@@ -1048,29 +1127,56 @@ export class MeetingReadinessComponent {
         res.mic = 'fail';
         res.micDetail = 'Microphone permission blocked or busy';
       }
-      this.state.markModuleTested('microphone');
 
-      // 4. Network Check
-      this.currentStepText.set('Network Latency');
-      try {
-        const start = performance.now();
-        await fetch('https://speed.cloudflare.com/__down?bytes=0', { cache: 'no-store' });
-        const ping = Math.round(performance.now() - start);
-        if (ping <= 60) {
-          res.network = 'pass';
-          res.networkDetail = `Excellent latency (${ping}ms RTT)`;
-        } else if (ping <= 120) {
-          res.network = 'warn';
-          res.networkDetail = `Moderate latency (${ping}ms RTT)`;
-        } else {
-          res.network = 'fail';
-          res.networkDetail = `High latency (${ping}ms RTT)`;
+      // 4. Network Check (Median of >= 5 samples, packet loss, jitter)
+      this.currentStepText.set('Connection Stability');
+      const samples: number[] = [];
+      let failedSamples = 0;
+      const totalSamples = 5;
+
+      for (let i = 0; i < totalSamples; i++) {
+        try {
+          const start = performance.now();
+          await fetch('https://speed.cloudflare.com/__down?bytes=0', { cache: 'no-store' });
+          const rtt = Math.round(performance.now() - start);
+          samples.push(rtt);
+        } catch {
+          failedSamples++;
         }
-      } catch {
-        res.network = 'pass';
-        res.networkDetail = 'Standard connection active';
       }
-      this.state.markModuleTested('speed');
+
+      if (samples.length === 0) {
+        res.network = 'untested';
+        res.networkDetail = 'Not tested';
+      } else {
+        const packetLoss = failedSamples / totalSamples;
+        const sorted = [...samples].sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        const medianLatency = sorted.length % 2 !== 0
+          ? sorted[mid]
+          : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+
+        let jitter = 0;
+        if (samples.length >= 2) {
+          let jitterSum = 0;
+          for (let i = 1; i < samples.length; i++) {
+            jitterSum += Math.abs(samples[i] - samples[i - 1]);
+          }
+          jitter = Math.round(jitterSum / (samples.length - 1));
+        }
+
+        if (packetLoss > 0.02 || medianLatency > 200 || jitter > 80) {
+          res.network = 'fail';
+          res.networkDetail = 'Connection needs attention';
+        } else if ((medianLatency >= 100 && medianLatency <= 200) || (jitter >= 30 && jitter <= 80)) {
+          res.network = 'warn';
+          res.networkDetail = 'Connection is slower than ideal';
+        } else {
+          res.network = 'pass';
+          res.networkDetail = `Optimal connection (${medianLatency}ms latency, ${jitter}ms jitter)`;
+        }
+        this.state.markModuleTested('speed');
+      }
 
       // 5. Screen Share
       this.currentStepText.set('Screen Sharing');
@@ -1078,22 +1184,49 @@ export class MeetingReadinessComponent {
       res.screenShareDetail = this.screen.isSupported() ? 'getDisplayMedia supported' : 'Browser lacks screen sharing';
       this.state.markModuleTested('screen');
 
-      // Calculate Apps Readiness (requires no critical failure on mic, camera, or connection)
-      const hasCriticalFailure = res.camera === 'fail' || res.mic === 'fail' || res.network === 'fail';
-      const passes = [res.camera, res.mic, res.speaker, res.network, res.screenShare].filter(s => s === 'pass').length;
-      const allReady = !hasCriticalFailure && passes >= 4;
+      // Overall status and score
+      const components = [res.camera, res.mic, res.speaker, res.network, res.screenShare];
+      const hasFail = components.some(s => s === 'fail');
+      const hasWarn = components.some(s => s === 'warn');
 
+      if (hasFail) {
+        res.summaryText = 'Needs attention';
+      } else if (hasWarn) {
+        res.summaryText = 'Some issues';
+      } else {
+        res.summaryText = 'All clear';
+      }
+
+      let totalPoints = 0;
+      let count = 0;
+      for (const s of components) {
+        if (s === 'pass') {
+          totalPoints += 100;
+          count++;
+        } else if (s === 'warn') {
+          totalPoints += 50;
+          count++;
+        } else if (s === 'fail') {
+          totalPoints += 0;
+          count++;
+        }
+      }
+
+      let overallScore = count > 0 ? Math.round(totalPoints / count) : 0;
+      if ((hasWarn || hasFail) && overallScore >= 100) {
+        overallScore = 90;
+      }
+      res.overallScore = overallScore;
+
+      // Apps Readiness
+      const passes = components.filter(s => s === 'pass').length;
+      const allReady = !hasFail && passes >= 4;
       res.appsReadiness = {
         zoom: allReady,
         meet: allReady,
         teams: allReady,
         webex: allReady
       };
-
-      res.overallScore = Math.round((passes / 5) * 100);
-      res.summaryText = allReady
-        ? 'Your system is fully prepared for Zoom, Google Meet, and Teams video conferences.'
-        : 'Some components require attention or permission grant before meeting.';
 
       this.state.meetingReadiness.set(res);
       this.state.showToast('Meeting Readiness audit complete!');

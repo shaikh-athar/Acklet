@@ -15,18 +15,19 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { TsIconComponent } from '@acklet/tool-shell';
 import { MicrophoneService } from '../../services/microphone.service';
-import { DeviceStudioStateService } from '../../services/device-studio-state.service';
+import { DeviceStudioStateService, resetDeviceStudioScroll } from '../../services/device-studio-state.service';
 import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
 import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdown.component';
+import { TechnicalDetailsComponent } from '../shared/technical-details.component';
 
 @Component({
   selector: 'app-microphone-module',
   standalone: true,
-  imports: [CommonModule, TsIconComponent, DeviceModuleHeaderComponent, AckletDropdownComponent],
+  imports: [CommonModule, TsIconComponent, DeviceModuleHeaderComponent, AckletDropdownComponent, TechnicalDetailsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="mic-module-root">
-      
+
       <!-- Top Module Header -->
       <app-device-module-header
         title="Microphone Test"
@@ -37,40 +38,53 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
         (backClicked)="goBackToStudio()"
       >
         @if (metrics().isStreaming) {
-          <button 
-            type="button" 
-            class="btn-mute" 
+          <button
+            type="button"
+            class="btn-mute"
             [class.muted]="metrics().isMuted"
             (click)="toggleMute()"
             [title]="metrics().isMuted ? 'Unmute microphone' : 'Mute microphone'"
+            [attr.aria-label]="metrics().isMuted ? 'Unmute microphone' : 'Mute microphone'"
           >
             <ts-icon [name]="metrics().isMuted ? 'mic-off' : 'mic'" [size]="14" />
-            <span>{{ metrics().isMuted ? 'Unmute' : 'Mute Mic' }}</span>
+            <span class="btn-text">{{ metrics().isMuted ? 'Unmute' : 'Mute Mic' }}</span>
           </button>
 
-          <button type="button" class="btn-stop-header" (click)="stopMic()" title="Stop microphone">
+          <button
+            type="button"
+            class="btn-stop-header"
+            (click)="stopMic()"
+            title="Stop microphone"
+            aria-label="Stop microphone"
+          >
             <ts-icon name="power-off" [size]="14" />
-            <span>Stop Mic</span>
+            <span class="btn-text">Stop Mic</span>
           </button>
         } @else {
-          <button type="button" class="btn-start-header" (click)="startMic()" title="Start microphone">
-            <ts-icon name="mic" [size]="15" />
-            <span>Start Microphone</span>
+          <button
+            type="button"
+            class="btn-start-header"
+            (click)="startMic()"
+            [title]="metrics().permissionStatus === 'denied' ? 'Try Again' : 'Start Mic'"
+            [attr.aria-label]="metrics().permissionStatus === 'denied' ? 'Try Again' : 'Start Mic'"
+          >
+            <ts-icon [name]="metrics().permissionStatus === 'denied' ? 'refresh-cw' : 'mic'" [size]="15" />
+            <span class="btn-text">{{ metrics().permissionStatus === 'denied' ? 'Try Again' : 'Start Mic' }}</span>
           </button>
         }
       </app-device-module-header>
 
       <!-- Main Workspace Grid -->
       <div class="workspace-grid">
-        
+
         <!-- ========================================== -->
         <!-- LEFT COLUMN: Visualizer & Meters & Recording -->
         <!-- ========================================== -->
         <div class="main-column">
-          
+
           <!-- Visualizer Card -->
           <div class="visualizer-card">
-            
+
             <!-- Toolbar with Device Selector & Visualizer Mode Switch -->
             <div class="viewport-toolbar">
               <div class="device-select-wrap">
@@ -86,20 +100,20 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
 
               <!-- Mode Switch: Oscilloscope vs Frequency Spectrum -->
               <div class="vis-mode-switch" role="tablist" aria-label="Visualizer Mode">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   role="tab"
-                  class="vis-mode-btn" 
+                  class="vis-mode-btn"
                   [class.active]="visMode() === 'wave'"
                   [attr.aria-selected]="visMode() === 'wave'"
                   (click)="setVisMode('wave')"
                 >
                   Oscilloscope
                 </button>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   role="tab"
-                  class="vis-mode-btn" 
+                  class="vis-mode-btn"
                   [class.active]="visMode() === 'freq'"
                   [attr.aria-selected]="visMode() === 'freq'"
                   (click)="setVisMode('freq')"
@@ -141,8 +155,8 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                   </div>
                   <h3 class="idle-title">{{ metrics().permissionStatus === 'denied' ? 'Microphone Permission Blocked' : 'Microphone Ready to Test' }}</h3>
                   <p class="idle-desc">
-                    {{ metrics().permissionStatus === 'denied' 
-                      ? 'Microphone access was blocked by your browser. Please allow microphone permissions in your address bar to continue.' 
+                    {{ metrics().permissionStatus === 'denied'
+                      ? 'Microphone access was blocked by your browser. Please allow microphone permissions in your address bar to continue.'
                       : 'Start the microphone to check your input level, sound clarity, and run a voice loopback test.' }}
                   </p>
 
@@ -182,12 +196,12 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                 <div class="stream-status">
                   <span class="pulse-indicator" [class.muted]="metrics().isMuted"></span>
                   <span>
-                    {{ metrics().isMuted ? 'Muted' : 'Live Hardware Stream' }} • 
-                    {{ metrics().channelCount === 1 ? 'Mono' : 'Stereo' }} • 
+                    {{ metrics().isMuted ? 'Muted' : 'Live Hardware Stream' }} •
+                    {{ metrics().channelCount === 1 ? 'Mono' : 'Stereo' }} •
                     Peak: {{ metrics().peakDb }} dBFS
                   </span>
                 </div>
-                
+
                 <div class="action-row">
                   <button type="button" class="btn-action-mute" (click)="toggleMute()">
                     <ts-icon [name]="metrics().isMuted ? 'mic' : 'mic-off'" [size]="14" />
@@ -220,14 +234,14 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
 
             <!-- Visual Bar with Peak Hold Notch -->
             <div class="volume-bar-track">
-              <div 
-                class="volume-bar-fill" 
+              <div
+                class="volume-bar-fill"
                 [style.width.%]="metrics().volumeRms"
                 [attr.data-clipping]="metrics().isClipping"
               ></div>
               <!-- Peak hold indicator line -->
-              <div 
-                class="peak-hold-marker" 
+              <div
+                class="peak-hold-marker"
                 [style.left.%]="computeDbPercent(metrics().peakHoldDb)"
                 [title]="'Peak Hold: ' + metrics().peakHoldDb + ' dBFS'"
               ></div>
@@ -247,8 +261,8 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                 <span class="sparkline-title">Audio Dynamic History (Recent Speech Levels):</span>
                 <div class="sparkline-bars">
                   @for (val of metrics().levelHistory; track $index) {
-                    <div 
-                      class="spark-bar" 
+                    <div
+                      class="spark-bar"
                       [style.height.%]="val"
                       [class.high]="val > 80"
                       [class.opt]="val >= 30 && val <= 80"
@@ -267,25 +281,33 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                 <p class="rec-desc">Record your voice to test clarity and hear exactly how others hear you in meetings.</p>
               </div>
 
-              <!-- Duration Selector (when idle) -->
+              <!-- Duration Segmented Control -->
               @if (metrics().recording.status === 'idle') {
-                <div class="rec-dur-select">
-                  <button 
-                    type="button" 
-                    class="dur-pill" 
+                <div
+                  class="rec-dur-segmented"
+                  role="group"
+                  aria-label="Recording Duration"
+                  [class.disabled]="!metrics().isStreaming"
+                >
+                  <button
+                    type="button"
+                    class="dur-segment"
                     [class.active]="selectedDuration() === 5"
+                    [disabled]="!metrics().isStreaming"
                     (click)="selectedDuration.set(5)"
                   >5s</button>
-                  <button 
-                    type="button" 
-                    class="dur-pill" 
+                  <button
+                    type="button"
+                    class="dur-segment"
                     [class.active]="selectedDuration() === 10"
+                    [disabled]="!metrics().isStreaming"
                     (click)="selectedDuration.set(10)"
                   >10s</button>
-                  <button 
-                    type="button" 
-                    class="dur-pill" 
+                  <button
+                    type="button"
+                    class="dur-segment"
                     [class.active]="selectedDuration() === 15"
+                    [disabled]="!metrics().isStreaming"
                     (click)="selectedDuration.set(15)"
                   >15s</button>
                 </div>
@@ -296,9 +318,9 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
               <!-- State 1: Idle -->
               @if (metrics().recording.status === 'idle') {
                 <div class="rec-idle-row">
-                  <button 
-                    type="button" 
-                    class="btn-start-record" 
+                  <button
+                    type="button"
+                    class="btn-start-record"
                     [disabled]="!metrics().isStreaming"
                     (click)="startRecording()"
                     title="Record voice sample"
@@ -369,7 +391,7 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
         <!-- RIGHT COLUMN: Status & Details -->
         <!-- ========================================== -->
         <div class="side-column">
-          
+
           <!-- Outcome Card: Microphone Status -->
           <div class="spec-card">
             <h3 class="card-heading">Microphone Status</h3>
@@ -399,16 +421,7 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
           </div>
 
           <!-- Progressive Disclosure: Technical Details -->
-          <details class="technical-details">
-            <summary class="details-summary">
-              <div class="summary-left">
-                <ts-icon name="sliders" [size]="15" />
-                <span>Technical Details</span>
-              </div>
-              <ts-icon name="chevron-down" [size]="14" class="summary-chevron" />
-            </summary>
-
-            <div class="details-content">
+          <app-technical-details title="Technical Details" icon="sliders">
               <div class="specs-list">
                 <div class="spec-row">
                   <span class="spec-k">Microphone Name</span>
@@ -480,8 +493,7 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                   <li>If you hear echo or feedback, wear headphones to isolate the audio output.</li>
                 </ul>
               </div>
-            </div>
-          </details>
+          </app-technical-details>
 
         </div>
 
@@ -561,6 +573,44 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
       border: 1px solid var(--ds-fail-border, rgba(248, 113, 113, 0.28));
     }
 
+    .btn-start-header,
+    .btn-mute,
+    .btn-stop-header {
+      white-space: nowrap !important;
+    }
+
+    /* Start button: only in header on mobile (< 1024px), preview box on desktop (>= 1024px) */
+    @media (min-width: 1024px) {
+      .btn-start-header {
+        display: none !important;
+      }
+    }
+
+    @media (max-width: 1023px) {
+      .idle-placeholder .btn-primary-start {
+        display: none !important;
+      }
+    }
+
+    @media (max-width: 639px) {
+      .btn-start-header,
+      .btn-mute,
+      .btn-stop-header {
+        padding: 8px 12px;
+        font-size: 12.5px;
+        min-height: 40px;
+        display: inline-flex !important;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .btn-start-header .btn-text,
+      .btn-mute .btn-text,
+      .btn-stop-header .btn-text {
+        display: inline !important;
+      }
+    }
+
     /* Workspace Grid */
     .workspace-grid {
       display: grid;
@@ -569,7 +619,7 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
       margin-top: 18px;
     }
 
-    @media (max-width: 980px) {
+    @media (max-width: 1023px) {
       .workspace-grid {
         grid-template-columns: 1fr;
       }
@@ -1212,37 +1262,96 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
       margin: 2px 0 0;
     }
 
-    .rec-dur-select {
-      display: flex;
-      gap: 4px;
-      background: var(--ds-card-bg-elevated, #27272A);
-      padding: 2px;
-      border-radius: 6px;
+    .rec-dur-segmented {
+      display: inline-flex;
+      align-items: center;
+      width: 160px;
+      padding: 3px;
+      border-radius: 8px;
+      background: var(--surface-secondary, var(--bg-2, #27272A));
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      box-sizing: border-box;
+      flex-shrink: 0;
     }
 
-    :host-context([data-theme="light"]) .rec-dur-select {
+    :host-context([data-theme="light"]) .rec-dur-segmented {
       background: #F1F5F9;
+      border-color: #E2E8F0;
     }
 
-    .dur-pill {
-      padding: 3px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-2, #A1A1AA);
-      background: none;
+    .rec-dur-segmented.disabled {
+      opacity: 0.45;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+
+    .dur-segment {
+      flex: 1 1 0;
+      padding: 5px 0;
+      text-align: center;
       border: none;
+      background: transparent;
+      color: var(--text-2, #A1A1AA);
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
       cursor: pointer;
+      white-space: nowrap !important;
+      transition: background 0.14s ease, color 0.14s ease;
     }
 
-    .dur-pill.active {
-      background: var(--ds-accent, #3B82F6);
+    :host-context([data-theme="light"]) .dur-segment {
+      color: #64748B;
+    }
+
+    .dur-segment:disabled {
+      cursor: not-allowed;
+    }
+
+    .dur-segment.active {
+      background: var(--tool-accent, #3B82F6);
       color: #FFFFFF;
+      font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     }
 
-    :host-context([data-theme="light"]) .dur-pill.active {
+    :host-context([data-theme="light"]) .dur-segment.active {
       background: #2563EB;
       color: #FFFFFF;
+    }
+
+    @media (max-width: 639px) {
+      .viewport-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding: 10px 12px;
+      }
+      .device-select-wrap {
+        max-width: 100%;
+        width: 100%;
+      }
+      .vis-mode-switch {
+        width: 100%;
+        display: flex;
+      }
+      .vis-mode-btn {
+        flex: 1 1 0;
+        text-align: center;
+      }
+      .rec-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .meter-info-row {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .meter-scale {
+        font-size: 10px;
+        gap: 2px;
+      }
     }
 
     .rec-idle-row {
@@ -2028,8 +2137,10 @@ export class MicrophoneModuleComponent implements OnInit, OnDestroy {
   }
 
   public async ngOnInit(): Promise<void> {
+    resetDeviceStudioScroll();
     this.state.setActiveTab('microphone');
     await this.mic.loadDevices();
+    resetDeviceStudioScroll();
   }
 
   public ngOnDestroy(): void {

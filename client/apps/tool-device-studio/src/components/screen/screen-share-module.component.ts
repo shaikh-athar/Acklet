@@ -14,17 +14,18 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { TsIconComponent } from '@acklet/tool-shell';
 import { ScreenShareService } from '../../services/screen-share.service';
-import { DeviceStudioStateService } from '../../services/device-studio-state.service';
+import { DeviceStudioStateService, resetDeviceStudioScroll } from '../../services/device-studio-state.service';
 import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
+import { TechnicalDetailsComponent } from '../shared/technical-details.component';
 
 @Component({
   selector: 'app-screen-share-module',
   standalone: true,
-  imports: [CommonModule, TsIconComponent, DeviceModuleHeaderComponent],
+  imports: [CommonModule, TsIconComponent, DeviceModuleHeaderComponent, TechnicalDetailsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="screen-module-root">
-      
+
       <!-- Module Header -->
       <app-device-module-header
         title="Screen Sharing Test"
@@ -35,27 +36,39 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
         (backClicked)="goBackToStudio()"
       >
         @if (metrics().isSharing) {
-          <button type="button" class="btn-stop-share" (click)="stopSharing()" aria-label="Stop screen sharing">
+          <button
+            type="button"
+            class="btn-stop-share"
+            (click)="stopSharing()"
+            title="Stop Screen Sharing"
+            aria-label="Stop screen sharing"
+          >
             <ts-icon name="power" [size]="14" />
-            <span>Stop Sharing</span>
+            <span class="btn-text">Stop Sharing</span>
           </button>
         } @else {
-          <button type="button" class="btn-start-share" (click)="startSharing()" aria-label="Start screen sharing test">
+          <button
+            type="button"
+            class="btn-start-share"
+            (click)="startSharing()"
+            [title]="metrics().diagnosticSummary.verdict !== 'untested' ? 'Run Again' : 'Start Test'"
+            [attr.aria-label]="metrics().diagnosticSummary.verdict !== 'untested' ? 'Run Again' : 'Start Test'"
+          >
             <ts-icon name="play" [size]="15" />
-            <span>{{ metrics().diagnosticSummary.verdict !== 'untested' ? 'Run Again' : 'Start Screen Share' }}</span>
+            <span class="btn-text">{{ metrics().diagnosticSummary.verdict !== 'untested' ? 'Run Again' : 'Start Test' }}</span>
           </button>
         }
       </app-device-module-header>
 
       <!-- Main Layout Grid -->
       <div class="workspace-grid">
-        
+
         <!-- Left / Primary Column -->
         <div class="main-column">
-          
+
           <!-- Video Preview Viewport Card -->
           <div class="viewport-card">
-            
+
             <!-- Viewport Toolbar -->
             <div class="viewport-toolbar">
               <div class="surface-badge-wrap">
@@ -72,12 +85,24 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
 
               @if (metrics().isSharing) {
                 <div class="toolbar-actions">
-                  <button type="button" class="tool-btn" (click)="takeSnapshot()" title="Capture frame snapshot">
+                  <button
+                    type="button"
+                    class="tool-btn btn-snap"
+                    (click)="takeSnapshot()"
+                    title="Capture frame snapshot"
+                    aria-label="Capture frame snapshot"
+                  >
                     <ts-icon name="camera" [size]="14" />
-                    <span>Snapshot</span>
+                    <span class="btn-text">Snapshot</span>
                   </button>
 
-                  <button type="button" class="tool-btn" (click)="toggleFullscreen()" title="Toggle fullscreen view">
+                  <button
+                    type="button"
+                    class="tool-btn btn-full"
+                    (click)="toggleFullscreen()"
+                    title="Toggle fullscreen view"
+                    aria-label="Toggle fullscreen view"
+                  >
                     <ts-icon name="maximize-2" [size]="14" />
                   </button>
                 </div>
@@ -127,11 +152,11 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
                   <div class="idle-icon-wrap">
                     <ts-icon [name]="metrics().permissionStatus === 'denied' ? 'circle-alert' : 'screen'" [size]="36" />
                   </div>
-                  
+
                   <h3 class="idle-title">{{ metrics().permissionStatus === 'denied' ? 'Screen Sharing Permission Needed' : 'Screen Sharing Ready' }}</h3>
                   <p class="idle-desc">
-                    {{ metrics().permissionStatus === 'denied' 
-                      ? 'Screen sharing permission was cancelled or blocked. Please select a screen, window, or tab to share.' 
+                    {{ metrics().permissionStatus === 'denied'
+                      ? 'Screen sharing permission was cancelled or blocked. Please select a screen, window, or tab to share.'
                       : 'Select your entire screen, an application window, or a browser tab to start the test.' }}
                   </p>
 
@@ -196,7 +221,7 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
 
         <!-- Right / Secondary Column -->
         <div class="side-column">
-          
+
           <!-- Outcome Card: Screen Status -->
           <div class="side-card">
             <h3 class="card-heading">Screen Share Status</h3>
@@ -259,16 +284,7 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
           }
 
           <!-- Progressive Disclosure: Technical Details & Troubleshooting -->
-          <details class="technical-details">
-            <summary class="details-summary">
-              <div class="summary-left">
-                <ts-icon name="sliders" [size]="15" />
-                <span>Technical Details & Guide</span>
-              </div>
-              <ts-icon name="chevron-down" [size]="14" class="summary-chevron" />
-            </summary>
-
-            <div class="details-content">
+          <app-technical-details title="Technical Details & Guide" icon="sliders">
               <div class="specs-list">
                 <div class="spec-row">
                   <span class="spec-k">Aspect Ratio</span>
@@ -302,8 +318,7 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
                   <li><strong>Browser prompt:</strong> Ensure you select the target window and click Share.</li>
                 </ul>
               </div>
-            </div>
-          </details>
+          </app-technical-details>
 
         </div>
 
@@ -375,15 +390,45 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
       background: rgba(239, 68, 68, 0.25);
     }
 
+    .btn-start-share,
+    .btn-stop-share,
+    .tool-btn {
+      white-space: nowrap !important;
+    }
+
     .workspace-grid {
       display: grid;
       grid-template-columns: minmax(0, 1.8fr) minmax(320px, 1fr);
       gap: 24px;
+      align-items: start;
     }
 
-    @media (max-width: 960px) {
+    @media (max-width: 1023px) {
       .workspace-grid {
         grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 639px) {
+      .btn-start-share .btn-text,
+      .btn-stop-share .btn-text {
+        display: inline;
+      }
+
+      .btn-start-share,
+      .btn-stop-share {
+        padding: 8px 12px;
+        font-size: 12.5px;
+        width: auto !important;
+      }
+
+      .btn-snap .btn-text {
+        display: none;
+      }
+
+      .btn-snap,
+      .btn-full {
+        padding: 6px 10px;
       }
     }
 
@@ -881,6 +926,23 @@ import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
       border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
       border-radius: 16px;
       padding: 20px;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    @media (max-width: 639px) {
+      .side-card {
+        padding: 16px 14px 20px;
+      }
+      .outcome-list {
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+      .outcome-row {
+        padding: 10px 12px;
+        min-height: 40px;
+        box-sizing: border-box;
+      }
     }
 
     :host-context([data-theme="light"]) .side-card {
@@ -1377,7 +1439,9 @@ export class ScreenShareModuleComponent implements OnInit, OnDestroy {
   }
 
   public ngOnInit(): void {
+    resetDeviceStudioScroll();
     this.state.setActiveTab('screen');
+    resetDeviceStudioScroll();
   }
 
   public ngOnDestroy(): void {

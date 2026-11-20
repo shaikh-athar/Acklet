@@ -31,27 +31,50 @@ describe('DeviceStudioStateService', () => {
     expect(moduleToRoute('screen')).toBe('screen');
   });
 
-  it('should calculate dynamic Device Health Score as modules are marked tested', () => {
+  it('should calculate dynamic Device Health Score from component states', () => {
     const service = new DeviceStudioStateService();
-    expect(service.deviceHealthScore()).toBe(20); // base score
-
-    service.markModuleTested('webcam');
-    expect(service.deviceHealthScore()).toBe(35);
-
-    service.markModuleTested('microphone');
-    expect(service.deviceHealthScore()).toBe(50);
-
-    service.markModuleTested('speaker');
-    expect(service.deviceHealthScore()).toBe(65);
-
-    service.markModuleTested('speed');
-    expect(service.deviceHealthScore()).toBe(80);
-
-    service.markModuleTested('ip');
-    expect(service.deviceHealthScore()).toBe(90);
-
-    service.markModuleTested('screen');
     expect(service.deviceHealthScore()).toBe(100);
+    expect(service.overallStatus()).toBe('All clear');
+
+    // 1 pass
+    service.meetingReadiness.set({
+      ...service.meetingReadiness(),
+      camera: 'pass'
+    });
+    expect(service.deviceHealthScore()).toBe(100);
+    expect(service.overallStatus()).toBe('All clear');
+
+    // 1 pass, 1 warn -> 75
+    service.meetingReadiness.set({
+      ...service.meetingReadiness(),
+      camera: 'pass',
+      mic: 'warn'
+    });
+    expect(service.deviceHealthScore()).toBe(75);
+    expect(service.overallStatus()).toBe('Some issues');
+
+    // 1 fail -> 'Needs attention'
+    service.meetingReadiness.set({
+      ...service.meetingReadiness(),
+      camera: 'pass',
+      mic: 'warn',
+      network: 'fail'
+    });
+    expect(service.deviceHealthScore()).toBe(50);
+    expect(service.overallStatus()).toBe('Needs attention');
+
+    // 4 pass and 1 warn -> 90, never 100 when warn or fail exists
+    service.meetingReadiness.set({
+      ...service.meetingReadiness(),
+      camera: 'pass',
+      mic: 'pass',
+      speaker: 'pass',
+      network: 'pass',
+      screenShare: 'warn'
+    });
+    expect(service.deviceHealthScore()).toBe(90);
+    expect(service.deviceHealthScore()).toBeLessThan(100);
+    expect(service.overallStatus()).toBe('Some issues');
   });
 
   it('should manage toast notifications and auto-dismiss', () => {

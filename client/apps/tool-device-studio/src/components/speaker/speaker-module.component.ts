@@ -13,16 +13,17 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { TsIconComponent } from '@acklet/tool-shell';
 import { SpeakerService } from '../../services/speaker.service';
-import { DeviceStudioStateService } from '../../services/device-studio-state.service';
+import { DeviceStudioStateService, resetDeviceStudioScroll } from '../../services/device-studio-state.service';
 import { DiagnosticReportService } from '../../services/diagnostic-report.service';
 import { DeviceModuleHeaderComponent } from '../shared/module-header.component';
 import { SpeakerConfirmationStatus } from '../../models/device.models';
 import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdown.component';
+import { TechnicalDetailsComponent } from '../shared/technical-details.component';
 
 @Component({
   selector: 'app-speaker-module',
   standalone: true,
-  imports: [CommonModule, TsIconComponent, DeviceModuleHeaderComponent, AckletDropdownComponent],
+  imports: [CommonModule, TsIconComponent, DeviceModuleHeaderComponent, AckletDropdownComponent, TechnicalDetailsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="speaker-module-root">
@@ -37,9 +38,26 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
         (backClicked)="goBackToStudio()"
       >
         @if (metrics().isPlaying) {
-          <button type="button" class="btn-stop-audio" (click)="stopAudio()" title="Stop audio">
+          <button
+            type="button"
+            class="btn-stop-audio"
+            (click)="stopAudio()"
+            title="Stop Sound"
+            aria-label="Stop Sound"
+          >
             <ts-icon name="volume-x" [size]="15" />
-            <span>Stop Sound</span>
+            <span class="btn-text">Stop Sound</span>
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="btn-start-audio"
+            (click)="testChannel('stereo')"
+            title="Test Sound"
+            aria-label="Test Sound"
+          >
+            <ts-icon name="volume-2" [size]="15" />
+            <span class="btn-text">Test Sound</span>
           </button>
         }
       </app-device-module-header>
@@ -728,16 +746,7 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
             </div>
 
             <!-- Optional: Frequency Sweep & Acoustic Noise Tests -->
-            <details class="technical-details speaker-advanced-details">
-              <summary class="details-summary">
-                <div class="summary-left">
-                  <ts-icon name="radio" [size]="15" />
-                  <span>Audio Frequency & Noise Tests (Optional)</span>
-                </div>
-                <ts-icon name="chevron-down" [size]="14" class="summary-chevron" />
-              </summary>
-
-              <div class="details-content">
+            <app-technical-details title="Audio Frequency & Noise Tests (Optional)" icon="radio">
                 <!-- Card 2: Frequency Range & Continuous Sweep -->
                 <div class="tool-card inner-card">
                   <div class="card-title-row">
@@ -880,8 +889,7 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
                 </div>
               </div>
             </div>
-          </div>
-        </details>
+          </app-technical-details>
 
           }
 
@@ -1048,6 +1056,32 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
       border: 0;
     }
 
+    .btn-start-audio {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      background: var(--tool-accent, #3B82F6);
+      border: 1px solid var(--tool-accent, #3B82F6);
+      color: #FFFFFF;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap !important;
+      transition: background 0.15s ease, opacity 0.15s ease;
+    }
+
+    :host-context([data-theme="light"]) .btn-start-audio {
+      background: #2563EB;
+      border-color: #2563EB;
+      color: #FFFFFF;
+    }
+
+    .btn-start-audio:hover {
+      opacity: 0.9;
+    }
+
     .btn-stop-audio {
       display: inline-flex;
       align-items: center;
@@ -1060,12 +1094,30 @@ import { AckletDropdownComponent, DropdownOption } from '../shared/acklet-dropdo
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
+      white-space: nowrap !important;
       transition: all 0.15s ease;
     }
 
     .btn-stop-audio:hover {
       background: var(--ds-fail, #F87171);
       color: #FFFFFF;
+    }
+
+    @media (max-width: 639px) {
+      .btn-start-audio,
+      .btn-stop-audio {
+        padding: 8px 12px;
+        font-size: 12.5px;
+        min-height: 40px;
+        display: inline-flex !important;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .btn-start-audio .btn-text,
+      .btn-stop-audio .btn-text {
+        display: inline !important;
+      }
     }
 
     /* Mode Tabs Bar */
@@ -3469,9 +3521,11 @@ export class SpeakerModuleComponent implements OnInit, OnDestroy {
   }
 
   public async ngOnInit(): Promise<void> {
+    resetDeviceStudioScroll();
     this.state.setActiveTab('speaker');
     await this.speaker.loadDevices();
     await this.speaker.preloadHeadphoneSound();
+    resetDeviceStudioScroll();
   }
 
   public ngOnDestroy(): void {
