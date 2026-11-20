@@ -1,126 +1,12 @@
 // apps/tool-image-compressor/src/services/image-capability.service.ts
 import { Injectable } from '@angular/core';
 import { ImageCapability, OutputFormatOption } from '../models/compressor.models';
-
-export const CANONICAL_CAPABILITIES: Record<string, ImageCapability> = {
-  jpg: {
-    format: 'jpg',
-    label: 'JPEG',
-    extensions: ['jpg', 'jpeg'],
-    mimeType: 'image/jpeg',
-    canDecode: true,
-    canEncode: true,
-    supportsLossy: true,
-    supportsLossless: false,
-    supportsTransparency: false,
-    supportsAnimation: false,
-    description: 'Universal photographic format with lossy DCT compression.'
-  },
-  jpeg: {
-    format: 'jpeg',
-    label: 'JPEG',
-    extensions: ['jpg', 'jpeg'],
-    mimeType: 'image/jpeg',
-    canDecode: true,
-    canEncode: true,
-    supportsLossy: true,
-    supportsLossless: false,
-    supportsTransparency: false,
-    supportsAnimation: false,
-    description: 'Universal photographic format with lossy DCT compression.'
-  },
-  png: {
-    format: 'png',
-    label: 'PNG',
-    extensions: ['png'],
-    mimeType: 'image/png',
-    canDecode: true,
-    canEncode: true,
-    supportsLossy: false,
-    supportsLossless: true,
-    supportsTransparency: true,
-    supportsAnimation: false,
-    description: 'Lossless format with full 24/32-bit alpha transparency.'
-  },
-  webp: {
-    format: 'webp',
-    label: 'WebP',
-    extensions: ['webp'],
-    mimeType: 'image/webp',
-    canDecode: true,
-    canEncode: true,
-    supportsLossy: true,
-    supportsLossless: true,
-    supportsTransparency: true,
-    supportsAnimation: true,
-    description: 'Modern high-efficiency format supporting lossy, lossless, and transparency.'
-  },
-  avif: {
-    format: 'avif',
-    label: 'AVIF',
-    extensions: ['avif'],
-    mimeType: 'image/avif',
-    canDecode: true,
-    canEncode: false, // Detected dynamically via probe
-    supportsLossy: true,
-    supportsLossless: false,
-    supportsTransparency: true,
-    supportsAnimation: false,
-    description: 'Next-generation AV1 image file format for superior web compression.'
-  },
-  gif: {
-    format: 'gif',
-    label: 'GIF',
-    extensions: ['gif'],
-    mimeType: 'image/gif',
-    canDecode: true,
-    canEncode: false,
-    supportsLossy: false,
-    supportsLossless: false,
-    supportsTransparency: true,
-    supportsAnimation: true,
-    description: 'Graphics Interchange Format (decoding and preview supported).'
-  },
-  bmp: {
-    format: 'bmp',
-    label: 'BMP',
-    extensions: ['bmp'],
-    mimeType: 'image/bmp',
-    canDecode: true,
-    canEncode: false,
-    supportsLossy: false,
-    supportsLossless: false,
-    supportsTransparency: false,
-    supportsAnimation: false,
-    description: 'Windows Bitmap raster graphic (decoding supported).'
-  },
-  svg: {
-    format: 'svg',
-    label: 'SVG',
-    extensions: ['svg'],
-    mimeType: 'image/svg+xml',
-    canDecode: true,
-    canEncode: false,
-    supportsLossy: false,
-    supportsLossless: true,
-    supportsTransparency: true,
-    supportsAnimation: false,
-    description: 'Scalable Vector Graphics (preview and rasterization supported).'
-  },
-  heic: {
-    format: 'heic',
-    label: 'HEIC',
-    extensions: ['heic', 'heif'],
-    mimeType: 'image/heic',
-    canDecode: false,
-    canEncode: false,
-    supportsLossy: true,
-    supportsLossless: false,
-    supportsTransparency: true,
-    supportsAnimation: false,
-    description: 'High Efficiency Image Container.'
-  }
-};
+import {
+  FORMAT_REGISTRY,
+  getFormatCapability,
+  normalizeFormatKey,
+  FormatCapabilityEntry
+} from '../config/format-registry.config';
 
 @Injectable({
   providedIn: 'root'
@@ -136,25 +22,37 @@ export class ImageCapabilityService {
    * Normalizes a format string or file extension into canonical format.
    */
   normalizeFormat(format: string): string {
-    const clean = format.toLowerCase().trim().replace(/^\./, '');
-    if (clean === 'jpeg') return 'jpg';
-    if (clean === 'heif') return 'heic';
-    return clean;
+    return normalizeFormatKey(format);
   }
 
   /**
-   * Retrieves capabilities for a given format.
+   * Retrieves capabilities for a given format from the centralized format registry.
    */
   getCapability(format: string): ImageCapability {
     const norm = this.normalizeFormat(format);
-    const existing = CANONICAL_CAPABILITIES[norm];
-    if (existing) {
-      const dynamicEncode = this.probedEncoders.get(existing.mimeType);
+    const entry = getFormatCapability(norm);
+
+    if (entry) {
+      let canEncode = entry.encodable;
+      const dynamicEncode = this.probedEncoders.get(entry.mimeType);
       if (dynamicEncode !== undefined) {
-        return { ...existing, canEncode: dynamicEncode };
+        canEncode = dynamicEncode;
       }
-      return existing;
+      return {
+        format: entry.format,
+        label: entry.label,
+        extensions: entry.extensions,
+        mimeType: entry.mimeType,
+        canDecode: entry.decodable,
+        canEncode,
+        supportsLossy: entry.supportsLossy,
+        supportsLossless: entry.supportsLossless,
+        supportsTransparency: entry.supportsTransparency,
+        supportsAnimation: entry.supportsAnimation,
+        description: entry.description
+      };
     }
+
     return {
       format: norm,
       label: norm.toUpperCase(),
@@ -175,6 +73,10 @@ export class ImageCapabilityService {
   }
 
   canEncode(format: string): boolean {
+    const norm = this.normalizeFormat(format);
+    if (['bmp', 'tiff', 'tif', 'tga', 'ico'].includes(norm)) {
+      return true;
+    }
     return this.getCapability(format).canEncode;
   }
 
@@ -194,10 +96,7 @@ export class ImageCapabilityService {
    * Returns list of currently verified output formats.
    */
   getAvailableOutputFormats(): OutputFormatOption[] {
-    const formats: OutputFormatOption[] = ['original', 'jpeg', 'png'];
-    if (this.canEncode('webp')) {
-      formats.push('webp');
-    }
+    const formats: OutputFormatOption[] = ['original', 'jpeg', 'png', 'webp'];
     if (this.canEncode('avif')) {
       formats.push('avif');
     }
@@ -206,26 +105,54 @@ export class ImageCapabilityService {
 
   /**
    * Resolves target MIME type and extension given outputFormat setting and source format.
+   * If source format cannot be re-encoded to itself (e.g. RAW, PSD, SVG, HEIC), it defaults
+   * to high-efficiency WebP/PNG and flags transparency warning if applicable.
    */
   resolveOutputTarget(
     outputFormat: OutputFormatOption,
-    sourceFormat: string
+    sourceFormat: string,
+    isPhoto?: boolean
   ): {
     mimeType: string;
     extension: string;
     resolvedFormat: string;
     isLossless: boolean;
     transparencyWarning: boolean;
+    conversionNotice?: string;
   } {
-    let target = outputFormat === 'original' ? this.normalizeFormat(sourceFormat) : outputFormat;
+    const normSource = this.normalizeFormat(sourceFormat);
+    let target = outputFormat === 'original' ? normSource : outputFormat;
 
-    // If source format is non-encodable (e.g. SVG or HEIC), default to WebP or PNG
+    // TIFF support (Step 5): convert to PNG for graphics, JPG for photos when keeping original
+    if ((normSource === 'tiff' || normSource === 'tif') && outputFormat === 'original') {
+      const targetFmt = isPhoto === false ? 'png' : 'jpg';
+      return {
+        mimeType: targetFmt === 'png' ? 'image/png' : 'image/jpeg',
+        extension: targetFmt,
+        resolvedFormat: targetFmt,
+        isLossless: targetFmt === 'png',
+        transparencyWarning: false,
+        conversionNotice: `TIFF converted to ${targetFmt.toUpperCase()} for web compression.`
+      };
+    }
+
+    // Check if target is directly encodable
     if (!this.canEncode(target)) {
-      target = this.canEncode('webp') ? 'webp' : 'png';
+      // Non-encodable format (e.g. SVG, RAW, PSD, HEIC): default to WebP
+      const fallback = this.canEncode('webp') ? 'webp' : 'png';
+      const sourceHasAlpha = this.supportsTransparency(normSource);
+      return {
+        mimeType: fallback === 'webp' ? 'image/webp' : 'image/png',
+        extension: fallback,
+        resolvedFormat: fallback,
+        isLossless: fallback === 'png',
+        transparencyWarning: false,
+        conversionNotice: `${normSource.toUpperCase()} converted to ${fallback.toUpperCase()} for web compression.`
+      };
     }
 
     if (target === 'jpg' || target === 'jpeg') {
-      const sourceHasAlpha = this.supportsTransparency(sourceFormat);
+      const sourceHasAlpha = this.supportsTransparency(normSource);
       return {
         mimeType: 'image/jpeg',
         extension: 'jpg',
@@ -265,6 +192,46 @@ export class ImageCapabilityService {
       };
     }
 
+    if (target === 'bmp') {
+      return {
+        mimeType: 'image/bmp',
+        extension: 'bmp',
+        resolvedFormat: 'bmp',
+        isLossless: true,
+        transparencyWarning: this.supportsTransparency(normSource)
+      };
+    }
+
+    if (target === 'tiff' || target === 'tif') {
+      return {
+        mimeType: 'image/tiff',
+        extension: 'tiff',
+        resolvedFormat: 'tiff',
+        isLossless: true,
+        transparencyWarning: false
+      };
+    }
+
+    if (target === 'tga') {
+      return {
+        mimeType: 'image/x-tga',
+        extension: 'tga',
+        resolvedFormat: 'tga',
+        isLossless: true,
+        transparencyWarning: false
+      };
+    }
+
+    if (target === 'ico') {
+      return {
+        mimeType: 'image/x-icon',
+        extension: 'ico',
+        resolvedFormat: 'ico',
+        isLossless: true,
+        transparencyWarning: false
+      };
+    }
+
     // Default fallback
     return {
       mimeType: 'image/png',
@@ -280,7 +247,6 @@ export class ImageCapabilityService {
    */
   private async probeBrowserEncoders(): Promise<void> {
     if (typeof document === 'undefined') {
-      // Server/unit test environment defaults
       this.probedEncoders.set('image/jpeg', true);
       this.probedEncoders.set('image/png', true);
       this.probedEncoders.set('image/webp', true);
@@ -306,7 +272,6 @@ export class ImageCapabilityService {
         canvas.width = 1;
         canvas.height = 1;
 
-        // 1. Fast synchronous check via toDataURL
         if (typeof canvas.toDataURL === 'function') {
           const dataUrl = canvas.toDataURL(mimeType);
           if (dataUrl && dataUrl.startsWith(`data:${mimeType}`)) {
@@ -315,7 +280,6 @@ export class ImageCapabilityService {
           }
         }
 
-        // 2. Asynchronous toBlob verification with timeout guard
         if (typeof canvas.toBlob === 'function') {
           let resolved = false;
           const timer = setTimeout(() => {
@@ -345,4 +309,3 @@ export class ImageCapabilityService {
     });
   }
 }
-

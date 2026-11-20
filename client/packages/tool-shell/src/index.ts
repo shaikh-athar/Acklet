@@ -2,6 +2,7 @@
 // Models & Contracts
 export * from './models/tool-shell.models';
 export * from './models/tool-responsive.models';
+export * from './models/tool-config.models';
 
 // Services
 export * from './services/responsive.service';
@@ -20,6 +21,7 @@ export * from './services/file-transfer.service';
 export * from './components/settings/ts-settings-modal.component';
 
 // Icons & Primitives
+export * from './components/tool-suite';
 export * from './components/ui/empty-drop-state/empty-drop-state.component';
 export * from './components/ui/drop-highlight/drop-highlight.component';
 export * from './components/icon/tool-icon.component';

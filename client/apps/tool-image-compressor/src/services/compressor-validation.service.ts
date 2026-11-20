@@ -1,5 +1,5 @@
 // apps/tool-image-compressor/src/services/compressor-validation.service.ts
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import {
   FormatCapabilities,
   ImageItem,
@@ -7,79 +7,42 @@ import {
   CompressionSettings
 } from '../models/compressor.models';
 import { COMPRESSOR_CONFIG } from '../config/compressor.config';
+import {
+  FORMAT_REGISTRY,
+  getFormatCapability,
+  normalizeFormatKey,
+  isFormatAccepted
+} from '../config/format-registry.config';
+import { ImageDecoderService } from './image-decoder.service';
 
 export const MAX_SESSION_FILES = COMPRESSOR_CONFIG.limits.maxFiles;
 export const MAX_FILE_SIZE = COMPRESSOR_CONFIG.limits.maxFileSizeBytes;
 export const MAX_DIMENSION = COMPRESSOR_CONFIG.limits.maxDimensionEdge;
 export const MAX_PIXELS = COMPRESSOR_CONFIG.limits.maxPixels;
 
-export const FORMAT_CAPABILITIES: Record<string, FormatCapabilities> = {
-  jpg: {
-    fileAccepted: true,
-    previewSupported: true,
-    compressionSupported: true,
-    description: 'JPEG image with DCT compression'
-  },
-  jpeg: {
-    fileAccepted: true,
-    previewSupported: true,
-    compressionSupported: true,
-    description: 'JPEG image with DCT compression'
-  },
-  png: {
-    fileAccepted: true,
-    previewSupported: true,
-    compressionSupported: true,
-    description: 'Portable Network Graphics with alpha transparency'
-  },
-  webp: {
-    fileAccepted: true,
-    previewSupported: true,
-    compressionSupported: true,
-    description: 'Modern WebP raster format'
-  },
-  avif: {
-    fileAccepted: true,
-    previewSupported: true,
-    compressionSupported: true,
-    description: 'Next-gen AV1 image file format'
-  },
-  gif: {
-    fileAccepted: true,
-    previewSupported: true,
-    compressionSupported: true,
-    description: 'Graphics Interchange Format'
-  },
-  bmp: {
-    fileAccepted: true,
-    previewSupported: true,
-    compressionSupported: true,
-    description: 'Windows Bitmap raster graphic'
-  },
-  svg: {
-    fileAccepted: true,
-    previewSupported: true,
-    compressionSupported: true,
-    description: 'Scalable Vector Graphics'
-  },
-  heic: {
-    fileAccepted: true,
-    previewSupported: false, // Requires specialized decoder
-    compressionSupported: true,
-    description: 'High Efficiency Image Container'
-  },
-  heif: {
-    fileAccepted: true,
-    previewSupported: false,
-    compressionSupported: true,
-    description: 'High Efficiency Image File'
-  }
-};
+export const FORMAT_CAPABILITIES: Record<string, FormatCapabilities> = {};
+for (const [key, entry] of Object.entries(FORMAT_REGISTRY)) {
+  FORMAT_CAPABILITIES[key] = {
+    fileAccepted: entry.fileAccepted,
+    previewSupported: entry.previewSupported,
+    compressionSupported: entry.compressionSupported,
+    description: entry.description
+  };
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class CompressorValidationService {
+  private readonly decoder: ImageDecoderService;
+
+  constructor() {
+    try {
+      this.decoder = inject(ImageDecoderService);
+    } catch {
+      this.decoder = new ImageDecoderService();
+    }
+  }
 
   /**
    * Generates a unique deduplication key for a file.
@@ -97,7 +60,7 @@ export class CompressorValidationService {
   }
 
   /**
-   * Detects the real format by inspecting header magic bytes.
+   * Detects the real format by inspecting header magic bytes with broad format coverage.
    */
   async detectFormat(file: File): Promise<{
     format: string;
@@ -136,7 +99,18 @@ export class CompressorValidationService {
       };
     }
 
-    // 4. Fallback based on extension
+    // 4. Registry-driven extension fallback
+    const normExt = normalizeFormatKey(ext);
+    const entry = getFormatCapability(normExt);
+    if (entry) {
+      return {
+        format: entry.format,
+        mimeType: entry.mimeType,
+        extension: ext,
+        isExecutable: false
+      };
+    }
+
     const mime = file.type || this.getMimeByExtension(ext);
     return {
       format: ext || 'unknown',
@@ -147,42 +121,80 @@ export class CompressorValidationService {
   }
 
   /**
-   * Inspects and decodes the image to retrieve dimensions, or throws descriptive error.
+   * Inspects and decodes the image to retrieve dimensions and generate high-fidelity previews.
    */
-  async inspectImageDimensions(file: File, previewUrl: string, format: string): Promise<{ width: number; height: number }> {
+  async inspectImageDimensions(
+    file: File,
+    previewUrl: string,
+    format: string
+  ): Promise<{ width: number; height: number; previewUrlOverride?: string }> {
+    const norm = normalizeFormatKey(format);
+
     // If format is HEIC/HEIF and browser does not natively decode it
-    if (format === 'heic' || format === 'heif') {
+    if (norm === 'heic' || norm === 'heif') {
       return { width: 0, height: 0 };
     }
 
-    if (typeof createImageBitmap === 'function' && format !== 'svg') {
-      try {
-        const bitmap = await createImageBitmap(file);
-        const w = bitmap.width;
-        const h = bitmap.height;
-        bitmap.close();
-        this.validateDimensions(w, h);
-        return { width: w, height: h };
-      } catch {
-        // Fallback to HTMLImageElement if createImageBitmap fails
+    // For standard raster formats with native browser decode
+    if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(norm)) {
+      if (typeof createImageBitmap === 'function') {
+        try {
+          const bitmap = await createImageBitmap(file);
+          const w = bitmap.width;
+          const h = bitmap.height;
+          bitmap.close();
+          this.validateDimensions(w, h);
+          return { width: w, height: h };
+        } catch {
+          // Fallback to HTMLImageElement
+        }
       }
+
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            this.validateDimensions(img.naturalWidth, img.naturalHeight);
+            resolve({ width: img.naturalWidth, height: img.naturalHeight });
+          } catch (err) {
+            reject(err);
+          }
+        };
+        img.onerror = () => {
+          reject(new Error(`Failed to decode image "${file.name}". The file may be corrupted or unsupported.`));
+        };
+        img.src = previewUrl;
+      });
     }
 
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
+    // For professional, raw, vector, or specialized formats (TIFF, TGA, PSD, RAW, HDR, FITS, PCX, DDS, SVG, etc.)
+    try {
+      const decoded = await this.decoder.decodeFile(file, norm);
+      this.validateDimensions(decoded.width, decoded.height);
+
+      let previewUrlOverride: string | undefined = undefined;
+      const nativeRenderable = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp'];
+      if (!nativeRenderable.includes(norm) && decoded.canvas) {
         try {
-          this.validateDimensions(img.naturalWidth, img.naturalHeight);
-          resolve({ width: img.naturalWidth, height: img.naturalHeight });
-        } catch (err) {
-          reject(err);
-        }
+          const canvas = decoded.canvas;
+          if ('toDataURL' in canvas && typeof canvas.toDataURL === 'function') {
+            previewUrlOverride = canvas.toDataURL('image/webp', 0.85);
+          }
+        } catch (_) {}
+      }
+
+      if (decoded.objectUrlToRevoke) {
+        URL.revokeObjectURL(decoded.objectUrlToRevoke);
+      }
+
+      return {
+        width: decoded.width,
+        height: decoded.height,
+        previewUrlOverride
       };
-      img.onerror = () => {
-        reject(new Error(`Failed to decode image "${file.name}". The file may be corrupted or unsupported.`));
-      };
-      img.src = previewUrl;
-    });
+    } catch (err: any) {
+      throw new Error(`Failed to decode image "${file.name}": ${err.message || 'Corrupted or unsupported stream.'}`);
+    }
   }
 
   /**
@@ -234,19 +246,21 @@ export class CompressorValidationService {
       throw new Error(`Security violation: "${file.name}" is an executable binary disguised as media.`);
     }
 
-    const normFormat = detected.format.toLowerCase();
-    const caps = FORMAT_CAPABILITIES[normFormat] || {
-      fileAccepted: false,
-      previewSupported: false,
-      compressionSupported: false,
-      description: 'Unsupported image format'
-    };
+    const normFormat = normalizeFormatKey(detected.format);
+    const entry = getFormatCapability(normFormat);
 
-    if (!caps.fileAccepted) {
+    if (!entry || !entry.fileAccepted) {
       throw new Error(`Format ".${detected.extension}" is not a supported image format.`);
     }
 
-    const previewUrl = URL.createObjectURL(file);
+    const caps: FormatCapabilities = {
+      fileAccepted: entry.fileAccepted,
+      previewSupported: entry.previewSupported,
+      compressionSupported: entry.compressionSupported,
+      description: entry.description
+    };
+
+    let previewUrl = URL.createObjectURL(file);
     let width = 0;
     let height = 0;
     let status: ImageItem['status'] = 'ready';
@@ -256,9 +270,11 @@ export class CompressorValidationService {
       const dims = await this.inspectImageDimensions(file, previewUrl, normFormat);
       width = dims.width;
       height = dims.height;
+      if (dims.previewUrlOverride) {
+        previewUrl = dims.previewUrlOverride;
+      }
     } catch (err: any) {
       if (normFormat === 'heic' || normFormat === 'heif') {
-        // Known decoder requirement for HEIC
         width = 0;
         height = 0;
         status = 'ready';
@@ -270,6 +286,11 @@ export class CompressorValidationService {
 
     const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
     const aspectRatio = width > 0 && height > 0 ? width / height : 1;
+
+    let formatConversionWarning: string | undefined = undefined;
+    if (entry.requiresConversionToOptimize) {
+      formatConversionWarning = `${entry.label} will be converted to WebP for modern web delivery.`;
+    }
 
     return {
       id: `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
@@ -290,7 +311,28 @@ export class CompressorValidationService {
       individualSettings: { hasCustomSettings: false },
       effectiveSettings: { ...defaultSettings },
       error: errorMessage,
-      addedAt: Date.now()
+      addedAt: Date.now(),
+      formatConversionWarning,
+      originalUploadedFile: file,
+      originalUploadedSize: file.size,
+      originalUploadedWidth: width,
+      originalUploadedHeight: height,
+      originalUploadedFormat: normFormat,
+      originalUploadedExtension: detected.extension,
+      originalUploadedMimeType: detected.mimeType,
+      originalUploadedPreviewUrl: previewUrl,
+      currentWorkingSource: {
+        file,
+        blob: file,
+        size: file.size,
+        width,
+        height,
+        format: normFormat,
+        mimeType: detected.mimeType,
+        extension: detected.extension,
+        previewUrl,
+        iteration: 0
+      }
     };
   }
 
@@ -368,6 +410,73 @@ export class CompressorValidationService {
       return { format: 'webp', mimeType: 'image/webp', extension: 'webp' };
     }
 
+    // TIFF: II* (49 49 2A 00) or MM* (4D 4D 00 2A) or Panasonic RAW (49 49 55 00)
+    if (
+      (bytes[0] === 0x49 && bytes[1] === 0x49 && (bytes[2] === 0x2A || bytes[2] === 0x55)) ||
+      (bytes[0] === 0x4D && bytes[1] === 0x4D && bytes[2] === 0x00 && bytes[3] === 0x2A)
+    ) {
+      const ext = ['cr2', 'nef', 'dng', 'arw', 'orf', 'rw2', 'pef', 'tif', 'tiff'].includes(fileExt)
+        ? fileExt
+        : 'tiff';
+      return { format: ext, mimeType: 'image/tiff', extension: ext };
+    }
+
+    // Photoshop PSD / PSB: 38 42 50 53 ('8BPS')
+    if (bytes[0] === 0x38 && bytes[1] === 0x42 && bytes[2] === 0x50 && bytes[3] === 0x53) {
+      return { format: fileExt === 'psb' ? 'psb' : 'psd', mimeType: 'image/vnd.adobe.photoshop', extension: fileExt || 'psd' };
+    }
+
+    // DirectDraw Surface: 44 44 53 20 ('DDS ')
+    if (bytes[0] === 0x44 && bytes[1] === 0x44 && bytes[2] === 0x53 && bytes[3] === 0x20) {
+      return { format: 'dds', mimeType: 'image/x-dds', extension: 'dds' };
+    }
+
+    // Quite OK Image: 71 6F 69 66 ('qoif')
+    if (bytes[0] === 0x71 && bytes[1] === 0x6F && bytes[2] === 0x69 && bytes[3] === 0x66) {
+      return { format: 'qoi', mimeType: 'image/qoi', extension: 'qoi' };
+    }
+
+    // Radiance HDR: #?RADIANCE or #?RGBE
+    if (bytes[0] === 0x23 && bytes[1] === 0x3F) {
+      const sub = String.fromCharCode(...bytes.subarray(0, 11));
+      if (sub.includes('RADIANCE') || sub.includes('RGBE')) {
+        return { format: 'hdr', mimeType: 'image/vnd.radiance', extension: 'hdr' };
+      }
+    }
+
+    // FITS: 'SIMPLE  ='
+    if (
+      bytes[0] === 0x53 && bytes[1] === 0x49 && bytes[2] === 0x4D && bytes[3] === 0x50 &&
+      bytes[4] === 0x4C && bytes[5] === 0x45 && bytes[6] === 0x20 && bytes[7] === 0x20 &&
+      bytes[8] === 0x3D
+    ) {
+      return { format: 'fits', mimeType: 'image/fits', extension: fileExt === 'fit' ? 'fit' : 'fits' };
+    }
+
+    // Windows ICO / CUR: 00 00 01 00 (ICO) or 00 00 02 00 (CUR)
+    if (bytes[0] === 0x00 && bytes[1] === 0x00) {
+      if (bytes[2] === 0x01 && bytes[3] === 0x00) {
+        return { format: 'ico', mimeType: 'image/x-icon', extension: 'ico' };
+      }
+      if (bytes[2] === 0x02 && bytes[3] === 0x00) {
+        return { format: 'cur', mimeType: 'image/x-win-bitmap', extension: 'cur' };
+      }
+    }
+
+    // Apple ICNS: 'icns'
+    if (bytes[0] === 0x69 && bytes[1] === 0x63 && bytes[2] === 0x6E && bytes[3] === 0x73) {
+      return { format: 'icns', mimeType: 'image/x-icns', extension: 'icns' };
+    }
+
+    // Netpbm binary magic numbers P1..P6
+    if (bytes[0] === 0x50 && bytes[1] >= 0x31 && bytes[1] <= 0x36) {
+      const type = bytes[1];
+      const isColor = type === 0x33 || type === 0x36;
+      const isGray = type === 0x32 || type === 0x35;
+      const ext = isColor ? 'ppm' : (isGray ? 'pgm' : 'pbm');
+      return { format: ext, mimeType: `image/x-portable-${isColor ? 'pixmap' : (isGray ? 'graymap' : 'bitmap')}`, extension: ext };
+    }
+
     // AVIF / HEIC container (ISO Base Media File Format: 'ftyp')
     if (
       bytes.length >= 12 &&
@@ -380,25 +489,17 @@ export class CompressorValidationService {
       if (brand.startsWith('heic') || brand.startsWith('mif1') || brand.startsWith('msf1') || brand.startsWith('heix')) {
         return { format: 'heic', mimeType: 'image/heic', extension: 'heic' };
       }
+      if (brand.startsWith('crx') || brand.startsWith('cr3')) {
+        return { format: 'cr3', mimeType: 'image/x-canon-cr3', extension: 'cr3' };
+      }
     }
 
     return null;
   }
 
   private getMimeByExtension(ext: string): string {
-    const map: Record<string, string> = {
-      jpg: 'image/jpeg',
-      jpeg: 'image/jpeg',
-      png: 'image/png',
-      webp: 'image/webp',
-      gif: 'image/gif',
-      bmp: 'image/bmp',
-      avif: 'image/avif',
-      svg: 'image/svg+xml',
-      heic: 'image/heic',
-      heif: 'image/heif'
-    };
-    return map[ext] || 'application/octet-stream';
+    const entry = getFormatCapability(ext);
+    if (entry) return entry.mimeType;
+    return 'application/octet-stream';
   }
 }
-

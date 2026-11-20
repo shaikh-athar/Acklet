@@ -97,10 +97,12 @@ export class ImageResizeService {
 
   /**
    * Resizes an existing canvas according to ResizeSettings using high-quality stepped downsampling.
+   * Optionally applies restrained sharpening to restore edge and typographic contrast after downscaling.
    */
   resizeCanvas(
     sourceCanvas: HTMLCanvasElement | OffscreenCanvas,
-    settings: ResizeSettings
+    settings: ResizeSettings,
+    sharpenAfterDownscale = false
   ): ResizedResult {
     const origW = sourceCanvas.width;
     const origH = sourceCanvas.height;
@@ -145,6 +147,20 @@ export class ImageResizeService {
     final.ctx.imageSmoothingQuality = 'high';
     final.ctx.drawImage(currentCanvas, 0, 0, targetWidth, targetHeight);
 
+    if (sharpenAfterDownscale && (targetWidth < origW || targetHeight < origH)) {
+      const sharpenedCanvas = this.applyRestrainedSharpen(final.canvas, 0.18);
+      const sCtx = typeof (sharpenedCanvas as any).getContext === 'function'
+        ? (sharpenedCanvas as any).getContext('2d')
+        : final.ctx;
+      return {
+        canvas: sharpenedCanvas,
+        ctx: sCtx,
+        width: targetWidth,
+        height: targetHeight,
+        didResize: true
+      };
+    }
+
     return {
       canvas: final.canvas,
       ctx: final.ctx,
@@ -152,5 +168,69 @@ export class ImageResizeService {
       height: targetHeight,
       didResize: true
     };
+  }
+
+  /**
+   * Applies a restrained 3x3 sharpening convolution filter to restore edge contrast
+   * after downsampling, without introducing halos or pixel noise.
+   */
+  applyRestrainedSharpen(
+    canvas: HTMLCanvasElement | OffscreenCanvas,
+    amount = 0.18
+  ): HTMLCanvasElement | OffscreenCanvas {
+    const w = canvas.width;
+    const h = canvas.height;
+    if (w < 4 || h < 4) return canvas;
+
+    const { canvas: outCanvas, ctx: outCtx } = this.decoder.createCanvas(w, h);
+    outCtx.drawImage(canvas, 0, 0);
+
+    try {
+      const srcCtx = (canvas as any).getContext('2d', { willReadFrequently: true });
+      if (!srcCtx) return outCanvas;
+      const srcData = srcCtx.getImageData(0, 0, w, h);
+      const dstData = outCtx.createImageData(w, h);
+
+      const src = srcData.data;
+      const dst = dstData.data;
+
+      // Restrained 3x3 Laplacian edge enhancement:
+      // Center weight: 1 + 4 * a
+      // Cardinal neighbors: -a
+      const a = Math.max(0.05, Math.min(0.35, amount));
+      const centerW = 1 + 4 * a;
+
+      for (let y = 0; y < h; y++) {
+        const yTop = (y > 0 ? y - 1 : y) * w * 4;
+        const yCur = y * w * 4;
+        const yBot = (y < h - 1 ? y + 1 : y) * w * 4;
+
+        for (let x = 0; x < w; x++) {
+          const xLeft = (x > 0 ? x - 1 : x) * 4;
+          const xCur = x * 4;
+          const xRight = (x < w - 1 ? x + 1 : x) * 4;
+
+          const idx = yCur + xCur;
+
+          for (let c = 0; c < 3; c++) {
+            const center = src[idx + c];
+            const top = src[yTop + xCur + c];
+            const bot = src[yBot + xCur + c];
+            const left = src[yCur + xLeft + c];
+            const right = src[yCur + xRight + c];
+
+            const val = center * centerW - a * (top + bot + left + right);
+            dst[idx + c] = val < 0 ? 0 : val > 255 ? 255 : Math.round(val);
+          }
+          // Preserve Alpha channel untouched
+          dst[idx + 3] = src[idx + 3];
+        }
+      }
+
+      outCtx.putImageData(dstData, 0, 0);
+      return outCanvas;
+    } catch {
+      return outCanvas;
+    }
   }
 }

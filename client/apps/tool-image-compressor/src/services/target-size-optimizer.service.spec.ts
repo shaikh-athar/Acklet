@@ -71,5 +71,42 @@ describe('TargetSizeOptimizerService', () => {
       )
     ).rejects.toThrow('Target size optimization cancelled by user.');
   });
+
+  it('guarantees output size does not exceed target bytes when target is achieved via quality search', async () => {
+    const { canvas } = decoder.createCanvas(80, 80);
+    const targetBytes = 2500;
+    const result = await optimizer.searchOptimalQuality(
+      canvas,
+      'image/jpeg',
+      targetBytes,
+      15
+    );
+
+    if (result.targetAchieved) {
+      expect(result.optimalBlob.size).toBeLessThanOrEqual(targetBytes);
+      expect(result.targetUnreachable).toBe(false);
+    }
+  });
+
+  it('adaptively downscales canvas dimensions to meet aggressive target limits', async () => {
+    const { canvas } = decoder.createCanvas(100, 100);
+    // BMP at 100x100 is ~40,054 bytes. Set target to 15,000 bytes.
+    const targetBytes = 15000;
+    const result = await optimizer.searchOptimalQuality(
+      canvas,
+      'image/bmp',
+      targetBytes,
+      15,
+      8,
+      undefined,
+      undefined,
+      true // allowAdaptiveDownscale
+    );
+
+    expect(result.targetAchieved).toBe(true);
+    expect(result.optimalBlob.size).toBeLessThanOrEqual(targetBytes);
+    expect(result.optimalWidth).toBeLessThan(100);
+    expect(result.targetUnreachable).toBe(false);
+  });
 });
 

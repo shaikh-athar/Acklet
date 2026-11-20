@@ -89,6 +89,7 @@ import {
   LucideWrench,
   LucideClock,
   LucideMaximize2,
+  LucideMove,
   LucideLogIn,
   LucideRefreshCw,
   LucideSave,
@@ -196,6 +197,8 @@ import {
   LucideRedo,
   LucideHand,
   LucideMove
+  LucidePipette,
+  LucideMonitorSmartphone
 } from '@lucide/angular';
 
 import {
@@ -517,6 +520,9 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   'folder-open': {
     lucide: LucideFolderOpen
   },
+  'monitor-smartphone': {
+    lucide: LucideMonitorSmartphone
+  },
   clock: {
     animated: HistoryIcon,
     lucide: LucideClock
@@ -651,6 +657,9 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   },
   'maximize-2': {
     lucide: LucideMaximize2
+  },
+  move: {
+    lucide: LucideMove
   },
   'log-in': {
     lucide: LucideLogIn

@@ -379,6 +379,26 @@ export class CompressorTelemetryService {
     this.recordEvent('transform_applied', props);
   }
 
+  trackReportViewed(): void {
+    this.recordEvent('download_report_viewed');
+  }
+
+  trackTargetSliderUsed(): void {
+    this.recordEvent('target_slider_used');
+  }
+
+  trackPixelZoomUsed(): void {
+    this.recordEvent('pixel_zoom_used');
+  }
+
+  trackSourceRowOpened(): void {
+    this.recordEvent('source_row_opened');
+  }
+
+  trackSettingsLinkCopied(): void {
+    this.recordEvent('settings_link_copied');
+  }
+
   getOperationalMetrics(): OperationalMetricsSummary {
     return this.metrics();
   }

@@ -1,5 +1,5 @@
 // apps/tool-file-converter/src/file-converter.component.ts
-import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, HostListener, ViewChild, ElementRef, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, HostListener, ViewChild, ElementRef, OnInit, OnDestroy, ChangeDetectorRef, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TsIconComponent, FileTransferService } from '@acklet/tool-shell';
@@ -40,7 +40,10 @@ interface ResizeOption {
   selector: 'app-file-converter-tool',
   standalone: true,
   host: {
-    '[class.has-jobs]': 'engine.hasJobs()'
+    '[class.has-jobs]': 'engine.hasJobs()',
+    '[style.--tool-accent]': 'isImageConverterMode() ? "#0D9488" : "#7C3AED"',
+    '[style.--tool-accent-soft]': 'isImageConverterMode() ? "rgba(13, 148, 136, 0.08)" : "rgba(124, 58, 237, 0.08)"',
+    '[style.--tool-accent-contrast]': '"#FFFFFF"'
   },
   imports: [
     CommonModule,
@@ -59,6 +62,7 @@ export class FileConverterComponent implements OnInit, OnDestroy {
   private readonly fileTransfer = inject(FileTransferService);
   private readonly capabilityRegistry = inject(ImageCapabilityRegistry);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly ngZone = inject(NgZone);
   readonly maxFiles = MAX_FILES_PER_BATCH;
   readonly formatSearchQuery = signal<string>('');
 
@@ -1082,28 +1086,33 @@ export class FileConverterComponent implements OnInit, OnDestroy {
       }
 
       // Track scroll to apply blur background to sticky header only when scrolled
-      const onScroll = () => {
-        const sc = document.querySelector('.ts-main-scroll-container');
-        const st = sc ? sc.scrollTop : (window.scrollY || document.documentElement.scrollTop || 0);
-        const scrolled = st > 6;
-        if (this.isHeaderScrolled() !== scrolled) {
-          this.isHeaderScrolled.set(scrolled);
-          this.cdr.markForCheck();
-        }
-      };
+      this.ngZone.runOutsideAngular(() => {
+        const onScroll = () => {
+          const sc = document.querySelector('.ts-main-scroll-container');
+          const st = sc ? sc.scrollTop : (window.scrollY || document.documentElement.scrollTop || 0);
+          const scrolled = st > 12;
+          if (this.isHeaderScrolled() !== scrolled) {
+            this.ngZone.run(() => {
+              this.isHeaderScrolled.set(scrolled);
+              this.cdr.markForCheck();
+            });
+          }
+        };
 
-      // Check on animation frames or when DOM container becomes available
-      setTimeout(() => {
         const sc = document.querySelector('.ts-main-scroll-container');
         if (sc) {
           sc.addEventListener('scroll', onScroll, { passive: true });
           this.scrollCleanups.push(() => sc.removeEventListener('scroll', onScroll));
           onScroll();
         }
-      }, 50);
 
-      window.addEventListener('scroll', onScroll, { capture: true, passive: true });
-      this.scrollCleanups.push(() => window.removeEventListener('scroll', onScroll, { capture: true }));
+        const winScroll = (e: Event) => {
+          if (e.target === sc) return;
+          onScroll();
+        };
+        window.addEventListener('scroll', winScroll, { passive: true });
+        this.scrollCleanups.push(() => window.removeEventListener('scroll', winScroll));
+      });
     }
   }
 

@@ -1,0 +1,16 @@
+/* apps/tool-image-compressor/src/breakpoints.css
+ * Canonical Breakpoint System for Acklet Image Compressor:
+ * xs: 0 to 479px (phones)
+ * sm: 480 to 767px (large phones)
+ * md: 768 to 1023px (tablets)
+ * lg: 1024px and up (desktop)
+ */
+
+:root {
+  --bp-xs-max: 479px;
+  --bp-sm-min: 480px;
+  --bp-sm-max: 767px;
+  --bp-md-min: 768px;
+  --bp-md-max: 1023px;
+  --bp-lg-min: 1024px;
+}

@@ -13,7 +13,8 @@ import {
   MultiVariantSettings,
   CategoryCounts,
   ImageCategory,
-  TransformOp
+  TransformOp,
+  WorkingImageSource
 } from '../models/compressor.models';
 import {
   CompressorValidationService,
@@ -24,12 +25,16 @@ import { SmartAnalysisService } from './smart-analysis.service';
 import { ImageMetadataService } from './image-metadata.service';
 import { OptimizationReportService } from './optimization-report.service';
 import { DEFAULT_VARIANTS, getDeveloperPreset } from './developer-presets.constant';
-import { downloadBlob, downloadZip } from './download-helper.util';
+import { downloadBlob, downloadZip, createZipBlob } from './download-helper.util';
 import { CompressorTelemetryService } from './compressor-telemetry.service';
 import { ProfileManagerService } from './profile-manager.service';
 import { TransformService } from './transform.service';
 import { ImageDecoderService } from './image-decoder.service';
+import { ImageCapabilityService } from './image-capability.service';
+import { getFormatCapability, normalizeFormatKey } from '../config/format-registry.config';
 import { COMPRESSOR_CONFIG } from '../config/compressor.config';
+import { calculateDynamicDefaultTarget } from './target-suggestion.util';
+import { estimateCompressedSize } from './size-estimator.util';
 
 export const DEFAULT_COMPRESSION_SETTINGS: CompressionSettings = {
   mode: 'smart',
@@ -37,11 +42,13 @@ export const DEFAULT_COMPRESSION_SETTINGS: CompressionSettings = {
   quality: COMPRESSOR_CONFIG.presets.smart['balanced'].quality,
   outputFormat: 'original',
   targetFileSize: {
-    enabled: false,
-    targetBytes: 200 * 1024,
-    targetValue: 200,
+    enabled: true,
+    targetBytes: 0,
+    targetValue: 0,
     targetUnit: 'KB',
-    minQuality: COMPRESSOR_CONFIG.targetSize.qualityFloor
+    minQuality: COMPRESSOR_CONFIG.targetSize.qualityFloor,
+    isDynamicDefault: true,
+    userDefined: false
   },
   resize: {
     enabled: false,
@@ -63,6 +70,119 @@ export const DEFAULT_COMPRESSION_SETTINGS: CompressionSettings = {
   }
 };
 
+/**
+ * Resolves effective compression settings for an ImageItem adhering strictly to:
+ * - Priority 1: The file's own customized settings (target size, format, quality choice, transforms, resize switch).
+ * - Priority 2: The panel's global settings (if the file has no customization).
+ * - Priority 3: The default estimate. For a file with no target and no customization,
+ *   the engine targets the estimate shown on the Working card.
+ *
+ * The estimate and the compression use the same settings object.
+ */
+export function resolveEffectiveSettings(
+  item: ImageItem,
+  globalSettings: CompressionSettings
+): CompressionSettings {
+  const hasCustom = Boolean(item.individualSettings?.hasCustomSettings);
+
+  // Start with global settings as baseline
+  const effective: CompressionSettings = {
+    ...globalSettings,
+    resize: { ...(globalSettings.resize || DEFAULT_COMPRESSION_SETTINGS.resize) },
+    advancedOptimization: globalSettings.advancedOptimization ? { ...globalSettings.advancedOptimization } : undefined
+  };
+
+  // Priority 1: Apply file's customized overrides if set
+  if (hasCustom) {
+    const custom = item.individualSettings;
+    if (custom.mode !== undefined) effective.mode = custom.mode;
+    if (custom.preset !== undefined) effective.preset = custom.preset;
+    if (custom.developerPreset !== undefined) effective.developerPreset = custom.developerPreset;
+    if (custom.quality !== undefined) effective.quality = custom.quality;
+    if (custom.outputFormat !== undefined) effective.outputFormat = custom.outputFormat;
+    if (custom.targetFileSize !== undefined) {
+      effective.targetFileSize = { ...custom.targetFileSize };
+    }
+    if (custom.resize !== undefined) {
+      effective.resize = { ...custom.resize };
+    }
+    if (custom.metadataPolicy !== undefined) effective.metadataPolicy = custom.metadataPolicy;
+    if (custom.advancedOptimization !== undefined) {
+      effective.advancedOptimization = { ...custom.advancedOptimization };
+    }
+  }
+
+  // Include transforms if any
+  if (item.transforms && item.transforms.length > 0) {
+    effective.transforms = [...item.transforms];
+  }
+
+  // Check if user set an explicit target size (Priority 1 custom target or Priority 2 global target)
+  const isCustomUserTarget = Boolean(
+    hasCustom &&
+    item.individualSettings?.targetFileSize?.enabled &&
+    item.individualSettings?.targetFileSize?.userDefined &&
+    (item.individualSettings?.targetFileSize?.targetBytes || 0) > 0
+  );
+
+  const isGlobalUserTarget = Boolean(
+    !hasCustom &&
+    globalSettings.targetFileSize?.enabled &&
+    globalSettings.targetFileSize?.userDefined &&
+    (globalSettings.targetFileSize?.targetBytes || 0) > 0
+  );
+
+  if (isCustomUserTarget) {
+    effective.targetFileSize = {
+      ...item.individualSettings.targetFileSize!,
+      enabled: true,
+      userDefined: true
+    };
+  } else if (isGlobalUserTarget) {
+    effective.targetFileSize = {
+      ...globalSettings.targetFileSize!,
+      enabled: true,
+      userDefined: true
+    };
+  } else {
+    // Priority 3: Default estimate shown on the Working card
+    const est = estimateCompressedSize({
+      originalSize: item.originalSize,
+      detectedFormat: item.detectedFormat,
+      settings: effective,
+      width: item.width,
+      height: item.height
+    });
+
+    if (est !== null && est > 0 && est < item.originalSize) {
+      const targetVal = est < 1048576
+        ? (est >= 10240 ? Math.round(est / 1024) : Math.round((est / 1024) * 10) / 10)
+        : Math.round((est / 1048576) * 10) / 10;
+      effective.targetFileSize = {
+        enabled: true,
+        targetBytes: est,
+        targetValue: targetVal,
+        targetUnit: est >= 1048576 ? 'MB' : (est >= 1024 ? 'KB' : 'B'),
+        userDefined: false,
+        isDynamicDefault: true,
+        minQuality: COMPRESSOR_CONFIG.targetSize.qualityFloor
+      };
+    } else {
+      effective.targetFileSize = {
+        enabled: false,
+        targetBytes: 0,
+        targetValue: 0,
+        targetUnit: 'KB',
+        userDefined: false,
+        isDynamicDefault: false,
+        minQuality: COMPRESSOR_CONFIG.targetSize.qualityFloor
+      };
+    }
+  }
+
+  return effective;
+}
+
 const MAX_CONCURRENT_COMPRESSIONS = COMPRESSOR_CONFIG.limits.workerConcurrency;
 
 @Injectable({
@@ -79,8 +199,14 @@ export class CompressorStateService implements OnDestroy {
   readonly profileManager: ProfileManagerService;
   private readonly decoder: ImageDecoderService;
   private readonly transformService: TransformService;
+  private readonly capabilityService: ImageCapabilityService;
 
   constructor() {
+    try {
+      this.capabilityService = inject(ImageCapabilityService);
+    } catch {
+      this.capabilityService = new ImageCapabilityService();
+    }
     try {
       this.validator = inject(CompressorValidationService);
     } catch {
@@ -147,6 +273,8 @@ export class CompressorStateService implements OnDestroy {
   // Concurrency Queue Tracking
   private activeCompressionSlots = 0;
   private pendingQueue: string[] = [];
+  private batchCompletionResolvers: Array<() => void> = [];
+  private itemCompletionResolvers = new Map<string, () => void>();
 
   private toastTimer: any = null;
   private toastDismissTimer: any = null;
@@ -184,6 +312,23 @@ export class CompressorStateService implements OnDestroy {
     return counts;
   });
 
+  readonly pendingImages = computed(() =>
+    this.images().filter(img => img.status !== 'completed')
+  );
+
+  readonly completedImages = computed(() =>
+    this.images().filter(img => (img.status === 'completed' || (img.status === 'processing' && !!img.result)) && !!img.result)
+  );
+
+  readonly pendingCount = computed(() => this.pendingImages().length);
+
+  readonly filteredPendingImages = computed(() => {
+    const filter = this.activeCategoryFilter();
+    const list = this.pendingImages();
+    if (filter === 'all') return list;
+    return list.filter(img => img.characteristics?.imageCategory === filter);
+  });
+
   readonly filteredImages = computed(() => {
     const filter = this.activeCategoryFilter();
     const list = this.images();
@@ -193,7 +338,7 @@ export class CompressorStateService implements OnDestroy {
 
   readonly previewImage = computed(() => {
     const idx = this.previewModalIndex();
-    const list = this.images();
+    const list = this.completedImages().length > 0 ? this.completedImages() : this.images();
     if (idx !== null && idx >= 0 && idx < list.length) {
       return list[idx];
     }
@@ -388,6 +533,11 @@ export class CompressorStateService implements OnDestroy {
           item.duplicateOfName = duplicateMatch.originalName;
         }
 
+        // Priority 1/2/3: Resolve effective settings using Priority hierarchy
+        item.originalUploadedWidth = item.width;
+        item.originalUploadedHeight = item.height;
+        item.effectiveSettings = resolveEffectiveSettings(item, currentSettings);
+
         accepted.push(item);
       } catch (err: any) {
         rejectedCount++;
@@ -397,6 +547,44 @@ export class CompressorStateService implements OnDestroy {
 
     if (accepted.length > 0) {
       this.images.update(list => [...list, ...accepted]);
+
+      // Update global settings target file size dynamically if user hasn't explicitly set a custom target
+      if (!this.globalSettings().targetFileSize?.userDefined) {
+        const allList = [...currentImages, ...accepted];
+        if (allList.length === 1) {
+          const dyn = calculateDynamicDefaultTarget(allList[0].originalSize);
+          this.globalSettings.update(curr => ({
+            ...curr,
+            targetFileSize: {
+              ...(curr.targetFileSize || DEFAULT_COMPRESSION_SETTINGS.targetFileSize!),
+              enabled: true,
+              targetBytes: dyn.targetBytes,
+              targetValue: dyn.targetValue,
+              targetUnit: dyn.targetUnit,
+              isDynamicDefault: true,
+              userDefined: false,
+              minQuality: COMPRESSOR_CONFIG.targetSize.qualityFloor
+            }
+          }));
+        } else if (allList.length >= 2) {
+          const avg = Math.round(allList.reduce((acc, img) => acc + img.originalSize, 0) / allList.length);
+          const dyn = calculateDynamicDefaultTarget(avg);
+          this.globalSettings.update(curr => ({
+            ...curr,
+            targetFileSize: {
+              ...(curr.targetFileSize || DEFAULT_COMPRESSION_SETTINGS.targetFileSize!),
+              enabled: true,
+              targetBytes: dyn.targetBytes,
+              targetValue: dyn.targetValue,
+              targetUnit: dyn.targetUnit,
+              isDynamicDefault: true,
+              userDefined: false,
+              minQuality: COMPRESSOR_CONFIG.targetSize.qualityFloor
+            }
+          }));
+        }
+      }
+
       const totalBytes = accepted.reduce((sum, item) => sum + item.originalSize, 0);
       this.telemetry.trackUploadCompleted(accepted.length, totalBytes);
 
@@ -495,6 +683,42 @@ export class CompressorStateService implements OnDestroy {
 
     if (item) {
       this.showToast('info', `Removed "${item.originalName}"`, 2000);
+    }
+
+    const remaining = this.images();
+    if (!this.globalSettings().targetFileSize?.userDefined) {
+      if (remaining.length === 1) {
+        const dyn = calculateDynamicDefaultTarget(remaining[0].originalSize);
+        this.globalSettings.update(curr => ({
+          ...curr,
+          targetFileSize: {
+            ...(curr.targetFileSize || DEFAULT_COMPRESSION_SETTINGS.targetFileSize!),
+            enabled: true,
+            targetBytes: dyn.targetBytes,
+            targetValue: dyn.targetValue,
+            targetUnit: dyn.targetUnit,
+            isDynamicDefault: true,
+            userDefined: false,
+            minQuality: COMPRESSOR_CONFIG.targetSize.qualityFloor
+          }
+        }));
+      } else if (remaining.length >= 2) {
+        const avg = Math.round(remaining.reduce((acc, img) => acc + img.originalSize, 0) / remaining.length);
+        const dyn = calculateDynamicDefaultTarget(avg);
+        this.globalSettings.update(curr => ({
+          ...curr,
+          targetFileSize: {
+            ...(curr.targetFileSize || DEFAULT_COMPRESSION_SETTINGS.targetFileSize!),
+            enabled: true,
+            targetBytes: dyn.targetBytes,
+            targetValue: dyn.targetValue,
+            targetUnit: dyn.targetUnit,
+            isDynamicDefault: true,
+            userDefined: false,
+            minQuality: COMPRESSOR_CONFIG.targetSize.qualityFloor
+          }
+        }));
+      }
     }
   }
 
@@ -666,6 +890,42 @@ export class CompressorStateService implements OnDestroy {
     }
 
     this.showToast('info', `Removed ${count} selected image(s)`, 2000);
+
+    const remaining = this.images();
+    if (!this.globalSettings().targetFileSize?.userDefined) {
+      if (remaining.length === 1) {
+        const dyn = calculateDynamicDefaultTarget(remaining[0].originalSize);
+        this.globalSettings.update(curr => ({
+          ...curr,
+          targetFileSize: {
+            ...(curr.targetFileSize || DEFAULT_COMPRESSION_SETTINGS.targetFileSize!),
+            enabled: true,
+            targetBytes: dyn.targetBytes,
+            targetValue: dyn.targetValue,
+            targetUnit: dyn.targetUnit,
+            isDynamicDefault: true,
+            userDefined: false,
+            minQuality: COMPRESSOR_CONFIG.targetSize.qualityFloor
+          }
+        }));
+      } else if (remaining.length >= 2) {
+        const avg = Math.round(remaining.reduce((acc, img) => acc + img.originalSize, 0) / remaining.length);
+        const dyn = calculateDynamicDefaultTarget(avg);
+        this.globalSettings.update(curr => ({
+          ...curr,
+          targetFileSize: {
+            ...(curr.targetFileSize || DEFAULT_COMPRESSION_SETTINGS.targetFileSize!),
+            enabled: true,
+            targetBytes: dyn.targetBytes,
+            targetValue: dyn.targetValue,
+            targetUnit: dyn.targetUnit,
+            isDynamicDefault: true,
+            userDefined: false,
+            minQuality: COMPRESSOR_CONFIG.targetSize.qualityFloor
+          }
+        }));
+      }
+    }
   }
 
   /**
@@ -673,14 +933,23 @@ export class CompressorStateService implements OnDestroy {
    */
   updateGlobalSettings(partial: Partial<CompressionSettings>): void {
     this.globalSettings.update(curr => {
-      const nextTarget = partial.targetFileSize
-        ? { ...(curr.targetFileSize || DEFAULT_COMPRESSION_SETTINGS.targetFileSize!), ...partial.targetFileSize }
-        : curr.targetFileSize;
+      let nextTarget = curr.targetFileSize;
+      if (partial.targetFileSize) {
+        const isUserEdit = partial.targetFileSize.userDefined !== undefined
+          ? partial.targetFileSize.userDefined
+          : true;
+        nextTarget = {
+          ...(curr.targetFileSize || DEFAULT_COMPRESSION_SETTINGS.targetFileSize!),
+          ...partial.targetFileSize,
+          userDefined: isUserEdit,
+          isDynamicDefault: !isUserEdit
+        };
 
-      // Recalculate targetBytes if targetValue or targetUnit changed
-      if (nextTarget && nextTarget.enabled) {
-        const mult = nextTarget.targetUnit === 'MB' ? 1024 * 1024 : 1024;
-        nextTarget.targetBytes = Math.round((nextTarget.targetValue || 200) * mult);
+        // Recalculate targetBytes if targetValue or targetUnit changed
+        if (nextTarget && nextTarget.enabled) {
+          const mult = nextTarget.targetUnit === 'MB' ? 1024 * 1024 : 1024;
+          nextTarget.targetBytes = Math.round((nextTarget.targetValue || 200) * mult);
+        }
       }
 
       const next: CompressionSettings = {
@@ -708,7 +977,7 @@ export class CompressorStateService implements OnDestroy {
 
     const currentGlobal = this.globalSettings();
 
-    // Propagate only to items without individual overrides
+    // Propagate only to items without individual overrides using Priority 2 & 3
     this.images.update(list =>
       list.map(item => {
         if (item.individualSettings.hasCustomSettings) {
@@ -716,7 +985,7 @@ export class CompressorStateService implements OnDestroy {
         }
         return {
           ...item,
-          effectiveSettings: { ...currentGlobal }
+          effectiveSettings: resolveEffectiveSettings(item, currentGlobal)
         };
       })
     );
@@ -739,26 +1008,24 @@ export class CompressorStateService implements OnDestroy {
         };
 
         const targetBase = nextOverrides.targetFileSize || global.targetFileSize;
-        const nextTarget = targetBase ? { ...targetBase } : undefined;
-        if (nextTarget && nextTarget.enabled) {
+        const nextTarget = targetBase ? {
+          ...targetBase,
+          userDefined: nextOverrides.targetFileSize ? true : targetBase.userDefined,
+          isDynamicDefault: nextOverrides.targetFileSize ? false : targetBase.isDynamicDefault
+        } : undefined;
+        if (nextTarget && nextTarget.enabled && nextTarget.targetValue) {
           const mult = nextTarget.targetUnit === 'MB' ? 1024 * 1024 : 1024;
           nextTarget.targetBytes = Math.round((nextTarget.targetValue || 200) * mult);
         }
+        if (nextTarget) {
+          nextOverrides.targetFileSize = nextTarget;
+        }
 
-        const effective: CompressionSettings = {
-          mode: nextOverrides.mode ?? global.mode,
-          preset: nextOverrides.preset ?? global.preset,
-          developerPreset: nextOverrides.developerPreset ?? global.developerPreset,
-          quality: nextOverrides.quality ?? global.quality,
-          outputFormat: nextOverrides.outputFormat ?? global.outputFormat,
-          targetFileSize: nextTarget,
-          resize: nextOverrides.resize
-            ? { ...global.resize, ...nextOverrides.resize }
-            : { ...global.resize },
-          multiVariant: nextOverrides.multiVariant ?? global.multiVariant,
-          metadataPolicy: nextOverrides.metadataPolicy ?? global.metadataPolicy,
-          advancedOptimization: nextOverrides.advancedOptimization ?? global.advancedOptimization
+        const tempItem: ImageItem = {
+          ...item,
+          individualSettings: nextOverrides
         };
+        const effective = resolveEffectiveSettings(tempItem, global);
 
         return {
           ...item,
@@ -835,6 +1102,41 @@ export class CompressorStateService implements OnDestroy {
   }
 
   /**
+   * Applies the closest achievable compressed result when the strict target was unreachable.
+   */
+  applyClosestResult(id: string): void {
+    const item = this.images().find(img => img.id === id);
+    if (!item || !item.result) return;
+    const res = item.result;
+    const closestBlob = res.closestAchievableBlob;
+    const closestSize = res.closestAchievableSize;
+    if (!closestBlob || typeof closestSize !== 'number') return;
+
+    const savedBytes = Math.max(0, item.originalSize - closestSize);
+    const savedPercentage = item.originalSize > 0 && item.originalSize > closestSize
+      ? Math.round(((item.originalSize - closestSize) / item.originalSize) * 1000) / 10
+      : 0;
+
+    const updatedResult: CompressionResult = {
+      ...res,
+      compressedSize: closestSize,
+      outputBlob: closestBlob,
+      outputUrl: res.closestAchievableUrl || URL.createObjectURL(closestBlob),
+      savedBytes,
+      savedPercentage,
+      targetAchieved: false,
+      targetUnreachable: false,
+      reductionResult: savedBytes > 0 ? 'reduced' : 'not reduced',
+      reductionReason: 'Applied closest achievable result'
+    };
+
+    this.updateItemState(id, {
+      result: updatedResult
+    });
+    this.showToast('success', `Applied closest result (${this.formatBytes(closestSize)})`, 2500);
+  }
+
+  /**
    * Applies global settings to all currently selected images.
    */
   applyGlobalSettingsToSelected(): void {
@@ -905,9 +1207,21 @@ export class CompressorStateService implements OnDestroy {
     }
     this.updateItemState(id, {
       transforms: [],
-      transformedPreviewUrl: undefined
+      transformedPreviewUrl: undefined,
+      width: item.originalUploadedWidth || item.width,
+      height: item.originalUploadedHeight || item.height
     });
     this.showToast('info', 'Reset all transforms', 1500);
+  }
+
+  /**
+   * Applies a transform operation to all images in the session.
+   */
+  async addTransformToAll(op: TransformOp): Promise<void> {
+    const list = this.images();
+    for (const img of list) {
+      await this.addTransform(img.id, op);
+    }
   }
 
   /**
@@ -922,7 +1236,11 @@ export class CompressorStateService implements OnDestroy {
     }
 
     if (!item.transforms || item.transforms.length === 0) {
-      this.updateItemState(id, { transformedPreviewUrl: undefined });
+      this.updateItemState(id, {
+        transformedPreviewUrl: undefined,
+        width: item.originalUploadedWidth || item.width,
+        height: item.originalUploadedHeight || item.height
+      });
       return;
     }
 
@@ -932,7 +1250,9 @@ export class CompressorStateService implements OnDestroy {
       const blob = await this.transformService.exportCanvasToBlob(transformed.canvas);
       const url = URL.createObjectURL(blob);
       this.updateItemState(id, {
-        transformedPreviewUrl: url
+        transformedPreviewUrl: url,
+        width: transformed.width,
+        height: transformed.height
       });
     } catch {
       // Safe fallback
@@ -944,52 +1264,77 @@ export class CompressorStateService implements OnDestroy {
   /**
    * Compresses a single image item.
    */
-  compressItem(id: string): void {
+  compressItem(id: string): Promise<void> {
     const item = this.images().find(img => img.id === id);
-    if (!item || item.status === 'corrupted' || item.status === 'invalid') return;
+    if (!item || item.status === 'corrupted' || item.status === 'invalid') return Promise.resolve();
 
-    // Prevent duplicate active compression
-    if (['pending', 'decoding', 'processing', 'encoding'].includes(item.status)) return;
+    const effective = resolveEffectiveSettings(item, this.globalSettings());
+    this.updateItemState(id, { effectiveSettings: effective });
 
-    if (!this.pendingQueue.includes(id)) {
-      this.pendingQueue.push(id);
-      this.updateItemState(id, { status: 'pending', progress: 0, progressStage: 'In queue...' });
-      this.drainQueue();
-    }
+    return new Promise<void>(resolve => {
+      this.itemCompletionResolvers.set(id, resolve);
+      if (!this.pendingQueue.includes(id)) {
+        this.pendingQueue.push(id);
+        this.updateItemState(id, { status: 'pending', progress: 0, progressStage: 'In queue...', error: undefined });
+        this.drainQueue();
+      }
+    });
   }
 
   /**
-   * Compresses all images currently in the workspace.
+   * Compresses all images currently in the workspace using global settings,
+   * while preserving individual customizations on customized images.
+   * Builds one job list from all files and executes all of them in one click.
    */
-  compressAll(): void {
-    const valid = this.images().filter(
-      img => img.status !== 'corrupted' &&
-             img.status !== 'invalid' &&
-             !['pending', 'decoding', 'processing', 'encoding'].includes(img.status)
+  compressAll(): Promise<void> {
+    let allItems = this.images().filter(
+      img => img.status !== 'completed' && img.status !== 'corrupted' && img.status !== 'invalid'
     );
-
-    if (valid.length === 0) {
-      if (this.images().some(img => ['pending', 'decoding', 'processing', 'encoding'].includes(img.status))) {
-        this.showToast('info', 'Compression is already actively running.');
-        return;
-      }
-      this.showToast('warning', 'No valid images available to compress.');
-      return;
+    if (allItems.length === 0 && this.images().length > 0) {
+      allItems = this.images().filter(
+        img => img.status !== 'corrupted' && img.status !== 'invalid'
+      );
     }
 
-    for (const item of valid) {
+    if (allItems.length === 0) {
+      return Promise.resolve();
+    }
+
+    const global = this.globalSettings();
+    this.images.update(list =>
+      list.map(item => ({
+        ...item,
+        effectiveSettings: resolveEffectiveSettings(item, global)
+      }))
+    );
+
+    // Step 1: Log the job list at the start: one line per file with name, original size, and settings
+    for (const item of allItems) {
+      const settingsSummary = this.describeSettingsSummary(item.effectiveSettings);
+      console.log(`[job] ${item.originalName} | ${this.formatBytes(item.originalSize)} | ${settingsSummary}`);
+    }
+
+    const promise = new Promise<void>(resolve => {
+      this.batchCompletionResolvers.push(resolve);
+    });
+
+    for (const item of allItems) {
       if (!this.pendingQueue.includes(item.id)) {
         this.pendingQueue.push(item.id);
         this.updateItemState(item.id, {
           status: 'pending',
           progress: 0,
-          progressStage: 'In queue...'
+          progressStage: 'In queue...',
+          error: undefined
         });
       }
     }
 
-    this.showToast('info', `Queued ${valid.length} image(s) for compression...`, 2000);
+    if (allItems.length > 1) {
+      this.showToast('info', `Compressing ${allItems.length} images...`, 3000);
+    }
     this.drainQueue();
+    return promise;
   }
 
   /**
@@ -1047,6 +1392,11 @@ export class CompressorStateService implements OnDestroy {
    */
   cancelAll(): void {
     this.pendingQueue = [];
+    const resolvers = [...this.batchCompletionResolvers];
+    this.batchCompletionResolvers = [];
+    resolvers.forEach(r => r());
+    this.itemCompletionResolvers.forEach(r => r());
+    this.itemCompletionResolvers.clear();
     const list = this.images();
 
     for (const item of list) {
@@ -1067,22 +1417,217 @@ export class CompressorStateService implements OnDestroy {
   }
 
   /**
-   * User chooses to keep the original file if compressed is larger or preference dictates.
+   * Prepares an image for customization.
+   * If the image has already undergone successful compression (iteration > 0),
+   * sets the active working source to the latest compressed output so the customization
+   * modal, achievable size discovery, and subsequent compression pass operate directly
+   * on the latest compressed image.
+   * The original uploaded file is permanently preserved in originalUploaded* fields.
    */
-  keepOriginal(id: string): void {
+  prepareForCustomization(id: string): void {
     const item = this.images().find(img => img.id === id);
-    if (!item || !item.result) return;
+    if (!item) return;
 
-    this.revokeResultUrls(item.result);
+    const originalUploadedFile = item.originalUploadedFile || item.file;
+    const originalUploadedSize = item.originalUploadedSize || item.originalSize;
+    const originalUploadedWidth = item.originalUploadedWidth || item.width;
+    const originalUploadedHeight = item.originalUploadedHeight || item.height;
+    const originalUploadedFormat = item.originalUploadedFormat || item.detectedFormat;
+    const originalUploadedExtension = item.originalUploadedExtension || item.originalExtension;
+    const originalUploadedMimeType = item.originalUploadedMimeType || item.mimeType;
+    const originalUploadedPreviewUrl = item.originalUploadedPreviewUrl || item.previewUrl;
+
+    let src = item.currentWorkingSource;
+    if ((!src || src.iteration === 0) && item.result && item.result.status === 'completed') {
+      const workingBlob = item.result.outputBlob || (item.file as Blob);
+      const workingFile = item.result.outputBlob
+        ? new File([item.result.outputBlob], item.result.outputFilename || item.file.name, {
+            type: item.result.outputMimeType,
+            lastModified: Date.now()
+          })
+        : item.file;
+      src = {
+        file: workingFile,
+        blob: workingBlob,
+        size: item.result.compressedSize,
+        width: item.result.outputWidth || item.width,
+        height: item.result.outputHeight || item.height,
+        format: item.result.outputFormat || item.detectedFormat,
+        extension: item.result.outputFilename ? (item.result.outputFilename.split('.').pop() || item.result.outputFormat) : (item.result.outputFormat || item.originalExtension),
+        mimeType: item.result.outputMimeType || item.mimeType,
+        previewUrl: item.result.outputUrl || item.previewUrl,
+        iteration: 1
+      };
+    }
+
+    if (src && (src.iteration > 0 || (item.result && item.result.status === 'completed'))) {
+      const caps = this.resolveCapabilities(src.format);
+
+      this.updateItemState(id, {
+        originalUploadedFile,
+        originalUploadedSize,
+        originalUploadedWidth,
+        originalUploadedHeight,
+        originalUploadedFormat,
+        originalUploadedExtension,
+        originalUploadedMimeType,
+        originalUploadedPreviewUrl,
+        file: src.file,
+        originalSize: src.size,
+        width: src.width,
+        height: src.height,
+        aspectRatio: src.width > 0 && src.height > 0 ? src.width / src.height : 1,
+        detectedFormat: src.format,
+        originalExtension: src.extension,
+        mimeType: src.mimeType,
+        previewUrl: src.previewUrl,
+        originalName: src.file.name,
+        nameWithoutExt: src.file.name.replace(/\.[^/.]+$/, ''),
+        capabilities: caps,
+        characteristics: undefined
+      });
+    } else {
+      this.updateItemState(id, {
+        originalUploadedFile,
+        originalUploadedSize,
+        originalUploadedWidth,
+        originalUploadedHeight,
+        originalUploadedFormat,
+        originalUploadedExtension,
+        originalUploadedMimeType,
+        originalUploadedPreviewUrl
+      });
+    }
+  }
+
+  /**
+   * Explicitly reverts a customized/compressed image back to its original uploaded file state.
+   */
+  resetToOriginal(id: string): void {
+    const item = this.images().find(img => img.id === id);
+    if (!item) return;
+
+    if (item.result) {
+      this.revokeResultUrls(item.result);
+    }
+
+    const origFile = item.originalUploadedFile || item.file;
+    const origSize = item.originalUploadedSize || item.originalSize;
+    const origWidth = item.originalUploadedWidth || item.width;
+    const origHeight = item.originalUploadedHeight || item.height;
+    const origFormat = item.originalUploadedFormat || item.detectedFormat;
+    const origExt = item.originalUploadedExtension || item.originalExtension;
+    const origMime = item.originalUploadedMimeType || item.mimeType;
+    const origUrl = item.originalUploadedPreviewUrl || item.previewUrl;
+
+    const resetSource: WorkingImageSource = {
+      file: origFile,
+      blob: origFile,
+      size: origSize,
+      width: origWidth,
+      height: origHeight,
+      format: origFormat,
+      mimeType: origMime,
+      extension: origExt,
+      previewUrl: origUrl,
+      iteration: 0
+    };
 
     this.updateItemState(id, {
+      file: origFile,
+      originalSize: origSize,
+      width: origWidth,
+      height: origHeight,
+      aspectRatio: origWidth > 0 && origHeight > 0 ? origWidth / origHeight : 1,
+      detectedFormat: origFormat,
+      originalExtension: origExt,
+      mimeType: origMime,
+      previewUrl: origUrl,
+      originalName: origFile.name,
+      nameWithoutExt: origFile.name.replace(/\.[^/.]+$/, ''),
       status: 'ready',
       result: undefined,
       progress: 0,
-      progressStage: undefined
+      progressStage: undefined,
+      currentWorkingSource: resetSource,
+      capabilities: this.resolveCapabilities(origFormat)
     });
 
-    this.showToast('info', `Restored original "${item.originalName}"`, 2000);
+    this.showToast('info', `Restored original "${origFile.name}"`, 2000);
+  }
+
+  /**
+   * Resolves format capabilities from central registry for a given format.
+   */
+  private resolveCapabilities(format: string) {
+    const norm = normalizeFormatKey(format);
+    const entry = getFormatCapability(norm);
+    return {
+      fileAccepted: entry ? entry.fileAccepted : true,
+      previewSupported: entry ? entry.previewSupported : true,
+      compressionSupported: entry ? entry.compressionSupported : true,
+      description: entry ? entry.description : ''
+    };
+  }
+
+  /**
+   * User chooses to keep the original file if compressed is larger or preference dictates.
+   */
+  keepOriginal(id: string): void {
+    this.resetToOriginal(id);
+  }
+
+  /**
+   * Updates an item's result object in state, ensuring the card, modal, and download share the same object.
+   */
+  updateItemResult(id: string, result: CompressionResult): void {
+    const item = this.images().find(img => img.id === id);
+    if (!item) return;
+
+    if (item.result && item.result !== result) {
+      this.revokeResultUrls(item.result);
+    }
+
+    this.updateItemState(id, {
+      status: 'completed',
+      progress: 100,
+      progressStage: 'Completed',
+      result,
+      error: undefined
+    });
+  }
+
+  /**
+   * Feature 4: User allows resize when target size could not be reached at full resolution.
+   */
+  allowResize(id: string): void {
+    const item = this.images().find(img => img.id === id);
+    if (!item) return;
+    (item as any).allowAdaptiveResize = true;
+    this.updateIndividualSettings(id, {
+      resize: {
+        enabled: true,
+        mode: 'percentage',
+        percentage: 85,
+        maintainAspectRatio: true,
+        preventUpscale: true
+      }
+    });
+    this.compressItem(id);
+    this.showToast('info', 'Re-compressing with adaptive resizing allowed...');
+  }
+
+  /**
+   * Feature 4: User chooses to keep best quality when target size could not be reached.
+   */
+  keepBestQuality(id: string): void {
+    const item = this.images().find(img => img.id === id);
+    if (!item || !item.result) return;
+    this.updateItemResult(id, {
+      ...item.result,
+      targetUnreachable: false
+    });
+    this.showToast('info', 'Kept best full-resolution quality.');
   }
 
   /**
@@ -1100,6 +1645,42 @@ export class CompressorStateService implements OnDestroy {
     this.telemetry.trackDownloadCompleted('single', item.result.outputFormat);
     const savedPct = item.result.savedPercentage || 0;
     this.showToast('success', `Done. Saved 1 image, ${savedPct}% smaller.`, 2500);
+  }
+
+  /**
+   * Renames an image's base name (without extension).
+   * Validates non-empty and max 100 characters.
+   * Preserves the extension and updates result outputFilename so downloads and ZIPs use it.
+   */
+  renameImage(id: string, newBaseName: string): boolean {
+    const trimmed = (newBaseName || '').trim();
+    if (!trimmed) {
+      return false;
+    }
+    const cleanBaseName = trimmed.slice(0, 100);
+    this.images.update(list =>
+      list.map(img => {
+        if (img.id !== id) return img;
+        const newOriginalName = `${cleanBaseName}.${img.originalExtension}`;
+        const outExt = img.result?.outputFilename?.includes('.')
+          ? img.result.outputFilename.split('.').pop()
+          : (img.result?.outputFormat || img.originalExtension);
+        const updatedResult = img.result
+          ? {
+              ...img.result,
+              outputFilename: `${cleanBaseName}.${outExt}`,
+              originalName: newOriginalName
+            }
+          : undefined;
+        return {
+          ...img,
+          nameWithoutExt: cleanBaseName,
+          originalName: newOriginalName,
+          result: updatedResult
+        };
+      })
+    );
+    return true;
   }
 
   /**
@@ -1268,6 +1849,40 @@ export class CompressorStateService implements OnDestroy {
   }
 
   /**
+   * Generates an in-memory ZIP Blob of all completed compressed results.
+   */
+  async generateZipBlobOfCompleted(): Promise<Blob | null> {
+    const completed = this.images().filter(
+      img => img.status === 'completed' && img.result && img.result.outputBlob
+    );
+    if (completed.length === 0) return null;
+
+    const zipItems: { filename: string; blob: Blob; folder?: string }[] = [];
+    for (const img of completed) {
+      if (img.result?.outputBlob && img.result.outputBlob.size > 0) {
+        zipItems.push({
+          filename: img.result.outputFilename,
+          blob: img.result.outputBlob
+        });
+      }
+
+      if (img.result?.variants) {
+        for (const v of img.result.variants) {
+          if (v.outputBlob && v.outputBlob.size > 0) {
+            zipItems.push({
+              filename: v.outputFilename,
+              blob: v.outputBlob,
+              folder: 'variants'
+            });
+          }
+        }
+      }
+    }
+
+    return await createZipBlob(zipItems);
+  }
+
+  /**
    * Packages all completed compressed results into a ZIP archive and triggers download,
    * including generated responsive multi-variants.
    */
@@ -1346,7 +1961,25 @@ export class CompressorStateService implements OnDestroy {
   }
 
   private drainQueue(): void {
-    if (this.pendingQueue.length === 0) return;
+    if (this.pendingQueue.length === 0) {
+      if (this.activeCompressionSlots === 0) {
+        const resolvers = [...this.batchCompletionResolvers];
+        this.batchCompletionResolvers = [];
+        if (resolvers.length > 0) {
+          const completed = this.completedImages();
+          if (completed.length > 0) {
+            const savedPct = Math.floor(this.totalSavedPercentage());
+            if (completed.length === 1) {
+              this.showToast('success', `Done. Saved 1 image${savedPct >= 1 ? `, ${savedPct}% smaller` : ''}.`, 2500);
+            } else {
+              this.showToast('success', `Done. Compressed ${completed.length} images${savedPct >= 1 ? `, ${savedPct}% smaller` : ''}.`, 3000);
+            }
+          }
+        }
+        resolvers.forEach(r => r());
+      }
+      return;
+    }
 
     const peekId = this.pendingQueue[0];
     const peekItem = this.images().find(img => img.id === peekId);
@@ -1361,6 +1994,11 @@ export class CompressorStateService implements OnDestroy {
 
       const item = this.images().find(img => img.id === nextId);
       if (!item || item.status === 'corrupted' || item.status === 'invalid') {
+        const res = this.itemCompletionResolvers.get(nextId);
+        if (res) {
+          this.itemCompletionResolvers.delete(nextId);
+          res();
+        }
         continue;
       }
 
@@ -1373,6 +2011,18 @@ export class CompressorStateService implements OnDestroy {
   }
 
   private async executeCompression(item: ImageItem): Promise<void> {
+    try {
+      await this.runCompressionTask(item);
+    } finally {
+      const itemResolver = this.itemCompletionResolvers.get(item.id);
+      if (itemResolver) {
+        this.itemCompletionResolvers.delete(item.id);
+        itemResolver();
+      }
+    }
+  }
+
+  private async runCompressionTask(item: ImageItem): Promise<void> {
     // If previously compressed, revoke existing output and variant URLs
     this.revokeResultUrls(item.result);
 
@@ -1399,6 +2049,19 @@ export class CompressorStateService implements OnDestroy {
         abortController.signal
       );
 
+      if (result.status === 'failed') {
+        this.updateItemState(item.id, {
+          status: 'failed',
+          progress: 0,
+          progressStage: 'Failed',
+          result,
+          abortController: undefined,
+          error: result.error || 'Compression failed. Please try again.'
+        });
+        this.showToast('error', 'Compression failed. Please try again.', 4000);
+        return;
+      }
+
       this.telemetry.trackProcessingSuccess(
         result.processingTimeMs,
         item.originalSize,
@@ -1406,11 +2069,33 @@ export class CompressorStateService implements OnDestroy {
         result.outputFormat
       );
 
+      let nextWorkingSource = item.currentWorkingSource;
+      if (result.outputBlob) {
+        const workingFile = new File([result.outputBlob], result.outputFilename, {
+          type: result.outputMimeType,
+          lastModified: Date.now()
+        });
+        const nextIteration = (item.currentWorkingSource?.iteration ?? 0) + 1;
+        nextWorkingSource = {
+          file: workingFile,
+          blob: result.outputBlob,
+          size: result.compressedSize,
+          width: result.outputWidth,
+          height: result.outputHeight,
+          format: result.outputFormat,
+          mimeType: result.outputMimeType,
+          extension: result.outputFilename.split('.').pop() || result.outputFormat,
+          previewUrl: result.outputUrl,
+          iteration: nextIteration
+        };
+      }
+
       this.updateItemState(item.id, {
         status: 'completed',
         progress: 100,
         progressStage: 'Completed',
         result,
+        currentWorkingSource: nextWorkingSource,
         abortController: undefined,
         error: undefined
       });
@@ -1435,6 +2120,7 @@ export class CompressorStateService implements OnDestroy {
           error: errorMsg,
           abortController: undefined
         });
+        this.showToast('error', 'Compression failed. Please try again.', 4000);
       }
     }
   }
@@ -1448,10 +2134,11 @@ export class CompressorStateService implements OnDestroy {
   // --- Preview Modal Navigation ---
 
   openPreview(indexOrId: number | string): void {
+    const list = this.completedImages().length > 0 ? this.completedImages() : this.images();
     if (typeof indexOrId === 'number') {
       this.previewModalIndex.set(indexOrId);
     } else {
-      const idx = this.images().findIndex(img => img.id === indexOrId);
+      const idx = list.findIndex(img => img.id === indexOrId);
       if (idx !== -1) {
         this.previewModalIndex.set(idx);
       }
@@ -1464,7 +2151,8 @@ export class CompressorStateService implements OnDestroy {
 
   nextPreview(): void {
     const curr = this.previewModalIndex();
-    const total = this.images().length;
+    const list = this.completedImages().length > 0 ? this.completedImages() : this.images();
+    const total = list.length;
     if (curr !== null && total > 0) {
       this.previewModalIndex.set((curr + 1) % total);
     }
@@ -1472,7 +2160,8 @@ export class CompressorStateService implements OnDestroy {
 
   prevPreview(): void {
     const curr = this.previewModalIndex();
-    const total = this.images().length;
+    const list = this.completedImages().length > 0 ? this.completedImages() : this.images();
+    const total = list.length;
     if (curr !== null && total > 0) {
       this.previewModalIndex.set((curr - 1 + total) % total);
     }
@@ -1486,6 +2175,14 @@ export class CompressorStateService implements OnDestroy {
 
   closeItemSettings(): void {
     this.activeSettingsDrawerItemId.set(null);
+  }
+
+  formatBytes(bytes: number): string {
+    if (!bytes || bytes <= 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 1)} ${sizes[i]}`;
   }
 
   // --- Toast Notification System ---
@@ -1610,6 +2307,24 @@ export class CompressorStateService implements OnDestroy {
 
   getRecentDiagnostics() {
     return this.telemetry.getRecentDiagnostics();
+  }
+
+  describeSettingsSummary(settings: CompressionSettings): string {
+    const parts: string[] = [];
+    parts.push(`format: ${settings.outputFormat || 'original'}`);
+    if (settings.targetFileSize?.enabled && (settings.targetFileSize.targetBytes || 0) > 0) {
+      parts.push(`target: ${this.formatBytes(settings.targetFileSize.targetBytes)}`);
+    } else {
+      parts.push(`quality: ${settings.quality || 80}`);
+    }
+    if (settings.resize?.enabled) {
+      if (settings.resize.mode === 'percentage') {
+        parts.push(`resize: ${settings.resize.percentage}%`);
+      } else if (settings.resize.width && settings.resize.height) {
+        parts.push(`resize: ${settings.resize.width}x${settings.resize.height}`);
+      }
+    }
+    return parts.join(', ');
   }
 
   private cleanupAllObjectUrls(): void {

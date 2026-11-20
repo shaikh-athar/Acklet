@@ -1,5 +1,6 @@
 /* apps/tool-image-compressor/src/styles.css */
 @import "tailwindcss";
+@import "./breakpoints.css";
 @import "../../../packages/tool-shell/src/styles/tokens.css";
 @import "../../../packages/tool-shell/src/styles/base.css";
 
@@ -107,5 +108,28 @@ app-image-compressor-tool.has-images {
 
 * {
   box-sizing: border-box;
+}
+
+/* Prevent any outline or focus border on the rotating hero heading */
+app-rotating-heading,
+.hero-rotating-heading,
+.rotating-heading-root,
+h1.rotating-heading-root {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+app-rotating-heading:focus,
+app-rotating-heading:focus-visible,
+.hero-rotating-heading:focus,
+.hero-rotating-heading:focus-visible,
+.rotating-heading-root:focus,
+.rotating-heading-root:focus-visible,
+h1.rotating-heading-root:focus,
+h1.rotating-heading-root:focus-visible {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 

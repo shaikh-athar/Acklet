@@ -275,6 +275,28 @@ export class TsBackdropComponent implements OnInit, OnDestroy {
       };
 
       const onPointerMove = (e: PointerEvent): void => {
+        const target = e.target as HTMLElement | null;
+        if (!target) {
+          if (gridEl.classList.contains('is-active')) gridEl.classList.remove('is-active');
+          return;
+        }
+
+        // Deactivate pointer grid when cursor is over topbar, cards, dialogs, or interactive surfaces
+        const isInteractiveOrCard = !!target.closest(
+          '.ts-topbar-card, .ts-navbar-card-slot, .ts-sidebar-card, .ts-main-content-card, ' +
+          'button, a, input, textarea, select, [role], [tabindex], label, ' +
+          '[class*="card"], [class*="modal"], [class*="panel"], [class*="dialog"], ' +
+          '[class*="dropdown"], [class*="popover"], [class*="menu"], .hub-tool-row-link, ' +
+          '.ts-tool-tile, .ts-sidebar-hotzone, pre, code'
+        );
+
+        if (isInteractiveOrCard) {
+          if (gridEl.classList.contains('is-active')) {
+            gridEl.classList.remove('is-active');
+          }
+          return;
+        }
+
         lastX = e.clientX;
         lastY = e.clientY;
         if (!gridEl.classList.contains('is-active')) {

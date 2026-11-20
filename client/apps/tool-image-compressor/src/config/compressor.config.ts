@@ -42,12 +42,44 @@ export interface CompressorTargetSizeConfig {
   maxPasses: number;
 }
 
+export interface SmartDefaultBand {
+  minBytes: number;
+  maxBytes: number;
+  minReductionPercent: number;
+  maxReductionPercent: number;
+  description: string;
+}
+
+export interface SmartDefaultsConfig {
+  bands: SmartDefaultBand[];
+  qualityFloorSSIM: number;
+}
+
+export interface CloudSourceCredentials {
+  apiKey?: string;
+  clientId?: string;
+  appKey?: string;
+}
+
+export interface CloudSourcesConfig {
+  googleDrive?: CloudSourceCredentials;
+  dropbox?: CloudSourceCredentials;
+  oneDrive?: CloudSourceCredentials;
+}
+
 export interface CompressorConfig {
+  engine?: 'v1' | 'v2';
+  debug?: boolean;
+  defaultResizeMode: string;
+  minReductionPercent: number;
+  defaultMinSavingPercent: number;
+  smartDefaults: SmartDefaultsConfig;
   limits: CompressorLimitsConfig;
   presets: CompressorPresetsConfig;
   variants: CompressorVariantsConfig;
   targetSize: CompressorTargetSizeConfig;
   profiles: OptimizationProfile[];
+  cloudSources?: CloudSourcesConfig;
 }
 
 const SMART_PRESETS: Record<SmartPreset, SmartPresetDefinition> = {
@@ -184,6 +216,217 @@ const DEVELOPER_PRESETS: DeveloperPresetConfig[] = [
     },
     metadataPolicy: 'remove',
     badge: 'WebP • 2560px • Q75'
+  },
+  {
+    key: 'webp-lossy',
+    label: 'WebP Web',
+    category: 'Modern Formats',
+    description: 'High-efficiency modern WebP format with sharp compression for any web usage.',
+    targetFormat: 'webp',
+    quality: 80,
+    resize: {
+      enabled: false,
+      mode: 'percentage',
+      percentage: 100,
+      maintainAspectRatio: true,
+      preventUpscale: true
+    },
+    metadataPolicy: 'remove',
+    badge: 'WebP • Q80'
+  },
+  {
+    key: 'avif-photo',
+    label: 'AVIF Photo',
+    category: 'Modern Formats',
+    description: 'Next-generation AVIF codec delivering maximum file size savings with excellent fidelity.',
+    targetFormat: 'avif',
+    quality: 72,
+    resize: {
+      enabled: false,
+      mode: 'percentage',
+      percentage: 100,
+      maintainAspectRatio: true,
+      preventUpscale: true
+    },
+    metadataPolicy: 'remove',
+    badge: 'AVIF • Q72'
+  },
+  {
+    key: 'jpeg-standard',
+    label: 'JPEG Photo',
+    category: 'Standard Formats',
+    description: 'Universally compatible JPEG compression for photography, legacy browsers, and print.',
+    targetFormat: 'jpeg',
+    quality: 82,
+    resize: {
+      enabled: false,
+      mode: 'percentage',
+      percentage: 100,
+      maintainAspectRatio: true,
+      preventUpscale: true
+    },
+    metadataPolicy: 'strip-gps',
+    badge: 'JPEG • Q82'
+  },
+  {
+    key: 'png-lossless',
+    label: 'PNG Graphic',
+    category: 'Lossless & Alpha',
+    description: 'Preserve transparent alpha channels and crisp line-art raster graphics.',
+    targetFormat: 'png',
+    quality: 90,
+    resize: {
+      enabled: false,
+      mode: 'percentage',
+      percentage: 100,
+      maintainAspectRatio: true,
+      preventUpscale: true
+    },
+    metadataPolicy: 'preserve',
+    badge: 'PNG • Lossless'
+  },
+  {
+    key: 'email',
+    label: 'Email Size',
+    category: 'Messaging',
+    description: 'Compact dimensions and compression guaranteed to keep files featherweight for fast inbox delivery.',
+    targetFormat: 'jpeg',
+    quality: 78,
+    resize: {
+      enabled: true,
+      mode: 'dimensions',
+      width: 800,
+      maintainAspectRatio: true,
+      percentage: 100,
+      preventUpscale: true
+    },
+    metadataPolicy: 'remove',
+    badge: 'JPEG • 800px • Q78'
+  },
+  {
+    key: 'mobile',
+    label: 'Mobile App',
+    category: 'Mobile Assets',
+    description: 'Dense responsive asset compression tailored for mobile app UI elements and screens.',
+    targetFormat: 'webp',
+    quality: 80,
+    resize: {
+      enabled: true,
+      mode: 'dimensions',
+      width: 750,
+      maintainAspectRatio: true,
+      percentage: 100,
+      preventUpscale: true
+    },
+    metadataPolicy: 'remove',
+    badge: 'WebP • 750px • Q80'
+  },
+  {
+    key: 'reduce-50',
+    label: 'Reduce 50%',
+    category: 'Target Savings',
+    description: 'Balanced compression aiming to cut byte weight by half while preserving pristine sharpness.',
+    targetFormat: 'original',
+    quality: 75,
+    resize: {
+      enabled: false,
+      mode: 'percentage',
+      percentage: 100,
+      maintainAspectRatio: true,
+      preventUpscale: true
+    },
+    metadataPolicy: 'remove',
+    badge: 'Balanced • ~50% Savings'
+  },
+  {
+    key: 'reduce-70',
+    label: 'Reduce 70%',
+    category: 'Target Savings',
+    description: 'High-impact compression achieving deep byte weight reduction for bandwidth-constrained environments.',
+    targetFormat: 'webp',
+    quality: 65,
+    resize: {
+      enabled: true,
+      mode: 'percentage',
+      percentage: 85,
+      maintainAspectRatio: true,
+      preventUpscale: true
+    },
+    metadataPolicy: 'remove',
+    badge: 'Compact • ~70% Savings'
+  },
+  {
+    key: 'under-100kb',
+    label: 'Under 100 KB',
+    category: 'Target Budgets',
+    description: 'Strict lightweight budget for ultra-fast LCP scores and performance budgets.',
+    targetFormat: 'webp',
+    quality: 72,
+    resize: {
+      enabled: true,
+      mode: 'dimensions',
+      width: 1200,
+      maintainAspectRatio: true,
+      percentage: 100,
+      preventUpscale: true
+    },
+    metadataPolicy: 'remove',
+    badge: 'WebP • <100 KB'
+  },
+  {
+    key: 'hero',
+    label: 'Hero Banner',
+    category: 'Web Performance',
+    description: 'Large 1920px widescreen hero banner with edge clarity and smooth gradients.',
+    targetFormat: 'webp',
+    quality: 84,
+    resize: {
+      enabled: true,
+      mode: 'dimensions',
+      width: 1920,
+      maintainAspectRatio: true,
+      percentage: 100,
+      preventUpscale: true
+    },
+    metadataPolicy: 'remove',
+    badge: 'WebP • 1920px • Q84'
+  },
+  {
+    key: 'portfolio',
+    label: 'Photo Gallery',
+    category: 'Photography',
+    description: 'Maximum fidelity for fine art, creative portfolios, and high-dynamic-range photography.',
+    targetFormat: 'jpeg',
+    quality: 90,
+    resize: {
+      enabled: true,
+      mode: 'dimensions',
+      width: 2048,
+      maintainAspectRatio: true,
+      percentage: 100,
+      preventUpscale: true
+    },
+    metadataPolicy: 'preserve',
+    badge: 'JPEG • 2048px • Q90'
+  },
+  {
+    key: 'avatar',
+    label: 'Discord / Avatar',
+    category: 'Avatars & Profiles',
+    description: 'Square 512×512 avatar and profile image optimization for chat, Discord, and user profiles.',
+    targetFormat: 'png',
+    quality: 85,
+    resize: {
+      enabled: true,
+      mode: 'dimensions',
+      width: 512,
+      height: 512,
+      maintainAspectRatio: true,
+      percentage: 100,
+      preventUpscale: true
+    },
+    metadataPolicy: 'remove',
+    badge: 'PNG • 512×512'
   }
 ];
 
@@ -205,6 +448,13 @@ const SYSTEM_PROFILES: OptimizationProfile[] = [
       preset: 'balanced',
       quality: 80,
       outputFormat: 'webp',
+      targetFileSize: {
+        enabled: true,
+        targetBytes: 200 * 1024,
+        targetValue: 200,
+        targetUnit: 'KB',
+        minQuality: 25
+      },
       resize: { enabled: false, mode: 'dimensions', percentage: 100, maintainAspectRatio: true },
       metadataPolicy: 'remove',
       advancedOptimization: {
@@ -309,6 +559,20 @@ const SYSTEM_PROFILES: OptimizationProfile[] = [
 ];
 
 export const COMPRESSOR_CONFIG: CompressorConfig = {
+  engine: 'v1',
+  debug: false,
+  defaultResizeMode: 'Original (no resize)',
+  minReductionPercent: 5,
+  defaultMinSavingPercent: 10,
+  smartDefaults: {
+    bands: [
+      { minBytes: 0, maxBytes: 100 * 1024, minReductionPercent: 5, maxReductionPercent: 10, description: 'Under 100 KB' },
+      { minBytes: 100 * 1024, maxBytes: 1024 * 1024, minReductionPercent: 10, maxReductionPercent: 30, description: '100 KB to 1 MB' },
+      { minBytes: 1024 * 1024, maxBytes: 2 * 1024 * 1024, minReductionPercent: 30, maxReductionPercent: 40, description: '1 MB to 2 MB' },
+      { minBytes: 2 * 1024 * 1024, maxBytes: Infinity, minReductionPercent: 40, maxReductionPercent: 50, description: 'Over 2 MB' }
+    ],
+    qualityFloorSSIM: 0.85
+  },
   limits: {
     maxFiles: 50,
     maxFileSizeMB: 50,
@@ -331,8 +595,30 @@ export const COMPRESSOR_CONFIG: CompressorConfig = {
     tolerancePercent: 5,
     toleranceRatio: 0.05,
     qualityFloor: 25,
-    maxPasses: 6
+    maxPasses: 16
   },
-  profiles: SYSTEM_PROFILES
+  profiles: SYSTEM_PROFILES,
+  cloudSources: {
+    googleDrive: {
+      apiKey: '',
+      clientId: ''
+    },
+    dropbox: {
+      appKey: ''
+    },
+    oneDrive: {
+      clientId: ''
+    }
+  }
 };
+
+export function getSmartDefaultBand(fileSizeBytes: number): SmartDefaultBand {
+  const bands = COMPRESSOR_CONFIG.smartDefaults.bands;
+  for (const band of bands) {
+    if (fileSizeBytes < band.maxBytes) {
+      return band;
+    }
+  }
+  return bands[bands.length - 1];
+}
 
