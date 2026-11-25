@@ -188,14 +188,14 @@ import {
   LucideGauge,
   LucideScreenShare,
   LucideMonitor,
-  LucideRadio
+  LucideRadio,
   LucideEraser,
   LucideBrush,
   LucidePaintbrush,
   LucideUndo,
   LucideRedo,
   LucideHand,
-  LucideMove
+  LucideMove,
 } from '@lucide/angular';
 
 import {
@@ -1163,6 +1163,7 @@ export const TS_ICON_MAP: Record<string, IconDefinition> = {
   radio: {
     lucide: LucideRadio,
     notes: 'Audio broadcast / sweep'
+  },
   eraser: {
     lucide: LucideEraser,
     notes: 'Eraser tool for masks'

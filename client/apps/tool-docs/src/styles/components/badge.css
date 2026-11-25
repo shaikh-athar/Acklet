@@ -1,0 +1,108 @@
+/* ==========================================================================
+   COMPONENT: BADGES & CHIPS (LAYER: components)
+   BEM: .docs-badge, .docs-chip, .docs-badge-dot
+   ========================================================================== */
+
+@layer components {
+  .docs-badge,
+  .docs-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--docs-space-1-5);
+    padding: 2px var(--docs-space-2-5);
+    font-family: var(--docs-font-ui);
+    font-size: var(--docs-text-2xs);
+    font-weight: var(--docs-font-medium);
+    line-height: 1.4;
+    text-transform: none;
+    letter-spacing: 0.02em;
+    border-radius: var(--docs-radius-full);
+    background-color: var(--docs-color-bg-subtle);
+    color: var(--docs-color-text-muted);
+    border: 1px solid var(--docs-color-border);
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .docs-badge--draft,
+  .docs-pill-draft {
+    background-color: var(--docs-color-bg-muted);
+    color: var(--docs-color-text-muted);
+    border-color: var(--docs-color-border);
+  }
+
+  .docs-badge--published,
+  .docs-pill-published {
+    background-color: var(--docs-color-action-bg);
+    color: var(--docs-color-action-text);
+    border-color: var(--docs-color-action-bg);
+  }
+
+  .docs-badge--topic {
+    background-color: var(--docs-color-bg-subtle);
+    color: var(--docs-color-text-subtle);
+    border-color: var(--docs-color-border);
+    text-transform: none;
+    font-weight: var(--docs-font-medium);
+    font-size: var(--docs-text-xs);
+  }
+
+  .docs-badge--count {
+    padding: 2px var(--docs-space-2);
+    font-size: var(--docs-text-2xs);
+    border-radius: var(--docs-radius-full);
+    background-color: var(--docs-color-bg-subtle);
+    color: var(--docs-color-text-subtle);
+    font-weight: var(--docs-font-medium);
+  }
+
+  .docs-badge-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 7px;
+    height: 7px;
+    border-radius: var(--docs-radius-full);
+    background-color: var(--docs-color-text);
+    border: 1.5px solid var(--docs-color-bg);
+  }
+
+  /* Filter / Topic Chip */
+  .docs-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--docs-space-2);
+    padding: var(--docs-space-1-5) var(--docs-space-3);
+    font-size: var(--docs-text-xs);
+    font-weight: var(--docs-font-medium);
+    color: var(--docs-color-text-muted);
+    background-color: var(--docs-color-card);
+    border: 1px solid var(--docs-color-border);
+    border-radius: var(--docs-radius-full);
+    cursor: pointer;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: background-color var(--docs-duration-normal) var(--docs-ease-standard),
+                border-color var(--docs-duration-normal) var(--docs-ease-standard),
+                color var(--docs-duration-normal) var(--docs-ease-standard);
+  }
+
+  .docs-chip:hover {
+    background-color: var(--docs-color-bg-subtle);
+    color: var(--docs-color-text);
+    border-color: var(--docs-color-border-strong);
+  }
+
+  .docs-chip--active {
+    background-color: var(--docs-color-action-bg);
+    color: var(--docs-color-action-text);
+    border-color: var(--docs-color-action-bg);
+    font-weight: var(--docs-font-semibold);
+  }
+
+  .docs-chip--active:hover {
+    background-color: var(--docs-color-action-hover);
+    border-color: var(--docs-color-action-hover);
+    color: var(--docs-color-action-text);
+  }
+}

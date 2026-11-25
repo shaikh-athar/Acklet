@@ -1,0 +1,60 @@
+/* ==========================================================================
+   COMPONENT: SKELETON (LAYER: components)
+   BEM: .docs-skeleton, .docs-skeleton--card, .docs-skeleton__line
+   ========================================================================== */
+
+@layer components {
+  .docs-skeleton {
+    background-color: var(--docs-color-bg-muted);
+    border-radius: var(--docs-radius-md);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .docs-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0,
+      rgba(255, 255, 255, 0.08) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    animation: docs-shimmer 1.6s infinite;
+  }
+
+  @keyframes docs-shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .docs-skeleton--card {
+    padding: var(--docs-space-6);
+    border: 1px solid var(--docs-color-border);
+    border-radius: var(--docs-radius-xl);
+    background-color: var(--docs-color-card);
+    display: flex;
+    flex-direction: column;
+    gap: var(--docs-space-4);
+  }
+
+  .docs-skeleton__line {
+    height: 14px;
+    border-radius: var(--docs-radius-sm);
+    background-color: var(--docs-color-bg-muted);
+  }
+
+  .docs-skeleton__line--sm {
+    height: 10px;
+    width: 40%;
+  }
+
+  .docs-skeleton__line--lg {
+    height: 20px;
+    width: 80%;
+  }
+}
+

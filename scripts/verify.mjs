@@ -164,9 +164,11 @@ if (targetScope) {
   allPassed = runStep(`Surface Scope Check (${targetScope})`, `node scripts/check-surface-scope.mjs ${targetScope} HEAD`, repoRoot) && allPassed;
 }
 
+const mvnCmd = process.platform === 'win32' ? '.\\mvnw.cmd' : './mvnw';
+
 // 2. Backend Compilation Check
 if (runBackend) {
-  allPassed = runStep('Backend Java Test Compilation (mvnw test-compile)', './mvnw test-compile', serverDir) && allPassed;
+  allPassed = runStep('Backend Java Test Compilation (mvnw test-compile)', `${mvnCmd} test-compile`, serverDir) && allPassed;
 } else {
   skipStep('Backend Java Test Compilation (mvnw test-compile)', 'No server/ files modified in working tree');
 }
@@ -182,7 +184,7 @@ if (level === 'B' || level === 'C') {
   }
 
   if (runBackend) {
-    allPassed = runStep('Backend Security & Crypto Unit Tests', './mvnw test -Dtest=CryptoUtilsTest,JwtTokenProviderTest -DargLine="-Dnet.bytebuddy.experimental=true"', serverDir) && allPassed;
+    allPassed = runStep('Backend Security & Crypto Unit Tests', `${mvnCmd} test -Dtest=CryptoUtilsTest,JwtTokenProviderTest -DargLine="-Dnet.bytebuddy.experimental=true"`, serverDir) && allPassed;
   }
 }
 
@@ -198,7 +200,7 @@ if (level === 'C') {
   }
 
   if (runBackend) {
-    allPassed = runStep('Spring Boot Context Load (AckletApplicationTests)', './mvnw test -Dtest=AckletApplicationTests -DargLine="-Dnet.bytebuddy.experimental=true"', serverDir) && allPassed;
+    allPassed = runStep('Spring Boot Context Load (AckletApplicationTests)', `${mvnCmd} test -Dtest=AckletApplicationTests -DargLine="-Dnet.bytebuddy.experimental=true"`, serverDir) && allPassed;
   }
 }
 

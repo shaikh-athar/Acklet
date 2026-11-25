@@ -1,0 +1,90 @@
+/* ==========================================================================
+   COMPONENT: DIALOG & MODALS (LAYER: components)
+   BEM: .docs-modal, .docs-modal__backdrop, .docs-modal__box, .docs-dialog
+   ========================================================================== */
+
+@layer components {
+  .docs-modal,
+  .docs-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: var(--docs-z-modal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--docs-space-4);
+  }
+
+  .docs-modal__backdrop,
+  .docs-dialog__backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: var(--docs-color-overlay);
+    backdrop-filter: blur(4px);
+    transition: opacity var(--docs-duration-normal) var(--docs-ease-standard);
+  }
+
+  .docs-modal__box,
+  .docs-dialog__content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 480px;
+    background-color: var(--docs-color-card);
+    border: 1px solid var(--docs-color-border-strong);
+    border-radius: var(--docs-radius-2xl);
+    box-shadow: var(--docs-shadow-lg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: modal-enter var(--docs-duration-normal) var(--docs-ease-standard);
+  }
+
+  @keyframes modal-enter {
+    from {
+      opacity: 0;
+      transform: scale(0.96) translateY(var(--motion-distance));
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .docs-modal__header,
+  .docs-dialog__header {
+    padding: var(--docs-space-5) var(--docs-space-6) var(--docs-space-3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .docs-modal__title,
+  .docs-dialog__title {
+    font-size: var(--docs-text-lg);
+    font-weight: var(--docs-font-semibold);
+    color: var(--docs-color-text);
+    margin: 0;
+    padding: var(--docs-space-5) var(--docs-space-6) var(--docs-space-2);
+  }
+
+  .docs-modal__body,
+  .docs-dialog__desc {
+    padding: 0 var(--docs-space-6) var(--docs-space-5);
+    color: var(--docs-color-text-muted);
+    font-size: var(--docs-text-sm);
+    line-height: var(--docs-leading-normal);
+    margin: 0;
+  }
+
+  .docs-modal__actions,
+  .docs-dialog__actions {
+    padding: var(--docs-space-4) var(--docs-space-6);
+    background-color: var(--docs-color-bg-subtle);
+    border-top: 1px solid var(--docs-color-border);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--docs-space-3);
+  }
+}

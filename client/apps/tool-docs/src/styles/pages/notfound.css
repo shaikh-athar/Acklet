@@ -1,0 +1,53 @@
+/* ==========================================================================
+   PAGE: 404 NOT FOUND (LAYER: pages)
+   BEM: .docs-not-found
+   ========================================================================== */
+
+@layer pages {
+  .docs-page--not-found {
+    width: 100%;
+    max-width: var(--docs-max-width-canvas);
+    margin: 0 auto;
+    padding: var(--docs-space-16) var(--docs-space-4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .docs-not-found {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--docs-space-4);
+    padding: var(--docs-space-12) var(--docs-space-8);
+    background-color: var(--docs-color-card);
+    border: 1px solid var(--docs-color-border);
+    border-radius: var(--docs-radius-2xl);
+    max-width: 480px;
+    width: 100%;
+  }
+
+  .docs-not-found__code {
+    font-size: 72px;
+    font-weight: var(--docs-font-bold);
+    line-height: 1;
+    color: var(--docs-color-text);
+    letter-spacing: -0.04em;
+    margin: 0;
+  }
+
+  .docs-not-found__title {
+    font-size: var(--docs-text-xl);
+    font-weight: var(--docs-font-semibold);
+    color: var(--docs-color-text);
+    margin: 0;
+  }
+
+  .docs-not-found__desc {
+    font-size: var(--docs-text-sm);
+    color: var(--docs-color-text-muted);
+    line-height: var(--docs-leading-normal);
+    margin: 0;
+  }
+}

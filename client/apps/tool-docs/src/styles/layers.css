@@ -1,0 +1,7 @@
+/* ==========================================================================
+   CASCADE LAYERS ORDER
+   Nothing outside or after these layers should override project styles.
+   Specificity is resolved deterministically by layer hierarchy.
+   ========================================================================== */
+
+@layer reset, tokens, base, layout, components, pages;

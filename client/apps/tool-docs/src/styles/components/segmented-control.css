@@ -1,0 +1,58 @@
+/* ==========================================================================
+   COMPONENT: SEGMENTED CONTROL (LAYER: components)
+   BEM: .docs-segmented-control, .docs-segmented-control__button
+   ========================================================================== */
+
+@layer components {
+  .docs-segmented-control {
+    display: inline-flex;
+    align-items: center;
+    background-color: var(--docs-color-bg-subtle);
+    border: 1px solid var(--docs-color-border);
+    border-radius: var(--docs-radius-full);
+    padding: 3px;
+    gap: 2px;
+    user-select: none;
+    box-sizing: border-box;
+    flex-shrink: 0;
+  }
+
+  .docs-segmented-control__button,
+  .docs-segment-btn,
+  .docs-segmented-control button.docs-segmented-control__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 14px;
+    height: 28px;
+    font-family: var(--docs-font-ui);
+    font-size: var(--docs-text-xs);
+    font-weight: var(--docs-font-medium);
+    color: var(--docs-color-text-muted);
+    background: transparent;
+    border: none;
+    border-radius: var(--docs-radius-full);
+    cursor: pointer;
+    white-space: nowrap;
+    text-decoration: none;
+    line-height: 1;
+    box-sizing: border-box;
+    transition: background-color var(--docs-duration-normal) var(--docs-ease-standard),
+                color var(--docs-duration-normal) var(--docs-ease-standard),
+                box-shadow var(--docs-duration-normal) var(--docs-ease-standard);
+  }
+
+  .docs-segmented-control__button:hover,
+  .docs-segment-btn:hover {
+    color: var(--docs-color-text);
+  }
+
+  .docs-segmented-control__button--active,
+  .docs-segmented-control__button.active,
+  .docs-segment-btn.active {
+    background-color: var(--docs-color-action-bg);
+    color: var(--docs-color-action-text);
+    font-weight: var(--docs-font-semibold);
+    box-shadow: var(--docs-shadow-xs);
+  }
+}

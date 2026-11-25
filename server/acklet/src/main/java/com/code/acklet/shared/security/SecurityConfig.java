@@ -40,7 +40,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(requestHandler)
-                .ignoringRequestMatchers("/api/v1/auth/**", "/api/v1/github/webhooks", "/.well-known/**", "/api/v1/publish/**", "/api/v1/clipboard/**", "/api/v1/qr/**", "/api/v1/qr-links/**", "/q/**", "/qr", "/qr/**", "/s/**", "/api/v1/short-links/**", "/api/v1/temp-codes/**", "/v/**", "/api/v1/converter/**", "/api/file-converter/**")
+                .ignoringRequestMatchers("/api/v1/auth/**", "/api/v1/github/webhooks", "/.well-known/**", "/api/v1/publish/**", "/api/v1/clipboard/**", "/api/v1/qr/**", "/api/v1/qr-links/**", "/q/**", "/qr", "/qr/**", "/s/**", "/api/v1/short-links/**", "/api/v1/temp-codes/**", "/v/**", "/api/v1/converter/**", "/api/file-converter/**", "/api/v1/docs/**")
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
@@ -65,6 +65,10 @@ public class SecurityConfig {
                 // Public tools retrieval
                 .requestMatchers(HttpMethod.GET, "/api/v1/tools/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
+                // Public docs, media, and author profiles
+                .requestMatchers("/api/v1/docs/public/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/docs/media/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/docs/authors/**").permitAll()
                 // Public community discussions
                 .requestMatchers(HttpMethod.GET, "/api/v1/community/**").permitAll()
                 // Public blog posts

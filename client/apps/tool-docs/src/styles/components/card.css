@@ -1,0 +1,47 @@
+/* ==========================================================================
+   COMPONENT: CARDS (LAYER: components)
+   BEM: .docs-card, .docs-card--hoverable
+   ========================================================================== */
+
+@layer components {
+  .docs-card {
+    background-color: var(--docs-color-card);
+    border: 1px solid var(--docs-color-border);
+    border-radius: var(--docs-radius-xl);
+    overflow: hidden;
+    transition: border-color var(--docs-duration-fast) var(--docs-ease-standard),
+                box-shadow var(--docs-duration-fast) var(--docs-ease-standard),
+                transform var(--docs-duration-fast) var(--docs-ease-standard);
+  }
+
+  .docs-card--hoverable:hover {
+    border-color: var(--docs-color-border-strong);
+    box-shadow: var(--docs-shadow-md);
+    transform: translateY(-1px);
+  }
+
+  .docs-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--docs-space-4) var(--docs-space-5);
+    border-bottom: 1px solid var(--docs-color-border);
+    gap: var(--docs-space-3);
+  }
+
+  .docs-card__body {
+    padding: var(--docs-space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--docs-space-3);
+  }
+
+  .docs-card__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--docs-space-3) var(--docs-space-5);
+    border-top: 1px solid var(--docs-color-border);
+    background-color: var(--docs-color-bg-subtle);
+  }
+}

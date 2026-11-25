@@ -4,9 +4,13 @@ import {
   getPortalUrl,
   getToolsHubUrl,
   getToolUrl,
+  getDocsUrl,
   isToolsHubHostname,
+  isDocsHostname,
   extractToolSlugFromHostname,
-  RESERVED_SUBDOMAINS
+  RESERVED_SUBDOMAINS,
+  validateDocsReturnUrl,
+  getAckletAuthUrl
 } from './subdomain.util';
 
 describe('Central URL Builder (subdomain.util)', () => {
@@ -116,6 +120,49 @@ describe('Central URL Builder (subdomain.util)', () => {
       expect(isToolsHubHostname('clipboard.localhost')).toBe(false);
       expect(extractToolSlugFromHostname('clipboard.localhost')).toBe('clipboard');
       expect(extractToolSlugFromHostname('clipboard.acklet.com')).toBe('clipboard');
+    });
+
+    it('identifies docs.localhost and docs.acklet.com as Acklet Docs', () => {
+      expect(isDocsHostname('docs.localhost')).toBe(true);
+      expect(isDocsHostname('docs.acklet.com')).toBe(true);
+      expect(isDocsHostname('DOCS.ACKLET.COM')).toBe(true);
+      expect(extractToolSlugFromHostname('docs.localhost')).toBeNull();
+      expect(extractToolSlugFromHostname('docs.acklet.com')).toBeNull();
+    });
+
+    it('builds docs URL for local and production', () => {
+      expect(getDocsUrl('', { isProduction: false, baseDomain: 'localhost', protocol: 'http', portMap: { portal: 4200 } })).toBe('http://docs.localhost:4200');
+      expect(getDocsUrl('new', { isProduction: false, baseDomain: 'localhost', protocol: 'http', portMap: { portal: 4200 } })).toBe('http://docs.localhost:4200/new');
+      expect(getDocsUrl('/new', { isProduction: false, baseDomain: 'localhost', protocol: 'http', portMap: { portal: 4200 } })).toBe('http://docs.localhost:4200/new');
+      expect(getDocsUrl('p/my-guide', { isProduction: true, baseDomain: 'acklet.com', protocol: 'https' })).toBe('https://docs.acklet.com/p/my-guide');
+    });
+
+    it('validates allowlisted docs return URLs and rejects malicious domains', () => {
+      // Allowlisted hosts
+      expect(validateDocsReturnUrl('http://docs.localhost:4200/stories')).toBe('http://docs.localhost:4200/stories');
+      expect(validateDocsReturnUrl('https://docs.acklet.com/write/123')).toBe('https://docs.acklet.com/write/123');
+      expect(validateDocsReturnUrl('/stories')).toBe('/stories');
+      expect(validateDocsReturnUrl('http://localhost:4200/docs/stories')).toBe('http://localhost:4200/docs/stories');
+
+      // Malicious or unapproved external domains
+      expect(validateDocsReturnUrl('https://evil.com/phish')).toBeNull();
+      expect(validateDocsReturnUrl('http://malicious.localhost.evil.com')).toBeNull();
+      expect(validateDocsReturnUrl('javascript:alert(1)')).toBeNull();
+      expect(validateDocsReturnUrl('//evil.com/hack')).toBeNull();
+      expect(validateDocsReturnUrl('')).toBeNull();
+      expect(validateDocsReturnUrl(null)).toBeNull();
+    });
+
+    it('builds Acklet auth URLs with allowlisted return URL parameter', () => {
+      const devConfig = { isProduction: false, baseDomain: 'localhost', protocol: 'http', portMap: { portal: 4200 } };
+      expect(getAckletAuthUrl('login', 'http://docs.localhost:4200/stories', devConfig))
+        .toBe('http://localhost:4200/login?returnUrl=' + encodeURIComponent('http://docs.localhost:4200/stories'));
+      expect(getAckletAuthUrl('signup', 'http://docs.localhost:4200/write/new', devConfig))
+        .toBe('http://localhost:4200/signup?returnUrl=' + encodeURIComponent('http://docs.localhost:4200/write/new'));
+
+      // If return URL is invalid/malicious, strips parameter
+      expect(getAckletAuthUrl('login', 'https://attacker.com/evil', devConfig))
+        .toBe('http://localhost:4200/login');
     });
   });
 });

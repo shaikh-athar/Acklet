@@ -1,0 +1,187 @@
+/* ==========================================================================
+   COMPONENT: BUTTONS (LAYER: components)
+   BEM: .docs-button, .docs-icon-button
+   ========================================================================== */
+
+@layer components {
+  .docs-button,
+  .docs-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--docs-space-2);
+    font-family: var(--docs-font-ui);
+    font-size: var(--docs-text-sm);
+    font-weight: var(--docs-font-medium);
+    line-height: 1;
+    padding: 0 var(--docs-space-4);
+    height: 36px;
+    border-radius: var(--docs-radius-full);
+    border: 1px solid transparent;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: background-color var(--docs-duration-normal) var(--docs-ease-standard),
+                border-color var(--docs-duration-normal) var(--docs-ease-standard),
+                color var(--docs-duration-normal) var(--docs-ease-standard),
+                box-shadow var(--docs-duration-normal) var(--docs-ease-standard),
+                transform var(--docs-duration-normal) var(--docs-ease-standard);
+  }
+
+  .docs-button:disabled,
+  .docs-button--disabled,
+  .docs-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Variant: Primary */
+  .docs-button--primary,
+  .docs-btn-primary {
+    background-color: var(--docs-color-action-bg);
+    color: var(--docs-color-action-text);
+    border-color: var(--docs-color-action-bg);
+    font-weight: var(--docs-font-semibold);
+  }
+
+  .docs-button--primary:hover,
+  .docs-btn-primary:hover {
+    background-color: var(--docs-color-action-hover);
+    border-color: var(--docs-color-action-hover);
+    color: var(--docs-color-action-text);
+    transform: translateY(-1px);
+    box-shadow: var(--docs-shadow-md);
+  }
+
+  /* Variant: Secondary */
+  .docs-button--secondary,
+  .docs-btn-secondary {
+    background-color: var(--docs-color-card);
+    color: var(--docs-color-text);
+    border: 1px solid var(--docs-color-border-strong);
+    box-shadow: var(--docs-shadow-xs);
+  }
+
+  .docs-button--secondary:hover,
+  .docs-btn-secondary:hover {
+    background-color: var(--docs-color-bg-muted);
+    border-color: var(--docs-color-text);
+    color: var(--docs-color-text);
+  }
+
+  /* Variant: Ghost / Subtle */
+  .docs-button--ghost {
+    background-color: transparent;
+    color: var(--docs-color-text-muted);
+    border-color: transparent;
+  }
+
+  .docs-button--ghost:hover {
+    background-color: var(--docs-color-bg-subtle);
+    color: var(--docs-color-text);
+  }
+
+  /* Variant: Danger */
+  .docs-button--danger {
+    background-color: transparent;
+    color: var(--docs-color-danger);
+    border-color: transparent;
+  }
+
+  .docs-button--danger:hover {
+    background-color: var(--docs-color-danger-bg);
+    border-color: var(--docs-color-danger);
+    color: var(--docs-color-danger);
+  }
+
+  /* Sizes */
+  .docs-button--xs {
+    height: 28px;
+    padding: 0 var(--docs-space-2-5);
+    font-size: var(--docs-text-xs);
+    gap: var(--docs-space-1-5);
+  }
+
+  .docs-button--sm,
+  .docs-btn-sm {
+    height: 32px;
+    padding: 0 var(--docs-space-3);
+    font-size: var(--docs-text-xs);
+    gap: var(--docs-space-1-5);
+  }
+
+  .docs-button--md,
+  .docs-btn-md {
+    height: 40px;
+    padding: 0 var(--docs-space-5);
+    font-size: var(--docs-text-sm);
+  }
+
+  .docs-button--lg {
+    height: 44px;
+    padding: 0 var(--docs-space-6);
+    font-size: var(--docs-text-base);
+  }
+
+  /* Icon Button */
+  .docs-icon-button,
+  .docs-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: var(--docs-radius-full);
+    border: 1px solid transparent;
+    background-color: transparent;
+    color: var(--docs-color-text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    text-decoration: none;
+    transition: background-color var(--docs-duration-normal) var(--docs-ease-standard),
+                border-color var(--docs-duration-normal) var(--docs-ease-standard),
+                color var(--docs-duration-normal) var(--docs-ease-standard);
+  }
+
+  .docs-icon-button:hover,
+  .docs-icon-btn:hover {
+    background-color: var(--docs-color-bg-subtle);
+    color: var(--docs-color-text);
+  }
+
+  .docs-icon-button--sm,
+  .docs-icon-btn-sm {
+    width: 32px;
+    height: 32px;
+  }
+
+  .docs-icon-button--xs {
+    width: 28px;
+    height: 28px;
+  }
+
+  .docs-icon-button--subtle {
+    border-color: var(--docs-color-border);
+    background-color: var(--docs-color-card);
+  }
+
+  .docs-icon-button--subtle:hover {
+    background-color: var(--docs-color-bg-subtle);
+    border-color: var(--docs-color-border-strong);
+  }
+
+  .docs-icon-button--danger,
+  .docs-action-btn--danger {
+    color: var(--docs-color-text-subtle);
+  }
+
+  .docs-icon-button--danger:hover,
+  .docs-action-btn--danger:hover {
+    background-color: var(--docs-color-danger-bg);
+    border-color: var(--docs-color-danger);
+    color: var(--docs-color-danger);
+  }
+}

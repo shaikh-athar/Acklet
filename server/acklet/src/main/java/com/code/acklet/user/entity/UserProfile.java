@@ -31,6 +31,12 @@ public class UserProfile {
     @Column(name = "avatar_url")
     private String avatarUrl;
 
+    @Column(name = "bio", columnDefinition = "TEXT")
+    private String bio;
+
+    @Column(name = "username", length = 64)
+    private String username;
+
     @Column(name = "onboarding_completed", nullable = false)
     @Builder.Default
     private boolean onboardingCompleted = false;

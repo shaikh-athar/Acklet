@@ -65,10 +65,48 @@ public class PublisherController {
     @Operation(summary = "List my tools")
     public ResponseEntity<ApiResponse<Page<ToolResponse>>> getMyTools(
             @AuthenticationPrincipal User user,
+            @RequestParam(value = "q", required = false) String query,
+            @RequestParam(value = "status", required = false) String status,
             Pageable pageable) {
-        Page<ToolResponse> tools = toolPublishingService.getMyTools(user.getId(), pageable)
+        Page<ToolResponse> tools = toolPublishingService.getMyTools(user.getId(), query, status, pageable)
                 .map(toolMapper::toToolResponse);
         return ResponseEntity.ok(ApiResponse.success(tools, "Tools retrieved"));
+    }
+
+    // ─── Duplicate tool ───────────────────────────────────────────────────────
+
+    @PostMapping("/tools/{slug}/duplicate")
+    @PreAuthorize("hasAnyRole('PUBLISHER', 'ADMIN')")
+    @Operation(summary = "Duplicate a tool to draft")
+    public ResponseEntity<ApiResponse<ToolResponse>> duplicateTool(
+            @AuthenticationPrincipal User user,
+            @PathVariable String slug) {
+        Tool tool = toolPublishingService.duplicate(user.getId(), slug);
+        return ResponseEntity.ok(ApiResponse.success(toolMapper.toToolResponse(tool), "Tool duplicated"));
+    }
+
+    // ─── Unpublish tool ───────────────────────────────────────────────────────
+
+    @PostMapping("/tools/{slug}/unpublish")
+    @PreAuthorize("hasAnyRole('PUBLISHER', 'ADMIN')")
+    @Operation(summary = "Unpublish a tool to draft")
+    public ResponseEntity<ApiResponse<ToolResponse>> unpublishTool(
+            @AuthenticationPrincipal User user,
+            @PathVariable String slug) {
+        Tool tool = toolPublishingService.unpublish(user.getId(), slug);
+        return ResponseEntity.ok(ApiResponse.success(toolMapper.toToolResponse(tool), "Tool unpublished"));
+    }
+
+    // ─── Archive tool ─────────────────────────────────────────────────────────
+
+    @PostMapping("/tools/{slug}/archive")
+    @PreAuthorize("hasAnyRole('PUBLISHER', 'ADMIN')")
+    @Operation(summary = "Archive a tool")
+    public ResponseEntity<ApiResponse<ToolResponse>> archiveTool(
+            @AuthenticationPrincipal User user,
+            @PathVariable String slug) {
+        Tool tool = toolPublishingService.archive(user.getId(), slug);
+        return ResponseEntity.ok(ApiResponse.success(toolMapper.toToolResponse(tool), "Tool archived"));
     }
 
     // ─── Create tool (DRAFT) ─────────────────────────────────────────────────

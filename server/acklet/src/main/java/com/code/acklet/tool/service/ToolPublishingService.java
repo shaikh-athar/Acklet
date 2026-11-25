@@ -165,6 +165,76 @@ public class ToolPublishingService {
         return toolRepository.findByPublisherIdAndDeletedAtIsNull(publisherId, pageable);
     }
 
+    public Page<Tool> getMyTools(UUID publisherId, String query, String status, Pageable pageable) {
+        boolean hasQuery = query != null && !query.trim().isEmpty();
+        boolean hasStatus = status != null && !status.equalsIgnoreCase("ALL") && !status.trim().isEmpty();
+
+        if (hasQuery && hasStatus) {
+            try {
+                ToolStatus toolStatus = ToolStatus.valueOf(status.toUpperCase().trim());
+                return toolRepository.findByPublisherIdAndStatusAndNameContainingIgnoreCaseAndDeletedAtIsNull(publisherId, toolStatus, query.trim(), pageable);
+            } catch (IllegalArgumentException e) {
+                return toolRepository.findByPublisherIdAndNameContainingIgnoreCaseAndDeletedAtIsNull(publisherId, query.trim(), pageable);
+            }
+        } else if (hasQuery) {
+            return toolRepository.findByPublisherIdAndNameContainingIgnoreCaseAndDeletedAtIsNull(publisherId, query.trim(), pageable);
+        } else if (hasStatus) {
+            try {
+                ToolStatus toolStatus = ToolStatus.valueOf(status.toUpperCase().trim());
+                return toolRepository.findByPublisherIdAndStatusAndDeletedAtIsNull(publisherId, toolStatus, pageable);
+            } catch (IllegalArgumentException e) {
+                return toolRepository.findByPublisherIdAndDeletedAtIsNull(publisherId, pageable);
+            }
+        } else {
+            return toolRepository.findByPublisherIdAndDeletedAtIsNull(publisherId, pageable);
+        }
+    }
+
+    // ─── Lifecycle Actions ────────────────────────────────────────────────────
+
+    @Transactional
+    public Tool duplicate(UUID publisherId, String slug) {
+        Tool source = requireOwned(slug, publisherId);
+        String copyName = "Copy of " + source.getName();
+        String copySlug = buildSlug(copyName) + "-" + UUID.randomUUID().toString().substring(0, 6);
+
+        Tool copy = Tool.builder()
+                .name(copyName)
+                .slug(copySlug)
+                .tagline(source.getTagline())
+                .description(source.getDescription())
+                .category(source.getCategory())
+                .publisherId(publisherId)
+                .websiteUrl(source.getWebsiteUrl())
+                .githubUrl(source.getGithubUrl())
+                .logoUrl(source.getLogoUrl())
+                .coverUrl(source.getCoverUrl())
+                .pricingType(source.getPricingType())
+                .isOpenSource(source.isOpenSource())
+                .status(ToolStatus.DRAFT)
+                .build();
+
+        Tool saved = toolRepository.save(copy);
+        log.info("Tool duplicated: {} -> {}", slug, copySlug);
+        return saved;
+    }
+
+    @Transactional
+    public Tool unpublish(UUID publisherId, String slug) {
+        Tool tool = requireOwned(slug, publisherId);
+        tool.setStatus(ToolStatus.DRAFT);
+        log.info("Tool {} unpublished by publisher {}", slug, publisherId);
+        return toolRepository.save(tool);
+    }
+
+    @Transactional
+    public Tool archive(UUID publisherId, String slug) {
+        Tool tool = requireOwned(slug, publisherId);
+        tool.setStatus(ToolStatus.ARCHIVED);
+        log.info("Tool {} archived by publisher {}", slug, publisherId);
+        return toolRepository.save(tool);
+    }
+
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private Tool requireOwned(String slug, UUID publisherId) {

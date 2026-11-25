@@ -1,0 +1,41 @@
+/* ==========================================================================
+   ACKLET DOCS: UNIFIED PLAIN CSS STYLING ARCHITECTURE
+   Native Cascade Layers Order:
+   reset -> tokens -> base -> layout -> components -> pages;
+   ========================================================================== */
+
+@layer reset, tokens, base, layout, components, pages;
+
+@import './layers.css';
+@import './tokens.css';
+@import './reset.css';
+@import './base.css';
+@import './layout/shell.css';
+
+/* --- Reusable Components (BEM Taxonomy) --- */
+@import './components/button.css';
+@import './components/input.css';
+@import './components/badge.css';
+@import './components/card.css';
+@import './components/tabs.css';
+@import './components/avatar.css';
+@import './components/dialog.css';
+@import './components/menu.css';
+@import './components/empty-state.css';
+@import './components/skeleton.css';
+@import './components/toast.css';
+@import './components/segmented-control.css';
+
+/* --- Page-Specific Workbenches & Canvases --- */
+@import './pages/discover.css';
+@import './pages/library.css';
+@import './pages/profile.css';
+@import './pages/stories.css';
+@import './pages/editor.css';
+@import './pages/publish.css';
+@import './pages/public.css';
+@import './pages/notfound.css';
+@import './pages/overview.css';
+@import "./pages/notifications.css";
+@import "./pages/settings.css";
+@import "./pages/tools-management.css";
