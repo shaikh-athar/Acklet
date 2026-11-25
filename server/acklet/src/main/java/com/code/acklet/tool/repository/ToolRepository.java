@@ -33,6 +33,9 @@ public interface ToolRepository extends JpaRepository<Tool, UUID>, JpaSpecificat
     // Publisher & Moderation queries
     Page<Tool> findByStatus(Tool.ToolStatus status, Pageable pageable);
     Page<Tool> findByPublisherIdAndDeletedAtIsNull(UUID publisherId, Pageable pageable);
+    Page<Tool> findByPublisherIdAndStatusAndDeletedAtIsNull(UUID publisherId, Tool.ToolStatus status, Pageable pageable);
+    Page<Tool> findByPublisherIdAndNameContainingIgnoreCaseAndDeletedAtIsNull(UUID publisherId, String name, Pageable pageable);
+    Page<Tool> findByPublisherIdAndStatusAndNameContainingIgnoreCaseAndDeletedAtIsNull(UUID publisherId, Tool.ToolStatus status, String name, Pageable pageable);
     long countByPublisherId(UUID publisherId);
 
     boolean existsBySlug(String slug);

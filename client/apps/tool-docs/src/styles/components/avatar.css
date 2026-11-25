@@ -1,0 +1,58 @@
+/* ==========================================================================
+   COMPONENT: AVATARS (LAYER: components)
+   BEM: .docs-avatar
+   ========================================================================== */
+
+@layer components {
+  .docs-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--docs-radius-full);
+    background-color: var(--docs-color-bg-muted);
+    color: var(--docs-color-text);
+    font-family: var(--docs-font-ui);
+    font-weight: var(--docs-font-semibold);
+    line-height: 1;
+    overflow: hidden;
+    user-select: none;
+    flex-shrink: 0;
+    border: 1px solid var(--docs-color-border);
+  }
+
+  .docs-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .docs-avatar--xs {
+    width: 20px;
+    height: 20px;
+    font-size: var(--docs-text-2xs);
+  }
+
+  .docs-avatar--sm {
+    width: 28px;
+    height: 28px;
+    font-size: var(--docs-text-xs);
+  }
+
+  .docs-avatar--md {
+    width: 36px;
+    height: 36px;
+    font-size: var(--docs-text-sm);
+  }
+
+  .docs-avatar--lg {
+    width: 48px;
+    height: 48px;
+    font-size: var(--docs-text-lg);
+  }
+
+  .docs-avatar--xl {
+    width: 72px;
+    height: 72px;
+    font-size: var(--docs-text-2xl);
+  }
+}

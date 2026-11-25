@@ -9,6 +9,7 @@ export interface UserProfile {
   id: string;
   email: string;
   displayName: string;
+  username?: string;
   avatarUrl: string;
   role: string;
   status: string;
@@ -46,8 +47,9 @@ export interface LoginResponse {
 
 export const DEFAULT_ACKLET_USER: UserProfile = {
   id: '00000000-0000-0000-0000-000000000001',
-  email: 'user@acklet.com',
-  displayName: 'Acklet User',
+  email: 'acklet@local.com',
+  displayName: 'acklet',
+  username: 'acklet',
   avatarUrl: '',
   role: 'ADMIN',
   status: 'ACTIVE',
@@ -122,6 +124,16 @@ export class AuthService {
     );
   }
 
+  loginAsGuest(): Observable<ApiResponse<LoginResponse>> {
+    return this.http.post<ApiResponse<LoginResponse>>(`${this.baseUrl}/auth/guest`, {}, { withCredentials: true }).pipe(
+      tap(res => {
+        if (res.success && res.data) {
+          this.setSession(res.data, true, 'Guest');
+        }
+      })
+    );
+  }
+
   savePreferences(preferences: Record<string, any>): Observable<ApiResponse<any>> {
     return this.http.put<ApiResponse<any>>(`${this.baseUrl}/users/me/preferences`, { preferences });
   }
@@ -171,6 +183,9 @@ export class AuthService {
 
   setSession(authData: LoginResponse, rememberMe = true, provider = 'Google'): void {
     this._accessToken.set(authData.accessToken);
+    if (authData.accessToken) {
+      localStorage.setItem('acklet_access_token', authData.accessToken);
+    }
 
     if (authData.profile) {
       if (authData.profile.email) localStorage.setItem('acklet_last_login_email', authData.profile.email);
@@ -190,8 +205,8 @@ export class AuthService {
 
   getLastLoginInfo(): { email: string | null; name: string | null; avatarUrl: string | null; provider: string | null } {
     return {
-      email: localStorage.getItem('acklet_last_login_email') || 'user@acklet.com',
-      name: localStorage.getItem('acklet_last_login_name') || 'Acklet User',
+      email: localStorage.getItem('acklet_last_login_email') || 'acklet@local.com',
+      name: localStorage.getItem('acklet_last_login_name') || 'acklet',
       avatarUrl: localStorage.getItem('acklet_last_login_avatar'),
       provider: localStorage.getItem('acklet_last_login_provider') || 'Default'
     };

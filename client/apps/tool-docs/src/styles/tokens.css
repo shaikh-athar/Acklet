@@ -1,0 +1,247 @@
+/* ==========================================================================
+   TOKENS (LAYER: tokens)
+   RGBA Neutral Monochrome Palette, Typography Scale, Spacing & Sizing
+   100% WCAG AA contrast (>= 4.5:1), Zero Color Hues
+   ========================================================================== */
+
+@layer tokens {
+  :root,
+  .docs-app {
+    /* --- Font Families --- */
+    --docs-font-ui: 'Host Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --docs-font-reading: 'Newsreader', Georgia, Cambria, 'Times New Roman', serif;
+    --docs-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    /* --- Typography Sizes --- */
+    --docs-text-2xs: 10px;
+    --docs-text-xs: 12px;
+    --docs-text-sm: 13px;
+    --docs-text-base: 14px;
+    --docs-text-md: 15px;
+    --docs-text-lg: 16px;
+    --docs-text-xl: 18px;
+    --docs-text-2xl: 22px;
+    --docs-text-3xl: 28px;
+    --docs-text-4xl: 36px;
+    --docs-text-5xl: 44px;
+
+    /* --- Line Heights --- */
+    --docs-leading-tight: 1.2;
+    --docs-leading-snug: 1.35;
+    --docs-leading-normal: 1.5;
+    --docs-leading-relaxed: 1.75;
+
+    /* --- Font Weights --- */
+    --docs-font-regular: 400;
+    --docs-font-medium: 500;
+    --docs-font-semibold: 600;
+    --docs-font-bold: 700;
+
+    /* --- Spacing Scale (4px Base Grid) --- */
+    --docs-space-0: 0px;
+    --docs-space-1: 4px;
+    --docs-space-1-5: 6px;
+    --docs-space-2: 8px;
+    --docs-space-2-5: 10px;
+    --docs-space-3: 12px;
+    --docs-space-3-5: 14px;
+    --docs-space-4: 16px;
+    --docs-space-5: 20px;
+    --docs-space-6: 24px;
+    --docs-space-7: 28px;
+    --docs-space-8: 32px;
+    --docs-space-9: 36px;
+    --docs-space-10: 40px;
+    --docs-space-12: 48px;
+    --docs-space-16: 64px;
+    --docs-space-20: 80px;
+
+    /* Short token aliases */
+    --space-1: var(--docs-space-1);
+    --space-2: var(--docs-space-2);
+    --space-3: var(--docs-space-3);
+    --space-4: var(--docs-space-4);
+    --space-5: var(--docs-space-5);
+    --space-6: var(--docs-space-6);
+    --space-8: var(--docs-space-8);
+    --space-10: var(--docs-space-10);
+    --space-12: var(--docs-space-12);
+    --space-16: var(--docs-space-16);
+
+    /* --- Border Radii --- */
+    --docs-radius-xs: 2px;
+    --docs-radius-sm: 4px;
+    --docs-radius-md: 6px;
+    --docs-radius-lg: 8px;
+    --docs-radius-xl: 12px;
+    --docs-radius-2xl: 16px;
+    --docs-radius-full: 9999px;
+
+    --radius-sm: var(--docs-radius-sm);
+    --radius-md: var(--docs-radius-md);
+    --radius-lg: var(--docs-radius-lg);
+    --radius-xl: var(--docs-radius-xl);
+    --radius-card: var(--docs-radius-xl);
+    --radius-full: var(--docs-radius-full);
+
+    /* --- Layout Constraints --- */
+    --docs-header-height: 64px;
+    --docs-sidebar-width: 240px;
+    --docs-right-sidebar-collapsed-width: 92px;
+    --docs-right-sidebar-width: 256px;
+    --docs-right-sidebar-offset: var(--docs-space-3);
+    --docs-right-sidebar-radius: var(--docs-radius-xl);
+    --docs-zoom-bar-height: 36px;
+    --docs-content-zoom: 1;
+    --docs-max-width-canvas: 720px;
+    --docs-max-width-wide: 1160px;
+    --docs-max-width-full: 1440px;
+
+    /* --- Control Sizing Tokens --- */
+    --size-plus-control: 40px;
+    --size-plus-icon: 20px;
+    --docs-size-plus-control: var(--size-plus-control);
+    --docs-size-plus-icon: var(--size-plus-icon);
+
+    --size-save-status: 160px;
+    --docs-size-save-status: var(--size-save-status);
+    --size-save-status-mobile: 120px;
+    --docs-size-save-status-mobile: var(--size-save-status-mobile);
+
+    --autosave-debounce-delay: 1500ms;
+    --autosave-max-interval: 5000ms;
+    --autosave-min-indicator: 300ms;
+
+    --size-dock-btn: 32px;
+    --size-dock-btn-icon: 14px;
+    --docs-size-dock-btn: var(--size-dock-btn);
+    --docs-size-dock-btn-icon: var(--size-dock-btn-icon);
+
+    --size-quick-btn: 36px;
+    --size-quick-btn-icon: 18px;
+
+    --size-block-control: 24px;
+    --size-block-control-icon: 12px;
+    --docs-size-block-control: var(--size-block-control);
+    --docs-size-block-control-icon: var(--size-block-control-icon);
+
+    --docs-size-plus-row: 48px;
+
+    /* --- Motion Tokens (Fast, snappy, responsive) --- */
+    --motion-duration-quick: 200ms;
+    --motion-duration-base: 240ms;
+    --motion-duration-long: 320ms;
+    --motion-duration-popup: 500ms;
+    --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --motion-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+    --motion-ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
+    --motion-distance-sm: 4px;
+    --motion-distance-md: 8px;
+
+    /* --- Transitions & Timing Aliases --- */
+    --docs-ease-standard: var(--motion-ease-standard);
+    --docs-ease-enter: var(--motion-ease-enter);
+    --docs-ease-exit: var(--motion-ease-exit);
+    --docs-duration-fast: var(--motion-duration-quick);
+    --docs-duration-normal: var(--motion-duration-base);
+    --docs-duration-slow: var(--motion-duration-long);
+
+    /* --- Z-Index Hierarchy --- */
+    --docs-z-base: 1;
+    --docs-z-sticky: 10;
+    --docs-z-header: 40;
+    --docs-z-backdrop: 45;
+    --docs-z-popover: 50;
+    --docs-z-drawer: 60;
+    --docs-z-dropdown: 70;
+    --docs-z-modal: 80;
+    --docs-z-modal-content: 85;
+    --docs-z-toast: 90;
+
+    /* --- Light Mode Colors (RGBA Neutrals) --- */
+    --docs-color-bg: rgba(255, 255, 255, 1);                /* Pure White #FFFFFF */
+    --docs-color-bg-subtle: rgba(250, 250, 250, 1);         /* Off-White #FAFAFA */
+    --docs-color-bg-muted: rgba(244, 244, 245, 1);          /* Light Neutral #F4F4F5 */
+    --docs-color-card: rgba(255, 255, 255, 1);              /* Card White #FFFFFF */
+    --docs-color-card-hover: rgba(250, 250, 250, 1);
+
+    --docs-color-border: rgba(228, 228, 231, 1);            /* Crisp Light Border #E4E4E7 */
+    --docs-color-border-subtle: rgba(238, 238, 240, 1);     /* Ultra-subtle Divider #EEEEF0 */
+    --docs-color-border-strong: rgba(206, 206, 210, 1);     /* Stronger Border #CECED2 */
+
+    --docs-color-text: rgba(24, 24, 27, 1);                 /* Primary Text #18181B */
+    --docs-color-text-muted: rgba(113, 113, 122, 1);        /* Secondary Text #71717A */
+    --docs-color-text-subtle: rgba(161, 161, 170, 1);       /* Tertiary Text #A1A1AA */
+
+    --docs-color-action-bg: rgba(24, 24, 27, 1);            /* Action Fill #18181B */
+    --docs-color-action-text: rgba(255, 255, 255, 1);       /* Action Text #FFFFFF */
+    --docs-color-action-hover: rgba(63, 63, 70, 1);         /* Action Hover #3F3F46 */
+
+    --docs-color-danger: rgba(220, 38, 38, 1);              /* Error Red #DC2626 */
+    --docs-color-danger-subtle: rgba(254, 242, 242, 1);     /* #FEF2F2 */
+    --docs-color-danger-bg: rgba(254, 226, 226, 0.7);
+    --docs-color-overlay: rgba(0, 0, 0, 0.45);
+
+    --docs-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --docs-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+    --docs-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --docs-shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.10);
+
+    /* --- Active Block Highlight & Text Selection Tokens (Light Mode Neutrals) --- */
+    --color-block-active-bg: rgba(24, 24, 27, 0.02);
+    --color-block-active-rule: transparent;
+    --docs-color-block-active-bg: var(--color-block-active-bg);
+    --docs-color-block-active-rule: var(--color-block-active-rule);
+    --docs-color-selection-bg: rgba(24, 24, 27, 0.11);
+
+    /* Token aliases */
+    --color-bg: var(--docs-color-bg);
+    --color-border: var(--docs-color-border);
+    --color-card: var(--docs-color-card);
+    --color-text: var(--docs-color-text);
+    --color-text-muted: var(--docs-color-text-muted);
+    --color-action-bg: var(--docs-color-action-bg);
+    --color-action-text: var(--docs-color-action-text);
+  }
+
+  /* --- Dark Mode Colors (RGBA Pure Black Neutrals) --- */
+  html[data-theme="dark"] .docs-app,
+  [data-theme="dark"] .docs-app,
+  .dark .docs-app,
+  html.dark .docs-app {
+    --docs-color-bg: rgba(0, 0, 0, 1);                      /* Pure Black #000000 */
+    --docs-color-bg-subtle: rgba(18, 18, 18, 1);            /* Dark Neutral #121212 */
+    --docs-color-bg-muted: rgba(28, 28, 30, 1);             /* Dark Surface #1C1C1E */
+    --docs-color-card: rgba(14, 14, 16, 1);                 /* Card Black #0E0E10 */
+    --docs-color-card-hover: rgba(24, 24, 28, 1);
+
+    --docs-color-border: rgba(48, 48, 52, 1);               /* Subtle Dark Border #303034 */
+    --docs-color-border-subtle: rgba(34, 34, 38, 1);        /* Ultra-subtle Divider #222226 */
+    --docs-color-border-strong: rgba(72, 72, 78, 1);        /* Stronger Border #48484E */
+
+    --docs-color-text: rgba(244, 244, 246, 1);              /* Primary Text #F4F4F6 */
+    --docs-color-text-muted: rgba(161, 161, 168, 1);        /* Secondary Text #A1A1A8 */
+    --docs-color-text-subtle: rgba(113, 113, 122, 1);       /* Tertiary Text #71717A */
+
+    --docs-color-action-bg: rgba(244, 244, 246, 1);         /* Action Fill #F4F4F6 */
+    --docs-color-action-text: rgba(0, 0, 0, 1);             /* Action Text #000000 */
+    --docs-color-action-hover: rgba(212, 212, 216, 1);
+
+    --docs-color-danger: rgba(239, 68, 68, 1);              /* Error Red #EF4444 */
+    --docs-color-danger-subtle: rgba(69, 10, 10, 0.4);
+    --docs-color-danger-bg: rgba(127, 29, 29, 0.35);
+    --docs-color-overlay: rgba(0, 0, 0, 0.70);
+
+    --docs-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --docs-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
+    --docs-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.55);
+    --docs-shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.65);
+
+    /* --- Active Block Highlight & Text Selection Tokens (Dark Mode Neutrals) --- */
+    --color-block-active-bg: rgba(255, 255, 255, 0.032);
+    --color-block-active-rule: transparent;
+    --docs-color-block-active-bg: var(--color-block-active-bg);
+    --docs-color-block-active-rule: var(--color-block-active-rule);
+    --docs-color-selection-bg: rgba(244, 244, 246, 0.20);
+  }
+}

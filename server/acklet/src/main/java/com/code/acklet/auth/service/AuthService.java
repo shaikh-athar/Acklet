@@ -295,6 +295,74 @@ public class AuthService {
     }
 
     @Transactional
+    public LoginResponse authenticateAsGuest(String userAgent, String ipAddress) {
+        String email = "acklet@local.com";
+        String username = "acklet";
+        String displayName = "acklet";
+        log.info("[OAuth Server] Authenticating in Guest / Local Test Mode for: {}", email);
+
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        User user;
+        if (userOpt.isEmpty()) {
+            user = User.builder()
+                    .email(email)
+                    .provider("LOCAL_GUEST")
+                    .status(User.UserStatus.ACTIVE)
+                    .role(User.Role.ADMIN)
+                    .lastLoginAt(Instant.now())
+                    .build();
+
+            UserProfile profile = UserProfile.builder()
+                    .user(user)
+                    .displayName(displayName)
+                    .username(username)
+                    .avatarUrl("https://ui-avatars.com/api/?name=acklet&background=0D8ABC&color=fff")
+                    .preferences(new HashMap<>())
+                    .notificationSettings(new HashMap<>())
+                    .onboardingCompleted(true)
+                    .build();
+
+            user.setProfile(profile);
+            user = userRepository.save(user);
+            log.info("[OAuth Server] Auto-registered local guest user: {}", email);
+        } else {
+            user = userOpt.get();
+            user.setLastLoginAt(Instant.now());
+            UserProfile profile = user.getProfile();
+            if (profile == null) {
+                profile = UserProfile.builder()
+                        .user(user)
+                        .id(user.getId())
+                        .displayName(displayName)
+                        .username(username)
+                        .avatarUrl("https://ui-avatars.com/api/?name=acklet&background=0D8ABC&color=fff")
+                        .preferences(new HashMap<>())
+                        .notificationSettings(new HashMap<>())
+                        .onboardingCompleted(true)
+                        .build();
+            } else {
+                profile.setDisplayName(displayName);
+                profile.setUsername(username);
+                profile.setOnboardingCompleted(true);
+            }
+            userProfileRepository.save(profile);
+            user = userRepository.save(user);
+        }
+
+        String accessToken = jwtTokenProvider.generateAccessToken(user);
+        String refreshToken = createAndSaveRefreshToken(user, null, userAgent, ipAddress);
+
+        auditLogService.logEvent("LOGIN_SUCCESS", user.getId(), user.getEmail(), ipAddress, userAgent, null, "User authenticated via Guest / Local Test Mode");
+
+        return LoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .isNewUser(false)
+                .profile(userMapper.toProfileResponse(user))
+                .build();
+    }
+
+    @Transactional
     public TokenRefreshResponse refreshToken(TokenRefreshRequest request, String userAgent, String ipAddress) {
         String rawToken = request.getRefreshToken();
         if (rawToken == null || rawToken.isBlank()) {

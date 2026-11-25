@@ -1,0 +1,101 @@
+/* ==========================================================================
+   PAGE: PROFILE (LAYER: pages)
+   BEM: .docs-profile, .docs-profile__card
+   ========================================================================== */
+
+@layer pages {
+  .docs-page--profile {
+    width: 100%;
+    max-width: var(--docs-max-width-wide);
+    margin: 0 auto;
+    padding: var(--docs-space-8) var(--docs-space-4);
+  }
+
+  @media (min-width: 768px) {
+    .docs-page--profile {
+      padding: var(--docs-space-8) var(--docs-space-6);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .docs-page--profile {
+      padding: var(--docs-space-10) var(--docs-space-8);
+    }
+  }
+
+  .docs-profile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--docs-space-8);
+  }
+
+  .docs-profile__card {
+    padding: var(--docs-space-8);
+    background-color: var(--docs-color-card);
+    border: 1px solid var(--docs-color-border);
+    border-radius: var(--docs-radius-2xl);
+    display: flex;
+    flex-direction: column;
+    gap: var(--docs-space-6);
+  }
+
+  .docs-profile__identity {
+    display: flex;
+    align-items: center;
+    gap: var(--docs-space-5);
+  }
+
+  .docs-profile__info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--docs-space-1);
+  }
+
+  .docs-profile__name {
+    font-size: var(--docs-text-2xl);
+    font-weight: var(--docs-font-bold);
+    color: var(--docs-color-text);
+    margin: 0;
+  }
+
+  .docs-profile__handle {
+    font-size: var(--docs-text-sm);
+    color: var(--docs-color-text-subtle);
+    font-family: var(--docs-font-mono);
+  }
+
+  .docs-profile__bio {
+    font-size: var(--docs-text-base);
+    color: var(--docs-color-text-muted);
+    line-height: var(--docs-leading-normal);
+    max-width: 600px;
+    margin: 0;
+  }
+
+  .docs-profile__stats {
+    display: flex;
+    align-items: center;
+    gap: var(--docs-space-8);
+    padding-top: var(--docs-space-4);
+    border-top: 1px solid var(--docs-color-border);
+  }
+
+  .docs-profile__stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .docs-profile__stat-value {
+    font-size: var(--docs-text-xl);
+    font-weight: var(--docs-font-bold);
+    color: var(--docs-color-text);
+  }
+
+  .docs-profile__stat-label {
+    font-size: var(--docs-text-xs);
+    color: var(--docs-color-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+}

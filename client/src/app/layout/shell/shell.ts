@@ -9,6 +9,7 @@ import { ThemeService } from '../../core/services/theme.service';
 import { FormsModule } from '@angular/forms';
 import { WorkspaceStateService } from '../../core/services/workspace-state.service';
 import { ToastService } from '../../core/services/toast.service';
+import { getDocsUrl } from '@acklet/shared';
 
 interface SidebarLink {
   label: string;
@@ -17,6 +18,7 @@ interface SidebarLink {
   badge?: string;
   roleRequired?: string;
   disabled?: boolean;
+  externalHref?: string;
 }
 
 @Component({
@@ -71,6 +73,17 @@ interface SidebarLink {
                 <span *ngIf="!sidebarCollapsed()" class="ws-nav-label">{{ link.label }}</span>
                 <span *ngIf="!sidebarCollapsed()" class="ws-nav-soon">Soon</span>
               </div>
+            } @else if (link.externalHref) {
+              <a
+                [href]="link.externalHref"
+                class="ws-nav-link"
+              >
+                <app-icon [name]="link.icon" class="ws-nav-icon" />
+                <span *ngIf="!sidebarCollapsed()" class="ws-nav-label">{{ link.label }}</span>
+                <span *ngIf="link.badge && !sidebarCollapsed()" class="ws-nav-badge">
+                  {{ link.badge }}
+                </span>
+              </a>
             } @else {
               <a
                 [routerLink]="link.path"
@@ -1267,6 +1280,7 @@ export class ShellLayoutComponent {
     { label: 'Overview', path: '/workspace', icon: 'layout-dashboard' },
     { label: 'Repositories', path: '/workspace/repositories', icon: 'git-branch' },
     { label: 'Tools', path: '/workspace/tools', icon: 'box' },
+    { label: 'Docs', path: '/docs', icon: 'file-text', externalHref: getDocsUrl() },
     { label: 'Store', path: '/workspace/store', icon: 'store' },
     { label: 'Collections', path: '/workspace/collections', icon: 'folder-heart' },
     { label: 'AI Jobs', path: '/workspace/ai-jobs', icon: 'sparkles', badge: '2 Run' },

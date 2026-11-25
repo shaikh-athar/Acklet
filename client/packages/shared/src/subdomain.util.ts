@@ -11,6 +11,7 @@ export interface SubdomainConfig {
  * Reserved subdomains that should never be resolved as a tool slug.
  */
 export const RESERVED_SUBDOMAINS = new Set([
+  'docs',
   'tools',
   'www',
   'api',
@@ -143,6 +144,37 @@ export function isToolsHubHostname(hostname?: string): boolean {
 }
 
 /**
+ * Detects whether a given hostname (or window.location.hostname) belongs to Acklet Docs.
+ * Examples: 'docs.localhost', 'docs.acklet.com'
+ */
+export function isDocsHostname(hostname?: string): boolean {
+  const host = hostname !== undefined
+    ? hostname
+    : (typeof window !== 'undefined' ? window.location.hostname : '');
+
+  const normalized = host.toLowerCase().trim();
+  return normalized.startsWith('docs.') || normalized === 'docs';
+}
+
+/**
+ * Builds the Docs URL.
+ * Production: https://docs.acklet.com
+ * Local: http://docs.localhost:4200 (runs on the SAME dev port as the portal)
+ */
+export function getDocsUrl(path = '', config?: SubdomainConfig): string {
+  const { protocol, baseDomain, isProduction, portMap, currentPort } = resolveConfig(config);
+  let base: string;
+  if (!isProduction && baseDomain === 'localhost') {
+    const port = currentPort || (portMap['portal'] ? String(portMap['portal']) : '4200');
+    base = `${protocol}://docs.localhost:${port}`;
+  } else {
+    base = `${protocol}://docs.${baseDomain}`;
+  }
+  const cleanPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  return `${base}${cleanPath}`;
+}
+
+/**
  * Extracts a tool slug from a hostname if it represents a tool subdomain.
  * Examples: 'clipboard.localhost' -> 'clipboard', 'clipboard.acklet.com' -> 'clipboard'
  * Returns null if the hostname is root portal, tools hub, or a reserved subdomain.
@@ -171,3 +203,61 @@ export function extractToolSlugFromHostname(hostname?: string): string | null {
 // Backward compatibility alias for gradual refactor
 export const buildToolSubdomainUrl = (slug: string, config?: SubdomainConfig) => getToolUrl(slug, config);
 export const buildPortalUrl = (config?: SubdomainConfig) => getPortalUrl(config);
+
+/**
+ * Allowed hostnames for Docs return URLs.
+ */
+export const ALLOWED_DOCS_RETURN_HOSTS = new Set([
+  'docs.localhost',
+  'localhost',
+  '127.0.0.1',
+  'docs.acklet.com'
+]);
+
+/**
+ * Validates whether a return URL belongs to an allowlisted Docs host.
+ * Only http/https URLs matching docs.localhost, localhost, or docs.acklet.com are permitted.
+ * If invalid or malicious, returns null.
+ */
+export function validateDocsReturnUrl(url?: string | null): string | null {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  try {
+    // If relative path like '/stories', it is safe within the same domain
+    if (trimmed.startsWith('/') && !trimmed.startsWith('//') && !trimmed.startsWith('/\\')) {
+      return trimmed;
+    }
+
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return null;
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+    if (ALLOWED_DOCS_RETURN_HOSTS.has(hostname)) {
+      return parsed.toString();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Builds the Acklet auth URL (login or signup) on the Acklet host with an allowlisted Docs return URL.
+ */
+export function getAckletAuthUrl(
+  mode: 'login' | 'signup' = 'login',
+  returnUrl?: string | null,
+  config?: SubdomainConfig
+): string {
+  const portal = getPortalUrl(config);
+  const targetPath = mode === 'signup' ? '/signup' : '/login';
+  const validReturn = validateDocsReturnUrl(returnUrl);
+  if (validReturn) {
+    return `${portal}${targetPath}?returnUrl=${encodeURIComponent(validReturn)}`;
+  }
+  return `${portal}${targetPath}`;
+}

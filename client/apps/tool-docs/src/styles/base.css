@@ -1,0 +1,131 @@
+/* ==========================================================================
+   BASE (LAYER: base)
+   HTML, Typography Element Defaults: h1-h3, p, a, focus-visible ring
+   ========================================================================== */
+
+@layer base {
+  app-docs-dashboard,
+  app-docs-community,
+  app-docs-library,
+  app-docs-profile,
+  app-docs-editor,
+  app-docs-publish,
+  app-docs-public-view,
+  app-docs-not-found,
+  app-docs-notifications,
+  app-docs-settings,
+  app-docs-overview,
+  app-docs-tools-management,
+  app-docs-tool-editor,
+  app-docs-collections-management,
+  app-docs-collection-editor {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .docs-app {
+    font-family: var(--docs-font-ui);
+    color: var(--docs-color-text);
+    background-color: var(--docs-color-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: background-color var(--docs-duration-normal) var(--docs-ease-standard),
+                color var(--docs-duration-normal) var(--docs-ease-standard);
+  }
+
+  .docs-app ::selection {
+    background-color: var(--docs-color-selection-bg, rgba(24, 24, 27, 0.11));
+    color: var(--docs-color-text);
+  }
+
+  .docs-app h1,
+  .docs-app h2,
+  .docs-app h3,
+  .docs-app h4,
+  .docs-app h5,
+  .docs-app h6 {
+    font-family: var(--docs-font-ui);
+    color: var(--docs-color-text);
+    font-weight: 600;
+    line-height: var(--docs-leading-snug);
+    letter-spacing: -0.02em;
+  }
+
+  .docs-app p {
+    color: var(--docs-color-text);
+    line-height: var(--docs-leading-normal);
+  }
+
+  .docs-app a {
+    color: inherit;
+    transition: color var(--docs-duration-fast) var(--docs-ease-standard),
+                opacity var(--docs-duration-fast) var(--docs-ease-standard);
+  }
+
+  .docs-app code,
+  .docs-app kbd,
+  .docs-app pre {
+    font-family: var(--docs-font-mono);
+    font-size: 0.875em;
+  }
+
+  .docs-app :focus-visible {
+    outline: 2px solid var(--docs-color-text);
+    outline-offset: 2px;
+  }
+
+  /* Reading / Serif Content Base Class */
+  .docs-reading-serif {
+    font-family: var(--docs-font-reading);
+    letter-spacing: -0.01em;
+  }
+
+  /* Smooth scrollbars */
+  .docs-app ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .docs-app ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .docs-app ::-webkit-scrollbar-thumb {
+    background: var(--docs-color-border);
+    border-radius: var(--docs-radius-full);
+  }
+
+  .docs-app ::-webkit-scrollbar-thumb:hover {
+    background: var(--docs-color-border-strong);
+  }
+
+  /* Page Entrance Transition (Motion Duration >= 500ms) */
+  .docs-page {
+    animation: docsFadeUp var(--motion-duration-base) var(--motion-ease-out) forwards;
+  }
+
+  @keyframes docsFadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(var(--motion-distance));
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Accessibility: Prefers Reduced Motion System */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,9 @@ import java.util.UUID;
 public class AuthController {
 
     private final AuthService authService;
+
+    @Value("${acklet.security.cookie-domain:}")
+    private String cookieDomain;
 
     @GetMapping("/google/authorize")
     @Operation(summary = "Initiate PKCE Authorization Flow", description = "Generates a PKCE code_verifier, state, and Google OAuth 2.0 authorization URL")
@@ -58,6 +62,18 @@ public class AuthController {
         LoginResponse loginResp = authService.authenticateWithDevice(request, userAgent, ipAddress);
         setRefreshTokenCookie(response, loginResp.getRefreshToken());
         return ResponseEntity.ok(ApiResponse.success(loginResp, "Login successful"));
+    }
+
+    @PostMapping("/guest")
+    @Operation(summary = "Authenticate as Test Guest", description = "Provisions or logs in the local test guest user (acklet / acklet@local.com)")
+    public ResponseEntity<ApiResponse<LoginResponse>> loginAsGuest(
+            HttpServletRequest servletRequest,
+            HttpServletResponse response) {
+        String userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT);
+        String ipAddress = servletRequest.getRemoteAddr();
+        LoginResponse loginResp = authService.authenticateAsGuest(userAgent, ipAddress);
+        setRefreshTokenCookie(response, loginResp.getRefreshToken());
+        return ResponseEntity.ok(ApiResponse.success(loginResp, "Guest login successful"));
     }
 
     @PostMapping("/refresh")
@@ -135,24 +151,28 @@ public class AuthController {
 
     private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
         if (refreshToken == null) return;
-        ResponseCookie cookie = ResponseCookie.from("acklet_refresh_token", refreshToken)
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from("acklet_refresh_token", refreshToken)
                 .httpOnly(true)
                 .secure(false) // Set to true in production HTTPS
                 .path("/api/v1/auth")
                 .maxAge(7 * 24 * 60 * 60)
-                .sameSite("Lax")
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+                .sameSite("Lax");
+        if (cookieDomain != null && !cookieDomain.isBlank()) {
+            builder.domain(cookieDomain.trim());
+        }
+        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
     }
 
     private void clearRefreshTokenCookie(HttpServletResponse response) {
-        ResponseCookie cookie = ResponseCookie.from("acklet_refresh_token", "")
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from("acklet_refresh_token", "")
                 .httpOnly(true)
                 .secure(false)
                 .path("/api/v1/auth")
                 .maxAge(0)
-                .sameSite("Lax")
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+                .sameSite("Lax");
+        if (cookieDomain != null && !cookieDomain.isBlank()) {
+            builder.domain(cookieDomain.trim());
+        }
+        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
     }
 }

@@ -1,11 +1,15 @@
+@layer reset, tokens, base, layout, components, pages, utilities;
 @import "tailwindcss";
 @import "../packages/tool-shell/src/styles/tokens.css";
 @import "../packages/tool-shell/src/styles/base.css";
+@import "../apps/tool-docs/src/styles/index.css";
 @import url('https://fonts.googleapis.com/css2?family=Aboreto&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&family=Philosopher:ital,wght@0,400;0,700;1,400;1,700&family=Sorts+Mill+Goudy:ital@0;1&display=swap');
 @source "./app/**/*.ts";
 @source "./app/**/*.html";
 @source "./tools/**/*.ts";
 @source "./tools/**/*.html";
+@source "../packages";
+@source "../apps";
 @source "../packages/tool-shell/src/**/*.ts";
 @source "../packages/tool-shell/src/**/*.html";
 @source "../apps/**/*.ts";
@@ -20,6 +24,10 @@
 
 .flex-col {
   flex-direction: column !important;
+}
+
+.flex-wrap {
+  flex-wrap: wrap !important;
 }
 
 .flex-1 {

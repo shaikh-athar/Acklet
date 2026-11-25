@@ -1,7 +1,7 @@
 import { Component, signal, HostListener, inject, ElementRef, computed } from '@angular/core';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { getToolsHubUrl } from '@acklet/shared';
+import { getToolsHubUrl, getDocsUrl } from '@acklet/shared';
 import { IconComponent } from '../icon/icon';
 import { MagneticDirective } from '../../directives/magnetic.directive';
 import { ThemeService } from '../../../core/services/theme.service';
@@ -465,6 +465,7 @@ export class NavbarComponent {
   readonly navLinks: NavLink[] = [
     { label: 'Home', path: '/' },
     { label: 'Tools', externalHref: getToolsHubUrl() },
+    { label: 'Docs', externalHref: getDocsUrl() },
     {
       label: 'Community',
       children: [

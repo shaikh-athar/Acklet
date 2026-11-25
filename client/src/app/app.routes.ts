@@ -1,9 +1,88 @@
 // src/app/app.routes.ts
 import { Routes } from '@angular/router';
+import { getDocsUrl } from '@acklet/shared';
 import { authGuard, publisherGuard, adminGuard } from './core/auth/auth.guard';
 import { ToolsRedirectComponent } from './pages/tools-redirect/tools-redirect';
 
 export const routes: Routes = [
+  // --- Acklet Docs Application (Redirects to Docs Host) ---
+  {
+    path: 'docs',
+    canActivate: [() => {
+      if (typeof window !== 'undefined') {
+        window.location.replace(getDocsUrl());
+      }
+      return false;
+    }],
+    component: ToolsRedirectComponent
+  },
+  {
+    path: 'new',
+    canActivate: [() => {
+      if (typeof window !== 'undefined') {
+        window.location.replace(getDocsUrl('/new'));
+      }
+      return false;
+    }],
+    component: ToolsRedirectComponent
+  },
+  {
+    path: 'new-story',
+    redirectTo: 'new',
+    pathMatch: 'full'
+  },
+  {
+    path: 'write',
+    canActivate: [() => {
+      if (typeof window !== 'undefined') {
+        window.location.replace(getDocsUrl('/new'));
+      }
+      return false;
+    }],
+    component: ToolsRedirectComponent
+  },
+  {
+    path: 'write/:docId',
+    canActivate: [(route: any) => {
+      if (typeof window !== 'undefined') {
+        const docId = route?.params?.['docId'];
+        window.location.replace(getDocsUrl(docId ? `/write/${docId}` : '/new'));
+      }
+      return false;
+    }],
+    component: ToolsRedirectComponent
+  },
+  {
+    path: 'stories',
+    canActivate: [() => {
+      if (typeof window !== 'undefined') {
+        window.location.replace(getDocsUrl('/stories'));
+      }
+      return false;
+    }],
+    component: ToolsRedirectComponent
+  },
+  {
+    path: 'drafts',
+    canActivate: [() => {
+      if (typeof window !== 'undefined') {
+        window.location.replace(getDocsUrl('/drafts'));
+      }
+      return false;
+    }],
+    component: ToolsRedirectComponent
+  },
+  {
+    path: 'published',
+    canActivate: [() => {
+      if (typeof window !== 'undefined') {
+        window.location.replace(getDocsUrl('/published'));
+      }
+      return false;
+    }],
+    component: ToolsRedirectComponent
+  },
+
   // --- Standalone Tool Applications (Pure Tool UI with ts-shell, No Platform Shell) ---
   {
     path: 'qr',
@@ -120,6 +199,7 @@ export const routes: Routes = [
   { path: 'imagecompressor', redirectTo: 'tools/image-compressor', pathMatch: 'full' },
   { path: 'tools/img-compressor', redirectTo: 'tools/image-compressor', pathMatch: 'full' },
   { path: 'tools/imagecompressor', redirectTo: 'tools/image-compressor', pathMatch: 'full' },
+  {
     path: 'colorstudio',
     loadComponent: () => import('../../apps/tool-color-studio/src/app/app.component').then(m => m.AppComponent),
     title: 'Color Studio — Professional Color Tools | Acklet',
@@ -176,6 +256,7 @@ export const routes: Routes = [
     ]
   },
   { path: 'tools/device-studio', redirectTo: 'tools/devicestudio', pathMatch: 'full' },
+  {
     path: 'watermark-remover',
     loadComponent: () => import('../../apps/tool-watermark-remover/src/app/app.component').then(m => m.AppComponent),
     title: 'Watermark Remover — AI Image Cleaner | Acklet'

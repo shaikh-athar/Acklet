@@ -11,5 +11,7 @@ public interface CollectionMapper {
 
     @Mapping(target = "userId", source = "user.id")
     @Mapping(target = "isPublic", source = "public")
+    @Mapping(target = "status", expression = "java(collection.getStatus() != null ? collection.getStatus().name() : \"DRAFT\")")
+    @Mapping(target = "toolCount", expression = "java(collection.getTools() != null ? collection.getTools().size() : 0)")
     CollectionResponse toCollectionResponse(Collection collection);
 }

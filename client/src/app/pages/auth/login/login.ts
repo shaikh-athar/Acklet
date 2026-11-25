@@ -1,6 +1,6 @@
 // client/src/app/pages/auth/login/login.ts
 import { Component, inject, signal, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IconComponent } from '../../../shared/components/icon/icon';
@@ -104,6 +104,24 @@ import { FeatureService } from '../../../core/services/feature.service';
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                 </svg>
                 <span>Continue with Google</span>
+              </button>
+
+              <!-- Local Dev / Test Guest Mode Option -->
+              <div class="guest-mode-divider w-full flex items-center gap-3 my-2">
+                <span class="flex-1 h-px bg-neutral-200 dark:bg-neutral-800"></span>
+                <span class="text-[11px] uppercase tracking-wider text-neutral-400 font-medium">Or Test Mode</span>
+                <span class="flex-1 h-px bg-neutral-200 dark:bg-neutral-800"></span>
+              </div>
+
+              <button
+                type="button"
+                class="guest-mode-btn w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-full font-medium text-xs transition-all duration-200"
+                (click)="loginAsGuest()"
+                [disabled]="isVerifying()"
+                aria-label="Continue as Local Guest (acklet@local.com)"
+              >
+                <app-icon name="user" class="size-4 opacity-70" />
+                <span>Continue as Local Guest (acklet&#64;local.com)</span>
               </button>
 
               <!-- Remember Me Custom Button -->
@@ -363,6 +381,24 @@ import { FeatureService } from '../../../core/services/feature.service';
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
 
+    .guest-mode-btn {
+      background: var(--color-surface-800, #1e1e24);
+      color: var(--color-neutral-300, #d4d4d8);
+      border: 1px dashed var(--color-border-subtle, rgba(255, 255, 255, 0.2));
+      cursor: pointer;
+    }
+    .guest-mode-btn:hover {
+      background: var(--color-surface-700, #27272a);
+      color: var(--color-neutral-100, #f4f4f5);
+      border-color: var(--color-brand-500, #6366f1);
+      border-style: solid;
+      transform: translateY(-0.5px);
+    }
+    .guest-mode-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
     .google-btn-wrapper {
       min-height: 40px;
       display: flex;
@@ -419,6 +455,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly authSvc = inject(AuthService);
   private readonly toastSvc = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   readonly featureSvc = inject(FeatureService);
 
   readonly isVerifying = signal(false);
@@ -471,11 +508,51 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  private navigatePostLogin(): void {
+    const returnUrl = this.route.snapshot.queryParams['returnUrl'];
+    if (returnUrl) {
+      if (returnUrl.startsWith('http://') || returnUrl.startsWith('https://')) {
+        window.location.href = returnUrl;
+      } else {
+        this.router.navigateByUrl(returnUrl);
+      }
+    } else {
+      this.router.navigate(['/workspace']);
+    }
+  }
+
+  /**
+   * Fast Test Guest Mode: logs in as local test guest (acklet / acklet@local.com)
+   * without needing external Google OAuth services.
+   */
+  loginAsGuest(): void {
+    this.isVerifying.set(true);
+    this.authSvc.loginAsGuest().subscribe({
+      next: (res) => {
+        this.isVerifying.set(false);
+        if (res.success && res.data) {
+          this.toastSvc.success('Welcome!', `Logged in as ${res.data.profile?.displayName || 'acklet'}`);
+          this.navigatePostLogin();
+        } else {
+          this.toastSvc.error('Guest Login Failed', res.message || 'Unable to authenticate as guest');
+        }
+      },
+      error: (err) => {
+        this.isVerifying.set(false);
+        this.toastSvc.error('Guest Login Error', err?.error?.message || 'Failed to authenticate as guest');
+      }
+    });
+  }
+
   /**
    * One-click direct authentication handler when clicking "Continue as <Email>".
    * Performs silent token refresh / session check to skip Google Popup if valid session exists.
    */
   loginWithReturningAccount(): void {
+    if (this.lastLoginEmail() === 'acklet@local.com') {
+      this.loginAsGuest();
+      return;
+    }
     const existingToken = this.authSvc.getAccessToken();
     const refreshTokenStr = localStorage.getItem('acklet_refresh_token');
 
@@ -487,7 +564,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
           if (res.success && res.data) {
             this.isVerifying.set(false);
             this.toastSvc.success('Welcome Back!', `Logged in as ${this.lastLoginName() || this.lastLoginEmail()}`);
-            this.router.navigate(['/workspace']);
+            this.navigatePostLogin();
           } else {
             this.loginWithGooglePkce();
           }
@@ -514,7 +591,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
       this.isVerifying.set(true);
 
       const client = google.accounts.oauth2.initCodeClient({
-        client_id: '520922697605-i1g6rcrmvmps6joiej93b4aa73jv2cf1.apps.googleusercontent.com',
+        client_id: '520922697605-2tv7jmaqd57ru0ug6fdpsrbfvmqora3q.apps.googleusercontent.com',
         scope: 'openid profile email',
         ux_mode: 'popup',
         callback: (response: any) => {
@@ -529,7 +606,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
                     this.router.navigate(['/auth/onboarding'], { queryParams: { mandatory: 'true' } });
                   } else {
                     this.toastSvc.success('Welcome Back!', 'Successfully authenticated with Google.');
-                    this.router.navigate(['/workspace']);
+                    this.navigatePostLogin();
                   }
                 } else {
                   this.toastSvc.error('Authentication Failed', res.message || 'Verification rejected by server.');
@@ -609,7 +686,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!google?.accounts?.id) return;
 
     google.accounts.id.initialize({
-      client_id: '520922697605-i1g6rcrmvmps6joiej93b4aa73jv2cf1.apps.googleusercontent.com',
+      client_id: '520922697605-2tv7jmaqd57ru0ug6fdpsrbfvmqora3q.apps.googleusercontent.com',
       callback: (response: any) => {
         this.handleGoogleCredential(response.credential);
       },
@@ -643,7 +720,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
             this.router.navigate(['/auth/onboarding'], { queryParams: { mandatory: 'true' } });
           } else {
             this.toastSvc.success('Successfully Authenticated', 'Welcome back to Acklet!');
-            this.router.navigate(['/workspace']);
+            this.navigatePostLogin();
           }
         } else {
           this.toastSvc.error('Authentication Failed', res.message || 'Verification rejected by server.');

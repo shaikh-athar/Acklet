@@ -1,0 +1,80 @@
+/* ==========================================================================
+   COMPONENT: TABS (LAYER: components)
+   BEM: .docs-tabs, .docs-tabs__list, .docs-tabs__tab
+   ========================================================================== */
+
+@layer components {
+  .docs-tabs {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .docs-tabs__list,
+  .docs-tabs-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--docs-space-2);
+    border-bottom: 1px solid var(--docs-color-border);
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .docs-tabs__list::-webkit-scrollbar,
+  .docs-tabs-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .docs-tabs__tab,
+  .docs-tab-item,
+  .docs-tabs__list button.docs-tabs__tab,
+  .docs-tabs-nav button.docs-tab-item {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    margin: 0;
+    min-height: 40px;
+    font-family: var(--docs-font-ui);
+    font-size: var(--docs-text-sm);
+    font-weight: var(--docs-font-medium);
+    color: var(--docs-color-text-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    text-decoration: none;
+    line-height: 1.4;
+    box-sizing: border-box;
+    transition: color var(--docs-duration-normal) var(--docs-ease-standard);
+  }
+
+  .docs-tabs__tab:hover,
+  .docs-tab-item:hover {
+    color: var(--docs-color-text);
+  }
+
+  .docs-tabs__tab--active,
+  .docs-tabs__tab.active,
+  .docs-tab-item.active {
+    color: var(--docs-color-text);
+    font-weight: var(--docs-font-semibold);
+  }
+
+  .docs-tabs__tab--active::after,
+  .docs-tabs__tab.active::after,
+  .docs-tab-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--docs-color-text);
+    border-radius: var(--docs-radius-full);
+  }
+}
